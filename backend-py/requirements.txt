@@ -1,0 +1,81 @@
+# Job Raider - Automated Job Application Pipeline
+# Requirements optimized for Python 3.10+
+
+# === Scraping & Web ===
+playwright>=1.40.0            # Headless browser automation for job boards
+beautifulsoup4>=4.12.0        # HTML parsing
+requests>=2.31.0              # HTTP client
+lxml>=5.0.0                   # XML/HTML parser (faster than html.parser)
+
+# === LLM Clients ===
+anthropic>=0.40.0             # Anthropic API client
+ollama>=0.4.0                 # Ollama client for local models
+
+# === Data Processing ===
+pandas>=2.1.0                 # Data manipulation and analysis
+pydantic>=2.5.0               # Data validation and settings
+pydantic-settings>=2.1.0      # Settings management
+email-validator>=2.1.0        # Email validation for pydantic HttpUrl fields
+scikit-learn>=1.4.0            # ML metrics (precision, recall, F1)
+seaborn>=0.13.0               # Statistical visualization
+matplotlib>=3.8.0             # Plotting library
+kaggle>=1.6.0                 # Kaggle dataset download CLI
+
+# === Resume Parsing & Generation ===
+pypdf>=4.0.0                  # PDF parsing
+python-docx>=1.1.0            # DOCX reading/writing
+reportlab>=4.0.0              # PDF generation
+
+# === Configuration ===
+python-dotenv>=1.0.0          # Environment variable management
+pyyaml>=6.0.0                 # YAML configuration parsing
+toml>=0.10.2                  # TOML parsing (for pyproject.toml)
+
+# === Utilities ===
+tenacity>=8.2.0               # Retry logic with exponential backoff
+tqdm>=4.66.0                  # Progress bars
+rich>=13.7.0                  # Terminal formatting and tables
+
+# === Logging ===
+colorlog>=6.8.0               # Colored log output
+structlog>=24.1.0             # Structured logging
+
+# === Rate Limiting ===
+ratelimit>=2.2.1              # Simple rate limiting
+aiohttp>=3.9.0                # Async HTTP client (for concurrent scraping)
+
+# === Web API ===
+fastapi>=0.115.0              # Modern web framework
+uvicorn[standard]>=0.30.0     # ASGI server with websockets
+websockets>=13.0              # WebSocket support
+python-multipart>=0.0.9       # File upload support
+aiofiles>=24.1.0              # Async file operations
+
+# === Testing (optional) ===
+pytest>=8.0.0                 # Testing framework
+pytest-asyncio>=0.23.0        # Async testing support
+pytest-cov>=4.1.0             # Coverage reporting
+
+# === Database ===
+sqlalchemy>=2.0.0               # Async ORM for PostgreSQL
+alembic>=1.13.0                 # Database schema migrations
+asyncpg>=0.29.0                 # Async PostgreSQL driver (used at runtime with pooler)
+psycopg2-binary>=2.9.0          # Sync PostgreSQL driver (used by Alembic for migrations)
+pgvector>=0.2.0                 # SQLAlchemy type support for pgvector (replaces ChromaDB)
+supabase>=2.4.0                 # Supabase client for Storage bucket operations
+
+# === RAG / Vector Store ===
+# chromadb replaced by pgvector + Supabase PostgreSQL — see src/database/models.py
+
+# === MLOps ===
+mlflow>=2.0.0                   # Experiment tracking and model performance logging
+
+# === Error Tracking ===
+sentry-sdk[fastapi]>=1.40.0     # Error tracking and performance monitoring
+
+# === Development (optional) ===
+black>=24.1.0                 # Code formatting
+ruff>=0.2.0                   # Fast Python linter
+mypy>=1.8.0                   # Static type checking
+ipython>=8.20.0               # Enhanced Python REPL
+jupyter>=1.0.0                # Jupyter notebook support

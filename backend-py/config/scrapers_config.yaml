@@ -1,0 +1,89 @@
+# Job Raider - Scrapers Configuration
+# Settings for web scraping job boards
+
+# Scraping sources
+sources:
+  linkedin:
+    enabled: true
+    base_url: https://www.linkedin.com
+    search_url: https://www.linkedin.com/jobs/search
+    requires_auth: true
+    rate_limit_delay: 2.0  # seconds between requests
+    timeout: 30
+    max_results: 1000
+
+  jsearch:
+    enabled: true
+    base_url: https://jsearch.p.rapidapi.com
+    requires_auth: false
+    rate_limit_delay: 1.0
+    timeout: 30
+    max_results: 50
+
+  indeed:
+    enabled: false  # Blocked by Cloudflare bot detection
+    base_url: https://www.indeed.com
+    search_url: https://www.indeed.com/jobs
+    requires_auth: false
+    rate_limit_delay: 3.0
+    timeout: 30
+    max_results: 1000
+
+  glassdoor:
+    enabled: false  # Blocked by Cloudflare bot detection
+    base_url: https://www.glassdoor.com
+    search_url: https://www.glassdoor.com/Job/jobs.htm
+    requires_auth: false
+    rate_limit_delay: 2.5
+    timeout: 30
+    max_results: 500
+
+# User agent settings
+user_agent: JobRaider/1.0
+
+# Rate limiting
+rate_limiting:
+  requests_per_second: 1
+  max_concurrent_scrapers: 3
+  burst_size: 5  # Allow short bursts
+
+# HTTP settings
+http:
+  timeout: 30  # seconds
+  max_retries: 3
+  retry_backoff: 1.0  # seconds, exponential
+  verify_ssl: true
+  follow_redirects: true
+
+# Browser automation (Playwright)
+browser:
+  headless: true
+  slow_mo: 0  # milliseconds
+  timeout: 30000  # milliseconds
+  user_data_dir: null  # for persistent sessions
+
+# Data extraction
+extraction:
+  max_description_length: 10000  # characters
+  clean_html: true
+  extract_salary: true
+  extract_location: true
+  extract_company: true
+
+# Storage
+storage:
+  format: json  # json, csv, both
+  compress: false
+  timestamp_files: true
+
+# LinkedIn Easy Apply automation
+linkedin_easy_apply:
+  enabled: false  # Enable auto-apply via LinkedIn Easy Apply
+  headless: true  # Run browser in headless mode
+  semi_auto: false  # Pause before submit for manual review
+  daily_limit: 20  # Maximum applications per day
+  hourly_limit: 5  # Maximum applications per hour
+  min_delay_seconds: 30  # Minimum wait between applications
+  max_delay_seconds: 120  # Maximum wait between applications
+  screenshot_on_submit: true  # Capture screenshots during submission
+  answer_bank_path: "config/answer_bank.yaml"  # Pre-configured answers for custom questions

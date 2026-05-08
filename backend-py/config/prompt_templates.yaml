@@ -1,0 +1,438 @@
+# Job Raider - Prompt Templates
+# Reusable prompts for each stage of the pipeline
+
+prompts:
+  # === Stage 1: JD Extraction ===
+  jd_extraction:
+    system: |
+      You are a job description parser. Extract structured information from job postings.
+      Focus on high-signal sections: Requirements, Responsibilities, Qualifications, Skills.
+      Ignore fluff like company culture paragraphs, equal opportunity statements, etc.
+
+    user: |
+      Extract the following information from this job description:
+      {jd_text}
+
+      Return a JSON object with these exact fields:
+      {
+        "title": "Job title",
+        "company": "Company name",
+        "location": "Location (or 'Remote')",
+        "requirements": ["List of key requirements"],
+        "responsibilities": ["List of key responsibilities"],
+        "skills": ["List of mentioned skills (technical and soft)"],
+        "experience_level": "Entry/Mid/Senior/Executive",
+        "salary_range": "Salary if mentioned, else null"
+      }
+
+  # === Stage 2: Relevance Scoring ===
+  relevance_scoring:
+    system: |
+      You are a job matching expert. Score how well a job listing matches a candidate's profile.
+      Use a heuristic scoring system from 0-100.
+
+    user: |
+      Score the relevance of this job for the candidate:
+
+      JOB DETAILS:
+      {job_details}
+
+      CANDIDATE PROFILE:
+      {user_profile}
+
+      Scoring criteria (total 100 points):
+      1. Keyword overlap (0-30 pts): How many target keywords appear in the JD?
+      2. Skills match (0-40 pts): How many required skills does the candidate have?
+      3. Experience alignment (0-20 pts): Does the experience level match?
+      4. Location fit (0-10 pts): Is the location acceptable?
+
+      Return a JSON object:
+      {
+        "total_score": 0-100,
+        "breakdown": {
+          "keyword_score": 0-30,
+          "skills_score": 0-40,
+          "experience_score": 0-20,
+          "location_score": 0-10
+        },
+        "matched_keywords": ["keyword1", "keyword2"],
+        "missing_skills": ["skill1", "skill2"],
+        "recommendation": "apply/skip/maybe",
+        "reasoning": "Brief explanation"
+      }
+
+  # === Stage 3: Selection (Small Model) ===
+  selection:
+    system: |
+      You are a resume strategist. Select the most relevant content from a candidate's profile
+      to emphasize for a specific job application. Be selective and strategic.
+
+    user: |
+      Given this job and candidate profile, select:
+      1. The 3 most relevant projects to highlight
+      2. The 5 most important keywords to emphasize in the resume
+      3. Key achievements that align with the job requirements
+
+      JOB REQUIREMENTS:
+      {job_requirements}
+
+      CANDIDATE PROFILE:
+      {user_profile}
+
+      Return a JSON object:
+      {
+        "selected_projects": [
+          {"name": "Project 1", "reason": "Why this project is relevant"},
+          {"name": "Project 2", "reason": "..."},
+          {"name": "Project 3", "reason": "..."}
+        ],
+        "keywords_to_emphasize": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+        "key_achievements": ["achievement1", "achievement2"],
+        "summary_suggestion": "2-3 sentence professional summary emphasizing fit"
+      }
+
+  # === Stage 4: Resume Writing (Large Model) ===
+  resume_writing:
+    system: |
+      You are an expert resume writer. Rewrite a resume to emphasize specific projects,
+      skills, and keywords for a job application while maintaining factual accuracy.
+
+      CRITICAL RULES:
+      1. Never fabricate skills, experience, or achievements
+      2. All selected projects MUST appear in the output
+      3. All keywords MUST be naturally incorporated
+      4. Keep dates and facts exactly as provided
+      5. Use action verbs and quantify achievements where possible
+      6. Maintain professional tone throughout
+
+    user: |
+      Rewrite this resume to emphasize the following for the target job:
+
+      TARGET JOB:
+      {job_details}
+
+      SELECTION STRATEGY:
+      {selection_output}
+
+      BASE RESUME:
+      {base_resume}
+
+      Return a JSON object with the rewritten resume sections:
+      {
+        "summary": "Professional summary (2-3 sentences)",
+        "skills": ["Skill 1", "Skill 2", ...],  // Group by category
+        "experience": [
+          {
+            "title": "Job Title",
+            "company": "Company",
+            "dates": "Date Range",
+            "highlights": ["bullet1", "bullet2", ...]
+          }
+        ],
+        "projects": [
+          {
+            "name": "Project Name",
+            "description": "1-2 sentence description",
+            "technologies": ["tech1", "tech2"],
+            "highlights": ["achievement1", "achievement2"]
+          }
+        ],
+        "education": [
+          {
+            "degree": "Degree",
+            "school": "School",
+            "year": "Year"
+          }
+        ]
+      }
+
+  # === Stage 5: Resume Parsing ===
+  resume_parsing:
+    system: |
+      You are a resume parser. Extract structured information from a resume document.
+      Be thorough and capture all relevant details.
+
+    user: |
+      Parse this resume and extract structured information:
+
+      RESUME TEXT:
+      {resume_text}
+
+      Return a JSON object:
+      {
+        "basics": {
+          "name": "Full Name",
+          "email": "email@example.com",
+          "phone": "phone number",
+          "location": "City, State",
+          "linkedin": "LinkedIn URL if present",
+          "github": "GitHub URL if present"
+        },
+        "summary": "Professional summary",
+        "skills": {
+          "programming_languages": ["Python", "JavaScript", ...],
+          "frameworks": ["React", "Django", ...],
+          "tools": ["Git", "Docker", ...],
+          "domains": ["Machine Learning", "Web Development", ...]
+        },
+        "experience": [
+          {
+            "title": "Job Title",
+            "company": "Company Name",
+            "location": "Location",
+            "start_date": "YYYY-MM",
+            "end_date": "YYYY-MM or 'present'",
+            "highlights": ["bullet1", "bullet2", ...]
+          }
+        ],
+        "projects": [
+          {
+            "name": "Project Name",
+            "description": "Description",
+            "technologies": ["tech1", "tech2"],
+            "url": "URL if present",
+            "highlights": ["achievement1", "achievement2"]
+          }
+        ],
+        "education": [
+          {
+            "degree": "Degree Name",
+            "school": "School Name",
+            "location": "Location",
+            "graduation_year": "YYYY",
+            "gpa": "GPA if present"
+          }
+        ],
+        "certifications": [
+          {"name": "Certification", "issuer": "Issuer", "date": "YYYY-MM"}
+        ]
+      }
+
+  # === Stage 6: Validation ===
+  validation:
+    system: |
+      You are a resume validator. Ensure all required elements are present and accurate.
+
+    user: |
+      Validate this generated resume against the requirements:
+
+      REQUIREMENTS:
+      {selection_output}
+
+      GENERATED RESUME:
+      {generated_resume}
+
+      Check:
+      1. All selected projects are present
+      2. All keywords are mentioned
+      3. No skills were fabricated
+      4. Dates match the original profile
+      5. No factual inconsistencies
+
+      Return a JSON object:
+      {
+        "is_valid": true/false,
+        "missing_projects": ["project1", "project2"],
+        "missing_keywords": ["keyword1", "keyword2"],
+        "fabricated_content": ["item1", "item2"],
+        "date_inconsistencies": ["inconsistency1"],
+        "overall_score": 0-100,
+        "recommendation": "approve/needs_revision/reject"
+      }
+
+  # === Stage 7: Resume Analysis (General) ===
+  resume_analysis_general:
+    system: |
+      You are a professional career coach and resume expert. Analyze resumes thoroughly
+      to provide actionable insights for job seekers.
+
+      CRITICAL RULES:
+      - You MUST use ONLY the data provided in the USER PROFILE below.
+      - Do NOT invent, fabricate, or hallucinate any companies, job titles, skills,
+        projects, or experience that are not explicitly listed in the USER PROFILE.
+      - Every entry in experience_insights MUST match a real job from the Work Experience section.
+      - Every entry in project_insights MUST match a real project from the Projects section.
+      - Every entry in skills_assessment MUST match a real skill from the Skills section.
+      - If the profile has no projects, return an empty array for project_insights.
+      - If the profile has no work experience, return an empty array for experience_insights.
+
+    user: |
+      Analyze this resume for overall quality and competitiveness:
+
+      USER PROFILE:
+      {{profile_context}}
+
+      IMPORTANT: Use ONLY the companies, job titles, skills, and projects listed above.
+      Do not make up any data that is not in the USER PROFILE.
+
+      Return a JSON object:
+      {{
+        "overall_score": 0-100,
+        "summary": "Executive summary (2-3 sentences)",
+        "key_strengths": ["strength1", "strength2", "strength3"],
+        "key_improvements": ["improvement1", "improvement2", "improvement3"],
+        "skills_assessment": [
+          {{
+            "skill_name": "exact skill name from profile",
+            "proficiency_level": "Beginner/Intermediate/Advanced/Expert",
+            "years_experience": X,
+            "is_industry_relevant": true/false,
+            "improvement_suggestions": ["suggestion1"]
+          }}
+        ],
+        "experience_insights": [
+          {{
+            "company": "exact company name from profile",
+            "title": "exact job title from profile",
+            "period": "exact period from profile",
+            "strengths": ["strength1"],
+            "gaps": ["gap1"],
+            "achievements_to_highlight": ["achievement1"]
+          }}
+        ],
+        "project_insights": [
+          {{
+            "name": "exact project name from profile",
+            "technologies": ["tech1", "tech2"],
+            "impact_score": 0-100,
+            "strengths": ["strength1"],
+            "improvements": ["improvement1"]
+          }}
+        ],
+        "resume_improvements": ["specific improvement 1"],
+        "skill_gaps": ["missing skill 1"],
+        "next_steps": ["step 1", "step 2"],
+        "metadata": {{
+          "analysis_version": "1.0",
+          "analysis_type": "general"
+        }}
+      }}
+
+  # === Stage 8: Resume Analysis (Job-Specific) ===
+  resume_analysis_job_specific:
+    system: |
+      You are a job application expert. Analyze how well a resume aligns with a
+      specific job posting and identify gaps to address.
+
+      CRITICAL RULES:
+      - You MUST use ONLY the data provided in the USER PROFILE below.
+      - Do NOT invent, fabricate, or hallucinate any companies, job titles, skills,
+        projects, or experience that are not explicitly listed in the USER PROFILE.
+      - Every entry in experience_insights MUST match a real job from the Work Experience section.
+      - Every entry in project_insights MUST match a real project from the Projects section.
+      - Every entry in skills_assessment MUST match a real skill from the Skills section.
+
+    user: |
+      Analyze this resume against the target job:
+
+      JOB LISTING:
+      {{job_context}}
+
+      USER PROFILE:
+      {{profile_context}}
+
+      IMPORTANT: Use ONLY the companies, job titles, skills, and projects listed in the USER PROFILE.
+
+      Return a JSON object:
+      {{
+        "overall_score": 0-100,
+        "target_alignment_score": 0-100,
+        "summary": "Executive summary of fit (2-3 sentences)",
+        "key_strengths": ["strength1", "strength2", "strength3"],
+        "key_improvements": ["improvement1", "improvement2", "improvement3"],
+        "skills_assessment": [
+          {{
+            "skill_name": "exact skill name from profile",
+            "proficiency_level": "Beginner/Intermediate/Advanced/Expert",
+            "years_experience": X,
+            "is_industry_relevant": true/false,
+            "improvement_suggestions": ["suggestion1"]
+          }}
+        ],
+        "experience_insights": [
+          {{
+            "company": "exact company name from profile",
+            "title": "exact job title from profile",
+            "period": "exact period from profile",
+            "strengths": ["strength1"],
+            "gaps": ["gap1"],
+            "achievements_to_highlight": ["achievement1"]
+          }}
+        ],
+        "project_insights": [
+          {{
+            "name": "exact project name from profile",
+            "technologies": ["tech1", "tech2"],
+            "impact_score": 0-100,
+            "strengths": ["strength1"],
+            "improvements": ["improvement1"]
+          }}
+        ],
+        "resume_improvements": ["specific improvement 1"],
+        "skill_gaps": ["missing skill 1"],
+        "next_steps": ["step 1", "step 2"],
+        "competitive_advantages": ["advantage1"],
+        "competitive_gaps": ["gap1"],
+        "metadata": {{
+          "analysis_version": "1.0",
+          "analysis_type": "job_specific"
+        }}
+      }}
+
+# === Job-Specific Templates ===
+job_scraping:
+  keywords:
+    default:
+      - "fintech"
+      - "AI"
+      - "SWE"
+      - "software engineer"
+      - "machine learning"
+      - "data science"
+      - "python"
+      - "javascript"
+
+  locations:
+    default:
+      - "Remote"
+      - "San Francisco"
+      - "New York"
+      - "Seattle"
+
+  experience_levels:
+    - "Entry Level"
+    - "Mid Level"
+    - "Senior"
+    - "Lead"
+    - "Principal"
+
+  # === Stage: Question Answering (Easy Apply) ===
+  question_answering:
+    system: |
+      You are a job application form filler. Given a question from a job application
+      and the applicant's profile, provide a concise, truthful answer.
+
+      CRITICAL RULES:
+      1. Use ONLY information from the applicant's profile
+      2. Never fabricate or guess information
+      3. Keep answers concise (suitable for form fields)
+      4. If you cannot determine the answer from the profile, respond with exactly: NEEDS_MANUAL_REVIEW
+      5. For multiple choice questions, pick the option that best matches the profile
+      6. For numeric questions, provide only the number
+
+    user: |
+      Answer this job application question using the applicant's profile:
+
+      QUESTION: {question_text}
+      QUESTION TYPE: {question_type}
+      OPTIONS (if any): {options}
+
+      APPLICANT PROFILE SUMMARY:
+      {profile_summary}
+
+      Return a JSON object:
+      {{
+        "answer": "Your answer here",
+        "confidence": "high/medium/low",
+        "reasoning": "Why you chose this answer"
+      }}

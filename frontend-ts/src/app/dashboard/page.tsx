@@ -1,0 +1,171 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, AlertTriangle, XCircle, Activity, Send, DollarSign, TrendingUp, Briefcase } from "lucide-react";
+import { healthApi } from "@/lib/api/health";
+import { metricsApi } from "@/lib/api/metrics";
+import { pipelineApi } from "@/lib/api/pipeline";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { formatCurrency, formatDatetime } from "@/lib/utils/format";
+import { STATUS_COLORS } from "@/lib/utils/constants";
+import { cn } from "@/lib/utils/cn";
+
+function HealthIcon({ status }: { status: string }) {
+  if (status === "healthy") return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+  if (status === "degraded") return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+  if (status === "unhealthy") return <XCircle className="h-4 w-4 text-red-500" />;
+  return <Activity className="h-4 w-4 text-slate-400" />;
+}
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  sub?: string;
+  icon: React.ReactNode;
+  gradient: string;
+  iconBg: string;
+}
+
+function StatCard({ title, value, sub, icon, gradient, iconBg }: StatCardProps) {
+  return (
+    <div className={cn("relative overflow-hidden rounded-xl p-5 text-white shadow-md", gradient)}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium text-white/70 uppercase tracking-widest">{title}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
+          {sub && <p className="mt-1 text-xs text-white/60">{sub}</p>}
+        </div>
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", iconBg)}>
+          {icon}
+        </div>
+      </div>
+      {/* Decorative circle */}
+      <div className="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-white/5" />
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  const health = useQuery({
+    queryKey: ["health"],
+    queryFn: healthApi.getHealth,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+
+  const metrics = useQuery({
+    queryKey: ["metrics-summary"],
+    queryFn: metricsApi.getSummary,
+    staleTime: 30_000,
+  });
+
+  const history = useQuery({
+    queryKey: ["pipeline-history"],
+    queryFn: () => pipelineApi.getHistory(5),
+    staleTime: 30_000,
+  });
+
+  const m = metrics.data;
+  const h = health.data;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Overview of your job application pipeline.</p>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          title="Applications"
+          value={m?.outcomes.total_applications ?? "—"}
+          sub={`${m ? (m.outcomes.interview_rate * 100).toFixed(1) : "—"}% interview rate`}
+          icon={<Send className="h-5 w-5 text-white" />}
+          gradient="bg-gradient-to-br from-indigo-500 to-indigo-700"
+          iconBg="bg-white/15"
+        />
+        <StatCard
+          title="API Cost"
+          value={m ? formatCurrency(m.cost.total_usd) : "—"}
+          sub={m ? `${formatCurrency(m.cost.per_application)} / app` : undefined}
+          icon={<DollarSign className="h-5 w-5 text-white" />}
+          gradient="bg-gradient-to-br from-violet-500 to-violet-700"
+          iconBg="bg-white/15"
+        />
+        <StatCard
+          title="Local Usage"
+          value={m ? `${m.cost.local_usage_percent.toFixed(0)}%` : "—"}
+          sub="Ollama vs API calls"
+          icon={<TrendingUp className="h-5 w-5 text-white" />}
+          gradient="bg-gradient-to-br from-cyan-500 to-cyan-700"
+          iconBg="bg-white/15"
+        />
+        <StatCard
+          title="Offers"
+          value={m?.outcomes.offers ?? "—"}
+          sub="Received so far"
+          icon={<Briefcase className="h-5 w-5 text-white" />}
+          gradient="bg-gradient-to-br from-emerald-500 to-emerald-700"
+          iconBg="bg-white/15"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* System health */}
+        <Card className="shadow-sm border-border/60">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              System Health
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
+            {health.isLoading && <p className="text-sm text-muted-foreground">Checking…</p>}
+            {health.isError && <p className="text-sm text-red-500">Backend unreachable</p>}
+            {h?.checks.map((c) => (
+              <div key={c.name} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
+                <div className="flex items-center gap-2">
+                  <HealthIcon status={c.status} />
+                  <span className="text-sm font-medium text-foreground capitalize">{c.name.replace(/_/g, " ")}</span>
+                </div>
+                <span className="text-xs text-muted-foreground truncate max-w-[180px]">{c.message}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Recent runs */}
+        <Card className="shadow-sm border-border/60">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              Recent Pipeline Runs
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {history.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+            {history.isError && <p className="text-sm text-red-500">Could not load history</p>}
+            {history.data?.runs.length === 0 && (
+              <p className="text-sm text-muted-foreground">No runs yet. Start a pipeline to begin.</p>
+            )}
+            {history.data?.runs.map((r) => (
+              <div key={r.run_id} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0} applied
+                  </p>
+                  <p className="text-xs text-muted-foreground">{formatDatetime(r.created_at)}</p>
+                </div>
+                <Badge className={cn("text-xs font-medium", STATUS_COLORS[r.status] ?? "bg-muted text-muted-foreground")}>
+                  {r.status}
+                </Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

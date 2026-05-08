@@ -1,0 +1,553 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
+import {
+  Upload, User, Briefcase, GraduationCap, FolderOpen, Wrench,
+  Award, Globe, Target, ExternalLink, Link, MapPin, Mail, Phone, Settings,
+} from "lucide-react";
+import { profileApi } from "@/lib/api/profile";
+import type { UserProfile } from "@/lib/types/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatDate } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/cn";
+import { ApplicationSettingsModal } from "@/components/application-settings-modal";
+import { SkillsRadar, ExperienceTimeline, StrengthAssessment } from "@/components/profile-visualizations";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const PROFICIENCY_COLORS: Record<string, string> = {
+  Expert:       "bg-indigo-100 text-indigo-800",
+  Advanced:     "bg-blue-100 text-blue-800",
+  Intermediate: "bg-sky-100 text-sky-800",
+  Beginner:     "bg-gray-100 text-gray-600",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  programming_language: "Languages",
+  framework:            "Frameworks",
+  tool:                 "Tools",
+  cloud:                "Cloud",
+  database:             "Databases",
+  language:             "Spoken Languages",
+  soft_skill:           "Soft Skills",
+  domain:               "Domain",
+  other:                "Other",
+};
+
+// ── Upload dropzone ───────────────────────────────────────────────────────────
+
+function ResumeDropzone({ onUploaded }: { onUploaded: () => void }) {
+  const qc = useQueryClient();
+
+  const upload = useMutation({
+    mutationFn: profileApi.upload,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Resume uploaded and parsed.");
+      onUploaded();
+    },
+    onError: () => toast.error("Upload failed. Check the file format."),
+  });
+
+  const onDrop = useCallback(
+    (accepted: File[]) => { if (accepted[0]) upload.mutate(accepted[0]); },
+    [upload]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+    },
+    maxFiles: 1,
+    disabled: upload.isPending,
+  });
+
+  return (
+    <div
+      {...getRootProps()}
+      className={cn(
+        "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors",
+        isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-gray-50 hover:border-gray-400"
+      )}
+    >
+      <input {...getInputProps()} />
+      <Upload className="mb-3 h-8 w-8 text-gray-400" />
+      {upload.isPending ? (
+        <p className="text-sm text-blue-600">Parsing resume… this may take 30–60 s</p>
+      ) : (
+        <>
+          <p className="text-sm font-medium text-gray-700">Drop your resume here, or click to browse</p>
+          <p className="mt-1 text-xs text-gray-400">PDF or DOCX, max 10 MB</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Profile display ───────────────────────────────────────────────────────────
+
+function ProfileDisplay({ profile }: { profile: UserProfile }) {
+  const {
+    contact_info: c, summary, core_skills, skills,
+    work_experience, education, projects, certifications,
+    languages, target_job, years_of_experience,
+  } = profile;
+
+  // Group skills by category
+  const skillsByCategory = skills.reduce<Record<string, typeof skills>>((acc, s) => {
+    const cat = s.category ?? "other";
+    (acc[cat] ??= []).push(s);
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-3">
+
+      {/* ── Hero header ── */}
+      <Card>
+        <CardContent className="pt-4 pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            {/* Name + meta */}
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold text-gray-900">{c.name || "—"}</h2>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                {c.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />{c.location}
+                  </span>
+                )}
+                {years_of_experience != null && years_of_experience > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Briefcase className="h-3.5 w-3.5" />{years_of_experience} yrs exp
+                  </span>
+                )}
+                {c.email && (
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-3.5 w-3.5" />{c.email}
+                  </span>
+                )}
+                {c.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-3.5 w-3.5" />{c.phone}
+                  </span>
+                )}
+              </div>
+              {/* External links */}
+              {(c.linkedin_url || c.github_url || c.portfolio_url || c.website_url) && (
+                <div className="flex flex-wrap gap-3 pt-1">
+                  {c.linkedin_url && (
+                    <a href={c.linkedin_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                      <Link className="h-3 w-3" /> LinkedIn
+                    </a>
+                  )}
+                  {c.github_url && (
+                    <a href={c.github_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-gray-600 hover:underline">
+                      <Link className="h-3 w-3" /> GitHub
+                    </a>
+                  )}
+                  {(c.portfolio_url || c.website_url) && (
+                    <a href={c.portfolio_url ?? c.website_url ?? "#"} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-gray-600 hover:underline">
+                      <Globe className="h-3 w-3" /> Portfolio
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Summary */}
+          {summary && (
+            <p className="mt-4 text-sm leading-relaxed text-gray-600 border-t pt-4 italic">
+              {summary}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Visualizations ── */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <SkillsRadar skills={skills} />
+        </div>
+        <div className="lg:col-span-1">
+          <ExperienceTimeline experience={work_experience} />
+        </div>
+        <div className="lg:col-span-1">
+          <StrengthAssessment profile={profile} />
+        </div>
+      </div>
+
+      {/* ── Two-column grid ── */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+
+        {/* ── Left column (narrow) — skills, targets, certifications, languages ── */}
+        <div className="space-y-3">
+
+          {/* Skills */}
+          {skills.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Wrench className="h-4 w-4 text-gray-400" />
+                  Skills
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {(core_skills?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">Core</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {core_skills!.map((s) => (
+                        <Badge key={s} className="bg-indigo-600 text-white text-xs">{s}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {Object.entries(skillsByCategory).map(([cat, catSkills]) => (
+                  <div key={cat}>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      {CATEGORY_LABELS[cat] ?? cat}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {catSkills.map((s) => (
+                        <span
+                          key={s.name}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                            s.proficiency
+                              ? (PROFICIENCY_COLORS[s.proficiency] ?? "bg-gray-100 text-gray-700")
+                              : "bg-gray-100 text-gray-700"
+                          )}
+                        >
+                          {s.name}
+                          {s.years_of_experience
+                            ? <span className="opacity-60">· {s.years_of_experience}y</span>
+                            : null}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Languages */}
+          {(languages?.length ?? 0) > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Globe className="h-4 w-4 text-gray-400" />
+                  Languages
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-1.5">
+                  {languages!.map((l) => (
+                    <Badge key={l} variant="secondary" className="text-xs">{l}</Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Target Job */}
+          {target_job && (target_job.keywords?.length > 0 || target_job.locations?.length > 0) && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Target className="h-4 w-4 text-gray-400" />
+                  Job Targets
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {target_job.keywords?.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-gray-400">Keywords</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {target_job.keywords.map((k) => (
+                        <Badge key={k} variant="outline" className="text-xs">{k}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {target_job.locations?.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-gray-400">Locations</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {target_job.locations.map((l) => (
+                        <Badge key={l} variant="outline" className="text-xs">{l}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {target_job.remote_preference && (
+                  <p className="text-xs text-indigo-600 font-medium">Open to remote</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Certifications */}
+          {(certifications?.length ?? 0) > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Award className="h-4 w-4 text-gray-400" />
+                  Certifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {certifications!.map((cert, i) => (
+                  <div key={i}>
+                    <p className="text-sm font-medium text-gray-900">{cert.name}</p>
+                    <p className="text-xs text-gray-500">{cert.issuer}</p>
+                    <div className="mt-0.5 flex gap-2 text-xs text-gray-400">
+                      {cert.issue_date && <span>Issued {formatDate(cert.issue_date)}</span>}
+                      {cert.expiration_date && <span>· Exp {formatDate(cert.expiration_date)}</span>}
+                    </div>
+                    {cert.credential_id && (
+                      <p className="mt-0.5 text-xs text-gray-400">ID: {cert.credential_id}</p>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Education */}
+          {education.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <GraduationCap className="h-4 w-4 text-gray-400" />
+                  Education
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {education.map((e, i) => (
+                  <div key={i} className={cn(i > 0 && "border-t pt-3")}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-gray-900">{e.degree}</p>
+                        {e.field_of_study && (
+                          <p className="text-sm text-gray-600">{e.field_of_study}</p>
+                        )}
+                        <p className="text-sm text-gray-600">{e.institution}</p>
+                      </div>
+                      <div className="shrink-0 text-right text-xs text-gray-400">
+                        {e.graduation_date && <p>Graduated {formatDate(e.graduation_date)}</p>}
+                        {e.gpa != null && <p>GPA {e.gpa.toFixed(2)}</p>}
+                      </div>
+                    </div>
+                    {(e.honors?.length ?? 0) > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {e.honors.map((h) => (
+                          <Badge key={h} className="bg-amber-100 text-amber-800 text-xs">{h}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    {(e.coursework?.length ?? 0) > 0 && (
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        <span className="font-medium">Coursework:</span> {e.coursework!.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* ── Right column (wide) — experience, projects, education ── */}
+        <div className="space-y-3 lg:col-span-2">
+
+          {/* Experience */}
+          {work_experience.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Briefcase className="h-4 w-4 text-gray-400" />
+                  Experience
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {work_experience.map((e, i) => (
+                  <div key={i} className={cn("pl-4", i > 0 && "border-t pt-5")}>
+                    <div className="border-l-2 border-blue-300 pl-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-gray-900">{e.title}</p>
+                          <p className="text-sm text-gray-600">
+                            {e.company}{e.location ? ` · ${e.location}` : ""}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-xs text-gray-400">
+                          {e.start_date ? formatDate(e.start_date) : "?"} —{" "}
+                          {e.current ? "Present" : (e.end_date ? formatDate(e.end_date) : "?")}
+                        </p>
+                      </div>
+                      {e.description && (
+                        <p className="mt-2 text-sm text-gray-600 leading-relaxed">{e.description}</p>
+                      )}
+                      {(e.highlights?.length ?? 0) > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {e.highlights.map((h, j) => (
+                            <li key={j} className="flex gap-2 text-sm text-gray-700">
+                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
+                              {h}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {(e.technologies?.length ?? 0) > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {e.technologies.map((t) => (
+                            <Badge key={t} variant="outline" className="text-xs text-gray-500">{t}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Projects */}
+          {projects.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <FolderOpen className="h-4 w-4 text-gray-400" />
+                  Projects
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {projects.map((p, i) => (
+                  <div key={i} className={cn("pl-4", i > 0 && "border-t pt-5")}>
+                    <div className="border-l-2 border-violet-300 pl-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-gray-900">{p.name}</p>
+                          {p.role && <p className="text-xs text-gray-500">{p.role}</p>}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {(p.start_date || p.end_date) && (
+                            <span className="text-xs text-gray-400">
+                              {p.start_date ? formatDate(p.start_date) : ""}
+                              {p.end_date ? ` — ${formatDate(p.end_date)}` : " — Present"}
+                            </span>
+                          )}
+                          {p.url && (
+                            <a href={p.url} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-blue-600">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      {p.description && (
+                        <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">{p.description}</p>
+                      )}
+                      {(p.highlights?.length ?? 0) > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {p.highlights.map((h, j) => (
+                            <li key={j} className="flex gap-2 text-sm text-gray-700">
+                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400" />
+                              {h}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {(p.technologies?.length ?? 0) > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {p.technologies.map((t) => (
+                            <Badge key={t} variant="outline" className="text-xs text-gray-500">{t}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function ProfilePage() {
+  const [showUpload, setShowUpload] = useState(false);
+  const [showAppSettings, setShowAppSettings] = useState(false);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["profile"],
+    queryFn: profileApi.get,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const hasProfile = !!data?.contact_info?.name;
+
+  if (isLoading) return <p className="text-sm text-gray-400 p-4">Loading profile…</p>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
+          <p className="mt-1 text-sm text-gray-500">Your parsed resume and target preferences.</p>
+        </div>
+        <div className="flex gap-2">
+          {hasProfile && (
+            <button
+              onClick={() => setShowAppSettings(true)}
+              className="flex items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Application Settings
+            </button>
+          )}
+          <button
+            onClick={() => setShowUpload((v) => !v)}
+            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            {showUpload ? "Cancel" : hasProfile ? "Re-upload Resume" : "Upload Resume"}
+          </button>
+        </div>
+      </div>
+
+      {(showUpload || !hasProfile) && (
+        <ResumeDropzone onUploaded={() => setShowUpload(false)} />
+      )}
+
+      {isError && !hasProfile && (
+        <p className="text-sm text-gray-400">No profile yet. Upload your resume to get started.</p>
+      )}
+
+      {data && hasProfile && (
+        <>
+          <ProfileDisplay profile={data} />
+          {showAppSettings && (
+            <ApplicationSettingsModal
+              profile={data}
+              open={showAppSettings}
+              onClose={() => setShowAppSettings(false)}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,163 @@
+# Job Raider - Model Configuration
+# Optimized for 16GB RAM + 8GB VRAM system
+
+models:
+  # === Anthropic API Models (Development/Fallback) ===
+  anthropic:
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    default_model: claude-sonnet-4-6
+    fallback_models:
+      - claude-opus-4-7
+      - claude-haiku-4-5-20251001
+
+    # Model-specific settings
+    models:
+      claude-sonnet-4-6:
+        max_tokens: 8192
+        temperature: 0.7
+        context_window: 200000
+        # Cost per 1M tokens (input/output)
+        cost_per_input: 3.0
+        cost_per_output: 15.0
+        use_case: ["resume_writing", "jd_extraction"]
+
+      claude-opus-4-7:
+        max_tokens: 8192
+        temperature: 0.7
+        context_window: 200000
+        cost_per_input: 15.0
+        cost_per_output: 75.0
+        use_case: ["complex_reasoning", "fallback"]
+
+      claude-haiku-4-5-20251001:
+        max_tokens: 8192
+        temperature: 0.7
+        context_window: 200000
+        cost_per_input: 0.8
+        cost_per_output: 4.0
+        use_case: ["simple_tasks", "scoring"]
+
+  # === Ollama Local Models (Production) ===
+  ollama:
+    provider: ollama
+    host_env: OLLAMA_HOST
+    default_host: localhost
+    port: 11434
+    default_model: qwen2.5:3b
+
+    # Model specifications with VRAM requirements
+    models:
+      # Small models for selection and simple tasks
+      qwen2.5:3b:
+        parameters: 3000000000
+        vram_required: 2  # GB
+        ram_fallback: 3   # GB
+        quantization: q4_k_m
+        context_window: 128000
+        temperature: 0.7
+        use_case: ["selection", "keyword_extraction", "scoring"]
+        recommended: true
+
+      gemma3:4b:
+        parameters: 4000000000
+        vram_required: 2.5
+        ram_fallback: 4
+        quantization: q4_k_m
+        context_window: 128000
+        temperature: 0.7
+        use_case: ["selection", "keyword_extraction"]
+        recommended: false  # Alternative
+
+      # Medium models for resume writing
+      qwen2.5:7b:
+        parameters: 7000000000
+        vram_required: 4
+        ram_fallback: 7
+        quantization: q4_k_m
+        context_window: 128000
+        temperature: 0.7
+        use_case: ["resume_writing", "jd_extraction"]
+        recommended: true
+
+      gemma3:12b:
+        parameters: 12000000000
+        vram_required: 7
+        ram_fallback: 12
+        quantization: q4_k_m
+        context_window: 128000
+        temperature: 0.7
+        use_case: ["resume_writing"]
+        recommended: false  # Alternative, fits in 8GB VRAM
+
+    # GPU Configuration
+    gpu:
+      enabled: true
+      monitor_vram: true
+      fallback_to_cpu: true
+      vram_threshold: 0.9  # Use CPU if VRAM > 90% full
+
+# === Routing Configuration ===
+router:
+  # Strategy for routing requests to appropriate models
+  strategies:
+    selection:
+      primary: ollama
+      model: qwen2.5:3b
+      fallback: anthropic
+      fallback_model: claude-haiku-4-5-20251001
+
+    scoring:
+      primary: ollama
+      model: qwen2.5:3b
+      fallback: ollama
+      fallback_model: gemma3:4b
+
+    jd_extraction:
+      primary: ollama
+      model: qwen2.5:7b
+      fallback: anthropic
+      fallback_model: claude-sonnet-4-6
+
+    resume_writing:
+      primary: ollama
+      model: qwen2.5:7b
+      fallback: anthropic
+      fallback_model: claude-sonnet-4-6
+
+    resume_parsing:
+      primary: ollama
+      model: qwen2.5:7b
+      fallback: anthropic
+      fallback_model: claude-sonnet-4-6
+
+  # Cost optimization
+  cost_optimization:
+    prefer_local: true
+    max_api_cost_per_run: 5.0  # USD
+    cache_enabled: true
+    cache_ttl: 3600  # seconds
+
+# === Caching Configuration ===
+cache:
+  enabled: true
+  backend: file  # file, memory, redis
+  ttl: 3600  # seconds
+  max_size: 1000  # number of cached responses
+  path: data/cache/llm_cache.json
+
+# === Rate Limiting ===
+rate_limits:
+  anthropic:
+    requests_per_minute: 60
+    tokens_per_minute: 40000
+
+  ollama:
+    requests_per_second: 10  # Local only, no strict limit
+    concurrent_requests: 2
+
+# === Token Tracking ===
+token_tracking:
+  enabled: true
+  log_file: data/logs/token_usage.log
+  cost_tracking: true

@@ -1,0 +1,39 @@
+# Job Raider - RAG Configuration
+# Semantic search and embedding settings
+
+embedding:
+  model: "nomic-embed-text"
+  endpoint: "/api/embeddings"
+  dimension: 768
+  max_context_tokens: 8192
+  batch_size: 32
+  cache_enabled: true
+  cache_ttl: 86400  # 24 hours in seconds
+
+vector_store:
+  backend: "chromadb"
+  persist_directory: "data/chroma"
+  collections:
+    jobs: "job_listings"
+    profiles: "user_profiles"
+  distance_metric: "cosine"
+
+chunking:
+  job_description:
+    max_chunk_size: 512
+    overlap: 64
+    strategy: "recursive"
+  profile:
+    max_chunk_size: 512
+    overlap: 64
+    strategy: "section"
+
+re_ranking:
+  enabled: true
+  top_k_candidates: 50
+  min_heuristic_score: 60
+  final_limit: 20
+  weights:
+    heuristic: 0.4
+    semantic: 0.6
+  similarity_threshold: 0.3

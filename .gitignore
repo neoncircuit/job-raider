@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.vercel/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Data (runtime generated)
+data/kaggle/
+data/**/cache/
+data/chroma/
+data/listings/
+data/applications/
+data/results/
+data/profiles/
+data/outputs/
+data/experiments/
+data/logs/
+data/metrics/
+data/settings/
+data/screenshots/
+backend-py/data/
+*.csv
+*.csv.zip
+
+# Logs
+logs/
+*.log
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+.pytest_cache/
+bandit-report.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# MLflow
+mlflow-data/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# LinkedIn session data
+linkedin_session/
+
+# Docker volumes
+docker/ollama/

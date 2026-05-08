@@ -1,0 +1,105 @@
+# Job Raider - Docker Compose
+# Development and production configuration
+
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: job-raider-backend
+    user: root
+    ports:
+      - target: 8000
+        published: "${BACKEND_PORT:-8000}"
+        protocol: tcp
+        mode: host
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OLLAMA_HOST=ollama:11434
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    env_file:
+      - backend-py/.env
+    depends_on:
+      - ollama
+      - mlflow
+    restart: unless-stopped
+    networks:
+      - job-raider-network
+
+  # Next.js Dashboard
+  frontend:
+    build:
+      context: ./frontend-ts
+      dockerfile: Dockerfile
+    container_name: job-raider-frontend
+    ports:
+      - target: 3000
+        published: "${FRONTEND_PORT:-3000}"
+        protocol: tcp
+        mode: host
+    environment:
+      - BACKEND_API_URL=http://backend:8000
+      - NEXT_PUBLIC_WS_URL=ws://backend:8000
+    env_file:
+      - frontend-ts/.env.local
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - job-raider-network
+
+  # Ollama for local models
+  ollama:
+    image: ollama/ollama:latest
+    container_name: job-raider-ollama
+    ports:
+      - target: 11434
+        published: "${OLLAMA_PORT:-11434}"
+        protocol: tcp
+        mode: host
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    networks:
+      - job-raider-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # MLflow experiment tracking server (optional - for model performance)
+  mlflow:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mlflow
+    container_name: job-raider-mlflow
+    ports:
+      - target: 5000
+        published: "${MLFLOW_PORT:-5000}"
+        protocol: tcp
+        mode: host
+    volumes:
+      - mlflow-data:/mlflow
+    restart: unless-stopped
+    networks:
+      - job-raider-network
+
+volumes:
+  ollama-data:
+    driver: local
+  mlflow-data:
+    driver: local
+
+networks:
+  job-raider-network:
+    driver: bridge

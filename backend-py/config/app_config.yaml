@@ -1,0 +1,67 @@
+# Job Raider - Application Configuration
+# General application settings
+
+# Application metadata
+app:
+  name: "Job Raider"
+  version: "1.0.0"
+  description: "Automated job application pipeline"
+  environment: "development"  # development, production
+
+# Paths
+paths:
+  base_dir: "."
+  data_dir: "data"
+  cache_dir: "data/cache"
+  logs_dir: "data/logs"
+  output_dir: "data/outputs"
+  listings_dir: "data/listings"
+  resumes_dir: "data/results/resumes"
+  applications_dir: "data/results/applications"
+  chroma_dir: "data/chroma"
+
+# Resume generation settings
+resume:
+  max_length_pages: 2
+  default_format: "both"  # pdf, docx, both
+  template: "modern"  # modern, minimal, professional, technical, executive
+  ats_mode: false  # Set true for ATS-friendly plain text output
+  sections_order:
+    - "summary"
+    - "skills"
+    - "experience"
+    - "projects"
+    - "education"
+
+# Development settings
+development:
+  debug: false
+  profiling: false
+  skip_ssl_verify: false
+  mock_scrapers: false  # Use mock scrapers for testing
+
+# Monitoring and observability
+monitoring:
+  mlflow:
+    enabled: false
+    tracking_uri: "http://localhost:5000"
+    experiment_name: "job-raider"
+
+  sentry:
+    enabled: false
+    dsn: null  # Set via SENTRY_DSN env var
+    environment: "development"
+
+# GPU monitoring
+gpu:
+  enabled: true
+  monitor_vram: true
+  vram_threshold: 0.9  # Use CPU if VRAM > 90% full
+  fallback_to_cpu: true
+
+# Pipeline defaults
+pipeline:
+  dry_run: true  # Default to dry run mode
+  min_score_threshold: 60  # Minimum score to apply
+  max_applications_per_run: 30
+  submission_delay: 2.0  # seconds between submissions

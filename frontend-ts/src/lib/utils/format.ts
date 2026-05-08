@@ -1,0 +1,69 @@
+import type { SalaryRange } from "@/lib/types/api";
+
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+}
+
+export function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remaining = Math.round(seconds % 60);
+  if (minutes < 60) return remaining > 0 ? `${minutes}m ${remaining}s` : `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
+export function formatDatetime(isoString: string | null | undefined): string {
+  if (!isoString) return "N/A";
+  return new Date(isoString).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function formatDate(isoString: string | null | undefined): string {
+  if (!isoString) return "N/A";
+  return new Date(isoString).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export function formatPercentage(value: number, decimals = 1): string {
+  return `${value.toFixed(decimals)}%`;
+}
+
+export function truncateText(text: string, maxLength = 300): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + "…";
+}
+
+export function formatSalaryRange(range: SalaryRange | string | null | undefined): string {
+  if (!range) return "Salary not specified";
+  if (typeof range === "string") return range;
+  const { min_amount, max_amount, currency, period } = range;
+  if (!min_amount && !max_amount) return "Salary not specified";
+  // Normalize currency to uppercase
+  const normalizedCurrency = (currency || "USD").toUpperCase();
+  const fmt = (v: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: normalizedCurrency as "USD" | "EUR" | "GBP" | "SGD" | "CAD" | "AUD" | "INR", maximumFractionDigits: 0 }).format(v);
+  if (min_amount && max_amount) return `${fmt(min_amount)} – ${fmt(max_amount)} / ${period}`;
+  if (min_amount) return `From ${fmt(min_amount)} / ${period}`;
+  return `Up to ${fmt(max_amount!)} / ${period}`;
+}
+
+/**
+ * Normalize currency code to uppercase (ISO 4217 standard).
+ */
+export function normalizeCurrencyCode(currency: string): string {
+  return currency?.toUpperCase() || "USD";
+}
+
+export function formatScore(score: number): string {
+  return `${score.toFixed(1)}/100`;
+}

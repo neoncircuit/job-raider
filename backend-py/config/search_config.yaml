@@ -1,0 +1,76 @@
+# Job Raider - Search Configuration
+# Default search parameters and filters
+
+# Default search keywords
+keywords:
+  - "fintech"
+  - "AI"
+  - "SWE"
+  - "software engineer"
+  - "machine learning"
+  - "data science"
+  - "python"
+  - "javascript"
+
+# Default locations
+locations:
+  - "Remote"
+  - "San Francisco"
+  - "New York"
+  - "Seattle"
+
+# Experience levels to target
+experience_levels:
+  - "Entry Level"
+  - "Mid Level"
+  - "Senior"
+  - "Lead"
+
+# Job types to include
+job_types:
+  - "Full-time"
+  - "Contract"
+  - "Part-time"
+
+# Work mode preferences
+work_modes:
+  remote: true
+  onsite: true
+  hybrid: true
+
+# Filters
+filters:
+  # Quick filter reject patterns (title keywords to skip)
+  title_reject_patterns:
+    - "director"
+    - "vp "
+    - "vice president"
+    - "cto"
+    - "chief"
+    - "internship"
+    - "unpaid"
+    - "volunteer"
+    - "contract to hire"
+
+  # Company reject patterns
+  company_reject_patterns:
+    - "Confidential"
+    - "Hidden"
+    - "Undisclosed"
+
+  # Maximum job age in days
+  max_age_days: 60
+
+  # Minimum salary requirements
+  require_salary: false
+  min_annual_salary: 50000
+  min_hourly_salary: 25
+
+  # Skills requirement
+  min_skill_match: 0.5  # Require 50% of skills to match
+
+# Search limits
+limits:
+  max_results_per_source: 200
+  max_total_results: 1000
+  max_jobs_to_process: 50  # Jobs to process through full pipeline

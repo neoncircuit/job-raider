@@ -1,0 +1,31 @@
+# Job Raider - Answer Bank
+# Pre-configured answers for LinkedIn Easy Apply questions.
+# Key = question text (case-insensitive, partial match)
+# Value = answer to fill in
+
+# Work authorization
+"Are you legally authorized to work in the country?": "Yes"
+"Do you now or in the future require visa sponsorship?": "No"
+"Will you now or in the future require sponsorship for employment visa status?": "No"
+
+# Availability
+"Are you available to start immediately?": "Yes"
+"What is your earliest start date?": "Immediately"
+
+# Work preferences
+"Are you willing to relocate?": "Yes"
+"Are you open to remote work?": "Yes"
+"Are you willing to travel?": "Yes"
+"What percentage of travel are you comfortable with?": "25%"
+
+# Experience
+"How many years of experience do you have?": "5"
+
+# Education
+"Do you have a Bachelor's degree?": "Yes"
+"Do you have a Master's degree?": "No"
+
+# General
+"Have you ever worked at this company before?": "No"
+"Have you applied to this company before?": "No"
+"What is your preferred salary?": "Open to discussion"

@@ -1,0 +1,513 @@
+// TypeScript interfaces mirroring backend Pydantic models.
+// Source of truth: backend-py/src/api/models/responses.py and backend-py/src/models/
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+export type PipelineStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+export type ExperienceLevel =
+  | "Entry Level"
+  | "Mid Level"
+  | "Senior"
+  | "Lead"
+  | "Principal"
+  | "Executive"
+  | "Internship"
+  | "Not Specified";
+export type JobType =
+  | "Full-time"
+  | "Part-time"
+  | "Contract"
+  | "Internship"
+  | "Temporary"
+  | "Freelance"
+  | "Remote";
+export type WorkMode = "On-site" | "Remote" | "Hybrid";
+export type SkillCategory =
+  | "programming_language"
+  | "framework"
+  | "tool"
+  | "cloud"
+  | "database"
+  | "language"
+  | "soft_skill"
+  | "domain"
+  | "other";
+export type ProficiencyLevel = "Beginner" | "Intermediate" | "Advanced" | "Expert";
+
+// ── Health ────────────────────────────────────────────────────────────────────
+
+export interface HealthCheck {
+  name: string;
+  status: "healthy" | "degraded" | "unhealthy" | "unknown";
+  message: string;
+}
+
+export interface HealthResponse {
+  status: "healthy" | "degraded" | "unhealthy" | "unknown";
+  timestamp: string;
+  checks: HealthCheck[];
+  summary: Record<string, number>;
+}
+
+// ── Pipeline ──────────────────────────────────────────────────────────────────
+
+export interface PipelineStartRequest {
+  keywords: string[];
+  locations: string[];
+  sources?: string[] | null;
+  dry_run: boolean;
+  skip_submission?: boolean;
+  min_score: number;
+  scam_threshold: number;
+  max_jobs: number;
+}
+
+export interface PipelineStatusResponse {
+  run_id: string;
+  status: PipelineStatus;
+  current_stage?: string | null;
+  stage_progress: number;
+  jobs_scraped: number;
+  jobs_scored: number;
+  jobs_selected: number;
+  applications_submitted: number;
+  started_at?: string | null;
+  estimated_completion?: string | null;
+  error_message?: string | null;
+}
+
+export interface PipelineRun {
+  run_id: string;
+  status: PipelineStatus;
+  created_at: string;
+  completed_at?: string | null;
+  jobs_scraped?: number;
+  jobs_applied?: number;
+  stages_completed?: string[];
+}
+
+export interface PipelineHistoryResponse {
+  runs: PipelineRun[];
+  total: number;
+}
+
+export interface PipelineResultResponse {
+  run_id: string;
+  status: PipelineStatus;
+  success: boolean;
+  duration_seconds: number;
+  stages_completed: string[];
+  jobs_scraped: number;
+  jobs_applied: number;
+  stage_results: Record<string, Record<string, unknown>>;
+  started_at: string;
+  completed_at: string;
+}
+
+// ── Jobs ──────────────────────────────────────────────────────────────────────
+
+export interface SalaryRange {
+  min_amount?: number | null;
+  max_amount?: number | null;
+  currency: string;
+  period: string;
+  is_estimated: boolean;
+}
+
+export interface JobSkill {
+  name: string;
+  category?: SkillCategory | null;
+  proficiency?: ProficiencyLevel | null;
+  is_required: boolean;
+}
+
+export interface JobRequirement {
+  category?: string | null;
+  text: string;
+  is_required: boolean;
+  years_of_experience?: number | null;
+}
+
+export interface JobListing {
+  job_id: string;
+  title: string;
+  company: string;
+  location?: string | null;
+  description?: string | null;
+  source: string;
+  source_url?: string | null;
+  work_mode?: WorkMode;
+  is_remote: boolean;
+  already_applied?: boolean;
+  job_type?: JobType | string | null;
+  experience_level?: ExperienceLevel | string | null;
+  salary_range?: SalaryRange | string | null;
+  skills: JobSkill[];
+  requirements?: JobRequirement[];
+  posted_date?: string | null;
+  scraped_at?: string | null;
+  relevance_score?: number | null;
+  scam_score?: number | null;
+  classification?: JobClassification | null;
+  trust_analysis?: TrustAnalysis | null;
+}
+
+export interface JobClassification {
+  industry: string;
+  role_category: string;
+  company_size: string;
+  company_stage?: string | null;
+  work_pace: string;
+  team_structure: string;
+  technical_skills: SkillRequirement[];
+  soft_skills: SkillRequirement[];
+  domain_skills: SkillRequirement[];
+  experience_level_confidence: number;
+  actual_experience_years?: [number, number] | null;
+  management_level?: string | null;
+  impact_scope?: string | null;
+  classification_confidence: number;
+  tags: string[];
+  red_flags: string[];
+}
+
+export interface SkillRequirement {
+  name: string;
+  category: string;
+  proficiency: string;
+  is_required: boolean;
+  confidence: number;
+}
+
+export type TrustTier =
+  | "legitimate"
+  | "low_risk"
+  | "moderate_risk"
+  | "suspicious"
+  | "likely_scam";
+
+export interface TrustAnalysis {
+  tier: TrustTier;
+  tier_display: string;
+  confidence: number;
+  risk_score: number;
+  is_scam: boolean;
+  category_scores: Record<string, number>;
+  indicators: string[];
+  reasons: string[];
+  llm_summary?: string | null;
+  llm_indicators?: string[];
+}
+
+export interface JobSearchResponse {
+  total: number;
+  jobs: JobListing[];
+}
+
+export interface SemanticSearchResult {
+  job_id: string;
+  title?: string | null;
+  company?: string | null;
+  location?: string | null;
+  similarity_score: number;
+  description_snippet: string;
+}
+
+export interface SemanticSearchResponse {
+  query: string;
+  total: number;
+  results: SemanticSearchResult[];
+}
+
+export interface JobSimilarityResponse {
+  job_id: string;
+  heuristic_score?: number | null;
+  semantic_score?: number | null;
+  combined_score?: number | null;
+  heuristic_breakdown?: Record<string, number> | null;
+  recommendation?: string | null;
+  reasoning?: string | null;
+}
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+
+export interface ContactInfo {
+  name?: string;
+  email?: string;
+  phone?: string | null;
+  location?: string | null;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+  portfolio_url?: string | null;
+  website_url?: string | null;
+}
+
+export interface Certification {
+  name: string;
+  issuer: string;
+  issue_date?: string | null;
+  expiration_date?: string | null;
+  credential_id?: string | null;
+}
+
+export interface ProfileSkill {
+  name: string;
+  category: SkillCategory;
+  proficiency?: ProficiencyLevel | null;
+  years_of_experience?: number | null;
+}
+
+export interface WorkExperience {
+  title: string;
+  company: string;
+  location?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  current: boolean;
+  description?: string | null;
+  highlights: string[];
+  technologies: string[];
+}
+
+export interface Education {
+  degree: string;
+  field_of_study?: string | null;
+  institution: string;
+  graduation_date?: string | null;
+  gpa?: number | null;
+  honors: string[];
+  coursework?: string[];
+}
+
+export interface Project {
+  name: string;
+  description?: string | null;
+  technologies: string[];
+  url?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  highlights: string[];
+  role?: string | null;
+}
+
+export interface ApprenticeshipContract {
+  field: string;
+  duration_months?: number | null;
+  employer?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_active: boolean;
+}
+
+export interface TargetJob {
+  keywords: string[];
+  locations: string[];
+  experience_levels: ExperienceLevel[];
+  remote_preference: boolean;
+  constraint_mode: "boost" | "filter";
+}
+
+export interface UserProfile {
+  contact_info: ContactInfo;
+  summary?: string | null;
+  core_skills?: string[];
+  target_job: TargetJob;
+  apprenticeship?: ApprenticeshipContract | null;
+  skills: ProfileSkill[];
+  work_experience: WorkExperience[];
+  education: Education[];
+  projects: Project[];
+  certifications?: Certification[];
+  languages?: string[];
+  years_of_experience?: number | null;
+  // Application-specific fields
+  visa_status?: VisaStatus | null;
+  visa_expiration_date?: string | null;
+  salary_expectation_min?: number | null;
+  salary_expectation_max?: number | null;
+  salary_currency?: string;
+  notice_period_weeks?: number | null;
+  willing_to_relocate?: boolean;
+  preferred_work_locations?: string[];
+}
+
+export type VisaStatus =
+  | "citizen"
+  | "permanent_resident"
+  | "h1b"
+  | "other_visa"
+  | "need_sponsorship"
+  | "student_visa"
+  | "not_specified";
+
+// ── Applications ──────────────────────────────────────────────────────────────
+
+export interface CustomStatus {
+  status_id: string;
+  name: string;
+  description: string;
+  color: string;
+  icon?: string | null;
+  is_active: boolean;
+  created_at: string;
+  usage_count: number;
+}
+
+export interface ApplicationSummary {
+  application_id: string;
+  job_title: string;
+  company: string;
+  applied_date?: string | null;
+  current_status: string;
+  custom_status?: CustomStatus | null;
+  is_bookmarked: boolean;
+  is_hidden: boolean;
+  days_since_application?: number | null;
+  source_url?: string | null;
+}
+
+export interface ApplicationDetail extends ApplicationSummary {
+  external_application_details?: Record<string, unknown> | null;
+  final_outcome?: string | null;
+  interviews: Array<Record<string, unknown>>;
+  offer?: Record<string, unknown> | null;
+  timeline_notes: Array<Record<string, string>>;
+  metadata: Record<string, unknown>;
+}
+
+export interface DashboardSummary {
+  total_applications: number;
+  bookmarked: number;
+  hidden: number;
+  external: number;
+  by_status: Record<string, number>;
+}
+
+export interface ApplicationDashboardResponse {
+  applications: ApplicationSummary[];
+  summary: DashboardSummary;
+  custom_statuses: CustomStatus[];
+  filters_applied: Record<string, unknown>;
+}
+
+// ── Metrics ───────────────────────────────────────────────────────────────────
+
+export interface CostMetrics {
+  total_usd: number;
+  per_application: number;
+  total_calls: number;
+  local_usage_percent: number;
+}
+
+export interface OutcomeMetrics {
+  total_applications: number;
+  interviews: number;
+  offers: number;
+  rejection_count?: number;
+  interview_rate: number;
+  offer_rate: number;
+  overall_rate: number;
+}
+
+export interface HealthMetrics {
+  status: string;
+  healthy: number;
+  degraded: number;
+  unhealthy: number;
+}
+
+export interface LLMCall {
+  task_type: string;
+  provider: string;
+  model: string;
+  cost_usd: number;
+  timestamp: string;
+}
+
+export interface MetricsSummaryResponse {
+  cost: CostMetrics;
+  outcomes: OutcomeMetrics;
+  health: HealthMetrics;
+  recent_calls: LLMCall[];
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+export interface ModelRouting {
+  primary_provider: string;
+  primary_model: string;
+  fallback_provider: string;
+  fallback_model: string;
+}
+
+export interface ApiConfig {
+  anthropic_api_key?: string | null;
+  ollama_host: string;
+}
+
+export interface ModelParams {
+  temperature: number;
+  max_tokens: number;
+  top_p: number;
+}
+
+export interface CostLimits {
+  max_api_cost_per_run: number;
+  enable_cache: boolean;
+  cache_ttl: number;
+}
+
+export interface AppSettings {
+  routing: Record<string, ModelRouting>;
+  api_config: ApiConfig;
+  model_params: ModelParams;
+  cost_limits: CostLimits;
+  updated_at?: string;
+  version?: string;
+}
+
+// ── Resume Analysis ───────────────────────────────────────────────────────────
+
+export interface SkillAssessment {
+  skill_name: string;
+  proficiency_level: string;
+  years_experience?: number | null;
+  is_industry_relevant: boolean;
+  improvement_suggestions: string[];
+}
+
+export interface ExperienceInsight {
+  company: string;
+  title: string;
+  period: string;
+  strengths: string[];
+  gaps: string[];
+  achievements_to_highlight: string[];
+}
+
+export interface ProjectInsight {
+  name: string;
+  technologies: string[];
+  impact_score: number;
+  strengths: string[];
+  improvements: string[];
+}
+
+export interface ResumeAnalysis {
+  analyzed_at: string;
+  analysis_type: "general" | "job_specific";
+  overall_score: number;
+  summary: string;
+  key_strengths: string[];
+  key_improvements: string[];
+  skills_assessment: SkillAssessment[];
+  experience_insights: ExperienceInsight[];
+  project_insights: ProjectInsight[];
+  resume_improvements: string[];
+  skill_gaps: string[];
+  next_steps: string[];
+  target_alignment_score?: number | null;
+  competitive_advantages: string[];
+  competitive_gaps: string[];
+  competitive_edge: string;
+}

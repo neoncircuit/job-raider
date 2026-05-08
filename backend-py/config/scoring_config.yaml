@@ -1,0 +1,142 @@
+# Job Raider - Scoring Configuration
+# Heuristic scoring weights and thresholds
+
+# Scoring weights (total 100 points)
+weights:
+  keyword: 30       # Keyword overlap with target keywords
+  skills: 40        # Skills match against user profile
+  experience: 20     # Experience level alignment
+  location: 10       # Location and remote preference
+
+# Scoring thresholds
+thresholds:
+  apply: 60          # Minimum score to "apply"
+  strong_match: 72   # 120% of apply threshold (strong match)
+  maybe: 42          # 70% of apply threshold (maybe)
+  excellent_skill_overlap: 80  # Percentage for "excellent" skill match
+  good_skill_overlap: 60       # Percentage for "good" skill match
+  partial_skill_overlap: 40    # Percentage for "partial" skill match
+
+# Quick filter settings
+quick_filter:
+  reject_patterns:
+    - "director"
+    - "vp "
+    - "vice president"
+    - "cto"
+    - "chief"
+    - "internship"
+    - "unpaid"
+    - "volunteer"
+    - "contract to hire"
+  max_age_days: 60   # Reject jobs older than this
+
+# Filter settings
+filter:
+  remote_only: false  # Only show remote jobs
+  require_salary: false  # Only show jobs with salary info
+  min_skill_match: 0.5  # Require 50% of skills to match
+
+# Default target keywords
+default_keywords:
+  - "fintech"
+  - "AI"
+  - "SWE"
+  - "software engineer"
+  - "machine learning"
+  - "data science"
+  - "python"
+  - "javascript"
+
+# Default target locations
+default_locations:
+  - "Remote"
+  - "San Francisco"
+  - "New York"
+  - "Seattle"
+
+# Experience level mappings
+experience_levels:
+  entry:
+    range: [0, 2]
+    keywords: ["entry level", "junior", "0-2 years", "recent graduate"]
+  mid:
+    range: [2, 5]
+    keywords: ["mid level", "mid-level", "intermediate", "2-5 years", "3-5 years"]
+  senior:
+    range: [5, 10]
+    keywords: ["senior", "5+ years", "5-10 years", "experienced"]
+  lead:
+    range: [10, 15]
+    keywords: ["lead", "staff", "principal", "10+ years"]
+
+# Skill categories for matching
+skill_categories:
+  programming_languages:
+    - "Python"
+    - "JavaScript"
+    - "TypeScript"
+    - "Java"
+    - "C++"
+    - "Go"
+    - "Rust"
+    - "Ruby"
+    - "PHP"
+    - "Swift"
+    - "Kotlin"
+    - "Scala"
+    - "R"
+    - "MATLAB"
+    - "SQL"
+
+  frameworks:
+    - "React"
+    - "Angular"
+    - "Vue"
+    - "Next.js"
+    - "Django"
+    - "Flask"
+    - "FastAPI"
+    - "Spring"
+    - "Express.js"
+    - "Node.js"
+    - ".NET"
+
+  tools:
+    - "Git"
+    - "Docker"
+    - "Kubernetes"
+    - "Terraform"
+    - "Ansible"
+    - "Jenkins"
+    - "GitHub"
+    - "GitLab"
+    - "CI/CD"
+
+  cloud:
+    - "AWS"
+    - "Azure"
+    - "GCP"
+    - "CloudFormation"
+    - "Terraform"
+
+  databases:
+    - "PostgreSQL"
+    - "MySQL"
+    - "MongoDB"
+    - "Redis"
+    - "Elasticsearch"
+    - "GraphQL"
+    - "REST"
+
+  domains:
+    - "Machine Learning"
+    - "Deep Learning"
+    - "AI"
+    - "Data Science"
+    - "Web Development"
+    - "Mobile Development"
+    - "DevOps"
+    - "Backend"
+    - "Frontend"
+    - "Full Stack"

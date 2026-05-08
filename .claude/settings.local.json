@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(python3 -m json.tool)",
+      "Bash(docker exec *)",
+      "Bash(docker-compose build *)",
+      "Bash(docker-compose up *)",
+      "Bash(BACKEND_PORT=8001 docker-compose up -d)",
+      "Bash(docker compose *)",
+      "Bash(BACKEND_PORT=8001 docker compose up -d backend)",
+      "Bash(.venv/bin/python -m py_compile src/api/main.py)",
+      "Bash(docker build *)",
+      "Bash(python3 -m py_compile src/classifiers/job_classifier.py)"
+    ]
+  }
+}

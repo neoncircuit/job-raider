@@ -1,0 +1,320 @@
+"""
+Job Raider - Pipeline Control API Routes
+
+API endpoints for managing pipeline execution and monitoring.
+
+Author: Job Raider
+Date: 2026-04-21
+"""
+
+import asyncio
+import uuid
+from datetime import datetime
+from typing import Dict, Any, List
+
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from pydantic import BaseModel
+
+from ...models.user_profile import UserProfile
+from ...models.job_listing import JobListing
+from ...pipeline.orchestrator import PipelineOrchestrator, PipelineConfig, PipelineStage
+from ...extractors.resume_parser import ResumeParser
+from ...utils.logger import get_logger, Components
+from ..websocket.progress import manager
+from ..models.requests import PipelineStartRequest
+from ..models.responses import (
+    PipelineStatusResponse,
+    PipelineResultResponse,
+    ErrorResponse,
+)
+
+router = APIRouter()
+logger = get_logger(Components.SCRAPERS)
+
+# Store pipeline runs in memory (use Redis in production)
+pipeline_runs: Dict[str, Dict[str, Any]] = {}
+
+
+async def run_pipeline_async(
+    run_id: str,
+    config: PipelineConfig,
+    profile: UserProfile,
+):
+    """
+    Run pipeline in background with WebSocket updates.
+
+    Args:
+        run_id: Unique pipeline run identifier
+        config: Pipeline configuration
+        profile: User profile
+    """
+    try:
+        # Update status
+        pipeline_runs[run_id]["status"] = "running"
+        pipeline_runs[run_id]["started_at"] = datetime.now()
+
+        # Notify started
+        await manager.send_message(
+            run_id,
+            {
+                "type": "pipeline_started",
+                "run_id": run_id,
+                "timestamp": datetime.now().isoformat(),
+            },
+        )
+
+        # Create orchestrator with progress callback
+        orchestrator = PipelineOrchestrator(
+            config=config,
+            user_profile=profile,
+        )
+
+        # Run pipeline
+        result = orchestrator.run()
+
+        # Update status
+        pipeline_runs[run_id]["status"] = "completed"
+        pipeline_runs[run_id]["result"] = result
+        pipeline_runs[run_id]["completed_at"] = datetime.now()
+
+        # Notify completion
+        await manager.broadcast_pipeline_complete(
+            run_id,
+            {
+                "success": result.success,
+                "duration_seconds": result.duration_seconds,
+                "jobs_scraped": result.jobs_scraped,
+                "jobs_applied": result.jobs_applied,
+                "stages_completed": len(result.stages_completed),
+            },
+        )
+
+        logger.info(f"Pipeline {run_id} completed successfully")
+
+    except Exception as e:
+        logger.error(f"Pipeline {run_id} failed: {e}", exc_info=True)
+
+        # Update status
+        pipeline_runs[run_id]["status"] = "failed"
+        pipeline_runs[run_id]["error"] = str(e)
+        pipeline_runs[run_id]["completed_at"] = datetime.now()
+
+        # Notify failure
+        await manager.broadcast_pipeline_failed(run_id, str(e))
+
+
+@router.post("/start", response_model=Dict[str, str])
+async def start_pipeline(
+    request: PipelineStartRequest,
+    background_tasks: BackgroundTasks,
+):
+    """
+    Start a new pipeline run.
+
+    Creates a new pipeline run with the given configuration and executes
+    it in the background. Returns the run ID immediately for monitoring.
+
+    Args:
+        request: Pipeline start request with search parameters
+        background_tasks: FastAPI background tasks
+
+    Returns:
+        Dict with run_id for monitoring progress
+    """
+    run_id = f"run_{uuid.uuid4().hex[:12]}"
+
+    # Create pipeline config
+    config = PipelineConfig(
+        keywords=request.keywords,
+        locations=request.locations,
+        sources=request.sources,
+        dry_run=request.dry_run,
+        skip_submission=request.skip_submission,
+        min_score=request.min_score,
+        scam_threshold=request.scam_threshold,
+        max_jobs_to_present=request.max_jobs,
+    )
+
+    # Create or load profile
+    if request.profile_data:
+        # TODO: Parse profile_data into UserProfile
+        # For now, raise error
+        raise HTTPException(
+            status_code=400,
+            detail="Profile data parsing not yet implemented. Upload resume first.",
+        )
+    else:
+        # Load existing profile from storage
+        # TODO: Implement profile storage and retrieval
+        raise HTTPException(
+            status_code=400,
+            detail="No profile found. Upload a resume first via /api/profile/upload",
+        )
+
+    # Initialize run state
+    pipeline_runs[run_id] = {
+        "run_id": run_id,
+        "status": "pending",
+        "config": config,
+        "created_at": datetime.now(),
+    }
+
+    # Start pipeline in background
+    background_tasks.add_task(run_pipeline_async, run_id, config, request.profile_data)
+
+    logger.info(f"Started pipeline {run_id}")
+
+    return {"run_id": run_id}
+
+
+@router.get("/status/{run_id}", response_model=PipelineStatusResponse)
+async def get_pipeline_status(run_id: str):
+    """
+    Get current status of a pipeline run.
+
+    Args:
+        run_id: Pipeline run ID
+
+    Returns:
+        Current pipeline status
+    """
+    if run_id not in pipeline_runs:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    run = pipeline_runs[run_id]
+
+    return PipelineStatusResponse(
+        run_id=run_id,
+        status=run["status"],
+        current_stage=run.get("current_stage"),
+        stage_progress=run.get("stage_progress", 0),
+        jobs_scraped=run.get("jobs_scraped", 0),
+        jobs_scored=run.get("jobs_scored", 0),
+        jobs_selected=run.get("jobs_selected", 0),
+        applications_submitted=run.get("applications_submitted", 0),
+        started_at=run.get("started_at"),
+        error_message=run.get("error"),
+    )
+
+
+@router.get("/results/{run_id}")
+async def get_pipeline_results(run_id: str):
+    """
+    Get results of a completed pipeline run.
+
+    Args:
+        run_id: Pipeline run ID
+
+    Returns:
+        Pipeline results with job listings and generated resumes
+    """
+    if run_id not in pipeline_runs:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    run = pipeline_runs[run_id]
+
+    if run["status"] != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Pipeline not completed. Current status: {run['status']}",
+        )
+
+    result = run.get("result")
+    if not result:
+        raise HTTPException(status_code=404, detail="Results not available")
+
+    return {
+        "run_id": run_id,
+        "status": run["status"],
+        "success": result.success,
+        "duration_seconds": result.duration_seconds,
+        "stages_completed": [s.value for s in result.stages_completed],
+        "jobs_scraped": result.jobs_scraped,
+        "jobs_applied": result.jobs_applied,
+        "stage_results": {
+            stage.value: {
+                "success": stage_result.success,
+                "metadata": stage_result.metadata,
+            }
+            for stage, stage_result in result.stage_results.items()
+        },
+        "started_at": run.get("started_at"),
+        "completed_at": run.get("completed_at"),
+    }
+
+
+@router.delete("/{run_id}")
+async def cancel_pipeline(run_id: str):
+    """
+    Cancel a running pipeline.
+
+    Args:
+        run_id: Pipeline run ID
+
+    Returns:
+        Cancellation confirmation
+    """
+    if run_id not in pipeline_runs:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    run = pipeline_runs[run_id]
+
+    if run["status"] not in ["pending", "running"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot cancel pipeline in status: {run['status']}",
+        )
+
+    # TODO: Implement actual cancellation logic
+    # This would require orchestrator to support cancellation
+    run["status"] = "cancelled"
+
+    await manager.broadcast_pipeline_failed(
+        run_id,
+        "Pipeline cancelled by user",
+    )
+
+    logger.info(f"Cancelled pipeline {run_id}")
+
+    return {"run_id": run_id, "status": "cancelled"}
+
+
+@router.get("/history")
+async def get_pipeline_history(
+    limit: int = 20,
+    status: str = None,
+):
+    """
+    Get history of pipeline runs.
+
+    Args:
+        limit: Maximum number of runs to return
+        status: Filter by status (optional)
+
+    Returns:
+        List of pipeline runs
+    """
+    runs = list(pipeline_runs.values())
+
+    if status:
+        runs = [r for r in runs if r["status"] == status]
+
+    # Sort by created_at descending
+    runs = sorted(runs, key=lambda r: r["created_at"], reverse=True)
+
+    # Limit results
+    runs = runs[:limit]
+
+    return {
+        "runs": [
+            {
+                "run_id": r["run_id"],
+                "status": r["status"],
+                "created_at": r["created_at"],
+                "started_at": r.get("started_at"),
+                "completed_at": r.get("completed_at"),
+            }
+            for r in runs
+        ],
+        "total": len(runs),
+    }
