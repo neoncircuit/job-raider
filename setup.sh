@@ -145,7 +145,7 @@ create_directories() {
 
     # Backend-specific directories (not Docker-mounted)
     mkdir -p "$BACKEND_DIR/data/kaggle"
-    mkdir -p "$BACKEND_DIR/data/chroma"
+    mkdir -p "$BACKEND_DIR/data/pgvector"
     mkdir -p "$BACKEND_DIR/notebooks"
     mkdir -p "$BACKEND_DIR/tests"
 
@@ -278,7 +278,7 @@ print_summary() {
     echo -e "${BLUE}export PATH=\"$(pwd)/backend-py/.venv/bin:\$PATH\"${NC}"
     echo ""
     echo -e "Next steps:"
-    echo "  1. Edit backend-py/.env with your API keys (ANTHROPIC_API_KEY, RAPIDAPI_KEY)"
+    echo "  1. Edit backend-py/.env with your API keys (ANTHROPIC_API_KEY, GEMINI_API_KEY, RAPIDAPI_KEY)"
     echo "  2. Configure settings via web UI (Settings page) or backend-py/config/*.yaml"
     echo "  3. Run: make dev-api          (backend on :8000)"
     echo "  4. Run: make dev-frontend     (Next.js on :3000)"
@@ -289,9 +289,9 @@ print_summary() {
     echo "  - Docker Desktop stores ALL data on C: drive (see docs/docker-storage.md)"
     echo "  - Requirements: 200GB+ on C:, 100GB+ on project drive"
     echo ""
-    echo -e "Project status (31 phases completed):"
+    echo -e "Project status (32 phases completed):"
     echo "  - Next.js + Tailwind frontend (replaces Streamlit)"
-    echo "  - RAG semantic matching with ChromaDB vector store and nomic-embed-text embeddings"
+    echo "  - RAG semantic matching with pgvector (Supabase PostgreSQL) and nomic-embed-text embeddings"
     echo "  - JSearch API scraper via RapidAPI (replaces broken Indeed/Glassdoor)"
     echo "  - Applications tracker with custom statuses"
     echo "  - AI-powered resume analysis (general + job-specific gap analysis)"

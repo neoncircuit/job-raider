@@ -10,6 +10,7 @@ lxml>=5.0.0                   # XML/HTML parser (faster than html.parser)
 # === LLM Clients ===
 anthropic>=0.40.0             # Anthropic API client
 ollama>=0.4.0                 # Ollama client for local models
+google-genai>=1.0.0           # Google Gemini API client
 
 # === Data Processing ===
 pandas>=2.1.0                 # Data manipulation and analysis
@@ -65,7 +66,8 @@ pgvector>=0.2.0                 # SQLAlchemy type support for pgvector (replaces
 supabase>=2.4.0                 # Supabase client for Storage bucket operations
 
 # === RAG / Vector Store ===
-# chromadb replaced by pgvector + Supabase PostgreSQL — see src/database/models.py
+# pgvector used for Supabase PostgreSQL persistence (see src/database/models.py)
+# ChromaDB used for local RAG pipeline (see src/rag/vector_store.py)
 
 # === MLOps ===
 mlflow>=2.0.0                   # Experiment tracking and model performance logging

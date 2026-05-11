@@ -21,6 +21,7 @@ from .base import (
     Message,
 )
 from .claude_client import ClaudeClient
+from .gemini_client import GeminiClient
 from .ollama_client import OllamaClient
 from .gpu_monitor import GPUMonitor
 
@@ -155,6 +156,7 @@ class LLMRouter:
         ollama_host: Optional[str] = None,
         ollama_port: Optional[int] = None,
         gpu_monitor: Optional[GPUMonitor] = None,
+        gemini_api_key: Optional[str] = None,
         **kwargs
     ):
         """
@@ -166,6 +168,7 @@ class LLMRouter:
             ollama_host: Ollama host (defaults to OLLAMA_HOST env var)
             ollama_port: Ollama port (defaults to OLLAMA_PORT env var)
             gpu_monitor: Optional GPU monitor for Ollama
+            gemini_api_key: Google Gemini API key (defaults to GEMINI_API_KEY env var)
             **kwargs: Additional parameters
         """
         self.routes = routes or self.DEFAULT_ROUTES
@@ -173,6 +176,7 @@ class LLMRouter:
         self.ollama_host = ollama_host
         self.ollama_port = ollama_port
         self.gpu_monitor = gpu_monitor or GPUMonitor()
+        self.gemini_api_key = gemini_api_key
 
         # Client cache
         self._clients: Dict[str, BaseLLMClient] = {}
@@ -251,6 +255,11 @@ class LLMRouter:
                 host=self.ollama_host,
                 port=self.ollama_port,
                 gpu_monitor=self.gpu_monitor,
+            )
+        elif provider == "gemini":
+            client = GeminiClient(
+                config=config or LLMConfig(model=model),
+                api_key=self.gemini_api_key,
             )
         else:
             raise ValueError(f"Unknown provider: {provider}")

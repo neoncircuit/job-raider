@@ -3,6 +3,7 @@ Job Raider - LLM Client Module
 
 This module provides LLM client implementations for various providers:
 - Anthropic Claude API
+- Google Gemini API
 - Ollama local models
 - Intelligent routing between providers
 
@@ -27,6 +28,7 @@ from .base import (
 )
 
 from .claude_client import ClaudeClient
+from .gemini_client import GeminiClient
 from .ollama_client import OllamaClient
 from .router import (
     LLMRouter,
@@ -58,6 +60,7 @@ __all__ = [
     "InvalidRequestError",
     # Clients
     "ClaudeClient",
+    "GeminiClient",
     "OllamaClient",
     # Router
     "LLMRouter",

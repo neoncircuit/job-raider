@@ -38,6 +38,37 @@ models:
         cost_per_output: 4.0
         use_case: ["simple_tasks", "scoring"]
 
+  # === Google Gemini API (Cost-effective cloud fallback) ===
+  gemini:
+    provider: gemini
+    api_key_env: GEMINI_API_KEY
+    default_model: gemini-2.5-flash
+
+    models:
+      gemini-2.5-flash:
+        max_tokens: 8192
+        temperature: 0.7
+        context_window: 1048576
+        cost_per_input: 0.15
+        cost_per_output: 0.60
+        use_case: ["selection", "scoring", "classification", "question_answering"]
+
+      gemini-2.5-pro:
+        max_tokens: 8192
+        temperature: 0.7
+        context_window: 1048576
+        cost_per_input: 1.25
+        cost_per_output: 10.0
+        use_case: ["resume_writing", "jd_extraction", "complex_reasoning"]
+
+      gemini-2.0-flash:
+        max_tokens: 8192
+        temperature: 0.7
+        context_window: 1048576
+        cost_per_input: 0.10
+        cost_per_output: 0.40
+        use_case: ["simple_tasks", "scoring"]
+
   # === Ollama Local Models (Production) ===
   ollama:
     provider: ollama
