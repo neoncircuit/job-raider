@@ -180,8 +180,7 @@ job-raider/                      # Project root (monorepo)
 │   └── results/                 # Pipeline results and generated resumes
 ├── docker/                      # Backend Dockerfiles
 │   ├── Dockerfile               # Production (CUDA + GPU)
-│   ├── Dockerfile.dev           # Development (slim)
-│   └── Dockerfile.mlflow        # MLflow tracking server
+│   └── Dockerfile.dev           # Development (slim)
 ├── docs/                        # Documentation
 │   ├── index.md                # Documentation hub
 │   ├── architecture.md         # System architecture and data flow
@@ -238,7 +237,7 @@ LINKEDIN_PASSWORD=your_password
 # Optional: Sentry error tracking
 SENTRY_DSN=your_sentry_dsn_here
 
-# Optional: MLflow experiment tracking
+# Optional: MLflow experiment tracking (shared service)
 MLFLOW_TRACKING_URI=http://localhost:5000
 ```
 

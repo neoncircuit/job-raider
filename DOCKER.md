@@ -102,7 +102,6 @@ The project uses multiple Dockerfiles organized by purpose:
 |------|---------|------------|
 | `docker/Dockerfile` | Production backend (CUDA + GPU) | nvidia/cuda:12.4.0-runtime-ubuntu22.04 |
 | `docker/Dockerfile.dev` | Development backend (slim) | python:3.12-slim |
-| `docker/Dockerfile.mlflow` | MLflow tracking server | python:3.12-slim |
 | `frontend-py/docker/Dockerfile` | Frontend (Streamlit) | python:3.12-slim |
 
 All Dockerfiles run as non-root user `jobraider` for security.

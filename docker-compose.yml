@@ -26,10 +26,10 @@ services:
       - backend-py/.env
     depends_on:
       - ollama
-      - mlflow
     restart: unless-stopped
     networks:
       - job-raider-network
+      - shared-services
 
   # Next.js Dashboard
   frontend:
@@ -77,29 +77,12 @@ services:
               count: 1
               capabilities: [gpu]
 
-  # MLflow experiment tracking server (optional - for model performance)
-  mlflow:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.mlflow
-    container_name: job-raider-mlflow
-    ports:
-      - target: 5000
-        published: "${MLFLOW_PORT:-5000}"
-        protocol: tcp
-        mode: host
-    volumes:
-      - mlflow-data:/mlflow
-    restart: unless-stopped
-    networks:
-      - job-raider-network
-
 volumes:
   ollama-data:
-    driver: local
-  mlflow-data:
     driver: local
 
 networks:
   job-raider-network:
     driver: bridge
+  shared-services:
+    external: true

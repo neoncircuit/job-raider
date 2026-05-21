@@ -35,6 +35,7 @@ Job Raider is an automated job application pipeline that scrapes job listings fr
 - [Monitoring](troubleshooting.md#logging-and-debugging)
 - [Performance Tuning](troubleshooting.md#performance-issues)
 - [Docker Storage Guide](docker-storage.md)
+- [Shared MLflow Setup](mlflow-setup.md)
 
 ## Key Concepts
 
@@ -365,8 +366,7 @@ job-raider/                      # Project root (monorepo)
 │   └── package.json             # Node dependencies
 ├── docker/                      # Backend Dockerfiles
 │   ├── Dockerfile               # Production (CUDA + GPU)
-│   ├── Dockerfile.dev           # Development (slim)
-│   └── Dockerfile.mlflow        # MLflow tracking server
+│   └── Dockerfile.dev           # Development (slim)
 ├── data/                        # Shared data
 ├── docs/                        # Documentation
 ├── scripts/                     # Shell/utility scripts

@@ -383,6 +383,9 @@ graph TB
         Backend[Backend API<br/>FastAPI on :8000]
         Ollama[Ollama<br/>Model Inference on :11434]
         Frontend[Next.js Dashboard<br/>on :3000]
+    end
+
+    subgraph "Shared Services - shared-services network"
         MLflow[MLflow Tracking<br/>on :5000]
     end
 
@@ -400,6 +403,7 @@ graph TB
     DockerDesktop -->|Manages| Backend
     DockerDesktop -->|Manages| Ollama
     DockerDesktop -->|Manages| Frontend
+    DockerDesktop -->|Manages| MLflow
 ```
 
 ### Container Configuration
@@ -409,7 +413,7 @@ graph TB
 | backend | Custom (CUDA 12.4.0) | Dynamic (default 8000) | No | FastAPI REST API, pipeline orchestration |
 | ollama | ollama/ollama:latest | Dynamic (default 11434) | Yes (NVIDIA) | Local LLM inference (qwen2.5:3b, qwen2.5:7b) |
 | frontend | Custom (Node 20 Alpine) | Dynamic (default 3000) | No | Next.js web dashboard |
-| mlflow | Custom | Dynamic (default 5000) | No | Experiment tracking UI |
+| mlflow | ghcr.io/mlflow/mlflow:latest | 5000 | No | Shared experiment tracking (see docs/mlflow-setup.md) |
 
 ### GPU Passthrough
 

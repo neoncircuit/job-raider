@@ -296,7 +296,7 @@ print_summary() {
     echo "  - Applications tracker with custom statuses"
     echo "  - AI-powered resume analysis (general + job-specific gap analysis)"
     echo "  - 5 resume templates with ATS-friendly mode and section customization"
-    echo "  - MLflow experiment tracking (docker compose up mlflow)"
+    echo "  - MLflow experiment tracking (shared service at ~/docker-services/)"
     echo "  - Sentry error tracking (optional, disabled by default)"
     echo "  - LLM-based job classification with rich metadata (industry, role, company size, etc.)"
     echo "  - LinkedIn Easy Apply automation with form parsing, answer engine, and safety limits"

@@ -38,22 +38,13 @@ help:
 # ── Local dev ──────────────────────────────────────────────────────────────────
 
 dev:
-	@echo "Starting backend API and Next.js frontend..."
-	@(trap 'kill 0' SIGINT; \
-	  cd backend-py && PYTHONPATH=. .venv/bin/python -m uvicorn src.api.main:app \
-	    --host 0.0.0.0 --port 8000 --reload & \
-	  cd frontend-ts && npm run dev -- --port 3000; \
-	  wait)
+	@./scripts/dev.sh both
 
 dev-api:
-	@echo "Starting backend API (port 8000)..."
-	@mkdir -p logs
-	@cd backend-py && PYTHONPATH=. .venv/bin/python -m uvicorn src.api.main:app \
-		--host 0.0.0.0 --port 8000 --reload
+	@./scripts/dev.sh api
 
 dev-frontend:
-	@echo "Starting Next.js dev server (port 3000)..."
-	@cd frontend-ts && npm run dev -- --port 3000
+	@./scripts/dev.sh frontend
 
 # ── Dependencies ───────────────────────────────────────────────────────────────
 
