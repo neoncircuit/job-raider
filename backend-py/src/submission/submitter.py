@@ -500,6 +500,7 @@ class ApplicationTracker:
         job: JobListing,
         submission_id: Optional[str] = None,
         generated_resume_path: Optional[str] = None,
+        cover_letter_path: Optional[str] = None,
     ) -> str:
         """
         Create a new application tracking record.
@@ -508,6 +509,7 @@ class ApplicationTracker:
             job: Job listing that was applied to
             submission_id: Optional submission ID
             generated_resume_path: Path to generated resume
+            cover_letter_path: Path to generated cover letter
 
         Returns:
             Application ID
@@ -525,6 +527,7 @@ class ApplicationTracker:
             "company": job.company,
             "submission_id": submission_id,
             "generated_resume_path": generated_resume_path,
+            "cover_letter_path": cover_letter_path,
             "applied_at": datetime.now().isoformat(),
             "status": "applied",
             "interview_status": None,

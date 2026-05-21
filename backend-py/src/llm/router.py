@@ -39,6 +39,7 @@ class TaskType(str, Enum):
     EMBEDDING = "embedding"  # Embedding generation (RAG)
     QUESTION_ANSWERING = "question_answering"  # Answering application form questions
     TRUST_ANALYSIS = "trust_analysis"  # Analyzing job listing trustworthiness
+    COVER_LETTER_WRITING = "cover_letter_writing"  # Cover letter generation (high quality)
     GENERAL = "general"  # General purpose tasks
 
 
@@ -146,6 +147,13 @@ class LLMRouter:
             primary_model="qwen2.5:3b",
             fallback_provider="anthropic",
             fallback_model="claude-haiku-4-5-20251001",
+        ),
+        TaskType.COVER_LETTER_WRITING: RouteConfig(
+            task_type=TaskType.COVER_LETTER_WRITING,
+            primary_provider="ollama",
+            primary_model="qwen2.5:7b",
+            fallback_provider="anthropic",
+            fallback_model="claude-sonnet-4-6",
         ),
     }
 

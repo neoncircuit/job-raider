@@ -37,6 +37,17 @@ from .resume_analyzer import (
     ResumeAnalyzer,
 )
 
+from .cover_letter_writer import (
+    CoverLetterWriter,
+    GeneratedCoverLetter,
+)
+
+from .cover_letter_validator import (
+    CoverLetterValidator,
+    CoverLetterValidationResult,
+    CoverLetterIssue,
+)
+
 __all__ = [
     # Selector
     "ResumeSelector",
@@ -56,4 +67,11 @@ __all__ = [
     "ValidationIssue",
     # Analyzer
     "ResumeAnalyzer",
+    # Cover Letter
+    "CoverLetterWriter",
+    "GeneratedCoverLetter",
+    # Cover Letter Validation
+    "CoverLetterValidator",
+    "CoverLetterValidationResult",
+    "CoverLetterIssue",
 ]

@@ -25,6 +25,8 @@ from ..submission.detector import AutoSubmitDetector, SubmissionInfo
 from ..submission.submitter import AutoSubmitter, ApplicationTracker
 from ..generation.selector import ResumeSelector, SelectionOutput
 from ..generation.resume_writer import ResumeWriter, GeneratedResume
+from ..generation.cover_letter_writer import CoverLetterWriter, GeneratedCoverLetter
+from ..generation.cover_letter_validator import CoverLetterValidator, CoverLetterValidationResult
 from ..generation.validator import ResumeValidator, ValidationResult
 from ..generation.formatter import ResumeFormatter
 from ..llm.router import LLMRouter
@@ -33,6 +35,8 @@ from ..rag.config import RAGConfig
 from ..rag.chunker import TextChunker
 from ..rag.vector_store import ChromaStore
 from ..rag.ranker import RAGRanker, RAGMatchScore
+from ..rag.bm25_retriever import BM25Retriever
+from ..rag.cross_encoder import CrossEncoderReranker
 from ..utils.logger import get_logger, Components
 from ..submission.applied_tracker import AppliedJobsTracker
 
@@ -96,6 +100,8 @@ class PipelineStages:
         llm_router = LLMRouter()
         self.resume_selector = ResumeSelector(llm_router=llm_router)
         self.resume_writer = ResumeWriter(llm_router=llm_router)
+        self.cover_letter_writer = CoverLetterWriter(llm_router=llm_router)
+        self.cover_letter_validator = CoverLetterValidator()
         self.resume_validator = ResumeValidator()
         self.resume_formatter = ResumeFormatter()
         self.auto_submitter = AutoSubmitter(
@@ -716,6 +722,36 @@ class PipelineStages:
                         )
                         continue
 
+                    # Stage 2b: Generate cover letter (large model)
+                    cover_letter = self.cover_letter_writer.write(
+                        job=job,
+                        profile=self.context.user_profile,
+                        selection=selection_output,
+                    )
+
+                    # Stage 3b: Validate cover letter
+                    cl_validation = self.cover_letter_validator.validate(
+                        cover_letter=cover_letter,
+                        job=job,
+                        profile=self.context.user_profile,
+                        selection=selection_output,
+                    )
+
+                    if cl_validation.score < 60:
+                        self.logger.warning(
+                            "Cover letter quality low for %s: score=%d, issues=%s",
+                            job.title,
+                            cl_validation.score,
+                            [i.value for i in cl_validation.issues],
+                        )
+
+                    self.logger.info(
+                        "Cover letter generated for %s: %d words, quality=%d/100",
+                        job.title,
+                        cover_letter.word_count,
+                        cl_validation.score,
+                    )
+
                     # Stage 4: Format and save
                     resume_dir = self.context.results_dir / "resumes"
                     resume_dir.mkdir(parents=True, exist_ok=True)
@@ -730,12 +766,21 @@ class PipelineStages:
                         output_path=resume_dir / f"{job.job_id}.docx",
                     )
 
+                    # Save cover letter to disk
+                    cover_letter_dir = self.context.results_dir / "cover_letters"
+                    cover_letter_dir.mkdir(parents=True, exist_ok=True)
+                    cover_letter_path = cover_letter_dir / f"{job.job_id}.txt"
+                    cover_letter_path.write_text(cover_letter.content)
+
                     generated.append({
                         "job": job,
                         "resume": generated_resume,
+                        "cover_letter": cover_letter,
                         "pdf_path": str(pdf_path),
                         "docx_path": str(docx_path),
+                        "cover_letter_path": str(cover_letter_path),
                         "validation": validation,
+                        "cover_letter_validation": cl_validation,
                     })
 
                     self.logger.info(
@@ -820,13 +865,16 @@ class PipelineStages:
 
             for i, result in enumerate(results):
                 job = result.job
-                resume_path = generated_resumes[i].get("pdf_path") if i < len(generated_resumes) else None
+                resume_data = generated_resumes[i] if i < len(generated_resumes) else {}
+                resume_path = resume_data.get("pdf_path")
+                cover_letter_path = resume_data.get("cover_letter_path")
 
                 if result.success:
                     app_id = tracker.track_application(
                         job=job,
                         submission_id=result.submission_id,
                         generated_resume_path=resume_path,
+                        cover_letter_path=cover_letter_path,
                     )
                     self.logger.info(f"Application tracked: {app_id}")
 
@@ -900,11 +948,39 @@ class PipelineStages:
 
             chunker = TextChunker(rag_config.chunking.get("job_description"))
 
+            # BM25 retriever for hybrid search
+            bm25_retriever = None
+            if rag_config.bm25.enabled:
+                try:
+                    bm25_retriever = BM25Retriever()
+                    self.logger.info("BM25 retriever initialized")
+                except Exception as e:
+                    self.logger.warning("BM25 initialization failed: %s", e)
+
+            # Cross-encoder reranker (optional, off by default)
+            cross_encoder = None
+            if rag_config.cross_encoder.enabled:
+                try:
+                    cross_encoder = CrossEncoderReranker(
+                        model_name=rag_config.cross_encoder.model_name,
+                        enabled=True,
+                        max_length=rag_config.cross_encoder.max_length,
+                    )
+                    if cross_encoder.is_available:
+                        self.logger.info("Cross-encoder reranker initialized")
+                    else:
+                        self.logger.info("Cross-encoder unavailable, reranking disabled")
+                        cross_encoder = None
+                except Exception as e:
+                    self.logger.warning("Cross-encoder initialization failed: %s", e)
+
             self._rag_ranker = RAGRanker(
                 config=rag_config,
                 embedding_client=embedding_client,
                 vector_store=vector_store,
                 chunker=chunker,
+                bm25_retriever=bm25_retriever,
+                cross_encoder=cross_encoder,
             )
 
             self.logger.info("RAG components initialized successfully")
