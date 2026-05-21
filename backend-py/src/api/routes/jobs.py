@@ -29,6 +29,25 @@ router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
 
 
+def _compute_apply_method(source: str, already_applied: bool) -> str:
+    """Return a lightweight apply-method heuristic based on job source.
+
+    No HTML fetching — uses source and already-applied state only.
+
+    Args:
+        source: Job source string (e.g. "linkedin", "jsearch").
+        already_applied: Whether the user has already applied.
+
+    Returns:
+        One of "already_applied", "external_site", or "easy_apply".
+    """
+    if already_applied:
+        return "already_applied"
+    if source == "jsearch":
+        return "external_site"
+    return "easy_apply"
+
+
 @router.get("/sources")
 async def get_sources():
     """Return the list of available job scraper sources.
@@ -134,7 +153,12 @@ async def search_jobs(
                     "location": normalize_all_locations(listing.location),
                     "description": (listing.description or "")[:5000],
                     "url": str(listing.source_url) if listing.source_url else None,
+                    "source_url": str(listing.source_url) if listing.source_url else None,
                     "source": listing.source.value if isinstance(listing.source, JobSource) else str(listing.source),
+                    "apply_method": _compute_apply_method(
+                        listing.source.value if isinstance(listing.source, JobSource) else str(listing.source),
+                        listing.already_applied,
+                    ),
                     "job_type": listing.job_type.value if hasattr(listing.job_type, "value") else listing.job_type if listing.job_type else None,
                     "experience_level": listing.experience_level.value if hasattr(listing.experience_level, "value") else listing.experience_level if listing.experience_level else None,
                     "salary_range": listing.salary_range,
@@ -354,6 +378,9 @@ async def trust_analysis(
             status_code=500,
             detail=f"Trust analysis failed: {str(e)}",
         )
+
+
+@router.post("/{job_id}/apply")
 async def apply_to_job(
     job_id: str,
     dry_run: bool = True,

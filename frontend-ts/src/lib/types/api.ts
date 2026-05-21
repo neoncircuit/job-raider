@@ -139,6 +139,7 @@ export interface JobListing {
   work_mode?: WorkMode;
   is_remote: boolean;
   already_applied?: boolean;
+  apply_method?: "easy_apply" | "external_site" | "already_applied" | null;
   job_type?: JobType | string | null;
   experience_level?: ExperienceLevel | string | null;
   salary_range?: SalaryRange | string | null;
