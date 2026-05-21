@@ -991,3 +991,42 @@
 - [x] Full backend suite: 146 passed, 2 skipped (0 regressions)
 - [x] TypeScript: 0 errors
 
+## Phase 33: Shared MLflow Migration (2026-05-17) [COMPLETED]
+
+### Shared MLflow Service
+- [x] Create `~/docker-services/docker-compose.yml` with shared MLflow service
+  - Official image `ghcr.io/mlflow/mlflow:latest`
+  - Port 5000, `shared-services` external Docker network
+  - Named volume `mlflow-data` for persistence
+  - `--allowed-hosts` flag for cross-container access
+- [x] Create `docs/mlflow-setup.md` with setup instructions for shared MLflow
+- [x] Update `docs/index.md` with link to MLflow setup doc
+
+### Job Raider MLflow Extraction
+- [x] Remove `mlflow` service block from `docker-compose.yml`
+- [x] Remove `mlflow-data` volume from `docker-compose.yml`
+- [x] Remove `depends_on: mlflow` from backend service
+- [x] Add `shared-services` external network to backend service
+- [x] Delete `docker/Dockerfile.mlflow`
+- [x] Backend connects to shared MLflow via `shared-services` network
+
+### Documentation Updates
+- [x] Update `README.md` project structure (remove Dockerfile.mlflow)
+- [x] Update `DOCKER.md` image table (remove Dockerfile.mlflow)
+- [x] Update `docs/architecture.md` container diagram and table
+- [x] Update `docs/index.md` project structure tree and references
+- [x] Update `setup.sh` summary message
+
+### Cleanup
+- [x] Remove old `job-raider-mlflow:latest` image (860MB)
+- [x] Remove old `job-raider_mlflow-data` volume (652KB, no experiment data)
+- [x] Prune Docker build cache (7.65GB)
+- [x] Total reclaimed: ~8.5GB
+
+### Verification
+- [x] Shared MLflow container running on `shared-services` network
+- [x] MLflow UI accessible at `http://localhost:5000` (HTTP 200)
+- [x] Backend container can reach `http://mlflow:5000` (HTTP 200)
+- [x] End-to-end test: backend logged test run to shared MLflow successfully
+- [x] All containers healthy
+

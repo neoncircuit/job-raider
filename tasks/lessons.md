@@ -1469,3 +1469,57 @@
 - Always use `PYTHONPATH=backend-py` for backend Python commands
 - Full test invocation: `PYTHONPATH=backend-py backend-py/.venv/bin/python -m pytest backend-py/tests/unit/...`
 - Never `cd` into `backend-py/` and use bare paths — stay at project root
+
+### Phase 33: Shared MLflow Migration (2026-05-17)
+
+#### Shared Services Must Use Allowed-Hosts for Cross-Network Access
+
+**Lesson:** MLflow 2.x includes a security middleware that validates the `Host` header. By default it only allows `localhost`. When containers on a different Docker network connect using the service name (e.g., `mlflow:5000`), requests are rejected with 403 Forbidden.
+
+**Why:**
+- The `Host` header from the backend container is `mlflow:5000`, not `localhost:5000`
+- MLflow logs: `Rejected request with invalid Host header: mlflow:5000`
+- The fix is to pass `--allowed-hosts mlflow:5000,localhost:5000,127.0.0.1:5000` in the MLflow server command
+
+**How to apply:**
+- When running MLflow as a shared service accessed by other containers, always set `--allowed-hosts` with both the Docker service name and localhost variants
+- Test cross-network connectivity explicitly with `docker exec <container> curl http://mlflow:5000`
+
+#### Docker Compose Port Long Syntax vs Short Syntax
+
+**Lesson:** The Docker Compose long-form port syntax with `mode: host` can silently fail to publish ports in some Docker Compose versions. The short syntax (`"5000:5000"`) is more reliable.
+
+**Why:**
+- Using `target: 5000, published: "5000", protocol: tcp, mode: host` resulted in no port mapping (`docker port mlflow` returned empty)
+- Switching to `"${MLFLOW_PORT:-5000}:5000"` immediately fixed the mapping
+
+**How to apply:**
+- Prefer the short port syntax in docker-compose.yml unless you specifically need the long-form features
+- Always verify port mapping with `docker port <container>` after starting a service
+
+#### Setup Scripts Must Not Reach Outside the Project Directory
+
+**Lesson:** Project setup scripts (setup.sh, dev.sh) should never create files or directories outside the project root. For external dependencies like shared Docker services, provide documentation instead of automation.
+
+**Why:**
+- A `setup_shared_services()` function that created `~/docker-services/` would leak host filesystem paths into the project's setup script
+- Confidentiality concern: setup scripts committed to Git should not reference or create paths outside the project
+- Other users may have different directory structures
+
+**How to apply:**
+- Keep setup.sh scoped to the project directory only
+- For shared external services, create a documentation page (e.g., `docs/mlflow-setup.md`) with manual setup instructions
+- The docs approach is reproducible, reviewable, and does not expose host-specific paths
+
+#### Force-Recreate When Adding Networks to Existing Services
+
+**Lesson:** When adding a new Docker network to an existing service in docker-compose.yml, the container must be force-recreated. A plain `docker compose up -d` will not recreate containers whose image hasn't changed.
+
+**Why:**
+- After adding `shared-services` to the backend's network list, `docker compose up -d` reported "Running" without changes
+- The container's network configuration only updates on recreation
+- `docker compose up -d --force-recreate backend` was required
+
+**How to apply:**
+- After modifying network, volume, or environment settings in docker-compose.yml, use `--force-recreate` for affected services
+- Verify with `docker inspect <container> --format '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}'`
