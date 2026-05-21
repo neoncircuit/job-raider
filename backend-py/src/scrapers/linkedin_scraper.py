@@ -358,7 +358,7 @@ class LinkedInScraper(BaseScraper):
             if elem:
                 text = elem.get_text(separator="\n", strip=True)
                 if len(text) > 50:
-                    return text
+                    return self._clean_description(text)
         return None
 
     def _extract_detail_title(self, soup: BeautifulSoup) -> str:

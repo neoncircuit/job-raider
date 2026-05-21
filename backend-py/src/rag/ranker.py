@@ -21,6 +21,9 @@ from ..llm.embedding_client import EmbeddingClient, EmbeddingError
 from .config import RAGConfig
 from .chunker import TextChunker, TextChunk
 from .vector_store import ChromaStore
+from .bm25_retriever import BM25Retriever
+from .rrf_fusion import reciprocal_rank_fusion
+from .cross_encoder import CrossEncoderReranker
 
 logger = logging.getLogger("job_raider.rag")
 
@@ -68,6 +71,8 @@ class RAGRanker:
         embedding_client: EmbeddingClient,
         vector_store: ChromaStore,
         chunker: TextChunker,
+        bm25_retriever: Optional[BM25Retriever] = None,
+        cross_encoder: Optional[CrossEncoderReranker] = None,
     ):
         """Initialize the RAG ranker.
 
@@ -76,11 +81,17 @@ class RAGRanker:
             embedding_client: Client for generating embeddings.
             vector_store: ChromaDB vector store for similarity queries.
             chunker: Text chunker for breaking down documents.
+            bm25_retriever: Optional BM25 retriever for hybrid search.
+                When None, falls back to dense-only retrieval.
+            cross_encoder: Optional cross-encoder reranker.
+                When None, reranking is skipped.
         """
         self.config = config
         self.embedding_client = embedding_client
         self.vector_store = vector_store
         self.chunker = chunker
+        self.bm25_retriever = bm25_retriever
+        self.cross_encoder = cross_encoder
 
     def index_jobs(self, jobs: List[JobListing]) -> Dict[str, Any]:
         """Index job listings into the vector store.
@@ -139,6 +150,20 @@ class RAGRanker:
                 all_embeddings=valid_embeddings,
             )
 
+        # Also index chunks into BM25 for hybrid retrieval
+        if self.bm25_retriever and self.config.bm25.enabled:
+            bm25_ids = []
+            bm25_docs = []
+            bm25_metas = []
+            for job, chunks in zip(valid_jobs, valid_chunks):
+                for chunk in chunks:
+                    bm25_ids.append(f"{job.job_id}_chunk_{chunk.chunk_index}")
+                    bm25_docs.append(chunk.content)
+                    bm25_metas.append({"job_id": job.job_id, "section": chunk.section or ""})
+            if bm25_ids:
+                self.bm25_retriever.add_documents(bm25_ids, bm25_docs, bm25_metas)
+                logger.debug("Indexed %d chunks into BM25", len(bm25_ids))
+
         total_chunks = sum(len(c) for c in valid_chunks)
         return {
             "indexed": len(valid_jobs),
@@ -180,6 +205,16 @@ class RAGRanker:
             chunks=list(valid_chunks),
             embeddings=list(valid_embeddings),
         )
+
+        # Also index profile chunks into BM25
+        if self.bm25_retriever and self.config.bm25.enabled:
+            bm25_ids = [
+                f"profile_{profile_id}_chunk_{c.chunk_index}"
+                for c in valid_chunks
+            ]
+            bm25_docs = [c.content for c in valid_chunks]
+            bm25_metas = [{"profile_id": profile_id, "section": c.section or ""} for c in valid_chunks]
+            self.bm25_retriever.add_documents(bm25_ids, bm25_docs, bm25_metas)
 
         return {
             "indexed": True,
@@ -234,33 +269,33 @@ class RAGRanker:
             return self._fallback_to_heuristic(scored_listings)
 
         # Compute semantic similarity for each job
+        # Use hybrid retrieval when BM25 is available, otherwise dense-only
+        use_hybrid = (
+            self.bm25_retriever is not None
+            and self.config.bm25.enabled
+            and self.config.rrf.enabled
+        )
+
+        if use_hybrid:
+            hybrid_scores = self._hybrid_retrieve(profile, jobs)
+        else:
+            hybrid_scores = None
+
         rag_scores: List[RAGMatchScore] = []
 
         for job, match_score in scored_listings:
-            # Get job embeddings
-            job_embeddings = self.vector_store.get_job_embeddings(job.job_id)
-
-            if not job_embeddings:
-                # No embeddings for this job, use heuristic only
-                combined = self._compute_combined_score(match_score.total_score, 0.0)
-                rag_scores.append(RAGMatchScore(
-                    job=job,
-                    heuristic_score=match_score.total_score,
-                    semantic_score=0.0,
-                    combined_score=combined,
-                    heuristic_breakdown=match_score.breakdown,
-                    matched_keywords=match_score.matched_keywords,
-                    missing_skills=match_score.missing_skills,
-                    recommendation=match_score.recommendation,
-                    reasoning=match_score.reasoning,
-                    passed_threshold=combined >= self.config.re_ranking.similarity_threshold,
-                ))
-                continue
-
-            # Compute semantic similarity
-            semantic_sim = self._compute_semantic_similarity(
-                profile_embeddings, job_embeddings
-            )
+            # Use hybrid score if available, otherwise compute dense-only
+            if use_hybrid and hybrid_scores and job.job_id in hybrid_scores:
+                semantic_sim = hybrid_scores[job.job_id]
+            else:
+                # Dense-only fallback for this specific job
+                job_embeddings = self.vector_store.get_job_embeddings(job.job_id)
+                if not job_embeddings:
+                    semantic_sim = 0.0
+                else:
+                    semantic_sim = self._compute_semantic_similarity(
+                        profile_embeddings, job_embeddings
+                    )
 
             combined = self._compute_combined_score(
                 match_score.total_score, semantic_sim
@@ -329,6 +364,185 @@ class RAGRanker:
             for r in results
             if r["similarity"] >= self.config.re_ranking.similarity_threshold
         ]
+
+    def _hybrid_retrieve(
+        self,
+        profile: UserProfile,
+        jobs: List[JobListing],
+    ) -> Dict[str, float]:
+        """Perform hybrid retrieval: dense + sparse via RRF, with optional reranking.
+
+        Builds a profile query from the user profile, runs both dense (ChromaDB)
+        and sparse (BM25) retrieval, fuses via RRF, and optionally reranks with
+        a cross-encoder. Returns normalized scores mapped to job IDs.
+
+        Args:
+            profile: User profile to match against.
+            jobs: Job listings to score.
+
+        Returns:
+            Dict mapping job_id to normalized semantic score (0-1).
+        """
+        profile_query_text = self._build_profile_query_text(profile)
+        n_results = self.config.bm25.n_results
+
+        # Dense retrieval via ChromaDB
+        dense_results: List[Dict[str, Any]] = []
+        try:
+            profile_embedding = self._get_profile_query_embedding()
+            if profile_embedding:
+                raw_results = self.vector_store.query_similar(
+                    query_embedding=profile_embedding,
+                    collection="jobs",
+                    n_results=n_results,
+                )
+                dense_results = [
+                    {
+                        "doc_id": r["metadata"].get("job_id", ""),
+                        "document": r["document"],
+                        "metadata": r["metadata"],
+                    }
+                    for r in raw_results
+                ]
+        except Exception as e:
+            logger.warning("Dense retrieval failed in hybrid mode: %s", e)
+
+        # Sparse retrieval via BM25
+        sparse_results: List[Dict[str, Any]] = []
+        if self.bm25_retriever and self.bm25_retriever.doc_count > 0:
+            try:
+                bm25_results = self.bm25_retriever.query(
+                    profile_query_text, n_results=n_results
+                )
+                sparse_results = [
+                    {
+                        "doc_id": r.doc_id,
+                        "document": r.document,
+                        "metadata": r.metadata,
+                    }
+                    for r in bm25_results
+                ]
+            except Exception as e:
+                logger.warning("BM25 retrieval failed: %s", e)
+
+        # RRF fusion
+        rrf_config = self.config.rrf
+        fused = reciprocal_rank_fusion(
+            dense_results=dense_results,
+            sparse_results=sparse_results,
+            k=rrf_config.k,
+            dense_weight=rrf_config.dense_weight,
+            sparse_weight=rrf_config.sparse_weight,
+        )
+
+        # Optional cross-encoder reranking
+        if self.cross_encoder and self.cross_encoder.is_available:
+            rerank_input = [
+                {"doc_id": r.doc_id, "document": r.document, "metadata": r.metadata}
+                for r in fused
+            ]
+            reranked = self.cross_encoder.rerank(
+                query=profile_query_text,
+                results=rerank_input,
+                top_k=self.config.cross_encoder.top_k,
+            )
+            # Rebuild fused from reranked results
+            fused = [
+                type(fused[0])(
+                    doc_id=r["doc_id"],
+                    rrf_score=r.get("cross_encoder_score", 0.0),
+                    document=r.get("document", ""),
+                    metadata=r.get("metadata", {}),
+                )
+                for r in reranked
+            ]
+
+        # Normalize RRF scores to 0-1 and map to job IDs
+        if not fused:
+            return {}
+
+        max_score = max(r.rrf_score for r in fused)
+        min_score = min(r.rrf_score for r in fused)
+        score_range = max_score - min_score
+
+        job_scores: Dict[str, float] = {}
+        for r in fused:
+            job_id = r.metadata.get("job_id") or r.doc_id.split("_chunk_")[0]
+            normalized = (
+                (r.rrf_score - min_score) / score_range
+                if score_range > 0
+                else (1.0 if r.rrf_score > 0 else 0.0)
+            )
+            # Keep the highest score per job (a job may have multiple chunks)
+            if job_id not in job_scores or normalized > job_scores[job_id]:
+                job_scores[job_id] = normalized
+
+        logger.info(
+            "Hybrid retrieval: %d dense + %d sparse -> %d fused -> %d jobs scored",
+            len(dense_results),
+            len(sparse_results),
+            len(fused),
+            len(job_scores),
+        )
+        return job_scores
+
+    def _get_profile_query_embedding(self) -> Optional[List[float]]:
+        """Get a single query embedding representing the profile.
+
+        Averages all profile chunk embeddings into a centroid vector.
+
+        Returns:
+            List of floats representing the profile query embedding,
+            or None if no embeddings are available.
+        """
+        profile_embeddings = self.vector_store.get_profile_embeddings("default")
+        if not profile_embeddings:
+            return None
+
+        profile_array = np.array(profile_embeddings)
+        centroid = np.mean(profile_array, axis=0)
+        return centroid.tolist()
+
+    def _build_profile_query_text(self, profile: UserProfile) -> str:
+        """Build a text query from the user profile for BM25 retrieval.
+
+        Concatenates the most relevant profile fields into a single
+        query string optimized for lexical matching.
+
+        Args:
+            profile: User profile to extract query terms from.
+
+        Returns:
+            Space-separated query string.
+        """
+        parts: List[str] = []
+
+        if hasattr(profile, "professional_summary") and profile.professional_summary:
+            parts.append(profile.professional_summary)
+
+        if hasattr(profile, "skills") and profile.skills:
+            if isinstance(profile.skills, list):
+                skill_names = [
+                    s.name if hasattr(s, "name") else str(s)
+                    for s in profile.skills
+                ]
+                parts.extend(skill_names)
+            elif isinstance(profile.skills, dict):
+                for category, skills in profile.skills.items():
+                    if isinstance(skills, list):
+                        parts.extend([
+                            s.name if hasattr(s, "name") else str(s)
+                            for s in skills
+                        ])
+
+        if hasattr(profile, "target_job") and profile.target_job:
+            target = profile.target_job
+            if hasattr(target, "keywords") and target.keywords:
+                parts.extend(target.keywords)
+            if hasattr(target, "title") and target.title:
+                parts.append(target.title)
+
+        return " ".join(parts) if parts else ""
 
     def _compute_semantic_similarity(
         self,

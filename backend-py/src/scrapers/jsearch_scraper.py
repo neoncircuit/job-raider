@@ -296,6 +296,8 @@ class JSearchScraper(BaseScraper):
         description = raw.get("job_description", "")
         if description and len(description) > 10000:
             description = description[:10000]
+        if description:
+            description = self._clean_description(description)
 
         return JobListing(
             title=title,

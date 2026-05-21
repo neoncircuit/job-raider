@@ -93,6 +93,56 @@ class ReRankingConfig:
 
 
 @dataclass
+class BM25Config:
+    """Configuration for BM25 sparse retrieval.
+
+    Attributes:
+        enabled: Whether BM25 retrieval is active.
+        algorithm: BM25 variant to use ("okapi" or "plus").
+        n_results: Maximum BM25 results per query.
+    """
+
+    enabled: bool = True
+    algorithm: str = "okapi"
+    n_results: int = 20
+
+
+@dataclass
+class RRFFusionConfig:
+    """Configuration for Reciprocal Rank Fusion of dense and sparse results.
+
+    Attributes:
+        enabled: Whether RRF fusion is active.
+        k: RRF constant for rank dampening (higher k reduces the advantage
+            of top-ranked results).
+        dense_weight: Weight applied to dense retrieval ranks.
+        sparse_weight: Weight applied to BM25 retrieval ranks.
+    """
+
+    enabled: bool = True
+    k: int = 60
+    dense_weight: float = 0.5
+    sparse_weight: float = 0.5
+
+
+@dataclass
+class CrossEncoderConfig:
+    """Configuration for cross-encoder reranking.
+
+    Attributes:
+        enabled: Whether cross-encoder reranking is active.
+        model_name: Sentence-transformers cross-encoder model identifier.
+        max_length: Maximum token length for cross-encoder input pairs.
+        top_k: Maximum candidates to score per query.
+    """
+
+    enabled: bool = False
+    model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    max_length: int = 512
+    top_k: int = 20
+
+
+@dataclass
 class RAGConfig:
     """Complete RAG pipeline configuration.
 
@@ -101,6 +151,9 @@ class RAGConfig:
         vector_store: ChromaDB storage settings.
         chunking: Chunking settings keyed by content type.
         re_ranking: Hybrid re-ranking settings.
+        bm25: BM25 sparse retrieval settings.
+        rrf: Reciprocal Rank Fusion settings.
+        cross_encoder: Cross-encoder reranking settings.
     """
 
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
@@ -110,6 +163,9 @@ class RAGConfig:
         "profile": ChunkingConfig(max_chunk_size=512, overlap=64, strategy="section"),
     })
     re_ranking: ReRankingConfig = field(default_factory=ReRankingConfig)
+    bm25: BM25Config = field(default_factory=BM25Config)
+    rrf: RRFFusionConfig = field(default_factory=RRFFusionConfig)
+    cross_encoder: CrossEncoderConfig = field(default_factory=CrossEncoderConfig)
 
     @classmethod
     def from_yaml(cls, path: str) -> "RAGConfig":
@@ -135,6 +191,9 @@ class RAGConfig:
         vector_store_raw = raw.get("vector_store", {})
         chunking_raw = raw.get("chunking", {})
         re_ranking_raw = raw.get("re_ranking", {})
+        bm25_raw = raw.get("bm25", {})
+        rrf_raw = raw.get("rrf", {})
+        cross_encoder_raw = raw.get("cross_encoder", {})
 
         # Parse chunking configs
         chunking_configs: Dict[str, ChunkingConfig] = {}
@@ -180,5 +239,22 @@ class RAGConfig:
                 final_limit=re_ranking_raw.get("final_limit", 20),
                 weights=re_ranking_raw.get("weights", {"heuristic": 0.4, "semantic": 0.6}),
                 similarity_threshold=re_ranking_raw.get("similarity_threshold", 0.3),
+            ),
+            bm25=BM25Config(
+                enabled=bm25_raw.get("enabled", True),
+                algorithm=bm25_raw.get("algorithm", "okapi"),
+                n_results=bm25_raw.get("n_results", 20),
+            ),
+            rrf=RRFFusionConfig(
+                enabled=rrf_raw.get("enabled", True),
+                k=rrf_raw.get("k", 60),
+                dense_weight=rrf_raw.get("dense_weight", 0.5),
+                sparse_weight=rrf_raw.get("sparse_weight", 0.5),
+            ),
+            cross_encoder=CrossEncoderConfig(
+                enabled=cross_encoder_raw.get("enabled", False),
+                model_name=cross_encoder_raw.get("model_name", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
+                max_length=cross_encoder_raw.get("max_length", 512),
+                top_k=cross_encoder_raw.get("top_k", 20),
             ),
         )

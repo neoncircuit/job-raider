@@ -18,6 +18,7 @@ import random
 
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
 from ..extractors.jd_extractor import JDExtractor, ExtractionResult
+from ..utils.text_normalizer import normalize_job_description
 
 
 class ScraperError(Exception):
@@ -248,6 +249,21 @@ class BaseScraper(ABC):
         import hashlib
         combined = "|".join(str(arg) for arg in args)
         return hashlib.md5(combined.encode()).hexdigest()[:12]
+
+    def _clean_description(self, text: str) -> str:
+        """Normalize job description text for consistent formatting.
+
+        Delegates to normalize_job_description() which handles HTML
+        cleanup, bullet normalization, whitespace collapse, section
+        separation, and boilerplate removal.
+
+        Args:
+            text: Raw description text from scraping.
+
+        Returns:
+            Cleaned and consistently formatted description.
+        """
+        return normalize_job_description(text)
 
     def _extract_text_content(self, element) -> str:
         """

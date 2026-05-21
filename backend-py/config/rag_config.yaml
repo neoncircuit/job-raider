@@ -37,3 +37,23 @@ re_ranking:
     heuristic: 0.4
     semantic: 0.6
   similarity_threshold: 0.3
+
+# BM25 sparse retrieval for lexical matching
+bm25:
+  enabled: true
+  algorithm: "okapi"
+  n_results: 20
+
+# Reciprocal Rank Fusion of dense and sparse results
+rrf:
+  enabled: true
+  k: 60
+  dense_weight: 0.5
+  sparse_weight: 0.5
+
+# Cross-encoder reranking (optional, off by default)
+cross_encoder:
+  enabled: false
+  model_name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  max_length: 512
+  top_k: 20
