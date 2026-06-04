@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Search, Bookmark, BookmarkCheck, ExternalLink, MapPin, Building2, Clock, ChevronDown } from "lucide-react";
+import { Search, Bookmark, BookmarkCheck, ExternalLink, MapPin, Building2, Clock, ChevronDown, FileText, Copy } from "lucide-react";
 import { jobsApi } from "@/lib/api/jobs";
 import { applicationsApi } from "@/lib/api/applications";
 import type { JobListing, JobSearchResponse } from "@/lib/types/api";
@@ -349,22 +349,27 @@ function JobListItem({
     <button
       onClick={onClick}
       className={cn(
-        "w-full rounded-lg border p-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50",
-        isSelected ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"
+        "w-full rounded-lg border p-3 text-left transition-all duration-200 hover:shadow-sm",
+        isSelected
+          ? "border-primary bg-primary/5 shadow-[inset_0_0_12px_var(--cosmic-glow)]"
+          : "border-border bg-card/50 hover:border-primary/30 hover:bg-card/80"
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate font-medium text-gray-900 text-sm">{job.title}</p>
-          <p className="truncate text-xs text-gray-500">{job.company}</p>
+          <p className="truncate font-medium text-foreground text-sm">{job.title}</p>
+          <p className="truncate text-xs text-muted-foreground">{job.company}</p>
         </div>
         <button
           onClick={onSave}
-          className="shrink-0 text-gray-400 hover:text-blue-600"
+          className={cn(
+            "shrink-0 transition-colors",
+            isSaved ? "text-primary" : "text-muted-foreground hover:text-primary"
+          )}
           aria-label={isSaved ? "Unsave" : "Save"}
         >
           {isSaved ? (
-            <BookmarkCheck className="h-4 w-4 text-blue-600" />
+            <BookmarkCheck className="h-4 w-4" />
           ) : (
             <Bookmark className="h-4 w-4" />
           )}
@@ -406,7 +411,7 @@ function JobListItem({
 
 // ── Job detail panel ──────────────────────────────────────────────────────────
 
-function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkAppliedExternally, onClassify, isClassifying, onAnalyzeTrust, isAnalyzingTrust }: {
+function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkAppliedExternally, onClassify, isClassifying, onAnalyzeTrust, isAnalyzingTrust, coverLetter, isGeneratingCoverLetter, onGenerateCoverLetter }: {
   job: JobListing;
   isSaved: boolean;
   isAppliedExternally: boolean;
@@ -417,15 +422,18 @@ function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkA
   isClassifying: boolean;
   onAnalyzeTrust: () => void;
   isAnalyzingTrust: boolean;
+  coverLetter: string | null;
+  isGeneratingCoverLetter: boolean;
+  onGenerateCoverLetter: () => void;
 }) {
   return (
-    <div className="flex flex-col h-full rounded-lg border bg-white">
+    <div className="flex flex-col h-full rounded-lg border bg-card/80 backdrop-blur-sm">
       {/* Fixed header section */}
-      <div className="p-5 space-y-4 border-b">
+      <div className="p-5 space-y-4 border-b border-border/50">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold text-gray-900 truncate">{job.title}</h2>
-            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+            <h2 className="text-lg font-semibold text-foreground truncate">{job.title}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Building2 className="h-3.5 w-3.5" />
                 {job.company}
@@ -676,6 +684,38 @@ function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkA
             {isAnalyzingTrust ? "Analyzing Trust..." : "Analyze Trust"}
           </Button>
         )}
+        {coverLetter ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Cover Letter</p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs"
+                onClick={() => {
+                  navigator.clipboard.writeText(coverLetter);
+                  toast.success("Cover letter copied to clipboard");
+                }}
+              >
+                <Copy className="mr-1 h-3 w-3" />Copy
+              </Button>
+            </div>
+            <div className="rounded-md border bg-white p-3 text-sm text-gray-700 whitespace-pre-line max-h-60 overflow-y-auto">
+              {coverLetter}
+            </div>
+          </div>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onGenerateCoverLetter}
+            disabled={isGeneratingCoverLetter}
+            className="w-full"
+          >
+            <FileText className="mr-1.5 h-3.5 w-3.5" />
+            {isGeneratingCoverLetter ? "Generating..." : "Generate Cover Letter"}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -733,6 +773,7 @@ export default function JobsPage() {
 
   // Track externally applied jobs
   const [externallyAppliedJobIds, setExternallyAppliedJobIds] = useState<Set<string>>(new Set());
+  const [coverLetter, setCoverLetter] = useState<string | null>(null);
 
   const markAppliedExternally = useMutation({
     mutationFn: (id: string) => applicationsApi.markAppliedExternally(id),
@@ -792,13 +833,30 @@ export default function JobsPage() {
     onError: () => toast.error("Failed to analyze trust"),
   });
 
+  const generateCoverLetter = useMutation({
+    mutationFn: ({ id, job }: { id: string; job: JobListing }) =>
+      jobsApi.generateCoverLetter(id, {
+        title: job.title,
+        company: job.company,
+        description: job.description ?? undefined,
+        location: job.location ?? undefined,
+        source: job.source,
+      }),
+    onSuccess: (data) => {
+      setCoverLetter(data.cover_letter.content);
+      toast.success("Cover letter generated");
+    },
+    onError: () => toast.error("Failed to generate cover letter. Upload a resume first."),
+  });
+
   const isAppliedExternally = (id: string) => externallyAppliedJobIds.has(id);
 
   const handleSearch = (results: { total: number; jobs: JobListing[] }) => {
     setSearchResults(results);
     setJobsPage(0);
     setSelectedJobId(null);
-    setGoogleQuery(null); // Clear Google search when doing backend search
+    setGoogleQuery(null);
+    setCoverLetter(null);
   };
 
   const handleGoogleSearch = (query: string) => {
@@ -914,6 +972,9 @@ export default function JobsPage() {
                 isClassifying={classify.isPending}
                 onAnalyzeTrust={() => analyzeTrust.mutate({ id: selectedJob.job_id, job: selectedJob })}
                 isAnalyzingTrust={analyzeTrust.isPending}
+                coverLetter={coverLetter}
+                isGeneratingCoverLetter={generateCoverLetter.isPending}
+                onGenerateCoverLetter={() => generateCoverLetter.mutate({ id: selectedJob.job_id, job: selectedJob })}
               />
             ) : (
               <div className="flex h-full items-center justify-center rounded-lg border border-dashed text-sm text-gray-400">

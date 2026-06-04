@@ -29,19 +29,21 @@ interface StatCardProps {
 
 function StatCard({ title, value, sub, icon, gradient, iconBg }: StatCardProps) {
   return (
-    <div className={cn("relative overflow-hidden rounded-xl p-5 text-white shadow-md", gradient)}>
+    <div className={cn("relative overflow-hidden rounded-xl p-5 text-white shadow-md transition-all duration-300 hover:shadow-lg", gradient)}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-medium text-white/70 uppercase tracking-widest">{title}</p>
           <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
           {sub && <p className="mt-1 text-xs text-white/60">{sub}</p>}
         </div>
-        <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", iconBg)}>
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg shadow-md", iconBg)}>
           {icon}
         </div>
       </div>
-      {/* Decorative circle */}
-      <div className="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-white/5" />
+      {/* Decorative circle with glow */}
+      <div className="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-white/5 shadow-[0_0_20px_rgba(255,255,255,0.1)]" />
+      {/* Subtle top accent line */}
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
     </div>
   );
 }
@@ -83,7 +85,7 @@ export default function DashboardPage() {
           value={m?.outcomes.total_applications ?? "—"}
           sub={`${m ? (m.outcomes.interview_rate * 100).toFixed(1) : "—"}% interview rate`}
           icon={<Send className="h-5 w-5 text-white" />}
-          gradient="bg-gradient-to-br from-indigo-500 to-indigo-700"
+          gradient="bg-gradient-to-br from-[var(--neon-cyan)] to-[oklch(0.55_0.18_220)]"
           iconBg="bg-white/15"
         />
         <StatCard
@@ -91,7 +93,7 @@ export default function DashboardPage() {
           value={m ? formatCurrency(m.cost.total_usd) : "—"}
           sub={m ? `${formatCurrency(m.cost.per_application)} / app` : undefined}
           icon={<DollarSign className="h-5 w-5 text-white" />}
-          gradient="bg-gradient-to-br from-violet-500 to-violet-700"
+          gradient="bg-gradient-to-br from-[var(--neon-magenta)] to-[oklch(0.62_0.20_330)]"
           iconBg="bg-white/15"
         />
         <StatCard
@@ -99,7 +101,7 @@ export default function DashboardPage() {
           value={m ? `${m.cost.local_usage_percent.toFixed(0)}%` : "—"}
           sub="Ollama vs API calls"
           icon={<TrendingUp className="h-5 w-5 text-white" />}
-          gradient="bg-gradient-to-br from-cyan-500 to-cyan-700"
+          gradient="bg-gradient-to-br from-[var(--neon-blue)] to-[oklch(0.58_0.20_250)]"
           iconBg="bg-white/15"
         />
         <StatCard
@@ -107,14 +109,14 @@ export default function DashboardPage() {
           value={m?.outcomes.offers ?? "—"}
           sub="Received so far"
           icon={<Briefcase className="h-5 w-5 text-white" />}
-          gradient="bg-gradient-to-br from-emerald-500 to-emerald-700"
+          gradient="bg-gradient-to-br from-[var(--neon-gold)] to-[oklch(0.72_0.16_80)]"
           iconBg="bg-white/15"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* System health */}
-        <Card className="shadow-sm border-border/60">
+        <Card className="shadow-sm border-border/60 backdrop-blur-sm bg-card/50">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Activity className="h-4 w-4 text-muted-foreground" />
@@ -137,7 +139,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Recent runs */}
-        <Card className="shadow-sm border-border/60">
+        <Card className="shadow-sm border-border/60 backdrop-blur-sm bg-card/50">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Activity className="h-4 w-4 text-muted-foreground" />
