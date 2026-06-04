@@ -6,7 +6,7 @@ import { PageSkeleton } from "./PageSkeleton";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop sidebar */}
       <div className="hidden md:flex">
         <Sidebar />

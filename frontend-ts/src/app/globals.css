@@ -49,94 +49,133 @@
 }
 
 :root {
-  /* Page surface */
-  --background: oklch(0.975 0.004 264);   /* slate-50 tinted */
-  --foreground: oklch(0.16 0.012 264);    /* slate-900 */
+  /* Page surface - cosmic light gray */
+  --background: oklch(0.97 0.01 240);
+  --foreground: oklch(0.15 0.02 260);
 
-  /* Cards */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.012 264);
+  /* Cards with subtle cosmic tint */
+  --card: oklch(0.995 0.002 240);
+  --card-foreground: oklch(0.15 0.02 260);
 
   /* Popover */
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.012 264);
+  --popover: oklch(0.995 0.002 240);
+  --popover-foreground: oklch(0.15 0.02 260);
 
-  /* Primary — indigo */
-  --primary: oklch(0.532 0.234 268);
+  /* Primary — electric cyan */
+  --primary: oklch(0.65 0.18 220);
   --primary-foreground: oklch(1 0 0);
 
-  /* Secondary */
-  --secondary: oklch(0.96 0.007 264);
-  --secondary-foreground: oklch(0.28 0.02 264);
+  /* Secondary — magenta accent */
+  --secondary: oklch(0.68 0.20 330);
+  --secondary-foreground: oklch(1 0 0);
 
-  /* Muted */
-  --muted: oklch(0.96 0.007 264);
-  --muted-foreground: oklch(0.52 0.018 264);
+  /* Muted — soft cosmic */
+  --muted: oklch(0.94 0.008 240);
+  --muted-foreground: oklch(0.50 0.015 260);
 
-  /* Accent */
-  --accent: oklch(0.94 0.018 268);
-  --accent-foreground: oklch(0.38 0.12 268);
+  /* Accent — electric blue */
+  --accent: oklch(0.62 0.19 250);
+  --accent-foreground: oklch(1 0 0);
 
   /* Destructive */
   --destructive: oklch(0.577 0.245 27.325);
 
-  /* Borders & inputs */
-  --border: oklch(0.908 0.008 264);
-  --input: oklch(0.908 0.008 264);
-  --ring: oklch(0.532 0.234 268);
+  /* Borders & inputs — cosmic borders */
+  --border: oklch(0.88 0.01 240);
+  --input: oklch(0.90 0.01 240);
+  --ring: oklch(0.65 0.18 220);
 
-  /* Charts — indigo → violet → cyan palette */
-  --chart-1: oklch(0.532 0.234 268);
-  --chart-2: oklch(0.558 0.22 295);
-  --chart-3: oklch(0.58 0.19 233);
-  --chart-4: oklch(0.62 0.18 180);
-  --chart-5: oklch(0.72 0.16 140);
+  /* Charts — cosmic palette (cyan → magenta → blue → gold) */
+  --chart-1: oklch(0.65 0.18 220); /* cyan */
+  --chart-2: oklch(0.68 0.20 330); /* magenta */
+  --chart-3: oklch(0.62 0.19 250); /* electric blue */
+  --chart-4: oklch(0.72 0.15 80);  /* gold */
+  --chart-5: oklch(0.58 0.16 280); /* purple */
 
   --radius: 0.625rem;
 
-  /* Sidebar — deep slate */
-  --sidebar: oklch(0.13 0.022 264);
+  /* Sidebar — cosmic deep */
+  --sidebar: oklch(0.13 0.02 260);
   --sidebar-foreground: oklch(0.92 0.008 264);
-  --sidebar-primary: oklch(0.532 0.234 268);
+  --sidebar-primary: oklch(0.65 0.18 220);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.22 0.02 264);
+  --sidebar-accent: oklch(0.22 0.02 260);
   --sidebar-accent-foreground: oklch(0.92 0.008 264);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.532 0.234 268);
+  --sidebar-border: oklch(0.65 0.18 220 / 20%);
+  --sidebar-ring: oklch(0.65 0.18 220);
+
+  /* Space theme variables */
+  --cosmic-glow: oklch(0.65 0.18 220 / 15%);
+  --neon-cyan: oklch(0.70 0.20 220);
+  --neon-magenta: oklch(0.72 0.22 330);
+  --neon-blue: oklch(0.68 0.21 250);
+  --neon-gold: oklch(0.78 0.17 80);
+  --glass-bg: oklch(1 0 0 / 60%);
+  --glass-border: oklch(0.65 0.18 220 / 30%);
 }
 
 .dark {
-  --background: oklch(0.13 0.018 264);
-  --foreground: oklch(0.96 0.006 264);
-  --card: oklch(0.18 0.018 264);
-  --card-foreground: oklch(0.96 0.006 264);
-  --popover: oklch(0.18 0.018 264);
-  --popover-foreground: oklch(0.96 0.006 264);
-  --primary: oklch(0.62 0.22 268);
-  --primary-foreground: oklch(0.1 0.01 264);
-  --secondary: oklch(0.24 0.018 264);
-  --secondary-foreground: oklch(0.96 0.006 264);
-  --muted: oklch(0.24 0.018 264);
-  --muted-foreground: oklch(0.65 0.016 264);
-  --accent: oklch(0.28 0.03 268);
-  --accent-foreground: oklch(0.82 0.08 268);
+  /* Deep space background */
+  --background: oklch(0.13 0.02 260);
+  --foreground: oklch(0.95 0.01 240);
+
+  /* Cards with cosmic depth */
+  --card: oklch(0.18 0.02 260);
+  --card-foreground: oklch(0.95 0.01 240);
+
+  /* Popover */
+  --popover: oklch(0.18 0.02 260);
+  --popover-foreground: oklch(0.95 0.01 240);
+
+  /* Primary — glowing cyan */
+  --primary: oklch(0.70 0.20 220);
+  --primary-foreground: oklch(0.1 0.01 260);
+
+  /* Secondary — neon magenta */
+  --secondary: oklch(0.72 0.22 330);
+  --secondary-foreground: oklch(1 0 0);
+
+  /* Muted — deep cosmic */
+  --muted: oklch(0.24 0.02 260);
+  --muted-foreground: oklch(0.65 0.015 260);
+
+  /* Accent — electric blue glow */
+  --accent: oklch(0.68 0.21 250);
+  --accent-foreground: oklch(0.95 0.01 240);
+
+  /* Destructive */
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.62 0.22 268);
-  --chart-1: oklch(0.62 0.22 268);
-  --chart-2: oklch(0.65 0.2 295);
-  --chart-3: oklch(0.65 0.18 233);
-  --chart-4: oklch(0.68 0.17 180);
-  --chart-5: oklch(0.74 0.14 140);
-  --sidebar: oklch(0.1 0.018 264);
+
+  /* Borders & inputs — neon borders */
+  --border: oklch(0.70 0.20 220 / 25%);
+  --input: oklch(0.70 0.20 220 / 20%);
+  --ring: oklch(0.70 0.20 220);
+
+  /* Charts — glowing cosmic palette */
+  --chart-1: oklch(0.70 0.20 220); /* glowing cyan */
+  --chart-2: oklch(0.72 0.22 330); /* neon magenta */
+  --chart-3: oklch(0.68 0.21 250); /* electric blue glow */
+  --chart-4: oklch(0.78 0.17 80);  /* golden glow */
+  --chart-5: oklch(0.65 0.18 280); /* purple glow */
+
+  /* Sidebar — deep cosmic */
+  --sidebar: oklch(0.10 0.018 260);
   --sidebar-foreground: oklch(0.92 0.008 264);
-  --sidebar-primary: oklch(0.62 0.22 268);
+  --sidebar-primary: oklch(0.70 0.20 220);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.18 0.018 264);
+  --sidebar-accent: oklch(0.18 0.02 260);
   --sidebar-accent-foreground: oklch(0.92 0.008 264);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.62 0.22 268);
+  --sidebar-border: oklch(0.70 0.20 220 / 25%);
+  --sidebar-ring: oklch(0.70 0.20 220);
+
+  /* Space theme variables - enhanced glow */
+  --cosmic-glow: oklch(0.70 0.20 220 / 20%);
+  --neon-cyan: oklch(0.75 0.22 220);
+  --neon-magenta: oklch(0.77 0.24 330);
+  --neon-blue: oklch(0.73 0.23 250);
+  --neon-gold: oklch(0.82 0.19 80);
+  --glass-bg: oklch(0.18 0.02 260 / 70%);
+  --glass-border: oklch(0.70 0.20 220 / 35%);
 }
 
 @layer base {
@@ -156,3 +195,35 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: oklch(0.75 0.008 264); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: oklch(0.60 0.012 264); }
+
+/* ── Space Theme Animations ───────────────────────────────────────────────────── */
+
+@keyframes cosmic-drift {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+}
+
+@keyframes neon-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--cosmic-glow); }
+  50% { opacity: 0.85; box-shadow: 0 0 12px var(--cosmic-glow); }
+}
+
+@keyframes cosmic-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-2px); }
+}
+
+/* Subtle glow effect for important elements */
+.cosmic-glow {
+  animation: neon-pulse 3s ease-in-out infinite;
+}
+
+/* Subtle floating effect */
+.cosmic-float {
+  animation: cosmic-float 4s ease-in-out infinite;
+}
+
+/* Apply cosmic glow to primary buttons in dark mode */
+.dark button.bg-primary {
+  animation: neon-pulse 3s ease-in-out infinite;
+}

@@ -29,35 +29,35 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <header className="flex h-14 items-center justify-between bg-slate-900 border-b border-slate-700 px-4">
+    <header className="flex h-14 items-center justify-between bg-sidebar border-b border-sidebar-border px-4">
       <div className="flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-500">
-          <Zap size={13} className="text-white" fill="white" />
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary cosmic-glow">
+          <Zap size={13} className="text-primary-foreground" fill="current" />
         </div>
-        <p className="text-sm font-bold text-white tracking-tight">Job Raider</p>
+        <p className="text-sm font-bold text-sidebar-foreground tracking-tight">Job Raider</p>
       </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger className="rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Open navigation">
+        <SheetTrigger className="rounded-md p-2 text-sidebar-foreground hover:bg-sidebar-accent/50" aria-label="Open navigation">
           <Menu size={18} />
         </SheetTrigger>
 
-        <SheetContent side="left" className="w-56 p-0 bg-slate-900 border-r border-slate-700">
+        <SheetContent side="left" className="w-56 p-0 bg-sidebar border-r border-sidebar-border">
           <div className="px-4 py-5">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 shadow-lg shadow-indigo-500/40">
-                <Zap size={15} className="text-white" fill="white" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-lg cosmic-glow">
+                <Zap size={15} className="text-primary-foreground" fill="current" />
               </div>
               <div>
-                <p className="text-sm font-bold text-white tracking-tight">Job Raider</p>
-                <p className="text-[10px] text-slate-400 leading-none">Automated Pipeline</p>
+                <p className="text-sm font-bold text-sidebar-foreground tracking-tight">Job Raider</p>
+                <p className="text-[10px] text-sidebar-accent-foreground leading-none">Automated Pipeline</p>
               </div>
             </div>
           </div>
 
-          <Separator className="bg-slate-700" />
+          <Separator className="bg-sidebar-border" />
           <ConnectionStatus />
-          <Separator className="bg-slate-700" />
+          <Separator className="bg-sidebar-border" />
 
           <nav className="px-2 py-3 space-y-0.5">
             {NAV_ITEMS.map(({ href, icon, label }) => {
@@ -70,14 +70,14 @@ export function MobileNav() {
                   className={cn(
                     "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all",
                     isActive
-                      ? "bg-slate-700 text-white"
-                      : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                      ? "bg-sidebar-accent text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/50"
                   )}
                 >
                   {isActive && (
-                    <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-indigo-400" />
+                    <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_12px_var(--neon-cyan)]" />
                   )}
-                  <span className={cn("shrink-0", isActive && "text-indigo-400")}>{icon}</span>
+                  <span className={cn("shrink-0", isActive && "text-primary")}>{icon}</span>
                   {label}
                 </Link>
               );
