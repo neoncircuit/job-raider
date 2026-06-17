@@ -8,20 +8,22 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
-from ..models.user_profile import UserProfile, Project
-from ..utils.logger import get_logger, Components
+from ..models.user_profile import Project, UserProfile
+from ..utils.logger import Components, get_logger
 
 
 @dataclass
 class SelectionOutput:
     """Output from the selection stage."""
+
     selected_projects: List[Dict[str, str]]
     keywords_to_emphasize: List[str]
     key_achievements: List[str]
@@ -74,7 +76,7 @@ class ResumeSelector:
         messages = [
             Message(
                 role=MessageType.SYSTEM,
-                content="You are a resume strategist. Select the most relevant content from a candidate's profile to emphasize for a specific job application. Be selective and strategic."
+                content="You are a resume strategist. Select the most relevant content from a candidate's profile to emphasize for a specific job application. Be selective and strategic.",
             ),
             Message(
                 role=MessageType.USER,
@@ -99,7 +101,7 @@ Return a JSON object:
   "keywords_to_emphasize": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
   "key_achievements": ["achievement1", "achievement2"],
   "summary_suggestion": "2-3 sentence professional summary emphasizing fit"
-}}"""
+}}""",
             ),
         ]
 
@@ -116,7 +118,7 @@ Return a JSON object:
             import json
             import re
 
-            json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
             if not json_match:
                 raise ValueError("Failed to extract JSON from selection response")
 
@@ -184,7 +186,9 @@ Return a JSON object:
         # Experience
         if profile.experience:
             parts.append(f"\nExperience: {profile.years_of_experience} years total")
-            parts.append(f"Current Position: {profile.current_position.title if profile.current_position else 'N/A'}")
+            parts.append(
+                f"Current Position: {profile.current_position.title if profile.current_position else 'N/A'}"
+            )
 
         # Skills
         if profile.skills:
@@ -194,7 +198,9 @@ Return a JSON object:
         if profile.projects:
             parts.append("\nProjects:")
             for project in profile.projects[:10]:
-                technologies = ", ".join(project.technologies) if project.technologies else "N/A"
+                technologies = (
+                    ", ".join(project.technologies) if project.technologies else "N/A"
+                )
                 parts.append(f"- {project.name} ({technologies})")
                 if project.description:
                     parts.append(f"  {project.description}")
@@ -231,19 +237,23 @@ Return a JSON object:
             overlap = job_skills & project_techs
 
             if overlap and len(matched_projects) < 3:
-                matched_projects.append({
-                    "name": project.name,
-                    "reason": f"Matches skills: {', '.join(overlap)}",
-                })
+                matched_projects.append(
+                    {
+                        "name": project.name,
+                        "reason": f"Matches skills: {', '.join(overlap)}",
+                    }
+                )
 
         # Fill with most recent if needed
         if len(matched_projects) < 3:
             for project in profile.recent_projects:
                 if project.name not in [p["name"] for p in matched_projects]:
-                    matched_projects.append({
-                        "name": project.name,
-                        "reason": "Recent project",
-                    })
+                    matched_projects.append(
+                        {
+                            "name": project.name,
+                            "reason": "Recent project",
+                        }
+                    )
                     if len(matched_projects) >= 3:
                         break
 
@@ -304,7 +314,10 @@ class ProjectSelector:
 
         # Recency bonus (20% weight)
         if project.start_date:
-            months_ago = (project.end_date or __import__('datetime').datetime.now() - project.start_date).days / 30
+            months_ago = (
+                project.end_date
+                or __import__("datetime").datetime.now() - project.start_date
+            ).days / 30
             if months_ago < 6:
                 score += 0.2
             elif months_ago < 12:

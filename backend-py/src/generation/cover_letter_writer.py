@@ -12,14 +12,14 @@ Author: Job Raider
 Date: 2026-05-13
 """
 
-from typing import List, Dict, Any
 from dataclasses import dataclass
+from typing import Any, Dict, List
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 from .selector import SelectionOutput
 
 
@@ -117,9 +117,7 @@ class CoverLetterWriter:
                 TaskType.COVER_LETTER_WRITING
             ].primary_model
 
-            highlighted = self._extract_highlighted_experiences(
-                content, selection
-            )
+            highlighted = self._extract_highlighted_experiences(content, selection)
 
             self.logger.info(
                 "Cover letter generated: %d words, model=%s",
@@ -188,9 +186,7 @@ class CoverLetterWriter:
             parts.append(f"\nProfessional Summary:\n{profile.summary}")
 
         if profile.skills:
-            parts.append(
-                f"\nSkills: {', '.join(s.name for s in profile.skills)}"
-            )
+            parts.append(f"\nSkills: {', '.join(s.name for s in profile.skills)}")
 
         if profile.experience:
             parts.append("\nWork Experience:")
@@ -211,9 +207,7 @@ class CoverLetterWriter:
                 if project.description:
                     parts.append(f"  {project.description}")
                 if project.technologies:
-                    parts.append(
-                        f"  Technologies: {', '.join(project.technologies)}"
-                    )
+                    parts.append(f"  Technologies: {', '.join(project.technologies)}")
                 for highlight in project.highlights[:3]:
                     parts.append(f"  - {highlight}")
 

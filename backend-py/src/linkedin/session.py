@@ -13,18 +13,18 @@ import random
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from playwright.sync_api import (
-    sync_playwright,
-    Playwright,
     Browser,
     BrowserContext,
     Page,
+    Playwright,
+    sync_playwright,
 )
 from pydantic import BaseModel, Field
 
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class LinkedInSessionConfig(BaseModel):
@@ -39,7 +39,8 @@ class LinkedInSessionConfig(BaseModel):
     )
     timeout_ms: int = Field(default=30000, description="Page navigation timeout in ms")
     slow_mo_ms: int = Field(
-        default=100, description="Slows down Playwright operations by the specified ms",
+        default=100,
+        description="Slows down Playwright operations by the specified ms",
     )
     user_data_dir: Optional[str] = Field(
         default="data/linkedin_session/browser_data",
@@ -163,9 +164,7 @@ class LinkedInSession:
 
             # Only proceed with login form if still on login page
             if "/login" not in current_url and "/checkpoint" not in current_url:
-                self.logger.warning(
-                    f"Unexpected redirect during login: {current_url}"
-                )
+                self.logger.warning(f"Unexpected redirect during login: {current_url}")
                 self.screenshot("login_unexpected_redirect")
                 return False
 
@@ -181,9 +180,7 @@ class LinkedInSession:
             email_input = None
             for sel in email_selectors:
                 try:
-                    email_input = self._page.wait_for_selector(
-                        sel, timeout=3000
-                    )
+                    email_input = self._page.wait_for_selector(sel, timeout=3000)
                     if email_input and email_input.is_visible():
                         self.logger.info(f"Found email field with selector: {sel}")
                         break
@@ -206,9 +203,10 @@ class LinkedInSession:
                 try:
                     hidden_key = self._page.query_selector("input[name='session_key']")
                     if hidden_key:
-                        self.logger.info("Using hidden session_key input via JS injection")
-                        self._page.evaluate(
-                            f"""() => {{
+                        self.logger.info(
+                            "Using hidden session_key input via JS injection"
+                        )
+                        self._page.evaluate(f"""() => {{
                                 const input = document.querySelector("input[name='session_key']");
                                 if (input) {{
                                     input.type = 'text';
@@ -216,8 +214,7 @@ class LinkedInSession:
                                     input.dispatchEvent(new Event('input', {{ bubbles: true }}));
                                     input.dispatchEvent(new Event('change', {{ bubbles: true }}));
                                 }}
-                            }}"""
-                        )
+                            }}""")
                         email_input = hidden_key
                 except Exception:
                     pass
@@ -248,9 +245,7 @@ class LinkedInSession:
 
             # Wait for navigation with fallback
             try:
-                self._page.wait_for_url(
-                    "**/feed/**", timeout=self.config.timeout_ms
-                )
+                self._page.wait_for_url("**/feed/**", timeout=self.config.timeout_ms)
             except Exception:
                 # Feed URL not reached - could be 2FA, CAPTCHA, or error
                 pass

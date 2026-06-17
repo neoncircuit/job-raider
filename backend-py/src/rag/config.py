@@ -5,9 +5,10 @@ Dataclasses for RAG pipeline configuration loaded from rag_config.yaml.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional
-import yaml
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+import yaml
 
 
 @dataclass
@@ -46,10 +47,12 @@ class VectorStoreConfig:
 
     backend: str = "chromadb"
     persist_directory: str = "data/chroma"
-    collections: Dict[str, str] = field(default_factory=lambda: {
-        "jobs": "job_listings",
-        "profiles": "user_profiles",
-    })
+    collections: Dict[str, str] = field(
+        default_factory=lambda: {
+            "jobs": "job_listings",
+            "profiles": "user_profiles",
+        }
+    )
     distance_metric: str = "cosine"
 
 
@@ -85,10 +88,12 @@ class ReRankingConfig:
     top_k_candidates: int = 50
     min_heuristic_score: int = 60
     final_limit: int = 20
-    weights: Dict[str, float] = field(default_factory=lambda: {
-        "heuristic": 0.4,
-        "semantic": 0.6,
-    })
+    weights: Dict[str, float] = field(
+        default_factory=lambda: {
+            "heuristic": 0.4,
+            "semantic": 0.6,
+        }
+    )
     similarity_threshold: float = 0.3
 
 
@@ -158,10 +163,16 @@ class RAGConfig:
 
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
     vector_store: VectorStoreConfig = field(default_factory=VectorStoreConfig)
-    chunking: Dict[str, ChunkingConfig] = field(default_factory=lambda: {
-        "job_description": ChunkingConfig(max_chunk_size=512, overlap=64, strategy="recursive"),
-        "profile": ChunkingConfig(max_chunk_size=512, overlap=64, strategy="section"),
-    })
+    chunking: Dict[str, ChunkingConfig] = field(
+        default_factory=lambda: {
+            "job_description": ChunkingConfig(
+                max_chunk_size=512, overlap=64, strategy="recursive"
+            ),
+            "profile": ChunkingConfig(
+                max_chunk_size=512, overlap=64, strategy="section"
+            ),
+        }
+    )
     re_ranking: ReRankingConfig = field(default_factory=ReRankingConfig)
     bm25: BM25Config = field(default_factory=BM25Config)
     rrf: RRFFusionConfig = field(default_factory=RRFFusionConfig)
@@ -224,11 +235,16 @@ class RAGConfig:
             ),
             vector_store=VectorStoreConfig(
                 backend=vector_store_raw.get("backend", "chromadb"),
-                persist_directory=vector_store_raw.get("persist_directory", "data/chroma"),
-                collections=vector_store_raw.get("collections", {
-                    "jobs": "job_listings",
-                    "profiles": "user_profiles",
-                }),
+                persist_directory=vector_store_raw.get(
+                    "persist_directory", "data/chroma"
+                ),
+                collections=vector_store_raw.get(
+                    "collections",
+                    {
+                        "jobs": "job_listings",
+                        "profiles": "user_profiles",
+                    },
+                ),
                 distance_metric=vector_store_raw.get("distance_metric", "cosine"),
             ),
             chunking=chunking_configs,
@@ -237,7 +253,9 @@ class RAGConfig:
                 top_k_candidates=re_ranking_raw.get("top_k_candidates", 50),
                 min_heuristic_score=re_ranking_raw.get("min_heuristic_score", 60),
                 final_limit=re_ranking_raw.get("final_limit", 20),
-                weights=re_ranking_raw.get("weights", {"heuristic": 0.4, "semantic": 0.6}),
+                weights=re_ranking_raw.get(
+                    "weights", {"heuristic": 0.4, "semantic": 0.6}
+                ),
                 similarity_threshold=re_ranking_raw.get("similarity_threshold", 0.3),
             ),
             bm25=BM25Config(
@@ -253,7 +271,9 @@ class RAGConfig:
             ),
             cross_encoder=CrossEncoderConfig(
                 enabled=cross_encoder_raw.get("enabled", False),
-                model_name=cross_encoder_raw.get("model_name", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
+                model_name=cross_encoder_raw.get(
+                    "model_name", "cross-encoder/ms-marco-MiniLM-L-6-v2"
+                ),
                 max_length=cross_encoder_raw.get("max_length", 512),
                 top_k=cross_encoder_raw.get("top_k", 20),
             ),

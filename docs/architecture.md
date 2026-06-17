@@ -266,6 +266,9 @@ data/
 ├── applications/          # Application tracking
 │   ├── {app_id}.json
 │   └── ...
+├── assessments/           # Assessment session data
+│   ├── {session_id}.json
+│   └── ...
 ├── cache/                # LLM response cache
 │   └── responses.json
 └── results/              # Pipeline results
@@ -317,6 +320,179 @@ The system detects three types of application methods:
 | External Site | Redirects to company ATS | Flag for manual application |
 | Manual | Requires custom process | Flag for manual application |
 
+## Fresh Graduate Scoring Mode
+
+For entry-level candidates with limited work experience, Job Raider offers a fresh graduate scoring mode:
+
+| Category | Points | Standard Mode | Fresh Grad Mode |
+|----------|--------|--------------|-----------------|
+| Projects | 0 | - | **35** |
+| Skills | 40 | Skills match | **30** |
+| Education | 0 | - | **20** |
+| Experience | 20 | Work history | **10** |
+| Location | 10 | Geography | **5** |
+
+**Threshold:** 50+ points (reduced from 60) to increase opportunities for entry-level candidates.
+
+**Configuration:**
+- Enable via `--fresh-grad` CLI flag or `fresh_grad_mode: true` in API requests
+- Weights configured in `backend-py/config/scoring_config.yaml`
+- Projects prioritized: academic capstone (20pts), personal (15pts), hackathon (10pts), research (15pts)
+- Quality boosters: GitHub stars/forks (+3), deployed application (+3), blog posts (+2)
+
+## Assessment Components
+
+### DISC Personality Assessment
+
+```mermaid
+classDiagram
+    class DISCEngine {
+        +load_questions() List~DISCQuestion~
+        +generate_session() DISCSession
+        +score_answers(answers) DISCScore
+        +calculate_profile() DISCProfile
+        +match_jobs(profile) List~JobMatch~
+    }
+
+    class DISCQuestion {
+        +id: str
+        +category: str
+        +question: str
+        +options: List~Option~
+    }
+
+    class DISCAnswer {
+        +question_id: str
+        +most_like: str
+        +least_like: str
+    }
+
+    class DISCScore {
+        +trait: DISCTrait
+        +raw_score: int
+        +percentage: float
+    }
+
+    class DISCProfile {
+        +D: float
+        +I: float
+        +S: float
+        +C: float
+        +primary_type: DISCTrait
+        +secondary_type: DISCTrait
+    }
+
+    DISCEngine --> DISCQuestion
+    DISCEngine --> DISCAnswer
+    DISCEngine --> DISCScore
+    DISCEngine --> DISCProfile
+```
+
+**Features:**
+- **Format:** Most/Least forced-choice (industry standard)
+- **Questions:** 24 across 4 categories (Leadership, Communication, Work Style, Problem Solving)
+- **Scoring:** +3 for most like, -3 for least like per trait
+- **Profile:** D/I/S/C percentages with primary/secondary types
+- **Job Matching:** Matches profile against ideal profiles for Software Engineer, Sales, PM, Data Analyst, Team Lead
+
+**Components:**
+- `src/assessment/disc_engine.py` - Core scoring and matching logic
+- `src/api/routes/assessment.py` - REST endpoints for assessment operations
+- `config/disc_questions.json` - Question bank (24 questions)
+- `config/disc_job_profiles.json` - Ideal job type profiles
+
+### Technical Assessment Trainer
+
+```mermaid
+classDiagram
+    class AssessmentEngine {
+        +generate_session(params) AssessmentSession
+        +generate_question(topic, nonce) AssessmentQuestion
+        +evaluate_answer(answer, question) AnswerFeedback
+        +calculate_session_stats(session) SessionStats
+    }
+
+    class AssessmentStorage {
+        +save_session(session) None
+        +load_session(id) AssessmentSession
+        +get_history(user_id, limit) List~AssessmentSession~
+        +save_progress(user_id, stats) None
+    }
+
+    class AssessmentQuestion {
+        +id: str
+        +type: QuestionType
+        +topic: str
+        +difficulty: Difficulty
+        +question: str
+        +options: List~Option~
+        +correct_answer: str
+    }
+
+    AssessmentEngine --> AssessmentQuestion
+    AssessmentEngine --> AssessmentStorage
+```
+
+**Features:**
+- **Dynamic Questions:** LLM-generated (never from fixed bank) with random nonce and shuffled topics
+- **Modes:** Job-targeted (based on specific job) and skill-based (general practice)
+- **Formats:** Freeform (LLM-evaluated) and multiple-choice
+- **Adaptive Difficulty:** Adjusts after every 3 answers based on average score
+- **Progress Tracking:** Aggregate stats, score trend, strongest/weakest topics
+
+## Multi-Agent Layer
+
+The multi-agent system (`src/agents/`) provides coordinated, asynchronous career-coaching services on top of the LLM layer. It is registered as a FastAPI router (`/api/agents/*`) and initialized during application startup.
+
+### Components
+
+- **`BaseAgent`** (`base.py`) - abstract contract defining the agent lifecycle (`AgentState`: INITIALIZING, READY, BUSY, etc.), `Task` / `TaskResult` / `TaskType`, and `AgentCapability` (declared task types, parallel execution flag, dependencies).
+- **`AgentCoordinator`** (`coordinator.py`) - central orchestrator: registers agents, dispatches tasks to the optimal agent by capability, runs multi-stage pipelines, and tracks per-agent performance/utilization.
+- **`AgentCommunicationBus`** (`communication.py`) - in-process message bus agents use to exchange `AgentMessage`s (with TTL and bounded history), enabling cross-agent collaboration.
+- **`CareerCoachAgent`** (`career_coach.py`) - the first concrete agent: career-path analysis, skill gap analysis, upskilling roadmaps, SMART goal setting, and skill-development planning. Powered by an `LLMRouter`.
+- **Rate limiter** (`src/api/rate_limiter.py`) - per-client, per-endpoint throttling applied on the mutating agent endpoints.
+- **Config** (`config/agent_config.yaml`, loaded by `config_loader.get_agent_config()`) - coordinator, career-coach, and communication settings (concurrency, timeouts, recommendation thresholds, message size/history/TTL).
+
+### Request Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as /api/agents Router
+    participant RL as Rate Limiter
+    participant CO as AgentCoordinator
+    participant CC as CareerCoachAgent
+    participant LLM as LLMRouter
+    C->>R: POST /api/agents/gap-analysis
+    R->>RL: check_rate_limit(client, endpoint)
+    RL-->>R: allowed
+    R->>CO: submit_task(Task(GAP_ANALYSIS))
+    CO->>CC: dispatch by capability
+    CC->>LLM: analyze(profile, target_jobs)
+    LLM-->>CC: gap analysis result
+    CC-->>CO: TaskResult
+    CO-->>R: task_id
+    R-->>C: 200 {task_id, agent, status: submitted}
+```
+
+### Lifecycle
+
+The coordinator is started once at application startup (`lifespan` in `src/api/main.py`) via `initialize_agent_system(LLMRouter())`. Initialization is wrapped in a `try/except` and is **non-fatal**: if it fails, the API still boots and the agent endpoints return HTTP 503 ("Agent system not initialized") until a successful startup. The coordinator's background `asyncio` task is retained on the singleton manager so it is not garbage-collected.
+
+### Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/agents/status` | Agent and system status |
+| GET | `/api/agents/performance` | Per-agent performance metrics |
+| GET | `/api/agents/health` | Agent-system health check |
+| POST | `/api/agents/shutdown` | Gracefully shut down the agent system |
+| POST | `/api/agents/career-analysis` | Trigger career-path analysis |
+| POST | `/api/agents/gap-analysis` | Analyze skill gaps vs. target jobs |
+| POST | `/api/agents/upskilling-roadmap` | Generate an upskilling roadmap |
+| POST | `/api/agents/career-goals` | Set SMART career goals |
+| GET | `/api/agents/recommendations` | Career recommendations |
+
 ## Frontend Architecture
 
 The web dashboard is built with Next.js 16 (App Router) + Tailwind CSS + shadcn/ui.
@@ -362,6 +538,7 @@ graph LR
 | `/resume-analysis` | Upload + optional JD → AI score, gaps, recommendations |
 | `/metrics` | Recharts funnel + pie, cost tiles, LLM call log |
 | `/settings` | Model params, API config, cost limits, validate/reset |
+| `/assessment` | Technical interview practice: skill-based or job-targeted, MC + freeform, adaptive difficulty |
 
 ## Security Considerations
 
@@ -381,29 +558,33 @@ graph LR
 graph TB
     subgraph "Docker Compose - job-raider-network"
         Backend[Backend API<br/>FastAPI on :8000]
-        Ollama[Ollama<br/>Model Inference on :11434]
         Frontend[Next.js Dashboard<br/>on :3000]
     end
-
+    
+    Backend -->|Connects via shared-services| SharedNetwork
+    
     subgraph "Shared Services - shared-services network"
-        MLflow[MLflow Tracking<br/>on :5000]
+        Ollama[Ollama<br/>Shared Model Inference<br/>on :11434]
+        MLflow[MLflow Tracking<br/>Shared Experiment Tracking<br/>on :5000]
     end
-
+    
     subgraph "Host System"
         DockerDesktop[Docker Desktop]
         NVIDIAToolkit[NVIDIA Container Toolkit]
         GPU[RTX 3070 Ti - 8GB VRAM]
     end
-
+    
     Frontend -->|/api/proxy/* with X-API-Key| Backend
-    Backend -->|HTTP API| Ollama
-    Backend -->|Experiment logging| MLflow
+    Backend -->|HTTP API via shared-services| Ollama
+    Backend -->|Experiment logging via shared-services| MLflow
     Ollama -->|GPU Passthrough| GPU
     NVIDIAToolkit -->|Enables GPU| Ollama
     DockerDesktop -->|Manages| Backend
-    DockerDesktop -->|Manages| Ollama
     DockerDesktop -->|Manages| Frontend
+    DockerDesktop -->|Manages| Ollama
     DockerDesktop -->|Manages| MLflow
+    
+    Backend -.->|shared-services external network| SharedNetwork
 ```
 
 ### Container Configuration
@@ -411,9 +592,11 @@ graph TB
 | Service | Image | Port | GPU | Purpose |
 |---------|-------|------|-----|---------|
 | backend | Custom (CUDA 12.4.0) | Dynamic (default 8000) | No | FastAPI REST API, pipeline orchestration |
-| ollama | ollama/ollama:latest | Dynamic (default 11434) | Yes (NVIDIA) | Local LLM inference (qwen2.5:3b, qwen2.5:7b) |
 | frontend | Custom (Node 20 Alpine) | Dynamic (default 3000) | No | Next.js web dashboard |
-| mlflow | ghcr.io/mlflow/mlflow:latest | 5000 | No | Shared experiment tracking (see docs/mlflow-setup.md) |
+| **ollama** | **ollama/ollama:latest** | **Dynamic (default 11434)** | **Yes (NVIDIA)** | **Shared local LLM inference for all projects** |
+| **mlflow** | **ghcr.io/mlflow/mlflow:latest** | **5000** | **No** | **Shared experiment tracking for all projects** |
+
+**Note:** Ollama and MLflow are shared services running on `~/docker-services/docker-compose.yml` with persistent volumes for models and experiments. All projects connect via the external `shared-services` Docker network.
 
 ### GPU Passthrough
 
@@ -435,5 +618,8 @@ Ports are allocated dynamically to avoid conflicts with other services:
 ### Inter-Service Communication
 
 - Frontend to Backend: Next.js proxy at `/api/proxy/*` forwards to `http://backend:8000` (Docker) or `http://localhost:8000` (local)
-- Backend to Ollama: HTTP API calls via Docker internal DNS (`http://ollama:11434`)
-- All services share the `job-raider-network` bridge network
+- Backend to Ollama: HTTP API calls via shared-services network (`http://ollama:11434`)
+- Backend to MLflow: Experiment logging via shared-services network (`http://mlflow:5000`)
+- Job-raider services use `job-raider-network` bridge network
+- Shared services (Ollama, MLflow) use `shared-services` external bridge network
+- Backend connects to both networks for cross-project service access

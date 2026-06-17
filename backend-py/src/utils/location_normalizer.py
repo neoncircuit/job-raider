@@ -84,32 +84,32 @@ CITY_COUNTRY_MAP = {
 def normalize_location(location: Optional[str]) -> str:
     """
     Normalize a location string to a consistent format.
-    
+
     Args:
         location: Raw location string
-        
+
     Returns:
         Normalized location string
     """
     if not location:
         return "Not Specified"
-    
+
     loc_lower = location.strip().lower()
-    
+
     # Check for standalone country codes
     if len(loc_lower) == 2 and loc_lower in COUNTRY_CODE_MAP:
         country = COUNTRY_CODE_MAP[loc_lower]
         return f"{country}, {loc_lower.upper()}"
-    
+
     # Check for common city names
     for city, normalized in CITY_COUNTRY_MAP.items():
         if city in loc_lower or loc_lower == city:
             return normalized
-    
+
     # Already looks formatted (has comma and country code)
     if ", " in location and len(location.split(", ")[-1]) == 2:
         return location
-    
+
     # Has comma but no country code - try to add one
     if ", " in location:
         parts = location.split(", ")
@@ -119,7 +119,7 @@ def normalize_location(location: Optional[str]) -> str:
         for code, country in COUNTRY_CODE_MAP.items():
             if country.lower() in last_part or last_part == country.lower():
                 return f"{', '.join(parts[:-1])}, {code.upper()}"
-    
+
     # Just return the original if we can't normalize
     return location
 
@@ -127,12 +127,12 @@ def normalize_location(location: Optional[str]) -> str:
 def normalize_all_locations(location: Optional[str]) -> str:
     """
     Normalize location for display in job listings.
-    
+
     This is a simpler version that handles common cases like "Sg" -> "Singapore, SG".
-    
+
     Args:
         location: Raw location string
-        
+
     Returns:
         Normalized location string
     """

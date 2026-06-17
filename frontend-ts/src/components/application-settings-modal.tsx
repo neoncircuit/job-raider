@@ -29,6 +29,17 @@ interface ApplicationSettingsModalProps {
   onClose: () => void;
 }
 
+interface ApplicationSettingsFormValues {
+  visa_status?: VisaStatus;
+  visa_expiration_date?: string;
+  salary_expectation_min?: string | number;
+  salary_expectation_max?: string | number;
+  salary_currency?: string;
+  notice_period_weeks?: string | number;
+  willing_to_relocate?: boolean;
+  preferred_work_locations?: string;
+}
+
 // ── Visa status options ───────────────────────────────────────────────────────────
 
 const VISA_STATUS_OPTIONS: { value: VisaStatus; label: string; description: string }[] = [
@@ -56,7 +67,7 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
   });
 
   const save = useMutation({
-    mutationFn: (values: any) => {
+    mutationFn: (values: ApplicationSettingsFormValues) => {
       const updates: Partial<UserProfile> = {
         visa_status: values.visa_status || undefined,
         visa_expiration_date: values.visa_expiration_date || undefined,
@@ -81,7 +92,7 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
   const selectedVisaStatus = watch("visa_status");
   const willingToRelocate = watch("willing_to_relocate");
 
-  const onSubmit = (values: any) => {
+  const onSubmit = (values: ApplicationSettingsFormValues) => {
     save.mutate(values);
   };
 
@@ -242,7 +253,7 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
                 {...register("preferred_work_locations")}
               />
               <p className="text-xs text-gray-400">
-                Comma-separated list of locations you'd consider (beyond your target job locations)
+                Comma-separated list of locations you&apos;d consider (beyond your target job locations)
               </p>
             </div>
           </div>

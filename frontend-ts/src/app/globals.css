@@ -1,18 +1,18 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-rajdhani);
-  --font-mono: var(--font-space-mono);
-  --font-heading: var(--font-orbitron);
-  --font-display: var(--font-orbitron);
-  --font-body: var(--font-rajdhani);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-fira-code);
+  --font-heading: var(--font-fira-code);
+  --font-display: var(--font-fira-code);
+  --font-body: var(--font-inter);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -52,129 +52,136 @@
 }
 
 :root {
-  /* Fonts - futuristic space theme */
-  --font-orbitron: 'Orbitron', system-ui, sans-serif;
-  --font-rajdhani: 'Rajdhani', system-ui, sans-serif;
-  --font-space-mono: 'Space Mono', 'Consolas', monospace;
+  /* Fonts - Odysseus inspired typography */
+  --font-fira-code: 'Fira Code', 'Consolas', 'Monaco', monospace;
+  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
 
-  /* Page surface - cosmic light gray */
-  --background: oklch(0.97 0.01 240);
-  --foreground: oklch(0.15 0.02 260);
+  /* Typography sizes - px based */
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
 
-  /* Cards with subtle cosmic tint */
-  --card: oklch(0.995 0.002 240);
-  --card-foreground: oklch(0.15 0.02 260);
+  /* Page surface - light theme */
+  --background: #fafafa;
+  --foreground: #1a1a1a;
+
+  /* Cards - pure white for light theme */
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
 
   /* Popover */
-  --popover: oklch(0.995 0.002 240);
-  --popover-foreground: oklch(0.15 0.02 260);
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
 
-  /* Primary — electric cyan */
-  --primary: oklch(0.65 0.18 220);
-  --primary-foreground: oklch(1 0 0);
+  /* Primary — red accent (Odysseus CTA) */
+  --primary: #e63946;
+  --primary-foreground: #ffffff;
 
-  /* Secondary — magenta accent */
-  --secondary: oklch(0.68 0.20 330);
-  --secondary-foreground: oklch(1 0 0);
+  /* Secondary */
+  --secondary: #f1f3f5;
+  --secondary-foreground: #1a1a1a;
 
-  /* Muted — soft cosmic */
-  --muted: oklch(0.94 0.008 240);
-  --muted-foreground: oklch(0.50 0.015 260);
+  /* Muted */
+  --muted: #f0f0f0;
+  --muted-foreground: #6b7280;
 
-  /* Accent — electric blue */
-  --accent: oklch(0.62 0.19 250);
-  --accent-foreground: oklch(1 0 0);
+  /* Accent */
+  --accent: #e63946;
+  --accent-foreground: #ffffff;
 
   /* Destructive */
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: #dc2626;
 
-  /* Borders & inputs — cosmic borders */
-  --border: oklch(0.88 0.01 240);
-  --input: oklch(0.90 0.01 240);
-  --ring: oklch(0.65 0.18 220);
+  /* Borders & inputs */
+  --border: #e0e0e0;
+  --input: #f5f5f5;
+  --ring: #e63946;
 
-  /* Charts — cosmic palette (cyan → magenta → blue → gold) */
-  --chart-1: oklch(0.65 0.18 220); /* cyan */
-  --chart-2: oklch(0.68 0.20 330); /* magenta */
-  --chart-3: oklch(0.62 0.19 250); /* electric blue */
-  --chart-4: oklch(0.72 0.15 80);  /* gold */
-  --chart-5: oklch(0.58 0.16 280); /* purple */
+  /* Charts - red-accented palette */
+  --chart-1: #e63946;
+  --chart-2: #f1f3f5;
+  --chart-3: #6b7280;
+  --chart-4: #9ca3af;
+  --chart-5: #d1d5db;
 
-  --radius: 0.625rem;
+  --radius: 0.25rem;
 
-  /* Sidebar — cosmic deep */
-  --sidebar: oklch(0.13 0.02 260);
-  --sidebar-foreground: oklch(0.92 0.008 264);
-  --sidebar-primary: oklch(0.65 0.18 220);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.22 0.02 260);
-  --sidebar-accent-foreground: oklch(0.92 0.008 264);
-  --sidebar-border: oklch(0.65 0.18 220 / 20%);
-  --sidebar-ring: oklch(0.65 0.18 220);
+  /* Sidebar - subtle dark for light theme */
+  --sidebar: #f5f5f5;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #e63946;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e63946;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #e0e0e0;
+  --sidebar-ring: #e63946;
 
-  /* Space theme variables */
-  --cosmic-glow: oklch(0.65 0.18 220 / 15%);
-  --neon-cyan: oklch(0.70 0.20 220);
-  --neon-magenta: oklch(0.72 0.22 330);
-  --neon-blue: oklch(0.68 0.21 250);
-  --neon-gold: oklch(0.78 0.17 80);
-  --glass-bg: oklch(1 0 0 / 60%);
-  --glass-border: oklch(0.65 0.18 220 / 30%);
+  /* Odysseus-inspired variables */
+  --border-subtle: #f0f0f0;
+  --panel: #ffffff;
 }
 
 .dark {
-  /* Deep space background - bolder */
-  --background: oklch(0.08 0.015 260);
-  --foreground: oklch(0.98 0.005 240);
+  /* Deep space background */
+  --background: #0f0f0f;
+  --foreground: #f0f0f0;
 
-  /* Cards with more cosmic depth */
-  --card: oklch(0.14 0.018 260);
-  --card-foreground: oklch(0.98 0.005 240);
+  /* Cards with depth */
+  --card: #1a1a1a;
+  --card-foreground: #f0f0f0;
 
   /* Popover */
-  --popover: oklch(0.14 0.018 260);
-  --popover-foreground: oklch(0.98 0.005 240);
+  --popover: #1a1a1a;
+  --popover-foreground: #f0f0f0;
 
-  /* Primary — brighter glowing cyan */
-  --primary: oklch(0.78 0.24 220);
-  --primary-foreground: oklch(0.08 0.01 260);
+  /* Primary — bright red accent for dark theme */
+  --primary: #ff6b6b;
+  --primary-foreground: #0f0f0f;
 
-  /* Secondary — vibrant neon magenta */
-  --secondary: oklch(0.80 0.26 330);
-  --secondary-foreground: oklch(0.08 0.01 260);
+  /* Secondary */
+  --secondary: #2a2a2a;
+  --secondary-foreground: #f0f0f0;
 
-  /* Muted — deep cosmic */
-  --muted: oklch(0.20 0.018 260);
-  --muted-foreground: oklch(0.70 0.012 260);
+  /* Muted */
+  --muted: #2a2a2a;
+  --muted-foreground: #9ca3af;
 
-  /* Accent — bright electric blue */
-  --accent: oklch(0.75 0.24 250);
-  --accent-foreground: oklch(0.08 0.01 260);
+  /* Accent */
+  --accent: #ff6b6b;
+  --accent-foreground: #0f0f0f;
 
   /* Destructive */
-  --destructive: oklch(0.704 0.191 22.216);
+  --destructive: #ef4444;
 
-  /* Borders & inputs — brighter neon borders */
-  --border: oklch(0.78 0.24 220 / 30%);
-  --input: oklch(0.78 0.24 220 / 25%);
-  --ring: oklch(0.78 0.24 220);
+  /* Borders & inputs */
+  --border: #333333;
+  --input: #1f1f1f;
+  --ring: #ff6b6b;
 
-  /* Charts — vibrant glowing palette */
-  --chart-1: oklch(0.78 0.24 220); /* bright cyan */
-  --chart-2: oklch(0.80 0.26 330); /* vibrant magenta */
-  --chart-3: oklch(0.75 0.24 250); /* bright blue */
-  --chart-4: oklch(0.82 0.20 80);  /* rich gold */
-  --chart-5: oklch(0.70 0.22 280); /* purple */
+  /* Charts - dark theme palette */
+  --chart-1: #ff6b6b;
+  --chart-2: #2a2a2a;
+  --chart-3: #9ca3af;
+  --chart-4: #6b7280;
+  --chart-5: #4b5563;
 
-  /* Sidebar — deepest space */
-  --sidebar: oklch(0.06 0.015 260);
-  --sidebar-foreground: oklch(0.95 0.01 240);
-  --sidebar-primary: oklch(0.78 0.24 220);
-  --sidebar-primary-foreground: oklch(0.06 0.01 260);
-  --sidebar-accent: oklch(0.16 0.018 260);
-  --sidebar-accent-foreground: oklch(0.95 0.01 240);
-  --sidebar-border: oklch(0.78 0.24 220 / 30%);
-  --sidebar-ring: oklch(0.78 0.24 220);
+  /* Sidebar - deepest */
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f0f0f0;
+  --sidebar-primary: #ff6b6b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ff6b6b;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #333333;
+  --sidebar-ring: #ff6b6b;
+
+  /* Odysseus-inspired variables */
+  --border-subtle: #2a2a2a;
+  --panel: #1a1a1a;
 
   /* Space theme variables - bolder glow */
   --cosmic-glow: oklch(0.78 0.24 220 / 25%);
@@ -421,4 +428,138 @@
     opacity: 1;
     transform: none;
   }
+}
+
+/* ========================================
+   O dysseus-Inspired Component Styles
+   ======================================== */
+
+/* Card styling - sharp borders, subtle shadows */
+.card-odysseus {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  background: var(--card);
+  padding: 16px;
+  transition: all 150ms ease-in-out;
+}
+
+.card-odysseus:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary);
+}
+
+/* Button styling - red CTAs */
+.btn-primary-odysseus {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 8px 16px;
+  font-family: var(--font-fira-code);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all 150ms ease-in-out;
+}
+
+.btn-primary-odysseus:hover {
+  filter: brightness(0.9);
+  box-shadow: 0 2px 8px rgba(230, 57, 70, 0.3);
+}
+
+.btn-primary-odysseus:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--primary);
+}
+
+.btn-secondary-odysseus {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 16px;
+  font-family: var(--font-fira-code);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all 150ms ease-in-out;
+}
+
+.btn-secondary-odysseus:hover {
+  border-color: var(--primary);
+}
+
+/* Typography utilities */
+.text-odysseus {
+  font-family: var(--font-fira-code);
+}
+
+.text-body-odysseus {
+  font-family: var(--font-inter);
+}
+
+/* Grid layouts */
+.grid-odysseus-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.grid-odysseus-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .grid-odysseus-2,
+  .grid-odysseus-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Force job description text to be white in dark mode */
+.dark .job-description-container,
+.dark .job-description-container .job-description-content,
+.dark .job-description-container .job-description-text,
+.dark .job-description-container .job-description-title {
+  color: #ffffff !important;
+}
+
+.dark .job-description-container .job-description-text span {
+  color: #ffffff !important;
+}
+
+/* Make section headers stand out in dark mode */
+.dark .job-description-container .job-description-title {
+  background: linear-gradient(to right, rgba(31, 41, 55, 0.9), rgba(17, 24, 39, 0.9)) !important;
+  border-left-color: #22d3ee !important;
+  color: #ffffff !important;
+  font-size: 1.125rem !important;
+  font-weight: 700 !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Ensure bullet points are visible */
+.dark .job-description-container .job-description-text span[class*="text-cyan-400"] {
+  color: #22d3ee !important;
+}
+
+/* Ensure proper contrast in light mode */
+.light .job-description-container .job-description-text,
+.light .job-description-container .job-description-title {
+  color: #1a1a1a;
+}
+
+.light .job-description-container .job-description-title {
+  background: linear-gradient(to right, rgba(243, 244, 246, 0.9), rgba(255, 255, 255, 0.9)) !important;
+  border-left-color: #0891b2 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
 }

@@ -12,7 +12,7 @@ import json
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -21,16 +21,22 @@ from ..llm.router import TaskType
 
 class Provider(str, Enum):
     """Available LLM providers."""
+
     ANTHROPIC = "anthropic"
     OLLAMA = "ollama"
 
 
 class ModelRouting(BaseModel):
     """Model routing configuration for a specific task type."""
+
     task_type: str = Field(description="Task type (selection, scoring, etc.)")
-    primary_provider: Provider = Field(default=Provider.OLLAMA, description="Primary provider to use")
+    primary_provider: Provider = Field(
+        default=Provider.OLLAMA, description="Primary provider to use"
+    )
     primary_model: str = Field(description="Primary model name")
-    fallback_provider: Provider = Field(default=Provider.ANTHROPIC, description="Fallback provider")
+    fallback_provider: Provider = Field(
+        default=Provider.ANTHROPIC, description="Fallback provider"
+    )
     fallback_model: str = Field(description="Fallback model name")
 
     @field_validator("task_type")
@@ -45,8 +51,13 @@ class ModelRouting(BaseModel):
 
 class APIConfig(BaseModel):
     """API and service configuration."""
-    anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key")
-    ollama_host: str = Field(default="localhost:11434", description="Ollama service host:port")
+
+    anthropic_api_key: Optional[str] = Field(
+        default=None, description="Anthropic API key"
+    )
+    ollama_host: str = Field(
+        default="localhost:11434", description="Ollama service host:port"
+    )
 
     @field_validator("ollama_host")
     @classmethod
@@ -59,27 +70,50 @@ class APIConfig(BaseModel):
 
 class ModelParameters(BaseModel):
     """Default model generation parameters."""
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="Generation temperature")
-    max_tokens: int = Field(default=4096, ge=1, le=128000, description="Maximum tokens to generate")
-    top_p: float = Field(default=0.9, ge=0.0, le=1.0, description="Nucleus sampling parameter")
+
+    temperature: float = Field(
+        default=0.7, ge=0.0, le=2.0, description="Generation temperature"
+    )
+    max_tokens: int = Field(
+        default=4096, ge=1, le=128000, description="Maximum tokens to generate"
+    )
+    top_p: float = Field(
+        default=0.9, ge=0.0, le=1.0, description="Nucleus sampling parameter"
+    )
     top_k: int = Field(default=40, ge=1, le=100, description="Top-k sampling parameter")
 
 
 class CostLimits(BaseModel):
     """Cost and usage limits."""
-    max_api_cost_per_run: float = Field(default=5.0, ge=0.0, description="Maximum API cost per pipeline run (USD)")
+
+    max_api_cost_per_run: float = Field(
+        default=5.0, ge=0.0, description="Maximum API cost per pipeline run (USD)"
+    )
     enable_cache: bool = Field(default=True, description="Enable response caching")
     cache_ttl: int = Field(default=3600, ge=0, description="Cache TTL in seconds")
-    max_concurrent_requests: int = Field(default=2, ge=1, le=10, description="Max concurrent LLM requests")
+    max_concurrent_requests: int = Field(
+        default=2, ge=1, le=10, description="Max concurrent LLM requests"
+    )
 
 
 class UserSettings(BaseModel):
     """Complete user settings configuration."""
-    routing: Dict[str, ModelRouting] = Field(default_factory=dict, description="Model routing per task type")
-    api_config: APIConfig = Field(default_factory=APIConfig, description="API configuration")
-    model_params: ModelParameters = Field(default_factory=ModelParameters, description="Default model parameters")
-    cost_limits: CostLimits = Field(default_factory=CostLimits, description="Cost and usage limits")
-    updated_at: datetime = Field(default_factory=datetime.now, description="Last update timestamp")
+
+    routing: Dict[str, ModelRouting] = Field(
+        default_factory=dict, description="Model routing per task type"
+    )
+    api_config: APIConfig = Field(
+        default_factory=APIConfig, description="API configuration"
+    )
+    model_params: ModelParameters = Field(
+        default_factory=ModelParameters, description="Default model parameters"
+    )
+    cost_limits: CostLimits = Field(
+        default_factory=CostLimits, description="Cost and usage limits"
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.now, description="Last update timestamp"
+    )
     version: str = Field(default="1.0", description="Settings schema version")
 
     def get_routing_for_task(self, task_type: str) -> Optional[ModelRouting]:

@@ -1,13 +1,14 @@
 """Integration tests for the RAG pipeline stage."""
 
-import pytest
-from unittest.mock import MagicMock, patch
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
-from src.pipeline.stages import PipelineStages, PipelineContext, StageResult
-from src.pipeline.orchestrator import PipelineStage
+import pytest
+
 from src.models.job_listing import JobListing, JobSource
-from src.models.user_profile import UserProfile, ContactInfo, TargetJob
+from src.models.user_profile import ContactInfo, TargetJob, UserProfile
+from src.pipeline.orchestrator import PipelineStage
+from src.pipeline.stages import PipelineContext, PipelineStages, StageResult
 from src.scoring.matcher import MatchScore
 
 
@@ -60,12 +61,18 @@ class TestRAGPipelineStage:
     @patch("src.pipeline.stages.RAGRanker")
     @patch("src.pipeline.stages.RAGConfig")
     def test_stage_rag_rank_when_rag_available(
-        self, mock_config_cls, mock_ranker_cls, mock_chunker_cls,
-        mock_store_cls, mock_embed_cls, pipeline_context, sample_scored_listings,
+        self,
+        mock_config_cls,
+        mock_ranker_cls,
+        mock_chunker_cls,
+        mock_store_cls,
+        mock_embed_cls,
+        pipeline_context,
+        sample_scored_listings,
     ):
         """When RAG components are available, stage should re-rank listings."""
-        from src.rag.ranker import RAGMatchScore
         from src.rag.config import RAGConfig
+        from src.rag.ranker import RAGMatchScore
 
         # Configure mocks
         mock_config = RAGConfig()
@@ -108,7 +115,9 @@ class TestRAGPipelineStage:
         assert result.metadata.get("rag_enabled") in [True, False]
         assert len(result.data) >= 1
 
-    def test_stage_rag_rank_degrades_gracefully(self, pipeline_context, sample_scored_listings):
+    def test_stage_rag_rank_degrades_gracefully(
+        self, pipeline_context, sample_scored_listings
+    ):
         """When RAG is unavailable, should pass through heuristic results."""
         stages = PipelineStages(pipeline_context)
         # RAG ranker stays None since config won't load

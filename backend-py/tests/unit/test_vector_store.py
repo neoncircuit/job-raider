@@ -1,11 +1,12 @@
 """Unit tests for the ChromaStore vector store."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 
-from src.rag.vector_store import ChromaStore
-from src.rag.config import VectorStoreConfig
+import pytest
+
 from src.rag.chunker import TextChunk
+from src.rag.config import VectorStoreConfig
+from src.rag.vector_store import ChromaStore
 
 
 @pytest.fixture
@@ -47,6 +48,7 @@ def sample_chunks():
 def sample_embeddings():
     """Create sample embeddings for testing."""
     import numpy as np
+
     rng = np.random.RandomState(42)
     return [rng.randn(768).astype(float).tolist() for _ in range(2)]
 
@@ -92,6 +94,7 @@ class TestAddAndRetrieve:
             ),
         ]
         import numpy as np
+
         embeddings = [np.random.randn(768).astype(float).tolist()]
 
         chroma_store.add_profile("default", chunks, embeddings)
@@ -145,7 +148,9 @@ class TestDelete:
 class TestPersistence:
     """Tests for data persistence."""
 
-    def test_data_survives_reinit(self, temp_chroma_dir, sample_chunks, sample_embeddings):
+    def test_data_survives_reinit(
+        self, temp_chroma_dir, sample_chunks, sample_embeddings
+    ):
         """Data should persist across ChromaStore instances."""
         config = VectorStoreConfig(
             persist_directory=temp_chroma_dir,

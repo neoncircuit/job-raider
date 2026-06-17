@@ -2,22 +2,23 @@
 Unit tests for GeminiClient with mocked SDK responses.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from src.llm.base import (
+    AuthenticationError,
+    CostEstimate,
+    LLMClientError,
     LLMConfig,
     LLMResponse,
     Message,
     MessageType,
-    TokenUsage,
-    CostEstimate,
-    AuthenticationError,
     ModelNotFoundError,
-    LLMClientError,
+    TokenUsage,
 )
-from src.llm.gemini_client import GeminiClient, MODEL_PRICING
+from src.llm.gemini_client import MODEL_PRICING, GeminiClient
 
 
 @pytest.fixture
@@ -66,6 +67,7 @@ class TestGeminiClientInit:
         """Test that missing API key raises AuthenticationError."""
         with patch.dict("os.environ", {}, clear=True):
             import os
+
             os.environ.pop("GEMINI_API_KEY", None)
             with pytest.raises(AuthenticationError, match="GEMINI_API_KEY"):
                 GeminiClient(config=mock_config)
@@ -126,7 +128,9 @@ class TestGeminiClientGenerate:
         assert client.total_cost > 0
 
     @patch("src.llm.gemini_client.genai.Client")
-    def test_generate_with_kwargs_overrides(self, mock_client_cls, mock_config, messages):
+    def test_generate_with_kwargs_overrides(
+        self, mock_client_cls, mock_config, messages
+    ):
         """Test that kwargs override config parameters."""
         mock_client = MagicMock()
         mock_client.models.generate_content.return_value = _make_response()
@@ -141,7 +145,9 @@ class TestGeminiClientGenerate:
         assert config_arg.max_output_tokens == 100
 
     @patch("src.llm.gemini_client.genai.Client")
-    def test_generate_retries_on_rate_limit(self, mock_client_cls, mock_config, messages):
+    def test_generate_retries_on_rate_limit(
+        self, mock_client_cls, mock_config, messages
+    ):
         """Test retry logic on rate limit errors."""
         mock_client = MagicMock()
         mock_client.models.generate_content.side_effect = [
@@ -157,7 +163,9 @@ class TestGeminiClientGenerate:
         assert mock_client.models.generate_content.call_count == 2
 
     @patch("src.llm.gemini_client.genai.Client")
-    def test_generate_raises_on_auth_error(self, mock_client_cls, mock_config, messages):
+    def test_generate_raises_on_auth_error(
+        self, mock_client_cls, mock_config, messages
+    ):
         """Test that auth errors are not retried."""
         mock_client = MagicMock()
         mock_client.models.generate_content.side_effect = Exception("API key invalid")
@@ -168,7 +176,9 @@ class TestGeminiClientGenerate:
             client.generate(messages)
 
     @patch("src.llm.gemini_client.genai.Client")
-    def test_generate_raises_after_max_retries(self, mock_client_cls, mock_config, messages):
+    def test_generate_raises_after_max_retries(
+        self, mock_client_cls, mock_config, messages
+    ):
         """Test that LLMClientError is raised after max retries."""
         mock_client = MagicMock()
         mock_client.models.generate_content.side_effect = Exception("Server error")

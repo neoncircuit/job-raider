@@ -8,16 +8,16 @@ Author: Job Raider
 Date: 2026-05-04
 """
 
+import random
 import re
 import time
-import random
-from typing import Set, List, Dict, Optional, Any
+from typing import Any, Dict, List, Optional, Set
 
 from playwright.sync_api import Page
 
-from .session import LinkedInSession
 from ..submission.applied_tracker import AppliedJobsTracker
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
+from .session import LinkedInSession
 
 
 class LinkedInAppliedScraper:
@@ -65,7 +65,9 @@ class LinkedInAppliedScraper:
             Set of LinkedIn job IDs that have been applied to.
         """
         if not self.session.is_authenticated:
-            self.logger.error("Session is not authenticated. Call session.start() first.")
+            self.logger.error(
+                "Session is not authenticated. Call session.start() first."
+            )
             return set()
 
         applied_ids: Set[str] = set()
@@ -140,9 +142,7 @@ class LinkedInAppliedScraper:
 
         return job_ids
 
-    def _extract_job_id_from_card(
-        self, card: Any, page: Page
-    ) -> Optional[str]:
+    def _extract_job_id_from_card(self, card: Any, page: Page) -> Optional[str]:
         """
         Extract a job ID from a job card element.
 

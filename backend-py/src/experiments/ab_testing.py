@@ -8,24 +8,25 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import Dict, List, Any, Optional, Callable
+import hashlib
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-import json
-import hashlib
+from typing import Any, Callable, Dict, List, Optional
 
-from ..scoring.matcher import JobMatcher
-from ..models.job_listing import JobListing
-from ..models.user_profile import UserProfile
 from ..metrics.cost_tracker import CostTracker
 from ..metrics.outcome_tracker import OutcomeTracker
-from ..utils.logger import get_logger, Components
+from ..models.job_listing import JobListing
+from ..models.user_profile import UserProfile
+from ..scoring.matcher import JobMatcher
+from ..utils.logger import Components, get_logger
 
 
 class ExperimentStatus(str, Enum):
     """Status of an A/B test experiment."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -35,6 +36,7 @@ class ExperimentStatus(str, Enum):
 @dataclass
 class ExperimentConfig:
     """Configuration for an A/B test experiment."""
+
     name: str
     description: str
     # Scoring weights to test
@@ -49,6 +51,7 @@ class ExperimentConfig:
 @dataclass
 class ExperimentResult:
     """Results from an A/B test experiment."""
+
     experiment_name: str
     variant_a: Dict[str, Any]
     variant_b: Dict[str, Any]
@@ -225,7 +228,11 @@ class ABTester:
 
         # Calculate metrics
         total_scored = len(scored_jobs)
-        avg_score = sum(s.total_score for _, s in scored_jobs) / total_scored if total_scored > 0 else 0
+        avg_score = (
+            sum(s.total_score for _, s in scored_jobs) / total_scored
+            if total_scored > 0
+            else 0
+        )
 
         return {
             "variant": variant_name,

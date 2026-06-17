@@ -11,25 +11,25 @@ Date: 2026-04-20
 import os
 import time
 from typing import Any, Dict, List, Optional
+
 from anthropic import Anthropic, AsyncAnthropic
 from anthropic.types import Message as AnthropicMessage
 
 from .base import (
+    AuthenticationError,
     BaseLLMClient,
+    CostEstimate,
+    InvalidRequestError,
+    LLMClientError,
     LLMConfig,
     LLMResponse,
     Message,
     MessageType,
-    TokenUsage,
-    CostEstimate,
-    LLMClientError,
-    RateLimitError,
-    AuthenticationError,
     ModelNotFoundError,
+    RateLimitError,
     TimeoutError,
-    InvalidRequestError,
+    TokenUsage,
 )
-
 
 # Claude model pricing (per 1M tokens)
 MODEL_PRICING = {
@@ -130,11 +130,7 @@ class ClaudeClient(BaseLLMClient):
             total_tokens=usage.input_tokens + usage.output_tokens,
         )
 
-    def generate(
-        self,
-        messages: List[Message],
-        **kwargs
-    ) -> LLMResponse:
+    def generate(self, messages: List[Message], **kwargs) -> LLMResponse:
         """
         Generate a response synchronously.
 
@@ -169,8 +165,7 @@ class ClaudeClient(BaseLLMClient):
                 start_time = time.time()
 
                 response = self.client.messages.create(
-                    messages=anthropic_messages,
-                    **params
+                    messages=anthropic_messages, **params
                 )
 
                 latency_ms = int((time.time() - start_time) * 1000)
@@ -203,25 +198,23 @@ class ClaudeClient(BaseLLMClient):
 
                 # Rate limit - wait before retry
                 if "rate" in str(e).lower():
-                    wait_time = self.config.retry_delay * (2 ** attempt)
+                    wait_time = self.config.retry_delay * (2**attempt)
                     time.sleep(wait_time)
                     continue
 
                 # Other errors - retry with backoff
                 if attempt < self.config.max_retries:
-                    wait_time = self.config.retry_delay * (2 ** attempt)
+                    wait_time = self.config.retry_delay * (2**attempt)
                     time.sleep(wait_time)
                     continue
                 else:
-                    raise LLMClientError(f"Failed after {self.config.max_retries} retries: {e}")
+                    raise LLMClientError(
+                        f"Failed after {self.config.max_retries} retries: {e}"
+                    )
 
         raise LLMClientError(f"Failed to generate response: {last_error}")
 
-    async def generate_async(
-        self,
-        messages: List[Message],
-        **kwargs
-    ) -> LLMResponse:
+    async def generate_async(self, messages: List[Message], **kwargs) -> LLMResponse:
         """
         Generate a response asynchronously.
 
@@ -254,11 +247,11 @@ class ClaudeClient(BaseLLMClient):
         for attempt in range(self.config.max_retries + 1):
             try:
                 import asyncio
+
                 start_time = time.time()
 
                 response = await self.async_client.messages.create(
-                    messages=anthropic_messages,
-                    **params
+                    messages=anthropic_messages, **params
                 )
 
                 latency_ms = int((time.time() - start_time) * 1000)
@@ -291,15 +284,17 @@ class ClaudeClient(BaseLLMClient):
 
                 # Rate limit - wait before retry
                 if "rate" in str(e).lower():
-                    await asyncio.sleep(self.config.retry_delay * (2 ** attempt))
+                    await asyncio.sleep(self.config.retry_delay * (2**attempt))
                     continue
 
                 # Other errors - retry with backoff
                 if attempt < self.config.max_retries:
-                    await asyncio.sleep(self.config.retry_delay * (2 ** attempt))
+                    await asyncio.sleep(self.config.retry_delay * (2**attempt))
                     continue
                 else:
-                    raise LLMClientError(f"Failed after {self.config.max_retries} retries: {e}")
+                    raise LLMClientError(
+                        f"Failed after {self.config.max_retries} retries: {e}"
+                    )
 
         raise LLMClientError(f"Failed to generate response: {last_error}")
 
@@ -332,7 +327,9 @@ class ClaudeClient(BaseLLMClient):
         """
         if self.config.model not in MODEL_PRICING:
             # Default to Sonnet pricing if model not found
-            pricing = MODEL_PRICING.get("claude-sonnet-4-6", {"input": 3.0, "output": 15.0})
+            pricing = MODEL_PRICING.get(
+                "claude-sonnet-4-6", {"input": 3.0, "output": 15.0}
+            )
         else:
             pricing = MODEL_PRICING[self.config.model]
 

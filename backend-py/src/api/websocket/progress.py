@@ -9,11 +9,11 @@ Date: 2026-04-21
 
 import json
 from datetime import datetime
-from typing import Dict, List, Set, Any
+from typing import Any, Dict, List, Set
 
 from fastapi import WebSocket
 
-from ...utils.logger import get_logger, Components
+from ...utils.logger import Components, get_logger
 
 logger = get_logger(Components.SCRAPERS)
 

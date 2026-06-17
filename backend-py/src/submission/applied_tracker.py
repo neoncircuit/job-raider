@@ -10,9 +10,9 @@ Date: 2026-05-04
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Set, Optional, Any
+from typing import Any, Dict, Optional, Set
 
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class AppliedJobsTracker:

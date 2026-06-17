@@ -8,11 +8,11 @@ Author: Job Raider
 Date: 2026-04-27
 """
 
-import os
 import logging
+import os
 from typing import Optional
 
-from .logger import get_logger, Components
+from .logger import Components, get_logger
 
 logger = get_logger(Components.SCRAPERS)
 

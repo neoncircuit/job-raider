@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import type { UserProfile } from "@/lib/types/api";
+import type { UserProfile, DISCResult } from "@/lib/types/api";
 import { BarChart3, TrendingUp, Award, Target, Zap, Shield, Users, Lightbulb, Briefcase, Rocket, Sparkles } from "lucide-react";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import { cn } from "@/lib/utils/cn";
@@ -138,7 +138,7 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
           {/* Note about proficiency levels */}
           {skillsWithProficiency === 0 && (
             <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              <span className="font-medium">Note:</span> Your resume doesn't include proficiency levels.
+              <span className="font-medium">Note:</span> Your resume doesn&apos;t include proficiency levels.
               Scores are based on years of experience. Add proficiency levels for more accurate results.
             </div>
           )}
@@ -296,7 +296,16 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
     const saved = localStorage.getItem("disc_assessment_result");
     if (saved) {
       try {
-        setDiscResult(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDiscResult(prev =>
+          prev?.dominance !== parsed.dominance ||
+          prev?.influence !== parsed.influence ||
+          prev?.steadiness !== parsed.steadiness ||
+          prev?.conscientiousness !== parsed.conscientiousness
+            ? parsed
+            : prev
+        );
       } catch (e) {
         console.error("Failed to parse DISC result", e);
       }
@@ -350,7 +359,8 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
 
   // Estimate DISC-style profile based on resume patterns
   const estimateDISC = (): DISCProfile => {
-    let dominance = 30, influence = 30, steadiness = 30, conscientiousness = 30;
+    let dominance = 30, influence = 30, conscientiousness = 30;
+    const steadiness = 30;
 
     const leadershipKeywords = ["lead", "manager", "senior", "principal", "director", "head", "chief"];
     const technicalKeywords = ["engineer", "developer", "architect", "technical"];
@@ -379,9 +389,16 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
 
   const discProfile = discResult || estimateDISC();
 
-  const handleDISCComplete = (result: { dominance: number; influence: number; steadiness: number; conscientiousness: number }) => {
-    setDiscResult(result);
-    localStorage.setItem("disc_assessment_result", JSON.stringify(result));
+  const handleDISCComplete = (result: DISCResult) => {
+    // Convert DISCResult (D/I/S/C) to internal format (dominance/influence/steadiness/conscientiousness)
+    const converted = {
+      dominance: result.profile.D,
+      influence: result.profile.I,
+      steadiness: result.profile.S,
+      conscientiousness: result.profile.C,
+    };
+    setDiscResult(converted);
+    localStorage.setItem("disc_assessment_result", JSON.stringify(converted));
     setShowDISCAssessment(false);
   };
 
@@ -506,7 +523,6 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
         <DialogContent className="max-w-md">
           <DISCAssessment
             onComplete={handleDISCComplete}
-            existingResult={discResult}
           />
         </DialogContent>
       </Dialog>

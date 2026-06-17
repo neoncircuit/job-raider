@@ -14,16 +14,16 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from ..llm.embedding_client import EmbeddingClient, EmbeddingError
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..scoring.matcher import MatchScore
-from ..llm.embedding_client import EmbeddingClient, EmbeddingError
-from .config import RAGConfig
-from .chunker import TextChunker, TextChunk
-from .vector_store import ChromaStore
 from .bm25_retriever import BM25Retriever
-from .rrf_fusion import reciprocal_rank_fusion
+from .chunker import TextChunk, TextChunker
+from .config import RAGConfig
 from .cross_encoder import CrossEncoderReranker
+from .rrf_fusion import reciprocal_rank_fusion
+from .vector_store import ChromaStore
 
 logger = logging.getLogger("job_raider.rag")
 
@@ -159,7 +159,9 @@ class RAGRanker:
                 for chunk in chunks:
                     bm25_ids.append(f"{job.job_id}_chunk_{chunk.chunk_index}")
                     bm25_docs.append(chunk.content)
-                    bm25_metas.append({"job_id": job.job_id, "section": chunk.section or ""})
+                    bm25_metas.append(
+                        {"job_id": job.job_id, "section": chunk.section or ""}
+                    )
             if bm25_ids:
                 self.bm25_retriever.add_documents(bm25_ids, bm25_docs, bm25_metas)
                 logger.debug("Indexed %d chunks into BM25", len(bm25_ids))
@@ -209,11 +211,13 @@ class RAGRanker:
         # Also index profile chunks into BM25
         if self.bm25_retriever and self.config.bm25.enabled:
             bm25_ids = [
-                f"profile_{profile_id}_chunk_{c.chunk_index}"
-                for c in valid_chunks
+                f"profile_{profile_id}_chunk_{c.chunk_index}" for c in valid_chunks
             ]
             bm25_docs = [c.content for c in valid_chunks]
-            bm25_metas = [{"profile_id": profile_id, "section": c.section or ""} for c in valid_chunks]
+            bm25_metas = [
+                {"profile_id": profile_id, "section": c.section or ""}
+                for c in valid_chunks
+            ]
             self.bm25_retriever.add_documents(bm25_ids, bm25_docs, bm25_metas)
 
         return {
@@ -303,20 +307,23 @@ class RAGRanker:
 
             recommendation = self._determine_recommendation(combined)
 
-            rag_scores.append(RAGMatchScore(
-                job=job,
-                heuristic_score=match_score.total_score,
-                semantic_score=semantic_sim,
-                combined_score=combined,
-                heuristic_breakdown=match_score.breakdown,
-                matched_keywords=match_score.matched_keywords,
-                missing_skills=match_score.missing_skills,
-                recommendation=recommendation,
-                reasoning=self._build_reasoning(
-                    match_score, semantic_sim, combined
-                ),
-                passed_threshold=combined >= self.config.re_ranking.similarity_threshold,
-            ))
+            rag_scores.append(
+                RAGMatchScore(
+                    job=job,
+                    heuristic_score=match_score.total_score,
+                    semantic_score=semantic_sim,
+                    combined_score=combined,
+                    heuristic_breakdown=match_score.breakdown,
+                    matched_keywords=match_score.matched_keywords,
+                    missing_skills=match_score.missing_skills,
+                    recommendation=recommendation,
+                    reasoning=self._build_reasoning(
+                        match_score, semantic_sim, combined
+                    ),
+                    passed_threshold=combined
+                    >= self.config.re_ranking.similarity_threshold,
+                )
+            )
 
         # Sort by combined score descending
         rag_scores.sort(key=lambda x: x.combined_score, reverse=True)
@@ -523,17 +530,15 @@ class RAGRanker:
         if hasattr(profile, "skills") and profile.skills:
             if isinstance(profile.skills, list):
                 skill_names = [
-                    s.name if hasattr(s, "name") else str(s)
-                    for s in profile.skills
+                    s.name if hasattr(s, "name") else str(s) for s in profile.skills
                 ]
                 parts.extend(skill_names)
             elif isinstance(profile.skills, dict):
                 for category, skills in profile.skills.items():
                     if isinstance(skills, list):
-                        parts.extend([
-                            s.name if hasattr(s, "name") else str(s)
-                            for s in skills
-                        ])
+                        parts.extend(
+                            [s.name if hasattr(s, "name") else str(s) for s in skills]
+                        )
 
         if hasattr(profile, "target_job") and profile.target_job:
             target = profile.target_job
@@ -609,7 +614,9 @@ class RAGRanker:
 
         heuristic_normalized = heuristic_score / 100.0
 
-        return heuristic_weight * heuristic_normalized + semantic_weight * semantic_score
+        return (
+            heuristic_weight * heuristic_normalized + semantic_weight * semantic_score
+        )
 
     def _determine_recommendation(self, combined_score: float) -> str:
         """Determine action recommendation based on combined score.
@@ -646,7 +653,9 @@ class RAGRanker:
         parts = [match_score.reasoning]
 
         if semantic_sim >= 0.7:
-            parts.append("Strong semantic alignment between profile and job description.")
+            parts.append(
+                "Strong semantic alignment between profile and job description."
+            )
         elif semantic_sim >= 0.5:
             parts.append("Moderate semantic similarity detected.")
         elif semantic_sim >= 0.3:

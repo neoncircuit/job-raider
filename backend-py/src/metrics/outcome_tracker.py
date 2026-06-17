@@ -8,18 +8,19 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import List, Dict, Any, Optional
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-import json
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class ApplicationStatus(str, Enum):
     """Status of a job application."""
+
     APPLIED = "applied"
     UNDER_REVIEW = "under_review"
     SCREENING_SCHEDULED = "screening_scheduled"
@@ -41,6 +42,7 @@ class ApplicationStatus(str, Enum):
 
 class InterviewStage(str, Enum):
     """Stages of the interview process."""
+
     SCREENING = "screening"
     TECHNICAL = "technical"
     ONSITE = "onsite"
@@ -49,6 +51,7 @@ class InterviewStage(str, Enum):
 
 class Outcome(str, Enum):
     """Final outcome of an application."""
+
     OFFER = "offer"
     REJECT = "reject"
     WITHDRAW = "withdraw"
@@ -58,6 +61,7 @@ class Outcome(str, Enum):
 @dataclass
 class InterviewEvent:
     """Record of an interview event."""
+
     stage: InterviewStage
     scheduled_date: Optional[datetime] = None
     completed_date: Optional[datetime] = None
@@ -68,6 +72,7 @@ class InterviewEvent:
 @dataclass
 class OfferDetails:
     """Details of a job offer."""
+
     salary_min: Optional[float] = None
     salary_max: Optional[float] = None
     salary_period: str = "annual"
@@ -80,6 +85,7 @@ class OfferDetails:
 @dataclass
 class CustomApplicationStatus:
     """User-defined application status."""
+
     status_id: str
     name: str
     description: str
@@ -94,6 +100,7 @@ class CustomApplicationStatus:
 @dataclass
 class ApplicationOutcome:
     """Complete outcome tracking for an application."""
+
     application_id: str
     job_title: str
     company: str
@@ -137,6 +144,7 @@ class ApplicationOutcome:
 @dataclass
 class ConversionMetrics:
     """Conversion metrics for applications."""
+
     total_applications: int
     screening_rate: float  # % that got screening
     technical_rate: float  # % that got technical
@@ -241,10 +249,12 @@ class OutcomeTracker:
         outcome.current_status = status
 
         if note:
-            outcome.timeline_notes.append({
-                "timestamp": datetime.now().isoformat(),
-                "note": note,
-            })
+            outcome.timeline_notes.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "note": note,
+                }
+            )
 
         # Auto-detect final outcome
         if status == ApplicationStatus.OFFER_ACCEPTED:
@@ -256,9 +266,7 @@ class OutcomeTracker:
 
         self._save_outcome(outcome)
 
-        self.logger.info(
-            f"Updated application {application_id} to {status.value}"
-        )
+        self.logger.info(f"Updated application {application_id} to {status.value}")
 
         return True
 
@@ -340,7 +348,9 @@ class OutcomeTracker:
 
                 return True
 
-        self.logger.warning(f"No pending {stage.value} interview found for {application_id}")
+        self.logger.warning(
+            f"No pending {stage.value} interview found for {application_id}"
+        )
         return False
 
     def add_offer(
@@ -384,9 +394,7 @@ class OutcomeTracker:
 
         self._save_outcome(outcome)
 
-        self.logger.info(
-            f"Added offer to application {application_id}"
-        )
+        self.logger.info(f"Added offer to application {application_id}")
 
         return True
 
@@ -450,10 +458,7 @@ class OutcomeTracker:
             ConversionMetrics object
         """
         cutoff = datetime.now() - timedelta(days=days)
-        recent_apps = [
-            o for o in self._outcomes.values()
-            if o.applied_date >= cutoff
-        ]
+        recent_apps = [o for o in self._outcomes.values() if o.applied_date >= cutoff]
 
         if not recent_apps:
             return ConversionMetrics(
@@ -471,10 +476,28 @@ class OutcomeTracker:
 
         # Calculate rates
         screening = len([o for o in recent_apps if o.has_interview])
-        technical = len([o for o in recent_apps if any(i.stage == InterviewStage.TECHNICAL for i in o.interviews)])
-        onsite = len([o for o in recent_apps if any(i.stage == InterviewStage.ONSITE for i in o.interviews)])
+        technical = len(
+            [
+                o
+                for o in recent_apps
+                if any(i.stage == InterviewStage.TECHNICAL for i in o.interviews)
+            ]
+        )
+        onsite = len(
+            [
+                o
+                for o in recent_apps
+                if any(i.stage == InterviewStage.ONSITE for i in o.interviews)
+            ]
+        )
         offers = len([o for o in recent_apps if o.final_outcome == Outcome.OFFER])
-        accepted = len([o for o in recent_apps if o.current_status == ApplicationStatus.OFFER_ACCEPTED])
+        accepted = len(
+            [
+                o
+                for o in recent_apps
+                if o.current_status == ApplicationStatus.OFFER_ACCEPTED
+            ]
+        )
 
         # Time to outcome
         time_to_offer = []
@@ -496,7 +519,9 @@ class OutcomeTracker:
                 # Use last update
                 if o.timeline_notes:
                     try:
-                        last_date = datetime.fromisoformat(o.timeline_notes[-1]["timestamp"])
+                        last_date = datetime.fromisoformat(
+                            o.timeline_notes[-1]["timestamp"]
+                        )
                         time_to_reject.append((last_date - o.applied_date).days)
                     except:
                         pass
@@ -508,8 +533,12 @@ class OutcomeTracker:
             onsite_rate=onsite / total if total > 0 else 0,
             offer_rate=offers / total if total > 0 else 0,
             acceptance_rate=accepted / offers if offers > 0 else 0,
-            avg_time_to_offer=sum(time_to_offer) / len(time_to_offer) if time_to_offer else 0,
-            avg_time_to_reject=sum(time_to_reject) / len(time_to_reject) if time_to_reject else 0,
+            avg_time_to_offer=(
+                sum(time_to_offer) / len(time_to_offer) if time_to_offer else 0
+            ),
+            avg_time_to_reject=(
+                sum(time_to_reject) / len(time_to_reject) if time_to_reject else 0
+            ),
         )
 
     def get_pipeline_effectiveness(
@@ -529,14 +558,16 @@ class OutcomeTracker:
 
         # Calculate scores
         funnel_score = (
-            metrics.screening_rate * 0.2 +
-            metrics.technical_rate * 0.3 +
-            metrics.onsite_rate * 0.3 +
-            metrics.offer_rate * 0.2
+            metrics.screening_rate * 0.2
+            + metrics.technical_rate * 0.3
+            + metrics.onsite_rate * 0.3
+            + metrics.offer_rate * 0.2
         )
 
         # Get offer details
-        offers = [o for o in self._outcomes.values() if o.final_outcome == Outcome.OFFER]
+        offers = [
+            o for o in self._outcomes.values() if o.final_outcome == Outcome.OFFER
+        ]
 
         avg_salary = None
         if offers:
@@ -562,7 +593,11 @@ class OutcomeTracker:
                 "avg_days_to_reject": metrics.avg_time_to_reject,
             },
             "offer_metrics": {
-                "total_offers": sum(1 for o in self._outcomes.values() if o.final_outcome == Outcome.OFFER),
+                "total_offers": sum(
+                    1
+                    for o in self._outcomes.values()
+                    if o.final_outcome == Outcome.OFFER
+                ),
                 "avg_salary": avg_salary,
                 "acceptance_rate": f"{metrics.acceptance_rate:.1%}",
             },
@@ -598,14 +633,16 @@ class OutcomeTracker:
             offers = sum(1 for a in apps if a.final_outcome == Outcome.OFFER)
             interviews = sum(1 for a in apps if a.has_interview)
 
-            stats.append({
-                "company": company,
-                "total_applications": len(apps),
-                "interview_count": interviews,
-                "offer_count": offers,
-                "interview_rate": interviews / len(apps) if apps else 0,
-                "offer_rate": offers / len(apps) if apps else 0,
-            })
+            stats.append(
+                {
+                    "company": company,
+                    "total_applications": len(apps),
+                    "interview_count": interviews,
+                    "offer_count": offers,
+                    "interview_rate": interviews / len(apps) if apps else 0,
+                    "offer_rate": offers / len(apps) if apps else 0,
+                }
+            )
 
         # Sort by offer rate
         stats.sort(key=lambda x: x["offer_rate"], reverse=True)
@@ -717,6 +754,7 @@ class OutcomeTracker:
             CustomApplicationStatus object
         """
         import hashlib
+
         status_id = f"custom_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{hashlib.md5(name.encode()).hexdigest()[:8]}"
 
         status = CustomApplicationStatus(
@@ -735,7 +773,9 @@ class OutcomeTracker:
 
         return status
 
-    def get_custom_statuses(self, active_only: bool = True) -> List[CustomApplicationStatus]:
+    def get_custom_statuses(
+        self, active_only: bool = True
+    ) -> List[CustomApplicationStatus]:
         """
         Get all custom statuses.
 
@@ -847,10 +887,12 @@ class OutcomeTracker:
         outcome.hidden_date = datetime.now()
 
         if reason:
-            outcome.timeline_notes.append({
-                "timestamp": datetime.now().isoformat(),
-                "note": f"Marked not interested: {reason}",
-            })
+            outcome.timeline_notes.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "note": f"Marked not interested: {reason}",
+                }
+            )
 
         self._save_outcome(outcome)
 
@@ -898,7 +940,9 @@ class OutcomeTracker:
         self._outcomes[job_id] = outcome
         self._save_outcome(outcome)
 
-        self.logger.info(f"Tracked external application: {job_id} - {job_title} at {company}")
+        self.logger.info(
+            f"Tracked external application: {job_id} - {job_title} at {company}"
+        )
 
         return outcome
 
@@ -931,10 +975,12 @@ class OutcomeTracker:
         outcome.custom_status_id = custom_status_id
 
         if note:
-            outcome.timeline_notes.append({
-                "timestamp": datetime.now().isoformat(),
-                "note": note,
-            })
+            outcome.timeline_notes.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "note": note,
+                }
+            )
 
         self._save_outcome(outcome)
 
@@ -968,7 +1014,8 @@ class OutcomeTracker:
             List of ApplicationOutcome objects
         """
         return [
-            o for o in self._outcomes.values()
+            o
+            for o in self._outcomes.values()
             if o.current_status == ApplicationStatus.APPLIED_ELSEWHERE
         ]
 
@@ -1054,12 +1101,18 @@ class OutcomeTracker:
             "company": outcome.company,
             "applied_date": outcome.applied_date.isoformat(),
             "current_status": outcome.current_status.value,
-            "final_outcome": outcome.final_outcome.value if outcome.final_outcome else None,
+            "final_outcome": (
+                outcome.final_outcome.value if outcome.final_outcome else None
+            ),
             "interviews": [
                 {
                     "stage": i.stage.value,
-                    "scheduled_date": i.scheduled_date.isoformat() if i.scheduled_date else None,
-                    "completed_date": i.completed_date.isoformat() if i.completed_date else None,
+                    "scheduled_date": (
+                        i.scheduled_date.isoformat() if i.scheduled_date else None
+                    ),
+                    "completed_date": (
+                        i.completed_date.isoformat() if i.completed_date else None
+                    ),
                     "feedback": i.feedback,
                     "outcome": i.outcome,
                 }
@@ -1068,7 +1121,9 @@ class OutcomeTracker:
             "offer": {
                 "salary_min": outcome.offer.salary_min if outcome.offer else None,
                 "salary_max": outcome.offer.salary_max if outcome.offer else None,
-                "salary_period": outcome.offer.salary_period if outcome.offer else "annual",
+                "salary_period": (
+                    outcome.offer.salary_period if outcome.offer else "annual"
+                ),
                 "bonus": outcome.offer.bonus if outcome.offer else None,
                 "equity": outcome.offer.equity if outcome.offer else None,
                 "benefits": outcome.offer.benefits if outcome.offer else [],
@@ -1080,33 +1135,53 @@ class OutcomeTracker:
             "external_application_details": outcome.external_application_details,
             "is_bookmarked": outcome.is_bookmarked,
             "is_hidden": outcome.is_hidden,
-            "bookmark_date": outcome.bookmark_date.isoformat() if outcome.bookmark_date else None,
-            "hidden_date": outcome.hidden_date.isoformat() if outcome.hidden_date else None,
+            "bookmark_date": (
+                outcome.bookmark_date.isoformat() if outcome.bookmark_date else None
+            ),
+            "hidden_date": (
+                outcome.hidden_date.isoformat() if outcome.hidden_date else None
+            ),
         }
 
-    def _deserialize_outcome(self, data: Dict[str, Any]) -> Optional[ApplicationOutcome]:
+    def _deserialize_outcome(
+        self, data: Dict[str, Any]
+    ) -> Optional[ApplicationOutcome]:
         """Deserialize dict to outcome."""
         try:
             interviews = []
             for i_data in data.get("interviews", []):
-                interviews.append(InterviewEvent(
-                    stage=InterviewStage(i_data["stage"]),
-                    scheduled_date=datetime.fromisoformat(i_data["scheduled_date"]) if i_data.get("scheduled_date") else None,
-                    completed_date=datetime.fromisoformat(i_data["completed_date"]) if i_data.get("completed_date") else None,
-                    feedback=i_data.get("feedback"),
-                    outcome=i_data.get("outcome"),
-                ))
+                interviews.append(
+                    InterviewEvent(
+                        stage=InterviewStage(i_data["stage"]),
+                        scheduled_date=(
+                            datetime.fromisoformat(i_data["scheduled_date"])
+                            if i_data.get("scheduled_date")
+                            else None
+                        ),
+                        completed_date=(
+                            datetime.fromisoformat(i_data["completed_date"])
+                            if i_data.get("completed_date")
+                            else None
+                        ),
+                        feedback=i_data.get("feedback"),
+                        outcome=i_data.get("outcome"),
+                    )
+                )
 
             offer_data = data.get("offer", {})
-            offer = OfferDetails(
-                salary_min=offer_data.get("salary_min"),
-                salary_max=offer_data.get("salary_max"),
-                salary_period=offer_data.get("salary_period", "annual"),
-                bonus=offer_data.get("bonus"),
-                equity=offer_data.get("equity"),
-                benefits=offer_data.get("benefits", []),
-                notes=offer_data.get("notes", ""),
-            ) if offer_data else None
+            offer = (
+                OfferDetails(
+                    salary_min=offer_data.get("salary_min"),
+                    salary_max=offer_data.get("salary_max"),
+                    salary_period=offer_data.get("salary_period", "annual"),
+                    bonus=offer_data.get("bonus"),
+                    equity=offer_data.get("equity"),
+                    benefits=offer_data.get("benefits", []),
+                    notes=offer_data.get("notes", ""),
+                )
+                if offer_data
+                else None
+            )
 
             return ApplicationOutcome(
                 application_id=data["application_id"],
@@ -1114,7 +1189,11 @@ class OutcomeTracker:
                 company=data["company"],
                 applied_date=datetime.fromisoformat(data["applied_date"]),
                 current_status=ApplicationStatus(data["current_status"]),
-                final_outcome=Outcome(data["final_outcome"]) if data.get("final_outcome") else None,
+                final_outcome=(
+                    Outcome(data["final_outcome"])
+                    if data.get("final_outcome")
+                    else None
+                ),
                 interviews=interviews,
                 offer=offer,
                 timeline_notes=data.get("timeline_notes", []),
@@ -1123,8 +1202,16 @@ class OutcomeTracker:
                 external_application_details=data.get("external_application_details"),
                 is_bookmarked=data.get("is_bookmarked", False),
                 is_hidden=data.get("is_hidden", False),
-                bookmark_date=datetime.fromisoformat(data["bookmark_date"]) if data.get("bookmark_date") else None,
-                hidden_date=datetime.fromisoformat(data["hidden_date"]) if data.get("hidden_date") else None,
+                bookmark_date=(
+                    datetime.fromisoformat(data["bookmark_date"])
+                    if data.get("bookmark_date")
+                    else None
+                ),
+                hidden_date=(
+                    datetime.fromisoformat(data["hidden_date"])
+                    if data.get("hidden_date")
+                    else None
+                ),
             )
 
         except Exception as e:

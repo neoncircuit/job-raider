@@ -8,17 +8,18 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-from typing import List, Set, Optional, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional, Set
 
 from ..models.job_listing import JobListing, JobListingCollection
 from ..models.user_profile import UserProfile
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class MatchReason(str, Enum):
     """Reasons for a job match."""
+
     KEYWORD = "keyword"
     SKILL = "skill"
     LOCATION = "location"
@@ -29,6 +30,7 @@ class MatchReason(str, Enum):
 @dataclass
 class FilterResult:
     """Result of filtering a job listing."""
+
     job: JobListing
     matched: bool
     matched_keywords: List[str]
@@ -327,8 +329,7 @@ class QuickFilter:
             Filtered JobListingCollection
         """
         filtered = [
-            listing for listing in collection.listings
-            if not cls.should_reject(listing)
+            listing for listing in collection.listings if not cls.should_reject(listing)
         ]
 
         return JobListingCollection(

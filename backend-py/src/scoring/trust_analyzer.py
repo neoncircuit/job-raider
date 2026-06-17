@@ -9,17 +9,12 @@ Author: Job Raider
 Date: 2026-05-06
 """
 
-from typing import List, Optional, Dict, Any
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
-from .scam_detector import (
-    JobScamDetector,
-    TrustAnalysis,
-    TrustTier,
-    ScamIndicator,
-)
 from ..models.job_listing import JobListing
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
+from .scam_detector import JobScamDetector, ScamIndicator, TrustAnalysis, TrustTier
 
 
 @dataclass
@@ -30,6 +25,7 @@ class DetailedTrustAnalysis:
     Extends the rule-based TrustAnalysis with additional LLM-detected
     signals and a human-readable explanation paragraph.
     """
+
     tier: TrustTier
     confidence: float
     risk_score: int
@@ -215,7 +211,11 @@ class TrustAnalyzer:
                     return json.loads(json_str)
                 except (json.JSONDecodeError, ValueError):
                     self.logger.warning("Failed to parse LLM trust analysis response")
-                    return {"summary": text, "additional_indicators": [], "confidence_adjustment": 0.0}
+                    return {
+                        "summary": text,
+                        "additional_indicators": [],
+                        "confidence_adjustment": 0.0,
+                    }
 
             return None
 

@@ -3,12 +3,11 @@
 # Date: 2026-05-22
 
 import json
-import pytest
-from unittest.mock import MagicMock, patch
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -36,7 +35,10 @@ def mock_storage():
 def mock_engine():
     """Mock AssessmentEngine."""
     from src.models.assessment import (
-        Question, QuestionType, AnswerFormat, DifficultyLevel,
+        AnswerFormat,
+        DifficultyLevel,
+        Question,
+        QuestionType,
     )
 
     engine = MagicMock()
@@ -70,8 +72,13 @@ def mock_engine():
 def sample_session():
     """Create a sample session for API tests."""
     from src.models.assessment import (
-        AssessmentSession, AssessmentMode, DifficultyLevel, SessionStatus,
-        Question, QuestionType, AnswerFormat,
+        AnswerFormat,
+        AssessmentMode,
+        AssessmentSession,
+        DifficultyLevel,
+        Question,
+        QuestionType,
+        SessionStatus,
     )
 
     return AssessmentSession(
@@ -99,13 +106,15 @@ def sample_session():
 @pytest.fixture
 def client(mock_storage, mock_engine):
     """FastAPI test client with mocked dependencies."""
-    with patch("src.api.routes.assessment._storage", mock_storage), \
-         patch("src.api.routes.assessment._get_engine", return_value=mock_engine), \
-         patch("src.api.routes.profile.stored_profiles", {}, create=True), \
-         patch("src.api.routes.profile.active_profile_id", None, create=True):
+    with patch("src.api.routes.assessment._storage", mock_storage), patch(
+        "src.api.routes.assessment._get_engine", return_value=mock_engine
+    ), patch("src.api.routes.profile.stored_profiles", {}, create=True), patch(
+        "src.api.routes.profile.active_profile_id", None, create=True
+    ):
 
-        from src.api.main import app
         from src.api.auth import verify_api_key
+        from src.api.main import app
+
         app.dependency_overrides[verify_api_key] = lambda: None
         tc = TestClient(app, raise_server_exceptions=False)
         yield tc
@@ -130,12 +139,15 @@ class TestStartSession:
 
         mock_storage.save_session.side_effect = capture_save
 
-        resp = client.post("/api/assessment/", json={
-            "mode": "skill_based",
-            "target_skills": ["Python"],
-            "difficulty": "intermediate",
-            "question_count": 5,
-        })
+        resp = client.post(
+            "/api/assessment/",
+            json={
+                "mode": "skill_based",
+                "target_skills": ["Python"],
+                "difficulty": "intermediate",
+                "question_count": 5,
+            },
+        )
 
         assert resp.status_code in [200, 500]
 
@@ -146,14 +158,19 @@ class TestStartSession:
 class TestSubmitAnswer:
     """Tests for POST /api/assessment/{session_id}/answer."""
 
-    def test_submit_answer_success(self, client, mock_storage, mock_engine, sample_session):
+    def test_submit_answer_success(
+        self, client, mock_storage, mock_engine, sample_session
+    ):
         """Should evaluate answer and return score."""
         mock_storage.get_session.return_value = sample_session
 
-        resp = client.post("/api/assessment/test-session-001/answer", json={
-            "question_id": "q1",
-            "freeform_text": "List comprehensions are a concise way to create lists.",
-        })
+        resp = client.post(
+            "/api/assessment/test-session-001/answer",
+            json={
+                "question_id": "q1",
+                "freeform_text": "List comprehensions are a concise way to create lists.",
+            },
+        )
 
         if resp.status_code == 200:
             data = resp.json()
@@ -164,10 +181,13 @@ class TestSubmitAnswer:
         """Should return 404 for non-existent session."""
         mock_storage.get_session.return_value = None
 
-        resp = client.post("/api/assessment/no-such-id/answer", json={
-            "question_id": "q1",
-            "freeform_text": "answer",
-        })
+        resp = client.post(
+            "/api/assessment/no-such-id/answer",
+            json={
+                "question_id": "q1",
+                "freeform_text": "answer",
+            },
+        )
         assert resp.status_code == 404
 
 

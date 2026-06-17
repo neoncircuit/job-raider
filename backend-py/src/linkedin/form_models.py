@@ -10,7 +10,7 @@ Date: 2026-05-04
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -39,13 +39,16 @@ class FormQuestion(BaseModel):
         description="Available options for dropdown/radio/checkbox questions",
     )
     current_value: Optional[str] = Field(
-        default=None, description="Pre-filled value if any",
+        default=None,
+        description="Pre-filled value if any",
     )
     field_selector: Optional[str] = Field(
-        default=None, description="CSS selector for Playwright interaction",
+        default=None,
+        description="CSS selector for Playwright interaction",
     )
     placeholder: Optional[str] = Field(
-        default=None, description="Placeholder text for the input field",
+        default=None,
+        description="Placeholder text for the input field",
     )
 
 
@@ -54,11 +57,13 @@ class FormStep(BaseModel):
 
     step_number: int = Field(description="Step index (1-based)")
     questions: List[FormQuestion] = Field(
-        default_factory=list, description="Questions on this step",
+        default_factory=list,
+        description="Questions on this step",
     )
     has_next: bool = Field(default=True, description="Whether a Next button exists")
     has_review: bool = Field(
-        default=False, description="Whether this is the review step",
+        default=False,
+        description="Whether this is the review step",
     )
 
 
@@ -69,14 +74,17 @@ class ParsedForm(BaseModel):
     job_title: str = Field(description="Job title")
     company: str = Field(description="Company name")
     steps: List[FormStep] = Field(
-        default_factory=list, description="All form steps",
+        default_factory=list,
+        description="All form steps",
     )
     total_steps: int = Field(default=0, description="Total number of steps")
     requires_resume: bool = Field(
-        default=False, description="Whether resume upload is required",
+        default=False,
+        description="Whether resume upload is required",
     )
     requires_cover_letter: bool = Field(
-        default=False, description="Whether cover letter is required",
+        default=False,
+        description="Whether cover letter is required",
     )
 
 
@@ -95,16 +103,19 @@ class QuestionAnswer(BaseModel):
     question: FormQuestion = Field(description="The question being answered")
     answer_value: str = Field(description="The generated answer string")
     confidence: AnswerConfidence = Field(
-        default=AnswerConfidence.UNKNOWN, description="Confidence in the answer",
+        default=AnswerConfidence.UNKNOWN,
+        description="Confidence in the answer",
     )
     source: str = Field(
         description="Where the answer came from (rule_*, llm, profile, cached)",
     )
     needs_review: bool = Field(
-        default=False, description="Whether this answer needs manual review",
+        default=False,
+        description="Whether this answer needs manual review",
     )
     reasoning: Optional[str] = Field(
-        default=None, description="Why this answer was chosen",
+        default=None,
+        description="Why this answer was chosen",
     )
 
 
@@ -117,21 +128,26 @@ class FormFillResult(BaseModel):
     success: bool = Field(description="Whether the application was submitted")
     steps_completed: int = Field(default=0, description="Number of steps completed")
     questions_answered: int = Field(
-        default=0, description="Number of questions answered",
+        default=0,
+        description="Number of questions answered",
     )
     questions_skipped: int = Field(
-        default=0, description="Number of questions skipped (optional/unknown)",
+        default=0,
+        description="Number of questions skipped (optional/unknown)",
     )
     low_confidence_answers: List[QuestionAnswer] = Field(
         default_factory=list,
         description="Answers with low confidence that may need review",
     )
     screenshot_paths: List[str] = Field(
-        default_factory=list, description="Paths to screenshots taken",
+        default_factory=list,
+        description="Paths to screenshots taken",
     )
     error_message: Optional[str] = Field(
-        default=None, description="Error message if submission failed",
+        default=None,
+        description="Error message if submission failed",
     )
     submission_timestamp: Optional[datetime] = Field(
-        default=None, description="When the application was submitted",
+        default=None,
+        description="When the application was submitted",
     )

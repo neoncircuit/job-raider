@@ -9,20 +9,14 @@ Author: Job Raider
 Date: 2026-04-25
 """
 
-import os
 import logging
+import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 
 import requests
 
-from .base import (
-    BaseScraper,
-    SearchParams,
-    ScraperError,
-    ScrapingException,
-)
 from ..models.job_listing import (
     ExperienceLevel,
     JobListing,
@@ -32,6 +26,7 @@ from ..models.job_listing import (
     SalaryRange,
     WorkMode,
 )
+from .base import BaseScraper, ScraperError, ScrapingException, SearchParams
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +53,12 @@ class JSearchScraper(BaseScraper):
         super().__init__(**kwargs)
         self._api_key = os.environ.get("RAPIDAPI_KEY", "")
         self._session = requests.Session()
-        self._session.headers.update({
-            "X-RapidAPI-Key": self._api_key,
-            "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
-        })
+        self._session.headers.update(
+            {
+                "X-RapidAPI-Key": self._api_key,
+                "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+            }
+        )
 
     @property
     def source_name(self) -> JobSource:
@@ -82,7 +79,9 @@ class JSearchScraper(BaseScraper):
         Raises:
             NotImplementedError: Always.
         """
-        raise NotImplementedError("JSearchScraper uses search() directly, not build_search_url()")
+        raise NotImplementedError(
+            "JSearchScraper uses search() directly, not build_search_url()"
+        )
 
     def parse_job_listings(self, html: str) -> List[JobListing]:
         """Not used for API-based scrapers. JSearch returns JSON.
@@ -137,7 +136,7 @@ class JSearchScraper(BaseScraper):
             )
 
         raw_jobs = body.get("data", [])
-        listings = [self._parse_job(job) for job in raw_jobs[:params.limit]]
+        listings = [self._parse_job(job) for job in raw_jobs[: params.limit]]
 
         logger.info(f"JSearch returned {len(listings)} jobs for query: {query}")
 
@@ -225,7 +224,9 @@ class JSearchScraper(BaseScraper):
                 7: "week",
                 30: "month",
             }
-            closest = min(date_map.keys(), key=lambda d: abs(d - params.days_since_posted))
+            closest = min(
+                date_map.keys(), key=lambda d: abs(d - params.days_since_posted)
+            )
             request_params["date_posted"] = date_map[closest]
 
         return request_params
@@ -245,16 +246,22 @@ class JSearchScraper(BaseScraper):
 
         # Location
         location_parts = [
-            p for p in [
+            p
+            for p in [
                 raw.get("job_city"),
                 raw.get("job_state"),
                 raw.get("job_country"),
-            ] if p
+            ]
+            if p
         ]
         location = ", ".join(location_parts) if location_parts else None
 
         # Source URL
-        source_url = raw.get("job_apply_link") or raw.get("job_google_link") or raw.get("job_link")
+        source_url = (
+            raw.get("job_apply_link")
+            or raw.get("job_google_link")
+            or raw.get("job_link")
+        )
 
         # Salary
         salary = None
@@ -286,7 +293,9 @@ class JSearchScraper(BaseScraper):
         job_type = self._map_job_type(job_type_str)
 
         # Experience level
-        exp_keywords = (raw.get("job_required_experience", {}) or {}).get("required_experience_in_months")
+        exp_keywords = (raw.get("job_required_experience", {}) or {}).get(
+            "required_experience_in_months"
+        )
         experience_level = self._infer_experience_level(
             raw.get("job_title", ""),
             exp_keywords,
@@ -375,7 +384,9 @@ class JSearchScraper(BaseScraper):
         return mapping.get(employment_type.lower(), JobType.FULL_TIME)
 
     @staticmethod
-    def _infer_experience_level(title: str, required_months: Optional[Any]) -> ExperienceLevel:
+    def _infer_experience_level(
+        title: str, required_months: Optional[Any]
+    ) -> ExperienceLevel:
         """Infer experience level from job title and required experience.
 
         Args:

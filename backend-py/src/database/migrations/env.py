@@ -3,19 +3,19 @@
 Reads DATABASE_URL_DIRECT from the environment for migrations.
 Uses a synchronous psycopg2 driver (port 5432, not the pooler).
 """
+
 import os
 import sys
 from logging.config import fileConfig
 
-from sqlalchemy import create_engine, pool
-
 from alembic import context
+from sqlalchemy import create_engine, pool
 
 # Make backend-py/src importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-from src.database.base import Base  # noqa: E402
 import src.database.models  # noqa: F401, E402 — registers all models on Base.metadata
+from src.database.base import Base  # noqa: E402
 
 config = context.config
 

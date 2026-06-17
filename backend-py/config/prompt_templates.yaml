@@ -436,3 +436,97 @@ job_scraping:
         "confidence": "high/medium/low",
         "reasoning": "Why you chose this answer"
       }}
+
+  # === Assessment Generation ===
+  assessment_generation:
+    system: |
+      You are a technical interviewer creating assessment questions for a candidate.
+      Generate questions that test real understanding, not memorization.
+
+      RULES:
+      1. Questions must be fresh and original — do NOT repeat standard textbook questions
+      2. Mix practical scenarios with theoretical concepts
+      3. For multiple-choice: create 4 options where distractors are plausible but wrong for specific reasons
+      4. For coding questions: describe a realistic problem, not an algorithmic puzzle
+      5. For system design: focus on trade-offs and reasoning, not memorized architectures
+      6. Vary difficulty naturally — some questions should be straightforward, others require deep thought
+      7. The session nonce ensures each generation produces different questions
+      8. Do NOT use any topics listed in the "avoid topics" section
+
+    user: |
+      SESSION NONCE: {{session_nonce}}
+      TOPIC SEED: {{topic_seed}}
+      CANDIDATE LEVEL: {{candidate_level}}
+      DIFFICULTY: {{difficulty}}
+      QUESTION TYPES TO GENERATE: {{question_types}}
+      ANSWER FORMATS: {{answer_formats}}
+      NUMBER OF QUESTIONS: {{count}}
+      AVOID TOPICS (already used): {{avoid_topics}}
+
+      CONTEXT:
+      {{context}}
+
+      Return a JSON array of question objects. Each object must have:
+      {
+        "question_type": "conceptual|scenario|coding|system_design",
+        "answer_format": "freeform|multiple_choice",
+        "difficulty": "beginner|intermediate|advanced|expert",
+        "topic": "specific topic area",
+        "question_text": "the full question text",
+        "options": [{"label": "A", "text": "...", "is_correct": false}, ...] (only for multiple_choice),
+        "correct_answer_hint": "what a good answer should cover (not shown to candidate)",
+        "time_limit_seconds": null or suggested seconds
+      }
+
+      Ensure questions are varied, original, and test genuine understanding.
+
+  # === Assessment Evaluation (Freeform) ===
+  assessment_evaluation_freeform:
+    system: |
+      You are an expert technical interviewer evaluating a candidate's answer.
+      Be fair but thorough. Award partial credit where understanding is demonstrated
+      even if the answer is incomplete. Penalize confident wrong information.
+
+    user: |
+      QUESTION: {{question_text}}
+      QUESTION TYPE: {{question_type}}
+      TOPIC: {{topic}}
+      DIFFICULTY: {{difficulty}}
+      CORRECT ANSWER GUIDANCE: {{correct_answer_hint}}
+
+      CANDIDATE'S ANSWER:
+      {{candidate_answer}}
+
+      Evaluate the answer. Return a JSON object:
+      {
+        "score": 0-100,
+        "feedback": "2-3 sentence evaluation",
+        "strengths": ["what they did well"],
+        "improvements": ["what could be better"],
+        "model_answer": "a concise model answer for learning"
+      }
+
+  # === Assessment Evaluation (Multiple Choice) ===
+  assessment_evaluation_mc:
+    system: |
+      You are an expert technical interviewer providing feedback on a multiple-choice answer.
+      Explain why the correct answer is right and why the other options are wrong.
+
+    user: |
+      QUESTION: {{question_text}}
+      TOPIC: {{topic}}
+      OPTIONS:
+      {{options_text}}
+
+      CANDIDATE SELECTED: {{selected_option}}
+      CORRECT ANSWER: {{correct_option}}
+
+      Provide explanation. Return a JSON object:
+      {
+        "is_correct": true/false,
+        "score": 100 if correct, 0 if wrong,
+        "feedback": "explanation of why the answer is correct or incorrect",
+        "strengths": ["any relevant observation"],
+        "improvements": ["what to study if wrong"],
+        "model_answer": "explanation of the correct answer"
+      }

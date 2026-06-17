@@ -12,8 +12,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .config import VectorStoreConfig
 from .chunker import TextChunk
+from .config import VectorStoreConfig
 
 logger = logging.getLogger("job_raider.rag")
 
@@ -131,12 +131,14 @@ class ChromaStore:
                 all_ids.append(f"{job_id}_chunk_{chunk.chunk_index}")
                 all_docs.append(chunk.content)
                 all_embeddings_flat.append(embedding)
-                all_metadatas.append({
-                    "job_id": job_id,
-                    "source_type": "job",
-                    "section": chunk.section or "",
-                    "chunk_index": chunk.chunk_index,
-                })
+                all_metadatas.append(
+                    {
+                        "job_id": job_id,
+                        "source_type": "job",
+                        "section": chunk.section or "",
+                        "chunk_index": chunk.chunk_index,
+                    }
+                )
 
         if all_ids:
             collection.upsert(
@@ -235,12 +237,18 @@ class ChromaStore:
             for i, doc_id in enumerate(results["ids"][0]):
                 distance = results["distances"][0][i] if results["distances"] else 0.0
                 similarity = max(0.0, 1.0 - distance)  # cosine distance -> similarity
-                output.append({
-                    "id": doc_id,
-                    "similarity": similarity,
-                    "metadata": results["metadatas"][0][i] if results["metadatas"] else {},
-                    "document": results["documents"][0][i] if results["documents"] else "",
-                })
+                output.append(
+                    {
+                        "id": doc_id,
+                        "similarity": similarity,
+                        "metadata": (
+                            results["metadatas"][0][i] if results["metadatas"] else {}
+                        ),
+                        "document": (
+                            results["documents"][0][i] if results["documents"] else ""
+                        ),
+                    }
+                )
 
         return output
 
@@ -263,12 +271,17 @@ class ChromaStore:
                 include=["embeddings"],
             )
             if results["embeddings"] is not None and len(results["embeddings"]) > 0:
-                return [e.tolist() if hasattr(e, "tolist") else e for e in results["embeddings"]]
+                return [
+                    e.tolist() if hasattr(e, "tolist") else e
+                    for e in results["embeddings"]
+                ]
         except Exception:
             pass
         return None
 
-    def get_profile_embeddings(self, profile_id: str = "default") -> Optional[List[List[float]]]:
+    def get_profile_embeddings(
+        self, profile_id: str = "default"
+    ) -> Optional[List[List[float]]]:
         """Retrieve all embeddings for a profile.
 
         Args:
@@ -287,7 +300,10 @@ class ChromaStore:
                 include=["embeddings"],
             )
             if results["embeddings"] is not None and len(results["embeddings"]) > 0:
-                return [e.tolist() if hasattr(e, "tolist") else e for e in results["embeddings"]]
+                return [
+                    e.tolist() if hasattr(e, "tolist") else e
+                    for e in results["embeddings"]
+                ]
         except Exception:
             pass
         return None

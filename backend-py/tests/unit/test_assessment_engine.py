@@ -3,9 +3,10 @@
 # Date: 2026-05-22
 
 import json
-import pytest
-from unittest.mock import MagicMock, patch
 from datetime import datetime
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from src.models.assessment import (
     Answer,
@@ -18,9 +19,10 @@ from src.models.assessment import (
     QuestionScore,
     QuestionType,
 )
-from src.models.job_listing import JobListing, JobSource, Skill, JobRequirement
-from src.models.user_profile import UserProfile, Skill as ProfileSkill, SkillCategory, ProficiencyLevel, WorkExperience, ContactInfo
-
+from src.models.job_listing import JobListing, JobRequirement, JobSource, Skill
+from src.models.user_profile import ContactInfo, ProficiencyLevel
+from src.models.user_profile import Skill as ProfileSkill
+from src.models.user_profile import SkillCategory, UserProfile, WorkExperience
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -31,9 +33,9 @@ def mock_llm_router():
     router = MagicMock()
     router.generate.return_value = MagicMock(
         content='[{"question_type": "conceptual", "answer_format": "freeform", '
-                '"difficulty": "intermediate", "topic": "Python", '
-                '"question_text": "Explain decorators.", '
-                '"options": [], "correct_answer_hint": "Decorators wrap functions"}]',
+        '"difficulty": "intermediate", "topic": "Python", '
+        '"question_text": "Explain decorators.", '
+        '"options": [], "correct_answer_hint": "Decorators wrap functions"}]',
         prompt_tokens=100,
         completion_tokens=50,
         total_tokens=150,
@@ -47,6 +49,7 @@ def mock_llm_router():
 def engine(mock_llm_router):
     """AssessmentEngine with mocked LLM router and templates."""
     from src.assessment.engine import AssessmentEngine
+
     eng = AssessmentEngine.__new__(AssessmentEngine)
     eng.llm_router = mock_llm_router
     eng.logger = MagicMock()
@@ -120,28 +123,34 @@ class TestGenerateQuestions:
     def test_generates_expected_count(self, engine, mock_llm_router, sample_session):
         """Engine should return the requested number of questions."""
         mock_llm_router.generate.return_value = MagicMock(
-            content=json.dumps([
-                {
-                    "question_type": "conceptual",
-                    "answer_format": "freeform",
-                    "difficulty": "intermediate",
-                    "topic": f"topic_{i}",
-                    "question_text": f"Question {i}",
-                    "options": [],
-                    "correct_answer_hint": f"hint {i}",
-                }
-                for i in range(3)
-            ])
+            content=json.dumps(
+                [
+                    {
+                        "question_type": "conceptual",
+                        "answer_format": "freeform",
+                        "difficulty": "intermediate",
+                        "topic": f"topic_{i}",
+                        "question_text": f"Question {i}",
+                        "options": [],
+                        "correct_answer_hint": f"hint {i}",
+                    }
+                    for i in range(3)
+                ]
+            )
         )
 
         questions = engine.generate_questions(sample_session, count=3)
         assert len(questions) == 3
 
-    def test_llm_called_with_correct_task_type(self, engine, mock_llm_router, sample_session):
+    def test_llm_called_with_correct_task_type(
+        self, engine, mock_llm_router, sample_session
+    ):
         """Engine should use ASSESSMENT_GENERATION task type."""
         engine.generate_questions(sample_session, count=2)
         call_args = mock_llm_router.generate.call_args
-        assert call_args.kwargs.get("task_type") is not None or "task_type" in str(call_args)
+        assert call_args.kwargs.get("task_type") is not None or "task_type" in str(
+            call_args
+        )
 
     def test_fallback_on_llm_failure(self, engine, mock_llm_router, sample_session):
         """Engine should return fallback questions when LLM fails."""
@@ -166,13 +175,19 @@ class TestGenerateQuestions:
 
         engine.generate_questions(sample_session, count=1)
         call_args = mock_llm_router.generate.call_args
-        messages = call_args.kwargs.get("messages") or call_args[1].get("messages") or call_args[0][0]
+        messages = (
+            call_args.kwargs.get("messages")
+            or call_args[1].get("messages")
+            or call_args[0][0]
+        )
         user_msg = messages[-1].content
         # The topic seed should not include "used_topic"
         # (it's filtered out before building the seed)
         taxonomy = engine._build_topic_taxonomy(None, None)
         available = [t for t in taxonomy if t != "used_topic"]
-        seed_topics = [t.strip() for t in user_msg.split("on ")[1].split(".") if t.strip()]
+        seed_topics = [
+            t.strip() for t in user_msg.split("on ")[1].split(".") if t.strip()
+        ]
         assert "used_topic" not in user_msg or len(available) == 0
 
     def test_uses_high_temperature(self, engine, mock_llm_router, sample_session):
@@ -192,14 +207,16 @@ class TestEvaluateAnswer:
     def test_mc_correct_answer(self, engine, mock_llm_router, sample_mc_question):
         """Correct MC answer should score 100."""
         mock_llm_router.generate.return_value = MagicMock(
-            content=json.dumps({
-                "score": 100,
-                "is_correct": True,
-                "feedback": "Correct!",
-                "strengths": ["Good understanding"],
-                "improvements": [],
-                "model_answer": "A - Number of items",
-            })
+            content=json.dumps(
+                {
+                    "score": 100,
+                    "is_correct": True,
+                    "feedback": "Correct!",
+                    "strengths": ["Good understanding"],
+                    "improvements": [],
+                    "model_answer": "A - Number of items",
+                }
+            )
         )
 
         answer = Answer(question_id="q-mc-001", selected_option="A")
@@ -211,14 +228,16 @@ class TestEvaluateAnswer:
     def test_mc_wrong_answer(self, engine, mock_llm_router, sample_mc_question):
         """Wrong MC answer should score 0."""
         mock_llm_router.generate.return_value = MagicMock(
-            content=json.dumps({
-                "score": 0,
-                "is_correct": False,
-                "feedback": "Incorrect.",
-                "strengths": [],
-                "improvements": ["Review basic Python functions"],
-                "model_answer": "A - Number of items",
-            })
+            content=json.dumps(
+                {
+                    "score": 0,
+                    "is_correct": False,
+                    "feedback": "Incorrect.",
+                    "strengths": [],
+                    "improvements": ["Review basic Python functions"],
+                    "model_answer": "A - Number of items",
+                }
+            )
         )
 
         answer = Answer(question_id="q-mc-001", selected_option="B")
@@ -237,16 +256,20 @@ class TestEvaluateAnswer:
         score = engine.evaluate_answer(sample_mc_question, answer)
         assert score.is_correct is True
 
-    def test_freeform_evaluation(self, engine, mock_llm_router, sample_freeform_question):
+    def test_freeform_evaluation(
+        self, engine, mock_llm_router, sample_freeform_question
+    ):
         """Freeform answer should receive a numeric score and feedback."""
         mock_llm_router.generate.return_value = MagicMock(
-            content=json.dumps({
-                "score": 75,
-                "feedback": "Good explanation but missing immutability detail.",
-                "strengths": ["Correct about mutability"],
-                "improvements": ["Mention hashability"],
-                "model_answer": "Lists are mutable, tuples are immutable...",
-            })
+            content=json.dumps(
+                {
+                    "score": 75,
+                    "feedback": "Good explanation but missing immutability detail.",
+                    "strengths": ["Correct about mutability"],
+                    "improvements": ["Mention hashability"],
+                    "model_answer": "Lists are mutable, tuples are immutable...",
+                }
+            )
         )
 
         answer = Answer(
@@ -259,7 +282,9 @@ class TestEvaluateAnswer:
         assert "immutability" in score.feedback.lower() or score.score > 0
         assert len(score.strengths) > 0
 
-    def test_evaluation_fallback_on_llm_failure(self, engine, mock_llm_router, sample_freeform_question):
+    def test_evaluation_fallback_on_llm_failure(
+        self, engine, mock_llm_router, sample_freeform_question
+    ):
         """Should return a fallback score when LLM fails."""
         mock_llm_router.generate.side_effect = Exception("Timeout")
 
@@ -364,12 +389,22 @@ class TestSessionResults:
             QuestionScore(question_id="q2", score=60.0),
         ]
         sample_session.questions = [
-            Question(question_id="q1", question_type=QuestionType.CONCEPTUAL,
-                     answer_format=AnswerFormat.FREEFORM, difficulty=DifficultyLevel.INTERMEDIATE,
-                     topic="Python", question_text="Q1"),
-            Question(question_id="q2", question_type=QuestionType.CONCEPTUAL,
-                     answer_format=AnswerFormat.FREEFORM, difficulty=DifficultyLevel.INTERMEDIATE,
-                     topic="SQL", question_text="Q2"),
+            Question(
+                question_id="q1",
+                question_type=QuestionType.CONCEPTUAL,
+                answer_format=AnswerFormat.FREEFORM,
+                difficulty=DifficultyLevel.INTERMEDIATE,
+                topic="Python",
+                question_text="Q1",
+            ),
+            Question(
+                question_id="q2",
+                question_type=QuestionType.CONCEPTUAL,
+                answer_format=AnswerFormat.FREEFORM,
+                difficulty=DifficultyLevel.INTERMEDIATE,
+                topic="SQL",
+                question_text="Q2",
+            ),
         ]
 
         engine.calculate_session_results(sample_session)
@@ -383,15 +418,30 @@ class TestSessionResults:
             QuestionScore(question_id="q3", score=100.0),
         ]
         sample_session.questions = [
-            Question(question_id="q1", question_type=QuestionType.CONCEPTUAL,
-                     answer_format=AnswerFormat.FREEFORM, difficulty=DifficultyLevel.INTERMEDIATE,
-                     topic="Python", question_text="Q1"),
-            Question(question_id="q2", question_type=QuestionType.CONCEPTUAL,
-                     answer_format=AnswerFormat.FREEFORM, difficulty=DifficultyLevel.INTERMEDIATE,
-                     topic="SQL", question_text="Q2"),
-            Question(question_id="q3", question_type=QuestionType.CONCEPTUAL,
-                     answer_format=AnswerFormat.FREEFORM, difficulty=DifficultyLevel.INTERMEDIATE,
-                     topic="Python", question_text="Q3"),
+            Question(
+                question_id="q1",
+                question_type=QuestionType.CONCEPTUAL,
+                answer_format=AnswerFormat.FREEFORM,
+                difficulty=DifficultyLevel.INTERMEDIATE,
+                topic="Python",
+                question_text="Q1",
+            ),
+            Question(
+                question_id="q2",
+                question_type=QuestionType.CONCEPTUAL,
+                answer_format=AnswerFormat.FREEFORM,
+                difficulty=DifficultyLevel.INTERMEDIATE,
+                topic="SQL",
+                question_text="Q2",
+            ),
+            Question(
+                question_id="q3",
+                question_type=QuestionType.CONCEPTUAL,
+                answer_format=AnswerFormat.FREEFORM,
+                difficulty=DifficultyLevel.INTERMEDIATE,
+                topic="Python",
+                question_text="Q3",
+            ),
         ]
 
         engine.calculate_session_results(sample_session)
@@ -408,9 +458,14 @@ class TestSessionResults:
         """Session should be marked as completed."""
         sample_session.scores = [QuestionScore(question_id="q1", score=80.0)]
         sample_session.questions = [
-            Question(question_id="q1", question_type=QuestionType.CONCEPTUAL,
-                     answer_format=AnswerFormat.FREEFORM, difficulty=DifficultyLevel.INTERMEDIATE,
-                     topic="Python", question_text="Q1"),
+            Question(
+                question_id="q1",
+                question_type=QuestionType.CONCEPTUAL,
+                answer_format=AnswerFormat.FREEFORM,
+                difficulty=DifficultyLevel.INTERMEDIATE,
+                topic="Python",
+                question_text="Q1",
+            ),
         ]
 
         engine.calculate_session_results(sample_session)
@@ -440,7 +495,7 @@ class TestTopicTaxonomy:
             skills=[
                 ProfileSkill(name="Rust", category=SkillCategory.PROGRAMMING_LANGUAGE),
                 ProfileSkill(name="Kubernetes", category=SkillCategory.CLOUD),
-            ]
+            ],
         )
         taxonomy = engine._build_topic_taxonomy(profile, None)
         assert "rust" in taxonomy
@@ -464,7 +519,9 @@ class TestTopicTaxonomy:
         profile = UserProfile(
             name="Test User",
             contact=ContactInfo(email="test@example.com", location="Test City"),
-            skills=[ProfileSkill(name="Python", category=SkillCategory.PROGRAMMING_LANGUAGE)]
+            skills=[
+                ProfileSkill(name="Python", category=SkillCategory.PROGRAMMING_LANGUAGE)
+            ],
         )
         job = JobListing(
             title="Engineer",
@@ -486,17 +543,19 @@ class TestParseQuestions:
 
     def test_parses_clean_json(self, engine):
         """Should parse valid JSON array."""
-        response = json.dumps([
-            {
-                "question_type": "coding",
-                "answer_format": "freeform",
-                "difficulty": "advanced",
-                "topic": "algorithms",
-                "question_text": "Implement binary search.",
-                "options": [],
-                "correct_answer_hint": "O(log n) approach",
-            }
-        ])
+        response = json.dumps(
+            [
+                {
+                    "question_type": "coding",
+                    "answer_format": "freeform",
+                    "difficulty": "advanced",
+                    "topic": "algorithms",
+                    "question_text": "Implement binary search.",
+                    "options": [],
+                    "correct_answer_hint": "O(log n) approach",
+                }
+            ]
+        )
         questions = engine._parse_questions(response, 1)
         assert len(questions) == 1
         assert questions[0].question_type == QuestionType.CODING
@@ -517,11 +576,18 @@ class TestParseQuestions:
 
     def test_truncates_to_expected_count(self, engine):
         """Should not return more questions than expected."""
-        response = json.dumps([
-            {"question_type": "conceptual", "answer_format": "freeform",
-             "difficulty": "intermediate", "topic": f"t{i}",
-             "question_text": f"Q{i}", "options": []}
-            for i in range(10)
-        ])
+        response = json.dumps(
+            [
+                {
+                    "question_type": "conceptual",
+                    "answer_format": "freeform",
+                    "difficulty": "intermediate",
+                    "topic": f"t{i}",
+                    "question_text": f"Q{i}",
+                    "options": [],
+                }
+                for i in range(10)
+            ]
+        )
         questions = engine._parse_questions(response, 3)
         assert len(questions) == 3

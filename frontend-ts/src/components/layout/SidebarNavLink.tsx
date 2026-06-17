@@ -31,10 +31,12 @@ export function SidebarNavLink({ href, icon, label }: Props) {
           isActive ? "opacity-100 shadow-[0_0_12px_var(--neon-cyan)]" : "opacity-0 group-hover:opacity-40"
         )}
       />
-      <span className={cn("shrink-0", isActive ? "text-primary" : "")}>
+      <span className={cn("shrink-0", isActive ? "text-sidebar-primary-foreground" : "text-inherit")}>
         {icon}
       </span>
-      {label}
+      <span className={cn(isActive ? "text-sidebar-primary-foreground" : "text-inherit")}>
+        {label}
+      </span>
     </Link>
   );
 }

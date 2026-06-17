@@ -7,13 +7,13 @@ Author: Job Raider
 Date: 2026-04-24
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException
 
-from ...api.settings import UserSettings, SettingsStorage, get_storage
+from ...api.settings import SettingsStorage, UserSettings, get_storage
 from ...config.loader import ConfigLoader, get_config_loader
-from ...utils.logger import get_logger, Components
+from ...utils.logger import Components, get_logger
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
@@ -100,8 +100,7 @@ async def get_model_info(provider: str, model: str) -> Dict[str, Any]:
 
     if info is None:
         raise HTTPException(
-            status_code=404,
-            detail=f"Model {model} not found for provider {provider}"
+            status_code=404, detail=f"Model {model} not found for provider {provider}"
         )
 
     return info
@@ -121,11 +120,7 @@ async def validate_settings(settings: UserSettings) -> Dict[str, Any]:
         Validation results with success status and any errors/warnings
     """
     loader = get_config_loader()
-    results = {
-        "valid": True,
-        "errors": [],
-        "warnings": []
-    }
+    results = {"valid": True, "errors": [], "warnings": []}
 
     # Validate model names exist
     available_models = loader.get_available_models()

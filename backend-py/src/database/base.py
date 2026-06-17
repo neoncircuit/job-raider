@@ -3,6 +3,7 @@
 Kept separate from connection.py so that Alembic can import Base
 without triggering async engine creation.
 """
+
 from sqlalchemy.orm import DeclarativeBase
 
 

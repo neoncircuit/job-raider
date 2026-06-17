@@ -34,7 +34,9 @@ class TestHTMLTagStripping:
 
     def test_strips_simple_tags(self):
         """Simple HTML tags are removed from text."""
-        result = normalize_job_description("We need a <strong>Python</strong> developer")
+        result = normalize_job_description(
+            "We need a <strong>Python</strong> developer"
+        )
         assert "<strong>" not in result
         assert "Python developer" in result
 

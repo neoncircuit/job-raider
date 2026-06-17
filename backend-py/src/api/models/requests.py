@@ -7,7 +7,8 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -25,14 +26,18 @@ class PipelineStartRequest(BaseModel):
     # Pipeline options
     dry_run: bool = Field(default=True, description="Run in dry-run mode")
     skip_submission: bool = Field(default=False, description="Skip submission stage")
-    min_score: int = Field(default=60, ge=0, le=100, description="Minimum relevance score")
+    min_score: int = Field(
+        default=60, ge=0, le=100, description="Minimum relevance score"
+    )
     scam_threshold: float = Field(
         default=0.7,
         ge=0.0,
         le=1.0,
         description="Scam detection threshold",
     )
-    max_jobs: int = Field(default=20, ge=1, le=100, description="Maximum jobs to present")
+    max_jobs: int = Field(
+        default=20, ge=1, le=100, description="Maximum jobs to present"
+    )
 
     # Stage control
     start_from: Optional[str] = Field(
@@ -85,7 +90,9 @@ class PipelineStartRequest(BaseModel):
 class JobSearchRequest(BaseModel):
     """Request to search for jobs without running full pipeline."""
 
-    keywords: List[str] = Field(..., description="Job keywords to search for")
+    keywords: List[str] = Field(
+        ..., description="Job keywords to search for", min_length=1
+    )
     locations: List[str] = Field(..., description="Job locations to search in")
     sources: Optional[List[str]] = Field(
         default=None,
@@ -97,6 +104,21 @@ class JobSearchRequest(BaseModel):
         default=None,
         description="Filter by experience level (Entry Level, Mid Level, Senior, etc.)",
     )
+    fresh_grad_mode: bool = Field(
+        default=False,
+        description="Enable fresh graduate scoring mode (prioritizes projects/education over experience)",
+    )
+
+    @field_validator("keywords")
+    @classmethod
+    def validate_keywords(cls, v: List[str]) -> List[str]:
+        """Validate that keywords are not empty strings."""
+        if not v or all(k.strip() == "" for k in v):
+            raise ValueError(
+                "Keywords cannot be empty. Please provide at least one valid keyword."
+            )
+        # Filter out empty strings
+        return [k for k in v if k.strip()]
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -138,7 +160,9 @@ class BulkApplyRequest(BaseModel):
     """Request to apply to multiple jobs."""
 
     job_ids: List[str] = Field(..., description="Job IDs to apply to")
-    dry_run: bool = Field(default=True, description="Generate resumes without submitting")
+    dry_run: bool = Field(
+        default=True, description="Generate resumes without submitting"
+    )
 
 
 class JobActionRequest(BaseModel):
@@ -165,8 +189,12 @@ class TrackExternalApplicationRequest(BaseModel):
     job_id: str = Field(..., description="Unique job ID")
     job_title: str = Field(..., description="Job title")
     company: str = Field(..., description="Company name")
-    application_date: Optional[str] = Field(None, description="Application date (ISO format)")
-    application_method: str = Field(default="manual", description="How application was made")
+    application_date: Optional[str] = Field(
+        None, description="Application date (ISO format)"
+    )
+    application_method: str = Field(
+        default="manual", description="How application was made"
+    )
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
 
@@ -174,7 +202,9 @@ class CreateCustomStatusRequest(BaseModel):
     """Request to create custom status."""
 
     name: str = Field(..., description="Status name", min_length=1, max_length=50)
-    description: str = Field(..., description="Status description", min_length=1, max_length=200)
+    description: str = Field(
+        ..., description="Status description", min_length=1, max_length=200
+    )
     color: str = Field(default="#6B7280", description="Hex color code")
     icon: Optional[str] = Field(None, description="Icon name")
 
@@ -200,25 +230,37 @@ class DashboardQueryRequest(BaseModel):
 
     status_filter: Optional[List[str]] = Field(None, description="Filter by statuses")
     company_filter: Optional[List[str]] = Field(None, description="Filter by companies")
-    days: Optional[int] = Field(None, ge=1, description="Filter by days since application")
+    days: Optional[int] = Field(
+        None, ge=1, description="Filter by days since application"
+    )
     include_hidden: bool = Field(default=False, description="Include hidden jobs")
-    include_bookmarked: bool = Field(default=True, description="Include bookmarked jobs")
-    include_external: bool = Field(default=True, description="Include external applications")
+    include_bookmarked: bool = Field(
+        default=True, description="Include bookmarked jobs"
+    )
+    include_external: bool = Field(
+        default=True, description="Include external applications"
+    )
 
 
 class SemanticSearchRequest(BaseModel):
     """Request for semantic job search."""
 
     query: str = Field(
-        ..., min_length=1, max_length=2000,
+        ...,
+        min_length=1,
+        max_length=2000,
         description="Natural language search query",
     )
     n_results: int = Field(
-        default=20, ge=1, le=100,
+        default=20,
+        ge=1,
+        le=100,
         description="Maximum results to return",
     )
     min_similarity: float = Field(
-        default=0.3, ge=0.0, le=1.0,
+        default=0.3,
+        ge=0.0,
+        le=1.0,
         description="Minimum similarity threshold",
     )
     filters: Optional[Dict[str, Any]] = Field(

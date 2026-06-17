@@ -8,20 +8,21 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import List, Dict, Any, Optional
+import json
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-import time
-import json
+from typing import Any, Dict, List, Optional
 
 from ..models.job_listing import JobListing
-from ..utils.logger import get_logger, Components
-from .detector import SubmissionInfo, ApplyMethod
+from ..utils.logger import Components, get_logger
+from .detector import ApplyMethod, SubmissionInfo
 
 
 class SubmissionStatus(str, Enum):
     """Status of a submission."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     SUBMITTED = "submitted"
@@ -32,6 +33,7 @@ class SubmissionStatus(str, Enum):
 @dataclass
 class SubmissionResult:
     """Result of a submission attempt."""
+
     job: JobListing
     status: SubmissionStatus
     success: bool
@@ -155,7 +157,8 @@ class AutoSubmitter:
         # Check if we've hit the hourly limit
         one_hour_ago = now.timestamp() - 3600
         recent_submissions = [
-            s for s in self._submission_history
+            s
+            for s in self._submission_history
             if s.timestamp.timestamp() > one_hour_ago
         ]
 
@@ -227,10 +230,11 @@ class AutoSubmitter:
         """
         try:
             import os
-            from ..linkedin.session import LinkedInSession, LinkedInSessionConfig
-            from ..linkedin.form_filler import EasyApplyFormFiller
+
             from ..linkedin.answer_engine import QuestionAnswerEngine
-            from ..linkedin.safety import SafetyController, SafetyConfig
+            from ..linkedin.form_filler import EasyApplyFormFiller
+            from ..linkedin.safety import SafetyConfig, SafetyController
+            from ..linkedin.session import LinkedInSession, LinkedInSessionConfig
             from ..models.user_profile import UserProfile
 
             email = os.getenv("LINKEDIN_EMAIL", "")
@@ -281,7 +285,11 @@ class AutoSubmitter:
             # Build answer engine with user profile
             profile = None
             if user_profile:
-                profile = UserProfile(**user_profile) if isinstance(user_profile, dict) else user_profile
+                profile = (
+                    UserProfile(**user_profile)
+                    if isinstance(user_profile, dict)
+                    else user_profile
+                )
 
             if not profile:
                 return SubmissionResult(
@@ -317,7 +325,11 @@ class AutoSubmitter:
 
             return SubmissionResult(
                 job=info.job,
-                status=SubmissionStatus.SUBMITTED if result.success else SubmissionStatus.FAILED,
+                status=(
+                    SubmissionStatus.SUBMITTED
+                    if result.success
+                    else SubmissionStatus.FAILED
+                ),
                 success=result.success,
                 timestamp=datetime.now(),
                 notes=(
@@ -385,8 +397,14 @@ class AutoSubmitter:
         """
         total = len(self._submission_history)
         successful = sum(1 for s in self._submission_history if s.success)
-        failed = sum(1 for s in self._submission_history if not s.success and s.status != SubmissionStatus.SKIPPED)
-        skipped = sum(1 for s in self._submission_history if s.status == SubmissionStatus.SKIPPED)
+        failed = sum(
+            1
+            for s in self._submission_history
+            if not s.success and s.status != SubmissionStatus.SKIPPED
+        )
+        skipped = sum(
+            1 for s in self._submission_history if s.status == SubmissionStatus.SKIPPED
+        )
 
         return {
             "total_submissions": total,
@@ -454,7 +472,9 @@ class AutoSubmitter:
                     job=job,
                     status=SubmissionStatus(item.get("status", "pending")),
                     success=item.get("success", False),
-                    timestamp=datetime.fromisoformat(item.get("timestamp", datetime.now().isoformat())),
+                    timestamp=datetime.fromisoformat(
+                        item.get("timestamp", datetime.now().isoformat())
+                    ),
                     error_message=item.get("error_message"),
                     submission_id=item.get("submission_id"),
                     notes=item.get("notes", ""),
@@ -462,7 +482,9 @@ class AutoSubmitter:
 
                 self._submission_history.append(result)
 
-            self.logger.info(f"Loaded {len(self._submission_history)} submission records")
+            self.logger.info(
+                f"Loaded {len(self._submission_history)} submission records"
+            )
 
         except Exception as e:
             self.logger.error(f"Failed to load history: {str(e)}")
@@ -540,7 +562,9 @@ class ApplicationTracker:
         with open(filepath, "w") as f:
             json.dump(application_data, f, indent=2, default=str)
 
-        self.logger.info(f"Tracked application: {app_id} for {job.title} at {job.company}")
+        self.logger.info(
+            f"Tracked application: {app_id} for {job.title} at {job.company}"
+        )
 
         return app_id
 
@@ -634,7 +658,9 @@ class ApplicationTracker:
             status = app.get("status", "unknown")
             status_counts[status] = status_counts.get(status, 0) + 1
 
-        offer_count = sum(1 for app in applications if app.get("offer_status") == "received")
+        offer_count = sum(
+            1 for app in applications if app.get("offer_status") == "received"
+        )
 
         return {
             "total_applications": total,

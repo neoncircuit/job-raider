@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils/cn";
+import { DISCAssessment } from "@/components/disc-assessment";
 
 // ── Difficulty colors ────────────────────────────────────────────────────────
 
@@ -30,7 +31,7 @@ const QUESTION_TYPE_COLORS: Record<string, string> = {
 
 // ── Setup View ───────────────────────────────────────────────────────────────
 
-function SetupView({ onStart }: { onStart: (mode: "job_targeted" | "skill_based", skills: string[], difficulty: DifficultyLevel, count: number) => void }) {
+function SetupView({ onStart, onStartDISC }: { onStart: (mode: "job_targeted" | "skill_based", skills: string[], difficulty: DifficultyLevel, count: number) => void; onStartDISC: () => void }) {
   const [mode, setMode] = useState<"job_targeted" | "skill_based">("skill_based");
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("intermediate");
   const [count, setCount] = useState(5);
@@ -79,6 +80,12 @@ function SetupView({ onStart }: { onStart: (mode: "job_targeted" | "skill_based"
           )}
         >
           Target a Job
+        </button>
+        <button
+          onClick={onStartDISC}
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-purple-600 text-white border hover:bg-purple-700 shadow-md"
+        >
+          DISC Assessment
         </button>
       </div>
 
@@ -165,9 +172,10 @@ function SessionView({
   const [showingFeedback, setShowingFeedback] = useState(false);
 
   useEffect(() => {
-    setFreeformAnswer("");
-    setSelectedOption(null);
-    setShowingFeedback(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFreeformAnswer(prev => prev !== "" ? "" : prev);
+    setSelectedOption(prev => prev !== null ? null : prev);
+    setShowingFeedback(prev => prev !== false ? false : prev);
   }, [currentQuestion?.question_id]);
 
   if (!currentQuestion) {
@@ -390,7 +398,7 @@ function ResultsView({ session, onNewSession }: { session: AssessmentSession; on
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
-type PageView = "setup" | "session" | "results";
+type PageView = "setup" | "session" | "results" | "disc";
 
 export default function AssessmentPage() {
   const [view, setView] = useState<PageView>("setup");
@@ -436,6 +444,8 @@ export default function AssessmentPage() {
     startMutation.mutate({ mode, target_skills: skills, difficulty, question_count: count });
   };
 
+  const handleStartDISC = () => { setView("disc"); };
+
   const handleBack = () => { setSession(null); setView("setup"); };
 
   return (
@@ -445,7 +455,12 @@ export default function AssessmentPage() {
         <p className="mt-0.5 text-sm text-gray-500">Practice technical questions to prepare for interviews.</p>
       </div>
 
-      {view === "setup" && <SetupView onStart={handleStart} />}
+      {view === "setup" && <SetupView onStart={handleStart} onStartDISC={handleStartDISC} />}
+      {view === "disc" && (
+        <div className="flex justify-center">
+          <DISCAssessment onComplete={() => setView("setup")} />
+        </div>
+      )}
       {view === "session" && session && (
         <SessionView
           session={session}

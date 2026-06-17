@@ -7,26 +7,9 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-from .filter import (
-    JobFilter,
-    QuickFilter,
-    FilterResult,
-    MatchReason,
-)
-
-from .matcher import (
-    JobMatcher,
-    SkillMatcher,
-    MatchScore,
-    ScoreCategory,
-)
-
-from .scam_detector import (
-    JobScamDetector,
-    ScamReport,
-    ScamIndicator,
-    ScamFilter,
-)
+from .filter import FilterResult, JobFilter, MatchReason, QuickFilter
+from .matcher import JobMatcher, MatchScore, ScoreCategory, SkillMatcher
+from .scam_detector import JobScamDetector, ScamFilter, ScamIndicator, ScamReport
 
 __all__ = [
     # Filter

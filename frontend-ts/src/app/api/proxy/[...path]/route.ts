@@ -5,8 +5,12 @@ import { type NextRequest, NextResponse } from "next/server";
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:8000";
 const API_KEY = process.env.API_KEY ?? "";
 
-// In Next.js 16, params is a Promise — must be awaited.
-async function handler(req: NextRequest, ctx: RouteContext<"/api/proxy/[...path]">) {
+// In Next.js 16, params is a Promise — must be awaited. The context type is
+// declared inline (rather than the generated `RouteContext<...>`) so that
+// `tsc --noEmit` passes without a prior `next build` generating .next/types.
+type ProxyRouteContext = { params: Promise<{ path: string[] }> };
+
+async function handler(req: NextRequest, ctx: ProxyRouteContext) {
   const { path } = await ctx.params;
   const backendPath = "/api/" + path.join("/");
 

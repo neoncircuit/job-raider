@@ -8,20 +8,21 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import Dict, List, Any, Optional
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-import json
+from typing import Any, Dict, List, Optional
 
 from ..metrics.cost_tracker import CostTracker, PipelineCostSummary
-from ..metrics.outcome_tracker import OutcomeTracker, ConversionMetrics
-from ..utils.logger import get_logger, Components
+from ..metrics.outcome_tracker import ConversionMetrics, OutcomeTracker
+from ..utils.logger import Components, get_logger
 
 
 @dataclass
 class PipelineReport:
     """Complete pipeline execution report."""
+
     timestamp: datetime
     period_days: int
     cost_summary: PipelineCostSummary
@@ -206,11 +207,15 @@ class ReportGenerator:
             )
 
         if not recommendations:
-            recommendations.append("Pipeline is performing well. Keep monitoring metrics.")
+            recommendations.append(
+                "Pipeline is performing well. Keep monitoring metrics."
+            )
 
         return recommendations
 
-    def save_report(self, report: PipelineReport, filename: Optional[str] = None) -> str:
+    def save_report(
+        self, report: PipelineReport, filename: Optional[str] = None
+    ) -> str:
         """
         Save report to file.
 
@@ -236,9 +241,13 @@ class ReportGenerator:
                 "total_cost_usd": report.cost_summary.total_cost_usd,
                 "total_calls": report.cost_summary.total_calls,
                 "total_tokens": report.cost_summary.total_tokens,
-                "by_task_type": {k.value: v for k, v in report.cost_summary.by_task_type.items()},
+                "by_task_type": {
+                    k.value: v for k, v in report.cost_summary.by_task_type.items()
+                },
                 "by_model": report.cost_summary.by_model,
-                "by_provider": {k.value: v for k, v in report.cost_summary.by_provider.items()},
+                "by_provider": {
+                    k.value: v for k, v in report.cost_summary.by_provider.items()
+                },
             },
             "outcome_metrics": {
                 "total_applications": report.outcome_metrics.total_applications,
@@ -259,7 +268,9 @@ class ReportGenerator:
 
         return str(filepath)
 
-    def generate_html_report(self, report: PipelineReport, filename: Optional[str] = None) -> str:
+    def generate_html_report(
+        self, report: PipelineReport, filename: Optional[str] = None
+    ) -> str:
         """
         Generate HTML report.
 
@@ -430,11 +441,7 @@ class ReportGenerator:
             </div>
             <div class="metric-card">
                 <div class="metric-label">Avg Days to Offer</div>
-                <div class="metric-value">
-                    {report.outcome_metrics.avg_time_to_offer:.0f}d
-                    if report.outcome_metrics.avg_time_to_offer > 0 else "N/A"
-                }
-                </div>
+                <div class="metric-value">{f"{report.outcome_metrics.avg_time_to_offer:.0f}d" if report.outcome_metrics.avg_time_to_offer > 0 else "N/A"}</div>
             </div>
         </div>
 
@@ -501,7 +508,7 @@ class DashboardData:
 def generate_report(period_days: int = 7) -> PipelineReport:
     """Generate a report for the specified period."""
     generator = ReportGenerator()
-    return generator._generate_report(days)
+    return generator._generate_report(period_days)
 
 
 def save_dashboard_data(output_dir: str = "data/reports") -> None:

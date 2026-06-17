@@ -8,22 +8,24 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
-from pydantic import BaseModel
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
-from ..models.user_profile import UserProfile, WorkExperience, Project
-from ..utils.logger import get_logger, Components
+from ..models.user_profile import Project, UserProfile, WorkExperience
+from ..utils.logger import Components, get_logger
 from .selector import SelectionOutput
 
 
 @dataclass
 class GeneratedResume:
     """Generated resume with all sections."""
+
     summary: str
     skills: List[str]
     experience: List[Dict[str, Any]]
@@ -86,7 +88,7 @@ CRITICAL RULES:
 3. All keywords MUST be naturally incorporated
 4. Keep dates and facts exactly as provided
 5. Use action verbs and quantify achievements where possible
-6. Maintain professional tone throughout"""
+6. Maintain professional tone throughout""",
             ),
             Message(
                 role=MessageType.USER,
@@ -128,7 +130,7 @@ Return a JSON object with the rewritten resume sections:
       "year": "Year"
     }}
   ]
-}}"""
+}}""",
             ),
         ]
 
@@ -145,7 +147,7 @@ Return a JSON object with the rewritten resume sections:
             import json
             import re
 
-            json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
             if not json_match:
                 raise ValueError("Failed to extract JSON from resume response")
 
@@ -158,7 +160,9 @@ Return a JSON object with the rewritten resume sections:
                 projects=data.get("projects", []),
                 education=data.get("education", []),
                 raw_response=response.content,
-                model_used=self.llm_router.routes[TaskType.RESUME_WRITING].primary_model,
+                model_used=self.llm_router.routes[
+                    TaskType.RESUME_WRITING
+                ].primary_model,
             )
 
         except Exception as e:
@@ -232,7 +236,9 @@ Return a JSON object with the rewritten resume sections:
             parts.append("\nEducation:")
             for edu in profile.education:
                 year = edu.end_date.year if edu.end_date else ""
-                parts.append(f"- {edu.degree} from {edu.school} {'(' + str(year) + ')' if year else ''}")
+                parts.append(
+                    f"- {edu.degree} from {edu.school} {'(' + str(year) + ')' if year else ''}"
+                )
 
         return "\n".join(parts)
 
@@ -283,42 +289,49 @@ Return a JSON object with the rewritten resume sections:
         )
 
         # Generate skills list
-        skills = list(set(
-            [s.name for s in profile.skills[:15]]
-            + selection.keywords_to_emphasize
-        ))
+        skills = list(
+            set([s.name for s in profile.skills[:15]] + selection.keywords_to_emphasize)
+        )
 
         # Generate experience
         experience = []
         for exp in profile.experience:
             dates = f"{exp.start_date.strftime('%b %Y')} - {exp.end_date.strftime('%b %Y') if exp.end_date else 'Present'}"
-            experience.append({
-                "title": exp.title,
-                "company": exp.company,
-                "dates": dates,
-                "highlights": exp.highlights[:5],
-            })
+            experience.append(
+                {
+                    "title": exp.title,
+                    "company": exp.company,
+                    "dates": dates,
+                    "highlights": exp.highlights[:5],
+                }
+            )
 
         # Generate projects
         projects = []
         for proj_name in selection.selected_projects:
-            project = next((p for p in profile.projects if p.name == proj_name["name"]), None)
+            project = next(
+                (p for p in profile.projects if p.name == proj_name["name"]), None
+            )
             if project:
-                projects.append({
-                    "name": project.name,
-                    "description": project.description or "",
-                    "technologies": project.technologies,
-                    "highlights": project.highlights[:3],
-                })
+                projects.append(
+                    {
+                        "name": project.name,
+                        "description": project.description or "",
+                        "technologies": project.technologies,
+                        "highlights": project.highlights[:3],
+                    }
+                )
 
         # Generate education
         education = []
         for edu in profile.education:
-            education.append({
-                "degree": edu.degree,
-                "school": edu.school,
-                "year": str(edu.end_date.year) if edu.end_date else "",
-            })
+            education.append(
+                {
+                    "degree": edu.degree,
+                    "school": edu.school,
+                    "year": str(edu.end_date.year) if edu.end_date else "",
+                }
+            )
 
         return GeneratedResume(
             summary=summary,

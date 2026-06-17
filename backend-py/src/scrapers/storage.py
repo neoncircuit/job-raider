@@ -8,14 +8,14 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
+import json
+from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Set
-from collections import defaultdict
-import json
+from typing import Any, Dict, List, Optional, Set
 
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class JobListingStorage:
@@ -58,7 +58,11 @@ class JobListingStorage:
             Path to saved file
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{collection.source.value}_{timestamp}.json" if collection.source else f"all_{timestamp}.json"
+        filename = (
+            f"{collection.source.value}_{timestamp}.json"
+            if collection.source
+            else f"all_{timestamp}.json"
+        )
         filepath = self.storage_dir / filename
 
         try:
@@ -195,7 +199,8 @@ class JobListingStorage:
                     # Keep the more recent listing
                     existing = seen_ids[listing.job_id]
                     if (
-                        listing.posted_date and existing.posted_date
+                        listing.posted_date
+                        and existing.posted_date
                         and listing.posted_date > existing.posted_date
                     ):
                         seen_ids[listing.job_id] = listing
@@ -205,7 +210,9 @@ class JobListingStorage:
                                 unique_listings[i] = listing
                                 break
 
-        self.logger.info(f"Deduplicated: {len(unique_listings)} unique from {sum(len(c.listings) for c in collections)} total")
+        self.logger.info(
+            f"Deduplicated: {len(unique_listings)} unique from {sum(len(c.listings) for c in collections)} total"
+        )
 
         return JobListingCollection(
             listings=unique_listings,
@@ -267,7 +274,9 @@ class JobListingStorage:
                     stats["total_listings"] += collection.total_count
                     if collection.source:
                         stats["by_source"][collection.source.value] += 1
-                        stats["listings_by_source"][collection.source.value] += collection.total_count
+                        stats["listings_by_source"][
+                            collection.source.value
+                        ] += collection.total_count
 
             except Exception:
                 continue

@@ -1,5 +1,11 @@
 import { request } from "./client";
-import type { AssessmentSession, ProgressStats } from "@/lib/types/api";
+import type {
+  AssessmentSession,
+  ProgressStats,
+  DISCSession,
+  DISCResult,
+  DISCAnswer,
+} from "@/lib/types/api";
 
 export interface StartAssessmentRequest {
   mode: "job_targeted" | "skill_based";
@@ -60,4 +66,20 @@ export const assessmentApi = {
 
   availableJobs: () =>
     request<{ jobs: Array<{ job_id: string; title: string; company: string }> }>("GET", "/assessment/jobs"),
+};
+
+export interface DISCSubmitRequest {
+  session_id: string;
+  answers: DISCAnswer[];
+}
+
+export const discApi = {
+  start: () =>
+    request<DISCSession>("POST", "/assessment/disc/start"),
+
+  submit: (req: DISCSubmitRequest) =>
+    request<DISCResult>("POST", "/assessment/disc/submit", { body: req }),
+
+  getProfile: () =>
+    request<DISCResult>("GET", "/assessment/disc/profile"),
 };

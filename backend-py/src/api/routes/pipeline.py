@@ -10,23 +10,23 @@ Date: 2026-04-21
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
-from ...models.user_profile import UserProfile
-from ...models.job_listing import JobListing
-from ...pipeline.orchestrator import PipelineOrchestrator, PipelineConfig, PipelineStage
 from ...extractors.resume_parser import ResumeParser
-from ...utils.logger import get_logger, Components
-from ..websocket.progress import manager
+from ...models.job_listing import JobListing
+from ...models.user_profile import UserProfile
+from ...pipeline.orchestrator import PipelineConfig, PipelineOrchestrator, PipelineStage
+from ...utils.logger import Components, get_logger
 from ..models.requests import PipelineStartRequest
 from ..models.responses import (
-    PipelineStatusResponse,
-    PipelineResultResponse,
     ErrorResponse,
+    PipelineResultResponse,
+    PipelineStatusResponse,
 )
+from ..websocket.progress import manager
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)

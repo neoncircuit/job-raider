@@ -13,6 +13,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { SidebarNavLink } from "./SidebarNavLink";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: <LayoutDashboard size={16} />, label: "Dashboard" },
@@ -52,8 +53,11 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-3 py-3 border-t border-sidebar-border">
-        <p className="text-[10px] text-sidebar-accent-foreground text-center">v0.1.0</p>
+      <div className="px-2 py-3 border-t border-sidebar-border space-y-1">
+        <ThemeToggle />
+        <div className="px-1">
+          <p className="text-[10px] text-sidebar-accent-foreground text-center">v0.1.0</p>
+        </div>
       </div>
     </aside>
   );

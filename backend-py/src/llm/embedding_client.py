@@ -21,11 +21,13 @@ from .base import LLMClientError
 
 class EmbeddingError(LLMClientError):
     """Raised when embedding generation fails."""
+
     pass
 
 
 class EmbeddingModelUnavailableError(EmbeddingError):
     """Raised when the embedding model is not loaded in Ollama."""
+
     pass
 
 
@@ -149,9 +151,13 @@ class EmbeddingClient:
 
             # Process in groups of batch_size concurrently
             for batch_start in range(0, len(uncached_indices), self.batch_size):
-                batch_indices = uncached_indices[batch_start:batch_start + self.batch_size]
+                batch_indices = uncached_indices[
+                    batch_start : batch_start + self.batch_size
+                ]
 
-                with ThreadPoolExecutor(max_workers=min(len(batch_indices), 8)) as executor:
+                with ThreadPoolExecutor(
+                    max_workers=min(len(batch_indices), 8)
+                ) as executor:
                     future_to_idx = {
                         executor.submit(self._request_embedding, texts[idx]): idx
                         for idx in batch_indices
@@ -171,7 +177,9 @@ class EmbeddingClient:
         # Replace any None with empty list (failed embeddings)
         return [r if r is not None else [] for r in results]
 
-    def embed_with_cache(self, text: str, cache_key: Optional[str] = None) -> List[float]:
+    def embed_with_cache(
+        self, text: str, cache_key: Optional[str] = None
+    ) -> List[float]:
         """Generate an embedding with optional explicit cache key.
 
         Uses the provided cache_key instead of a hash of the text content,
@@ -280,7 +288,9 @@ class EmbeddingClient:
             "total_embedded": self._total_embedded,
             "cache_hits": self._cache_hits,
             "cache_misses": self._cache_misses,
-            "cache_hit_rate": self._cache_hits / total_lookups if total_lookups > 0 else 0.0,
+            "cache_hit_rate": (
+                self._cache_hits / total_lookups if total_lookups > 0 else 0.0
+            ),
             "cache_size": len(self._cache),
         }
 
@@ -326,6 +336,7 @@ class EmbeddingClient:
             vram_usage = self.gpu_monitor.get_vram_usage()
             if vram_usage >= 0.9:
                 import logging
+
                 logging.getLogger("job_raider.llm").warning(
                     "VRAM usage at %.1f%% during embedding generation", vram_usage * 100
                 )

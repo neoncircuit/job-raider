@@ -4,7 +4,7 @@ Unit tests for Reciprocal Rank Fusion (RRF).
 
 import pytest
 
-from src.rag.rrf_fusion import reciprocal_rank_fusion, RRFResult
+from src.rag.rrf_fusion import RRFResult, reciprocal_rank_fusion
 
 
 class TestRRFBasicFusion:
@@ -90,7 +90,9 @@ class TestRRFWeights:
             {"doc_id": "a", "document": "doc a"},
         ]
 
-        results = reciprocal_rank_fusion(dense, sparse, dense_weight=0.5, sparse_weight=0.5)
+        results = reciprocal_rank_fusion(
+            dense, sparse, dense_weight=0.5, sparse_weight=0.5
+        )
         scores = {r.doc_id: r.rrf_score for r in results}
         assert abs(scores["a"] - scores["b"]) < 1e-10
 
@@ -99,7 +101,9 @@ class TestRRFWeights:
         dense = [{"doc_id": "a", "document": "doc a"}]
         sparse = [{"doc_id": "b", "document": "doc b"}]
 
-        results = reciprocal_rank_fusion(dense, sparse, dense_weight=1.0, sparse_weight=0.0)
+        results = reciprocal_rank_fusion(
+            dense, sparse, dense_weight=1.0, sparse_weight=0.0
+        )
 
         a_result = next(r for r in results if r.doc_id == "a")
         b_result = next(r for r in results if r.doc_id == "b")

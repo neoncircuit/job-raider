@@ -18,14 +18,14 @@ import yaml
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
-from ..models.user_profile import UserProfile
 from ..models.resume_analysis import (
-    ResumeAnalysis,
-    SkillAssessment,
     ExperienceInsight,
     ProjectInsight,
+    ResumeAnalysis,
+    SkillAssessment,
 )
-from ..utils.logger import get_logger, Components
+from ..models.user_profile import UserProfile
+from ..utils.logger import Components, get_logger
 
 
 class ResumeAnalyzer:
@@ -54,13 +54,17 @@ class ResumeAnalyzer:
 
     def _load_templates(self) -> None:
         """Load prompt templates from configuration."""
-        config_path = Path(__file__).parent.parent.parent / "config" / "prompt_templates.yaml"
+        config_path = (
+            Path(__file__).parent.parent.parent / "config" / "prompt_templates.yaml"
+        )
 
         with open(config_path, "r") as f:
             templates = yaml.safe_load(f)
 
         self.general_template = templates["prompts"]["resume_analysis_general"]
-        self.job_specific_template = templates["prompts"]["resume_analysis_job_specific"]
+        self.job_specific_template = templates["prompts"][
+            "resume_analysis_job_specific"
+        ]
 
     def analyze_general(
         self,
@@ -142,10 +146,10 @@ class ResumeAnalyzer:
         job_context = self._prepare_job_context(job)
         profile_context = self._prepare_profile_context(profile)
 
-        user_content = self.job_specific_template["user"].replace(
-            "{{job_context}}", job_context
-        ).replace(
-            "{{profile_context}}", profile_context
+        user_content = (
+            self.job_specific_template["user"]
+            .replace("{{job_context}}", job_context)
+            .replace("{{profile_context}}", profile_context)
         )
         messages = [
             Message(
@@ -210,7 +214,9 @@ class ResumeAnalyzer:
             for s in profile.skills[:30]
         ]
 
-    def _build_experience_insights(self, profile: UserProfile) -> list[ExperienceInsight]:
+    def _build_experience_insights(
+        self, profile: UserProfile
+    ) -> list[ExperienceInsight]:
         """
         Build experience insights directly from parsed profile data.
 
@@ -280,13 +286,19 @@ class ResumeAnalyzer:
             parts.append("\nSkills:")
             for skill in profile.skills[:30]:
                 proficiency = f" ({skill.proficiency})" if skill.proficiency else ""
-                years = f" - {skill.years_of_experience}y" if skill.years_of_experience else ""
+                years = (
+                    f" - {skill.years_of_experience}y"
+                    if skill.years_of_experience
+                    else ""
+                )
                 parts.append(f"- {skill.name}{proficiency}{years}")
 
         if profile.projects:
             parts.append("\nProjects:")
             for project in profile.projects[:10]:
-                technologies = ", ".join(project.technologies) if project.technologies else "N/A"
+                technologies = (
+                    ", ".join(project.technologies) if project.technologies else "N/A"
+                )
                 parts.append(f"- {project.name} ({technologies})")
                 if project.description:
                     parts.append(f"  Description: {project.description}")
@@ -426,13 +438,17 @@ class ResumeAnalyzer:
         profile_skills = {s.name.lower() for s in profile.skills}
 
         overlap = job_skills & profile_skills
-        alignment_score = min(100, (len(overlap) / len(job_skills) * 100) if job_skills else 50)
+        alignment_score = min(
+            100, (len(overlap) / len(job_skills) * 100) if job_skills else 50
+        )
 
         strengths = []
         gaps = []
 
         if overlap:
-            strengths.append(f"Has {len(overlap)} matching skills from job requirements")
+            strengths.append(
+                f"Has {len(overlap)} matching skills from job requirements"
+            )
         else:
             gaps.append("No matching skills found")
 

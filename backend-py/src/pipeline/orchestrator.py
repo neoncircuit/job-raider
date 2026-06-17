@@ -4,26 +4,45 @@ Job Raider - Pipeline Orchestrator
 This module manages the complete job application pipeline,
 orchestrating all stages from scraping to submission.
 
+Enhanced with multi-agent coordination for intelligent
+job matching and career coaching capabilities.
+
 Author: Job Raider
 Date: 2026-04-21
+Updated: 2026-06-12 - Added multi-agent support
 """
 
-from typing import List, Dict, Any, Optional, Callable
+import asyncio
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-import json
 from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
-from .stages import PipelineStages, PipelineContext, StageResult
+from ..llm.router import LLMRouter
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..scrapers.storage import JobListingStorage
-from ..utils.logger import get_logger, setup_logging, Components
+from ..utils.logger import Components, get_logger, setup_logging
+from .stages import PipelineContext, PipelineStages, StageResult
+
+# Multi-agent imports
+try:
+    from ..agents.base import Task, TaskType
+    from ..agents.career_coach import CareerCoachAgent
+    from ..agents.coordinator import AgentCoordinator
+
+    MULTI_AGENT_AVAILABLE = True
+except ImportError:
+    MULTI_AGENT_AVAILABLE = False
+    AgentCoordinator = None
+    CareerCoachAgent = None
 
 
 class PipelineStage(str, Enum):
     """Pipeline stage identifiers."""
+
     SCRAPE = "scrape"
     DEDUPLICATE = "deduplicate"
     FILTER_SCAMS = "filter_scams"
@@ -40,6 +59,7 @@ class PipelineStage(str, Enum):
 @dataclass
 class PipelineConfig:
     """Configuration for pipeline execution."""
+
     # Search parameters
     keywords: List[str]
     locations: List[str]
@@ -68,10 +88,17 @@ class PipelineConfig:
     submission_delay: float = 2.0
     max_submissions_per_hour: int = 30
 
+    # Multi-agent configuration
+    enable_multi_agent: bool = False
+    enable_career_coach: bool = True
+    enable_parallel_execution: bool = True
+    agent_timeout: float = 300.0  # 5 minutes
+
 
 @dataclass
 class PipelineResult:
     """Result of pipeline execution."""
+
     success: bool
     stages_completed: List[str]
     stage_results: Dict[str, StageResult]
@@ -87,16 +114,30 @@ class PipelineResult:
     @property
     def jobs_scraped(self) -> int:
         """Get number of jobs scraped."""
-        return self.stage_results.get("scrape", StageResult(
-            stage_name="scrape", success=False, data=[], metadata={}, timestamp=datetime.now()
-        )).metadata.get("listings_count", 0)
+        return self.stage_results.get(
+            "scrape",
+            StageResult(
+                stage_name="scrape",
+                success=False,
+                data=[],
+                metadata={},
+                timestamp=datetime.now(),
+            ),
+        ).metadata.get("listings_count", 0)
 
     @property
     def jobs_applied(self) -> int:
         """Get number of jobs applied to."""
-        return self.stage_results.get("submit_applications", StageResult(
-            stage_name="submit_applications", success=False, data=[], metadata={}, timestamp=datetime.now()
-        )).metadata.get("total_applications", 0)
+        return self.stage_results.get(
+            "submit_applications",
+            StageResult(
+                stage_name="submit_applications",
+                success=False,
+                data=[],
+                metadata={},
+                timestamp=datetime.now(),
+            ),
+        ).metadata.get("total_applications", 0)
 
 
 class PipelineOrchestrator:
@@ -110,6 +151,7 @@ class PipelineOrchestrator:
         self,
         config: PipelineConfig,
         user_profile: UserProfile,
+        llm_router: Optional[LLMRouter] = None,
     ):
         """
         Initialize the pipeline orchestrator.
@@ -117,10 +159,12 @@ class PipelineOrchestrator:
         Args:
             config: Pipeline configuration
             user_profile: User profile for matching
+            llm_router: Optional LLM router for agent operations
         """
         self.config = config
         self.user_profile = user_profile
         self.logger = get_logger(Components.SCRAPERS)
+        self.llm_router = llm_router or LLMRouter()
 
         # Setup logging
         setup_logging(
@@ -154,6 +198,13 @@ class PipelineOrchestrator:
         self._before_stage_hooks: Dict[PipelineStage, List[Callable]] = {}
         self._after_stage_hooks: Dict[PipelineStage, List[Callable]] = {}
 
+        # Multi-agent initialization
+        self.agent_coordinator: Optional[AgentCoordinator] = None
+        self._agents_initialized = False
+
+        if config.enable_multi_agent and MULTI_AGENT_AVAILABLE:
+            self._initialize_agents()
+
     def register_before_hook(
         self,
         stage: PipelineStage,
@@ -174,6 +225,213 @@ class PipelineOrchestrator:
             self._after_stage_hooks[stage] = []
         self._after_stage_hooks[stage].append(hook)
 
+    def _initialize_agents(self) -> None:
+        """Initialize multi-agent system for pipeline enhancement."""
+        if not MULTI_AGENT_AVAILABLE or self._agents_initialized:
+            return
+
+        try:
+            self.logger.info("Initializing multi-agent system...")
+
+            # Create agent coordinator
+            self.agent_coordinator = AgentCoordinator()
+
+            # Initialize Career Coach Agent if enabled
+            if self.config.enable_career_coach and CareerCoachAgent:
+                career_coach = CareerCoachAgent(llm_router=self.llm_router)
+                self.agent_coordinator.register_agent(career_coach)
+                self.logger.info("Career Coach Agent registered")
+
+            # Start the coordinator
+            asyncio.create_task(self.agent_coordinator.start())
+
+            self._agents_initialized = True
+            self.logger.info("Multi-agent system initialized successfully")
+
+        except Exception as e:
+            self.logger.error(f"Failed to initialize multi-agent system: {e}")
+            self.agent_coordinator = None
+            self._agents_initialized = False
+
+    async def run_with_agents(
+        self,
+        start_from: PipelineStage = PipelineStage.SCRAPE,
+        stop_at: Optional[PipelineStage] = None,
+    ) -> PipelineResult:
+        """
+        Run the pipeline using multi-agent coordination.
+
+        Args:
+            start_from: Stage to start from (for resuming)
+            stop_at: Optional stage to stop at (for testing)
+
+        Returns:
+            PipelineResult with execution summary including agent performance
+        """
+        if not self._agents_initialized or not self.agent_coordinator:
+            self.logger.warning(
+                "Multi-agent system not available, falling back to standard execution"
+            )
+            # Fall back to synchronous execution
+            return self.run(start_from, stop_at)
+
+        start_time = datetime.now()
+        self.logger.info("=" * 60)
+        self.logger.info("JOB RAIDER MULTI-AGENT PIPELINE STARTED")
+        self.logger.info("=" * 60)
+
+        # Define stage sequence
+        stage_sequence = [
+            PipelineStage.SCRAPE,
+            PipelineStage.DEDUPLICATE,
+            PipelineStage.FILTER_SCAMS,
+            PipelineStage.FILTER_PROFILE,
+            PipelineStage.SCORE_RANK,
+            PipelineStage.RAG_RANK,
+            PipelineStage.DETECT_AUTO_SUBMIT,
+            PipelineStage.LINKEDIN_AUTH,
+            PipelineStage.PRESENT_SELECT,
+            PipelineStage.GENERATE_RESUMES,
+            PipelineStage.SUBMIT,
+        ]
+
+        # Filter to stages we want to run
+        start_idx = stage_sequence.index(start_from)
+        if stop_at:
+            end_idx = stage_sequence.index(stop_at) + 1
+            stages_to_run = stage_sequence[start_idx:end_idx]
+        else:
+            stages_to_run = stage_sequence[start_idx:]
+
+        # Skip submission if configured
+        if self.config.skip_submission and PipelineStage.SUBMIT in stages_to_run:
+            self.logger.info("Skipping submission stage (skip_submission=True)")
+            stages_to_run.remove(PipelineStage.SUBMIT)
+
+        # Execute stages with agents
+        stage_results: Dict[str, StageResult] = {}
+        stages_completed = []
+        agent_tasks = []
+
+        try:
+            for stage in stages_to_run:
+                # Run before hooks
+                for hook in self._before_stage_hooks.get(stage, []):
+                    try:
+                        hook(stage)
+                    except Exception as e:
+                        self.logger.warning(f"Before hook failed for {stage}: {str(e)}")
+
+                # Execute stage with agents
+                result, agent_task = await self._execute_stage_with_agents(
+                    stage, stage_results
+                )
+                stage_results[stage.value] = result
+
+                if agent_task:
+                    agent_tasks.append(agent_task)
+
+                if result.success:
+                    stages_completed.append(stage.value)
+                    self.logger.info(f"Stage '{stage.value}' completed successfully")
+                else:
+                    self.logger.error(
+                        f"Stage '{stage.value}' failed: {result.error_message}"
+                    )
+                    # Stop on failure
+                    break
+
+                # Run after hooks
+                for hook in self._after_stage_hooks.get(stage, []):
+                    try:
+                        hook(stage, result)
+                    except Exception as e:
+                        self.logger.warning(f"After hook failed for {stage}: {str(e)}")
+
+            # Get agent performance data
+            agent_performance = {}
+            if self.agent_coordinator:
+                agent_performance = self.agent_coordinator.get_performance_metrics()
+
+            end_time = datetime.now()
+            execution_time = (end_time - start_time).total_seconds()
+
+            self.logger.info("=" * 60)
+            self.logger.info("MULTI-AGENT PIPELINE COMPLETED")
+            self.logger.info(f"Duration: {execution_time:.2f} seconds")
+            self.logger.info(
+                f"Stages completed: {len(stages_completed)}/{len(stages_to_run)}"
+            )
+            self.logger.info("=" * 60)
+
+            return PipelineResult(
+                success=len(stages_completed) == len(stages_to_run),
+                stages_completed=stages_completed,
+                stage_results=stage_results,
+                start_time=start_time,
+                end_time=end_time,
+                metadata={
+                    "execution_mode": "multi_agent",
+                    "agent_performance": agent_performance,
+                    "agent_tasks": agent_tasks,
+                },
+            )
+
+        except Exception as e:
+            self.logger.error(f"Pipeline execution failed: {e}")
+            end_time = datetime.now()
+
+            return PipelineResult(
+                success=False,
+                stages_completed=stages_completed,
+                stage_results=stage_results,
+                start_time=start_time,
+                end_time=end_time,
+                metadata={"execution_mode": "multi_agent", "error": str(e)},
+            )
+
+    async def _execute_stage_with_agents(
+        self, stage: PipelineStage, previous_results: Dict[str, StageResult]
+    ) -> tuple[StageResult, Optional[Dict]]:
+        """
+        Execute a single stage using agent coordination.
+
+        Args:
+            stage: The stage to execute
+            previous_results: Results from previous stages
+
+        Returns:
+            Tuple of (stage result, agent task info)
+        """
+        # For now, fall back to standard stage execution
+        # This can be enhanced to use agents for specific stages
+        result = self._execute_stage(stage, previous_results)
+        return result, None
+
+    def get_agent_status(self) -> Optional[Dict[str, Any]]:
+        """
+        Get status of registered agents.
+
+        Returns:
+            Agent status dictionary or None if agents not initialized
+        """
+        if not self._agents_initialized or not self.agent_coordinator:
+            return None
+
+        return self.agent_coordinator.get_system_status()
+
+    def get_agent_performance(self) -> Optional[Dict[str, Any]]:
+        """
+        Get performance metrics for agents.
+
+        Returns:
+            Agent performance metrics or None if agents not initialized
+        """
+        if not self._agents_initialized or not self.agent_coordinator:
+            return None
+
+        return self.agent_coordinator.get_performance_metrics()
+
     def run(
         self,
         start_from: PipelineStage = PipelineStage.SCRAPE,
@@ -190,9 +448,9 @@ class PipelineOrchestrator:
             PipelineResult with execution summary
         """
         start_time = datetime.now()
-        self.logger.info("="*60)
+        self.logger.info("=" * 60)
         self.logger.info("JOB RAIDER PIPELINE STARTED")
-        self.logger.info("="*60)
+        self.logger.info("=" * 60)
 
         # Define stage sequence
         stage_sequence = [
@@ -242,7 +500,9 @@ class PipelineOrchestrator:
                 stages_completed.append(stage.value)
                 self.logger.info(f"Stage '{stage.value}' completed successfully")
             else:
-                self.logger.error(f"Stage '{stage.value}' failed: {result.error_message}")
+                self.logger.error(
+                    f"Stage '{stage.value}' failed: {result.error_message}"
+                )
                 # Stop on failure
                 break
 
@@ -258,11 +518,13 @@ class PipelineOrchestrator:
         # Save results
         self._save_pipeline_results(stage_results, start_time, end_time)
 
-        self.logger.info("="*60)
+        self.logger.info("=" * 60)
         self.logger.info("JOB RAIDER PIPELINE COMPLETED")
         self.logger.info(f"Duration: {end_time - start_time}")
-        self.logger.info(f"Stages completed: {len(stages_completed)}/{len(stages_to_run)}")
-        self.logger.info("="*60)
+        self.logger.info(
+            f"Stages completed: {len(stages_completed)}/{len(stages_to_run)}"
+        )
+        self.logger.info("=" * 60)
 
         return PipelineResult(
             success=len(stages_completed) == len(stages_to_run),
@@ -403,11 +665,29 @@ class PipelineOrchestrator:
                 "dry_run": self.config.dry_run,
             },
             "context": {
-                "raw_listings": len(self.context.raw_listings) if self.context.raw_listings else 0,
-                "deduplicated_listings": len(self.context.deduplicated_listings) if self.context.deduplicated_listings else 0,
-                "filtered_listings": len(self.context.filtered_listings) if self.context.filtered_listings else 0,
-                "scored_listings": len(self.context.scored_listings) if self.context.scored_listings else 0,
-                "selected_listings": len(self.context.selected_listings) if self.context.selected_listings else 0,
+                "raw_listings": (
+                    len(self.context.raw_listings) if self.context.raw_listings else 0
+                ),
+                "deduplicated_listings": (
+                    len(self.context.deduplicated_listings)
+                    if self.context.deduplicated_listings
+                    else 0
+                ),
+                "filtered_listings": (
+                    len(self.context.filtered_listings)
+                    if self.context.filtered_listings
+                    else 0
+                ),
+                "scored_listings": (
+                    len(self.context.scored_listings)
+                    if self.context.scored_listings
+                    else 0
+                ),
+                "selected_listings": (
+                    len(self.context.selected_listings)
+                    if self.context.selected_listings
+                    else 0
+                ),
             },
             "storage": {
                 "total_listings": self.storage.count_total(),

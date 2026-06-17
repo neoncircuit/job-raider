@@ -8,10 +8,11 @@ Date: 2026-04-29
 """
 
 import json
-from enum import Enum
-from typing import List, Optional, Dict, Any, Tuple
-from pydantic import BaseModel, Field
 from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+from pydantic import BaseModel, Field
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
@@ -20,6 +21,7 @@ from ..models.job_listing import JobListing
 
 class Industry(str, Enum):
     """Industry classifications."""
+
     TECHNOLOGY = "Technology"
     FINANCE = "Finance"
     HEALTHCARE = "Healthcare"
@@ -40,6 +42,7 @@ class Industry(str, Enum):
 
 class RoleCategory(str, Enum):
     """Job role categories."""
+
     ENGINEERING = "Engineering"
     PRODUCT = "Product"
     DESIGN = "Design"
@@ -59,6 +62,7 @@ class RoleCategory(str, Enum):
 
 class CompanySize(str, Enum):
     """Company size classifications."""
+
     STARTUP = "Startup (1-10)"
     SMALL = "Small (11-50)"
     MEDIUM_SMALL = "Medium-Small (51-200)"
@@ -71,6 +75,7 @@ class CompanySize(str, Enum):
 
 class WorkPace(str, Enum):
     """Expected work pace/environment."""
+
     RELAXED = "Relaxed"
     STEADY = "Steady"
     FAST_PACED = "Fast-Paced"
@@ -80,6 +85,7 @@ class WorkPace(str, Enum):
 
 class TeamStructure(str, Enum):
     """Team structure type."""
+
     SOLO_CONTRIBUTOR = "Solo Contributor"
     SMALL_TEAM = "Small Team (2-5)"
     MEDIUM_TEAM = "Medium Team (6-15)"
@@ -90,6 +96,7 @@ class TeamStructure(str, Enum):
 
 class SkillRequirement(BaseModel):
     """Detailed skill requirement."""
+
     name: str = Field(description="Skill name")
     category: str = Field(description="Skill category (technical, soft, domain, tool)")
     proficiency: str = Field(description="Required proficiency level")
@@ -102,38 +109,71 @@ class JobClassification(BaseModel):
 
     # Primary classifications
     industry: Industry = Field(default=Industry.OTHER, description="Industry sector")
-    role_category: RoleCategory = Field(default=RoleCategory.OTHER, description="Role category")
+    role_category: RoleCategory = Field(
+        default=RoleCategory.OTHER, description="Role category"
+    )
 
     # Company insights
-    company_size: CompanySize = Field(default=CompanySize.UNKNOWN, description="Estimated company size")
-    company_stage: Optional[str] = Field(default=None, description="Company stage (e.g., 'Series B', 'IPO')")
+    company_size: CompanySize = Field(
+        default=CompanySize.UNKNOWN, description="Estimated company size"
+    )
+    company_stage: Optional[str] = Field(
+        default=None, description="Company stage (e.g., 'Series B', 'IPO')"
+    )
 
     # Work environment
-    work_pace: WorkPace = Field(default=WorkPace.UNKNOWN, description="Expected work pace")
-    team_structure: TeamStructure = Field(default=TeamStructure.UNKNOWN, description="Team structure type")
+    work_pace: WorkPace = Field(
+        default=WorkPace.UNKNOWN, description="Expected work pace"
+    )
+    team_structure: TeamStructure = Field(
+        default=TeamStructure.UNKNOWN, description="Team structure type"
+    )
 
     # Skill analysis
-    technical_skills: List[SkillRequirement] = Field(default_factory=list, description="Technical skills")
-    soft_skills: List[SkillRequirement] = Field(default_factory=list, description="Soft skills")
-    domain_skills: List[SkillRequirement] = Field(default_factory=list, description="Domain knowledge")
+    technical_skills: List[SkillRequirement] = Field(
+        default_factory=list, description="Technical skills"
+    )
+    soft_skills: List[SkillRequirement] = Field(
+        default_factory=list, description="Soft skills"
+    )
+    domain_skills: List[SkillRequirement] = Field(
+        default_factory=list, description="Domain knowledge"
+    )
 
     # Experience validation
-    experience_level_confidence: float = Field(default=0.0, description="Confidence in experience level (0-1)")
-    actual_experience_years: Optional[Tuple[float, float]] = Field(default=None, description="Min, max years range")
+    experience_level_confidence: float = Field(
+        default=0.0, description="Confidence in experience level (0-1)"
+    )
+    actual_experience_years: Optional[Tuple[float, float]] = Field(
+        default=None, description="Min, max years range"
+    )
 
     # Role specifics
-    management_level: Optional[str] = Field(default=None, description="Management level (individual, lead, manager, director)")
-    impact_scope: Optional[str] = Field(default=None, description="Scope of impact (team, department, company, industry)")
+    management_level: Optional[str] = Field(
+        default=None,
+        description="Management level (individual, lead, manager, director)",
+    )
+    impact_scope: Optional[str] = Field(
+        default=None,
+        description="Scope of impact (team, department, company, industry)",
+    )
 
     # Metadata
-    classification_confidence: float = Field(default=0.0, description="Overall confidence (0-1)")
-    tags: List[str] = Field(default_factory=list, description="Additional searchable tags")
-    red_flags: List[str] = Field(default_factory=list, description="Potential concerns in the listing")
+    classification_confidence: float = Field(
+        default=0.0, description="Overall confidence (0-1)"
+    )
+    tags: List[str] = Field(
+        default_factory=list, description="Additional searchable tags"
+    )
+    red_flags: List[str] = Field(
+        default_factory=list, description="Potential concerns in the listing"
+    )
 
 
 @dataclass
 class JobClassificationResult:
     """Result of job classification."""
+
     success: bool
     classification: Optional[JobClassification]
     errors: List[str]
@@ -267,8 +307,12 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
         warnings = []
 
         # Prepare text sections
-        requirements_text = "\n".join([req.text for req in job_listing.requirements[:5]])
-        responsibilities_text = "\n".join([resp.text for resp in job_listing.responsibilities[:5]])
+        requirements_text = "\n".join(
+            [req.text for req in job_listing.requirements[:5]]
+        )
+        responsibilities_text = "\n".join(
+            [resp.text for resp in job_listing.responsibilities[:5]]
+        )
 
         # Truncate description if too long
         description = job_listing.description or ""
@@ -302,7 +346,7 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
             # Parse JSON response
             import re
 
-            json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
             if not json_match:
                 errors.append("Failed to extract JSON from LLM response")
                 return JobClassificationResult(
@@ -329,20 +373,25 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
             # Fall back to rule-based
             return self._classify_rule_based(job_listing, errors, warnings)
 
-    def _create_classification_from_dict(self, data: Dict[str, Any]) -> JobClassification:
+    def _create_classification_from_dict(
+        self, data: Dict[str, Any]
+    ) -> JobClassification:
         """Create JobClassification from dictionary data."""
+
         # Parse skill requirements
         def parse_skills(skills_data: List[Dict]) -> List[SkillRequirement]:
             skills = []
             for skill_data in skills_data:
                 try:
-                    skills.append(SkillRequirement(
-                        name=skill_data.get("name", ""),
-                        category=skill_data.get("category", "other"),
-                        proficiency=skill_data.get("proficiency", "Intermediate"),
-                        is_required=skill_data.get("is_required", True),
-                        confidence=0.8,  # Default confidence
-                    ))
+                    skills.append(
+                        SkillRequirement(
+                            name=skill_data.get("name", ""),
+                            category=skill_data.get("category", "other"),
+                            proficiency=skill_data.get("proficiency", "Intermediate"),
+                            is_required=skill_data.get("is_required", True),
+                            confidence=0.8,  # Default confidence
+                        )
+                    )
                 except Exception:
                     continue
             return skills
@@ -369,7 +418,9 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
             work_pace = WorkPace.UNKNOWN
 
         try:
-            team_structure = TeamStructure(data.get("team_structure", TeamStructure.UNKNOWN))
+            team_structure = TeamStructure(
+                data.get("team_structure", TeamStructure.UNKNOWN)
+            )
         except ValueError:
             team_structure = TeamStructure.UNKNOWN
 
@@ -393,7 +444,9 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
             technical_skills=parse_skills(data.get("technical_skills", [])),
             soft_skills=parse_skills(data.get("soft_skills", [])),
             domain_skills=parse_skills(data.get("domain_skills", [])),
-            experience_level_confidence=float(data.get("experience_level_confidence", 0.5)),
+            experience_level_confidence=float(
+                data.get("experience_level_confidence", 0.5)
+            ),
             actual_experience_years=experience_range,
             management_level=data.get("management_level"),
             impact_scope=data.get("impact_scope"),
@@ -456,16 +509,39 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
         text = f"{title} {description}"
 
         role_keywords = {
-            RoleCategory.ENGINEERING: ["engineer", "developer", "programmer", "software", "frontend", "backend", "full-stack"],
+            RoleCategory.ENGINEERING: [
+                "engineer",
+                "developer",
+                "programmer",
+                "software",
+                "frontend",
+                "backend",
+                "full-stack",
+            ],
             RoleCategory.PRODUCT: ["product manager", "product owner", "pm", "roadmap"],
             RoleCategory.DESIGN: ["designer", "ux", "ui", "visual", "graphic"],
-            RoleCategory.DATA_SCIENCE: ["data scientist", "analyst", "machine learning", "ai", "ml engineer"],
+            RoleCategory.DATA_SCIENCE: [
+                "data scientist",
+                "analyst",
+                "machine learning",
+                "ai",
+                "ml engineer",
+            ],
             RoleCategory.MARKETING: ["marketing", "growth", "seo", "content", "brand"],
-            RoleCategory.SALES: ["sales", "account executive", "business development", "bd"],
+            RoleCategory.SALES: [
+                "sales",
+                "account executive",
+                "business development",
+                "bd",
+            ],
             RoleCategory.OPERATIONS: ["operations", "ops", "logistics", "supply chain"],
             RoleCategory.FINANCE: ["finance", "accounting", "financial analyst"],
             RoleCategory.HR: ["human resources", "recruiter", "talent", "hr", "people"],
-            RoleCategory.CUSTOMER_SUCCESS: ["customer success", "support", "customer service"],
+            RoleCategory.CUSTOMER_SUCCESS: [
+                "customer success",
+                "support",
+                "customer service",
+            ],
         }
 
         for role, keywords in role_keywords.items():
@@ -479,11 +555,37 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
         text = f"{company} {description}".lower()
 
         industry_keywords = {
-            Industry.FINANCE: ["bank", "fintech", "financial", "investment", "trading", "crypto"],
-            Industry.HEALTHCARE: ["health", "medical", "hospital", "clinic", "pharma", "biotech"],
-            Industry.EDUCATION: ["education", "school", "university", "learning", "edtech"],
+            Industry.FINANCE: [
+                "bank",
+                "fintech",
+                "financial",
+                "investment",
+                "trading",
+                "crypto",
+            ],
+            Industry.HEALTHCARE: [
+                "health",
+                "medical",
+                "hospital",
+                "clinic",
+                "pharma",
+                "biotech",
+            ],
+            Industry.EDUCATION: [
+                "education",
+                "school",
+                "university",
+                "learning",
+                "edtech",
+            ],
             Industry.RETAIL: ["retail", "e-commerce", "shop", "store"],
-            Industry.MEDIA: ["media", "news", "publishing", "entertainment", "streaming"],
+            Industry.MEDIA: [
+                "media",
+                "news",
+                "publishing",
+                "entertainment",
+                "streaming",
+            ],
             Industry.TECHNOLOGY: ["software", "tech", "saas", "cloud", "platform"],
         }
 
@@ -497,11 +599,20 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
         """Infer work pace from description language."""
         desc_lower = description.lower()
 
-        if any(word in desc_lower for word in ["fast-paced", "fast paced", "startup environment", "rapidly"]):
-            return WorkPace.FAST-paced
-        elif any(word in desc_lower for word in ["high pressure", "demanding", "deadline-driven"]):
+        if any(
+            word in desc_lower
+            for word in ["fast-paced", "fast paced", "startup environment", "rapidly"]
+        ):
+            return WorkPace.FAST
+        elif any(
+            word in desc_lower
+            for word in ["high pressure", "demanding", "deadline-driven"]
+        ):
             return WorkPace.HIGH_PRESSURE
-        elif any(word in desc_lower for word in ["relaxed", "balance", "flexible", " laid back"]):
+        elif any(
+            word in desc_lower
+            for word in ["relaxed", "balance", "flexible", " laid back"]
+        ):
             return WorkPace.RELAXED
         else:
             return WorkPace.STEADY

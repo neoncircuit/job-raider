@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from ..models.assessment import AssessmentSession
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class AssessmentStorage:
@@ -134,12 +134,12 @@ class AssessmentStorage:
             }
 
         # Average score
-        avg_score = round(
-            sum(s.overall_score for s in completed) / len(completed), 1
-        )
+        avg_score = round(sum(s.overall_score for s in completed) / len(completed), 1)
 
         # Score trend (last 10 completed sessions)
-        sorted_completed = sorted(completed, key=lambda s: s.completed_at or datetime.min)
+        sorted_completed = sorted(
+            completed, key=lambda s: s.completed_at or datetime.min
+        )
         trend = [
             {
                 "date": (s.completed_at or datetime.now()).isoformat(),

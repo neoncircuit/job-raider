@@ -126,8 +126,20 @@ python main.py \
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--min-score` | Minimum relevance (0-100) | 60 |
+| `--fresh-grad` | Enable fresh graduate scoring mode | false |
 | `--scam-threshold` | Scam confidence (0-1) | 0.7 |
 | `--max-jobs` | Jobs to present | 20 |
+
+**Fresh Graduate Mode:**
+When `--fresh-grad` is enabled, the scoring algorithm adjusts to prioritize projects and education over work experience:
+
+- **Projects (35%)** - Academic projects, portfolio, hackathons
+- **Skills (30%)** - Technical skills match against job requirements
+- **Education (20%)** - Degree level, major relevance, GPA
+- **Experience (10%)** - Internships, part-time work (reduced weight)
+- **Location (5%)** - Geographic preferences
+
+The minimum score threshold is also reduced to 50 (from 60) to increase opportunities for entry-level candidates.
 
 #### Submission Options
 
@@ -319,6 +331,61 @@ ls -lt data/results/pipeline_run_*.json | head -1
 cat data/results/pipeline_run_TIMESTAMP.json
 ```
 
+## Multi-Agent API
+
+The multi-agent system exposes career-coaching endpoints under `/api/agents/*`. These are read/write REST endpoints protected by the standard `X-API-Key` header (omitted below for brevity; required when `API_KEY` is set on the backend).
+
+### Check Agent System Status
+
+```bash
+# Verify the agent system is initialized and ready
+curl -s http://localhost:8000/api/agents/status | jq .
+```
+
+A healthy response returns `coordinator_running: true`, `communication_healthy: true`, and one registered agent (`career_coach`, state `ready`). If the system failed to initialize at startup, this endpoint returns HTTP 503.
+
+### Trigger Career Analysis
+
+```bash
+# Analyze a user profile against optional target jobs
+curl -s -X POST http://localhost:8000/api/agents/career-analysis \
+  -H "Content-Type: application/json" \
+  -d '{"profile": {"name": "Jane Doe", "skills": ["python", "fastapi"]}, "target_jobs": []}' | jq .
+```
+
+### Analyze Skill Gaps
+
+```bash
+# Compare a profile against one or more target jobs
+curl -s -X POST http://localhost:8000/api/agents/gap-analysis \
+  -H "Content-Type: application/json" \
+  -d '{"profile": {"skills": ["python"]}, "target_jobs": [{"title": "Senior Backend Engineer"}]}' | jq .
+```
+
+Task endpoints (`career-analysis`, `gap-analysis`, `upskilling-roadmap`, `career-goals`) are rate-limited and return a `task_id` for tracking:
+
+```json
+{"success": true, "data": {"task_id": "<uuid>", "agent": "career_coach", "task_type": "gap_analysis", "status": "submitted"}}
+```
+
+### Other Endpoints
+
+```bash
+# Per-agent performance metrics
+curl -s http://localhost:8000/api/agents/performance | jq .
+
+# Agent-system health
+curl -s http://localhost:8000/api/agents/health | jq .
+
+# Career recommendations
+curl -s "http://localhost:8000/api/agents/recommendations?limit=5" | jq .
+
+# Gracefully shut the agent system down
+curl -s -X POST http://localhost:8000/api/agents/shutdown | jq .
+```
+
+See [Architecture - Multi-Agent Layer](architecture.md#multi-agent-layer) for the component design and request flow.
+
 ## Docker Usage
 
 ### Starting Services with Docker
@@ -384,6 +451,38 @@ The Next.js dashboard runs on port 3000:
 ```bash
 http://localhost:3000
 ```
+
+**Dashboard Features:**
+
+**Theme Toggle:**
+- Light/dark mode toggle button at bottom of sidebar
+- System theme detection with manual override
+- Theme persists across sessions
+- Both themes feature the Odysseus design with sharp borders and red accents
+
+**Navigation Pages:**
+- **Dashboard** - System health, API costs, recent pipeline runs
+- **Pipeline** - Configure and run job application pipelines
+- **Jobs** - Search and browse job listings with location filtering
+- **Applications** - Track saved and applied jobs
+- **Profile** - Manage your profile, skills, and experience
+- **Assessment** - DISC personality assessment and technical interview practice
+- **Resume Analysis** - AI-powered resume parsing and gap analysis
+- **Metrics** - Cost tracking and outcome statistics
+- **Settings** - Configure API keys, scraper sources, and preferences
+
+**DISC Personality Assessment:**
+- Industry-standard Most/Least forced-choice format
+- 24 questions across 4 categories (Leadership, Communication, Work Style, Problem Solving)
+- Job matching recommendations based on your personality profile
+- Practice for real job assessments
+
+**Jobs Search Features:**
+- Location filtering with post-processing to ensure accuracy
+- Source selection (LinkedIn, JSearch for 50+ boards)
+- Experience level filtering
+- Remote-only toggle
+- Real-time job classification and trust analysis
 
 ### Pulling Ollama Models
 

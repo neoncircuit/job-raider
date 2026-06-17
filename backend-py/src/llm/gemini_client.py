@@ -17,21 +17,20 @@ from google import genai
 from google.genai import types
 
 from .base import (
+    AuthenticationError,
     BaseLLMClient,
+    CostEstimate,
+    InvalidRequestError,
+    LLMClientError,
     LLMConfig,
     LLMResponse,
     Message,
     MessageType,
-    TokenUsage,
-    CostEstimate,
-    LLMClientError,
-    RateLimitError,
-    AuthenticationError,
     ModelNotFoundError,
+    RateLimitError,
     TimeoutError,
-    InvalidRequestError,
+    TokenUsage,
 )
-
 
 # Gemini model pricing (per 1M tokens, USD)
 MODEL_PRICING = {
@@ -155,9 +154,7 @@ class GeminiClient(BaseLLMClient):
         """
         config_params: Dict[str, Any] = {
             "temperature": kwargs.get("temperature", self.config.temperature),
-            "max_output_tokens": kwargs.get(
-                "max_tokens", self.config.max_tokens
-            ),
+            "max_output_tokens": kwargs.get("max_tokens", self.config.max_tokens),
             "top_p": kwargs.get("top_p", self.config.top_p),
         }
 
@@ -228,9 +225,7 @@ class GeminiClient(BaseLLMClient):
                 latency_ms = int((time.time() - start_time) * 1000)
                 content = response.text
                 usage = self._extract_usage(response)
-                cost = self.estimate_cost(
-                    usage.prompt_tokens, usage.completion_tokens
-                )
+                cost = self.estimate_cost(usage.prompt_tokens, usage.completion_tokens)
 
                 self._total_tokens_used += usage.total_tokens
                 self._total_cost += cost.total_cost
@@ -261,9 +256,7 @@ class GeminiClient(BaseLLMClient):
                         wait_time = self.config.retry_delay * (2**attempt)
                         time.sleep(wait_time)
                         continue
-                    raise RateLimitError(
-                        f"Gemini rate limit after retries: {e}"
-                    )
+                    raise RateLimitError(f"Gemini rate limit after retries: {e}")
 
                 if "timeout" in error_str:
                     raise TimeoutError(f"Gemini request timed out: {e}")
@@ -315,9 +308,7 @@ class GeminiClient(BaseLLMClient):
                 latency_ms = int((time.time() - start_time) * 1000)
                 content = response.text
                 usage = self._extract_usage(response)
-                cost = self.estimate_cost(
-                    usage.prompt_tokens, usage.completion_tokens
-                )
+                cost = self.estimate_cost(usage.prompt_tokens, usage.completion_tokens)
 
                 self._total_tokens_used += usage.total_tokens
                 self._total_cost += cost.total_cost
@@ -348,9 +339,7 @@ class GeminiClient(BaseLLMClient):
                         wait_time = self.config.retry_delay * (2**attempt)
                         await asyncio.sleep(wait_time)
                         continue
-                    raise RateLimitError(
-                        f"Gemini rate limit after retries: {e}"
-                    )
+                    raise RateLimitError(f"Gemini rate limit after retries: {e}")
 
                 if "timeout" in error_str:
                     raise TimeoutError(f"Gemini request timed out: {e}")
@@ -387,9 +376,7 @@ class GeminiClient(BaseLLMClient):
         except Exception:
             return len(text) // 4
 
-    def estimate_cost(
-        self, prompt_tokens: int, completion_tokens: int
-    ) -> CostEstimate:
+    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> CostEstimate:
         """
         Estimate the cost for a given number of tokens.
 

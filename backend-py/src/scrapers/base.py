@@ -8,41 +8,47 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
+import random
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional, Dict, Any
 from enum import Enum
-from pydantic import BaseModel
-import time
-import random
+from typing import Any, Dict, List, Optional
 
+from pydantic import BaseModel
+
+from ..extractors.jd_extractor import ExtractionResult, JDExtractor
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
-from ..extractors.jd_extractor import JDExtractor, ExtractionResult
 from ..utils.text_normalizer import normalize_job_description
 
 
 class ScraperError(Exception):
     """Base exception for scraper errors."""
+
     pass
 
 
 class RateLimitError(ScraperError):
     """Raised when rate limit is hit."""
+
     pass
 
 
 class AuthenticationError(ScraperError):
     """Raised when authentication fails."""
+
     pass
 
 
 class ScrapingException(ScraperError):
     """Raised when scraping fails for other reasons."""
+
     pass
 
 
 class SearchParams(BaseModel):
     """Parameters for job search."""
+
     keywords: List[str]
     location: Optional[str] = None
     experience_level: Optional[str] = None
@@ -201,9 +207,7 @@ class BaseScraper(ABC):
                     page = browser.new_page()
 
                     # Set user agent
-                    page.set_extra_http_headers({
-                        "User-Agent": self.user_agent
-                    })
+                    page.set_extra_http_headers({"User-Agent": self.user_agent})
 
                     # Navigate and wait for content
                     page.goto(url, timeout=self.timeout * 1000)
@@ -223,7 +227,9 @@ class BaseScraper(ABC):
                     time.sleep(wait_time)
                     continue
                 else:
-                    raise ScrapingException(f"Failed to fetch page after {self.max_retries} attempts: {str(e)}")
+                    raise ScrapingException(
+                        f"Failed to fetch page after {self.max_retries} attempts: {str(e)}"
+                    )
 
     def _rate_limit_wait(self) -> None:
         """Wait to respect rate limit between requests."""
@@ -247,6 +253,7 @@ class BaseScraper(ABC):
             Unique job ID
         """
         import hashlib
+
         combined = "|".join(str(arg) for arg in args)
         return hashlib.md5(combined.encode()).hexdigest()[:12]
 

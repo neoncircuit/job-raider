@@ -11,11 +11,11 @@ Date: 2026-04-20
 import hashlib
 import json
 import time
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-from dataclasses import dataclass, asdict
 from threading import Lock
+from typing import Any, Dict, List, Optional, Union
 
 from ..llm.base import LLMResponse, Message
 
@@ -23,6 +23,7 @@ from ..llm.base import LLMResponse, Message
 @dataclass
 class CacheEntry:
     """A cached response entry."""
+
     key: str
     response: LLMResponse
     timestamp: float
@@ -83,7 +84,9 @@ class ResponseCache:
         self.ttl = ttl
         self.max_size = max_size
         self.backend = backend
-        self.cache_path = Path(cache_path) if cache_path else Path("data/cache/llm_cache.json")
+        self.cache_path = (
+            Path(cache_path) if cache_path else Path("data/cache/llm_cache.json")
+        )
 
         self._memory_cache: Dict[str, CacheEntry] = {}
         self._file_cache: Dict[str, CacheEntry] = {}
@@ -114,7 +117,9 @@ class ResponseCache:
         """
         # Create a normalized representation of the request
         request_data = {
-            "messages": [{"role": msg.role.value, "content": msg.content} for msg in messages],
+            "messages": [
+                {"role": msg.role.value, "content": msg.content} for msg in messages
+            ],
             "model": model,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -216,7 +221,7 @@ class ResponseCache:
                     # Remove oldest entry
                     oldest_key = min(
                         self._memory_cache.keys(),
-                        key=lambda k: self._memory_cache[k].timestamp
+                        key=lambda k: self._memory_cache[k].timestamp,
                     )
                     del self._memory_cache[oldest_key]
             else:
@@ -226,7 +231,7 @@ class ResponseCache:
                 if len(self._file_cache) > self.max_size:
                     oldest_key = min(
                         self._file_cache.keys(),
-                        key=lambda k: self._file_cache[k].timestamp
+                        key=lambda k: self._file_cache[k].timestamp,
                     )
                     del self._file_cache[oldest_key]
 
@@ -253,10 +258,7 @@ class ResponseCache:
         with self._lock:
             cache = self._memory_cache if self.backend == "memory" else self._file_cache
 
-            expired_keys = [
-                key for key, entry in cache.items()
-                if entry.is_expired()
-            ]
+            expired_keys = [key for key, entry in cache.items() if entry.is_expired()]
 
             for key in expired_keys:
                 del cache[key]

@@ -8,17 +8,17 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import json
+from typing import Any, Dict, List, Optional
 
+from ..models.job_listing import JobListing, JobListingCollection, JobSource
+from ..utils.logger import Components, get_logger
 from .base import BaseScraper, SearchParams
-from .linkedin_scraper import LinkedInScraper
 from .jsearch_scraper import JSearchScraper
-from ..models.job_listing import JobListingCollection, JobSource
-from ..utils.logger import get_logger, Components
+from .linkedin_scraper import LinkedInScraper
 
 
 class ScraperManager:
@@ -92,7 +92,9 @@ class ScraperManager:
                 try:
                     collection = future.result(timeout=120)
                     all_listings.extend(collection.listings)
-                    self.logger.info(f"{source.value}: found {len(collection.listings)} listings")
+                    self.logger.info(
+                        f"{source.value}: found {len(collection.listings)} listings"
+                    )
                 except Exception as e:
                     self.logger.error(f"{source.value}: scraping failed - {str(e)}")
 
@@ -109,7 +111,9 @@ class ScraperManager:
         # Deduplicate if enabled
         if self.deduplicate:
             combined = combined.deduplicate()
-            self.logger.info(f"After deduplication: {combined.total_count} unique listings")
+            self.logger.info(
+                f"After deduplication: {combined.total_count} unique listings"
+            )
 
         # Save results
         self._save_results(combined)

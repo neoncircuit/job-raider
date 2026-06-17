@@ -2,7 +2,7 @@
 Unit tests for CrossEncoderReranker.
 """
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.rag.cross_encoder import CrossEncoderReranker
 
@@ -89,10 +89,7 @@ class TestCrossEncoderRerank:
         reranker._model = mock_model
         reranker._model_loaded = True
 
-        results = [
-            {"doc_id": f"doc_{i}", "document": f"doc {i}"}
-            for i in range(3)
-        ]
+        results = [{"doc_id": f"doc_{i}", "document": f"doc {i}"} for i in range(3)]
 
         output = reranker.rerank("query", results, top_k=2)
         assert len(output) == 2

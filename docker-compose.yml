@@ -16,16 +16,20 @@ services:
         protocol: tcp
         mode: host
     volumes:
-      - ./data:/app/data
+      - ./data:/app/backend-py/data
     environment:
       - PYTHONPATH=/app
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - OLLAMA_HOST=ollama:11434
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # Ollama configuration with fallback chain:
+      # 1. User-specified OLLAMA_HOST
+      # 2. ollama:11434 for Docker Ollama service (production)
+      # 3. host.docker.internal:11434 for local Ollama (development)
+      # 4. localhost:11434 for local development without Docker
+      - OLLAMA_HOST=${OLLAMA_HOST:-ollama:11434}
       - MLFLOW_TRACKING_URI=http://mlflow:5000
     env_file:
       - backend-py/.env
-    depends_on:
-      - ollama
     restart: unless-stopped
     networks:
       - job-raider-network
@@ -52,34 +56,6 @@ services:
     restart: unless-stopped
     networks:
       - job-raider-network
-
-  # Ollama for local models
-  ollama:
-    image: ollama/ollama:latest
-    container_name: job-raider-ollama
-    ports:
-      - target: 11434
-        published: "${OLLAMA_PORT:-11434}"
-        protocol: tcp
-        mode: host
-    volumes:
-      - ollama-data:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-    restart: unless-stopped
-    networks:
-      - job-raider-network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
-volumes:
-  ollama-data:
-    driver: local
 
 networks:
   job-raider-network:

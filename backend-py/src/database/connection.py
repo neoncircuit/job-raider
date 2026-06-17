@@ -1,4 +1,5 @@
 """SQLAlchemy async engine and session factory for Supabase PostgreSQL."""
+
 import os
 from collections.abc import AsyncGenerator
 

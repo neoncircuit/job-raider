@@ -7,11 +7,12 @@ Author: Job Raider
 Date: 2026-04-24
 """
 
-import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..api.settings import UserSettings, ModelRouting, Provider
+import yaml
+
+from ..api.settings import ModelRouting, Provider, UserSettings
 
 
 class ConfigLoader:
@@ -82,7 +83,9 @@ class ConfigLoader:
 
         return provider_config["models"].get(model)
 
-    def merge_with_user_settings(self, config: Dict[str, Any], settings: UserSettings) -> Dict[str, Any]:
+    def merge_with_user_settings(
+        self, config: Dict[str, Any], settings: UserSettings
+    ) -> Dict[str, Any]:
         """
         Merge YAML config with user settings.
 
@@ -105,7 +108,9 @@ class ConfigLoader:
         if "anthropic" not in merged["models"]:
             merged["models"]["anthropic"] = {}
         if settings.api_config.anthropic_api_key:
-            merged["models"]["anthropic"]["api_key"] = settings.api_config.anthropic_api_key
+            merged["models"]["anthropic"][
+                "api_key"
+            ] = settings.api_config.anthropic_api_key
 
         # Update Ollama config with user host
         if "ollama" not in merged["models"]:
@@ -133,9 +138,15 @@ class ConfigLoader:
             merged["router"]["cost_optimization"] = {}
 
         merged["router"]["cost_optimization"]["prefer_local"] = True
-        merged["router"]["cost_optimization"]["max_api_cost_per_run"] = settings.cost_limits.max_api_cost_per_run
-        merged["router"]["cost_optimization"]["cache_enabled"] = settings.cost_limits.enable_cache
-        merged["router"]["cost_optimization"]["cache_ttl"] = settings.cost_limits.cache_ttl
+        merged["router"]["cost_optimization"][
+            "max_api_cost_per_run"
+        ] = settings.cost_limits.max_api_cost_per_run
+        merged["router"]["cost_optimization"][
+            "cache_enabled"
+        ] = settings.cost_limits.enable_cache
+        merged["router"]["cost_optimization"][
+            "cache_ttl"
+        ] = settings.cost_limits.cache_ttl
 
         # Update cache settings
         if "cache" not in merged:

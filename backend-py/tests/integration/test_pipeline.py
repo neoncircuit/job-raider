@@ -2,23 +2,24 @@
 # Author: Job Raider
 # Date: 2026-04-21
 
-import pytest
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
-from src.pipeline.orchestrator import (
-    PipelineOrchestrator,
-    PipelineConfig,
-    PipelineStage,
-)
+import pytest
+
 from src.models.user_profile import (
-    UserProfile,
     ContactInfo,
-    TargetJob,
+    ExperienceLevel,
+    ProficiencyLevel,
     Skill,
     SkillCategory,
-    ProficiencyLevel,
-    ExperienceLevel,
+    TargetJob,
+    UserProfile,
+)
+from src.pipeline.orchestrator import (
+    PipelineConfig,
+    PipelineOrchestrator,
+    PipelineStage,
 )
 
 
@@ -70,7 +71,8 @@ class TestPipelineOrchestrator:
     @pytest.mark.slow
     def test_pipeline_with_mock_scraping(self, sample_user_profile, temp_data_dir):
         """Test pipeline with mock scraping data."""
-        from src.models.job_listing import JobListing, JobSource, JobRequirement, Skill as JobSkill
+        from src.models.job_listing import JobListing, JobRequirement, JobSource
+        from src.models.job_listing import Skill as JobSkill
 
         # Create mock job listings
         mock_jobs = [
@@ -92,6 +94,7 @@ class TestPipelineOrchestrator:
         listings_dir.mkdir(parents=True, exist_ok=True)
 
         import json
+
         for job in mock_jobs:
             filepath = listings_dir / f"{job.job_id}.json"
             with open(filepath, "w") as f:
@@ -188,10 +191,17 @@ class TestEndToEndWorkflow:
 
     def test_full_workflow_simulation(self, sample_user_profile, temp_data_dir):
         """Test simulated full workflow without actual scraping."""
-        from src.models.job_listing import JobListing, JobSource, JobRequirement, JobResponsibility, Skill as JobSkill
-        from src.scoring.matcher import JobMatcher
-        from src.generation.selector import ResumeSelector
         import json
+
+        from src.generation.selector import ResumeSelector
+        from src.models.job_listing import (
+            JobListing,
+            JobRequirement,
+            JobResponsibility,
+            JobSource,
+        )
+        from src.models.job_listing import Skill as JobSkill
+        from src.scoring.matcher import JobMatcher
 
         # Create sample job
         job = JobListing(
@@ -209,8 +219,11 @@ class TestEndToEndWorkflow:
                 JobResponsibility(text="Mentor team members"),
             ],
             skills=[
-                JobSkill(name="python"), JobSkill(name="django"),
-                JobSkill(name="fastapi"), JobSkill(name="postgresql"), JobSkill(name="redis"),
+                JobSkill(name="python"),
+                JobSkill(name="django"),
+                JobSkill(name="fastapi"),
+                JobSkill(name="postgresql"),
+                JobSkill(name="redis"),
             ],
             source=JobSource.LINKEDIN,
             job_id="test_job_001",
@@ -240,8 +253,8 @@ class TestComponentIntegration:
 
     def test_scraper_to_storage(self, temp_data_dir):
         """Test scraper to storage workflow."""
+        from src.models.job_listing import JobListing, JobListingCollection, JobSource
         from src.scrapers.storage import JobListingStorage
-        from src.models.job_listing import JobListing, JobSource, JobListingCollection
 
         storage = JobListingStorage(str(temp_data_dir / "listings"))
 
@@ -262,10 +275,10 @@ class TestComponentIntegration:
 
     def test_filter_to_matcher(self, sample_user_profile):
         """Test filter to scorer workflow."""
+        from src.models.job_listing import JobListing, JobListingCollection, JobSource
+        from src.models.job_listing import Skill as JobSkill
         from src.scoring.filter import JobFilter
         from src.scoring.matcher import JobMatcher
-        from src.models.job_listing import JobListing, JobSource, JobListingCollection
-        from src.models.job_listing import Skill as JobSkill
 
         # Create sample jobs
         jobs = [
@@ -296,7 +309,9 @@ class TestComponentIntegration:
 
         # Score filtered jobs
         matcher = JobMatcher()
-        scored = [matcher.score_job(job, sample_user_profile) for job in filtered.listings]
+        scored = [
+            matcher.score_job(job, sample_user_profile) for job in filtered.listings
+        ]
 
         assert len(scored) <= len(jobs)
         assert all(score.total_score >= 0 for score in scored)
@@ -309,7 +324,7 @@ class TestLLMIntegration:
 
     @pytest.mark.skipif(
         "not config.getoption('--run-llm-tests')",
-        reason="LLM tests require --run-llm-tests flag"
+        reason="LLM tests require --run-llm-tests flag",
     )
     def test_ollama_integration(self, sample_user_profile):
         """Test Ollama integration."""
@@ -318,9 +333,7 @@ class TestLLMIntegration:
         client = OllamaClient(model="qwen2.5:3b")
 
         response = client.generate(
-            messages=[
-                {"role": "user", "content": "Say 'Hello, World!'"}
-            ]
+            messages=[{"role": "user", "content": "Say 'Hello, World!'"}]
         )
 
         assert response.content is not None
@@ -328,13 +341,14 @@ class TestLLMIntegration:
 
     @pytest.mark.skipif(
         "not config.getoption('--run-llm-tests')",
-        reason="LLM tests require --run-llm-tests flag"
+        reason="LLM tests require --run-llm-tests flag",
     )
     def test_resume_generation_flow(self, sample_user_profile, temp_data_dir):
         """Test resume generation with actual LLM."""
-        from src.generation.selector import ResumeSelector
         from src.generation.resume_writer import ResumeWriter
-        from src.models.job_listing import JobListing, JobSource, JobRequirement, Skill as JobSkill
+        from src.generation.selector import ResumeSelector
+        from src.models.job_listing import JobListing, JobRequirement, JobSource
+        from src.models.job_listing import Skill as JobSkill
 
         job = JobListing(
             title="Python Engineer",

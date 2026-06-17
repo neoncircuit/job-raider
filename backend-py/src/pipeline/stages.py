@@ -8,42 +8,46 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import List, Dict, Any, Optional, Tuple
+import json
 from dataclasses import dataclass
 from datetime import datetime
-import json
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
+from ..generation.cover_letter_validator import (
+    CoverLetterValidationResult,
+    CoverLetterValidator,
+)
+from ..generation.cover_letter_writer import CoverLetterWriter, GeneratedCoverLetter
+from ..generation.formatter import ResumeFormatter
+from ..generation.resume_writer import GeneratedResume, ResumeWriter
+from ..generation.selector import ResumeSelector, SelectionOutput
+from ..generation.validator import ResumeValidator, ValidationResult
+from ..llm.embedding_client import EmbeddingClient, EmbeddingError
+from ..llm.router import LLMRouter
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
-from ..scrapers.manager import ScraperManager
-from ..scrapers.storage import JobListingStorage
+from ..rag.bm25_retriever import BM25Retriever
+from ..rag.chunker import TextChunker
+from ..rag.config import RAGConfig
+from ..rag.cross_encoder import CrossEncoderReranker
+from ..rag.ranker import RAGMatchScore, RAGRanker
+from ..rag.vector_store import ChromaStore
 from ..scoring.filter import JobFilter, QuickFilter
 from ..scoring.matcher import JobMatcher, MatchScore
 from ..scoring.scam_detector import JobScamDetector, ScamFilter
-from ..submission.detector import AutoSubmitDetector, SubmissionInfo
-from ..submission.submitter import AutoSubmitter, ApplicationTracker
-from ..generation.selector import ResumeSelector, SelectionOutput
-from ..generation.resume_writer import ResumeWriter, GeneratedResume
-from ..generation.cover_letter_writer import CoverLetterWriter, GeneratedCoverLetter
-from ..generation.cover_letter_validator import CoverLetterValidator, CoverLetterValidationResult
-from ..generation.validator import ResumeValidator, ValidationResult
-from ..generation.formatter import ResumeFormatter
-from ..llm.router import LLMRouter
-from ..llm.embedding_client import EmbeddingClient, EmbeddingError
-from ..rag.config import RAGConfig
-from ..rag.chunker import TextChunker
-from ..rag.vector_store import ChromaStore
-from ..rag.ranker import RAGRanker, RAGMatchScore
-from ..rag.bm25_retriever import BM25Retriever
-from ..rag.cross_encoder import CrossEncoderReranker
-from ..utils.logger import get_logger, Components
+from ..scrapers.manager import ScraperManager
+from ..scrapers.storage import JobListingStorage
 from ..submission.applied_tracker import AppliedJobsTracker
+from ..submission.detector import ApplyMethod, AutoSubmitDetector, SubmissionInfo
+from ..submission.submitter import ApplicationTracker, AutoSubmitter
+from ..utils.logger import Components, get_logger
 
 
 @dataclass
 class StageResult:
     """Result of a pipeline stage execution."""
+
     stage_name: str
     success: bool
     data: Any
@@ -55,6 +59,7 @@ class StageResult:
 @dataclass
 class PipelineContext:
     """Context shared across pipeline stages."""
+
     user_profile: UserProfile
     storage: JobListingStorage
     results_dir: Path
@@ -65,7 +70,9 @@ class PipelineContext:
     deduplicated_listings: Optional[List[JobListing]] = None
     filtered_listings: Optional[List[JobListing]] = None
     scored_listings: Optional[List[Tuple[JobListing, MatchScore]]] = None
-    rag_ranked_listings: Optional[List[Any]] = None  # List[RAGMatchScore] when RAG enabled
+    rag_ranked_listings: Optional[List[Any]] = (
+        None  # List[RAGMatchScore] when RAG enabled
+    )
     selected_listings: Optional[List[JobListing]] = None
     submission_info: Optional[List[SubmissionInfo]] = None
 
@@ -134,7 +141,9 @@ class PipelineStages:
         start_time = datetime.now()
 
         try:
-            self.logger.info(f"Starting scraping stage: keywords={keywords}, locations={locations}")
+            self.logger.info(
+                f"Starting scraping stage: keywords={keywords}, locations={locations}"
+            )
 
             # Perform scraping
             listings = self.scraper_manager.search_all(
@@ -195,6 +204,7 @@ class PipelineStages:
 
             # Use collection's deduplicate method
             from ..models.job_listing import JobListingCollection
+
             collection = JobListingCollection(jobs=listings)
             deduplicated = collection.deduplicate()
 
@@ -210,14 +220,20 @@ class PipelineStages:
                         job_id=job.job_id,
                         job_title=job.title,
                         company=job.company,
-                        source=str(job.source.value) if hasattr(job.source, "value") else str(job.source),
+                        source=(
+                            str(job.source.value)
+                            if hasattr(job.source, "value")
+                            else str(job.source)
+                        ),
                     )
 
             # Filter out already-applied jobs
             before_filter = len(deduplicated)
             deduplicated = [
-                job for job in deduplicated
-                if not job.already_applied and not applied_tracker.is_applied(job.job_id)
+                job
+                for job in deduplicated
+                if not job.already_applied
+                and not applied_tracker.is_applied(job.job_id)
             ]
             applied_removed = before_filter - len(deduplicated)
 
@@ -480,7 +496,9 @@ class PipelineStages:
 
         try:
             jobs = self._extract_jobs_from_scored(scored_listings)
-            self.logger.info(f"Detecting auto-submit opportunities for {len(jobs)} jobs")
+            self.logger.info(
+                f"Detecting auto-submit opportunities for {len(jobs)} jobs"
+            )
 
             # Detect submission methods
             submission_info = self.submit_detector.detect_batch(jobs)
@@ -488,7 +506,9 @@ class PipelineStages:
             self.context.submission_info = submission_info
 
             # Count by method
-            auto_submit_count = sum(1 for info in submission_info if info.can_auto_submit)
+            auto_submit_count = sum(
+                1 for info in submission_info if info.can_auto_submit
+            )
 
             metadata = {
                 "total_jobs": len(submission_info),
@@ -541,12 +561,14 @@ class PipelineStages:
 
         try:
             import os
+
             email = os.getenv("LINKEDIN_EMAIL", "")
             password = os.getenv("LINKEDIN_PASSWORD", "")
 
             linkedin_available = bool(email and password)
             easy_apply_count = sum(
-                1 for info in submission_info
+                1
+                for info in submission_info
                 if info.apply_method == ApplyMethod.EASY_APPLY
             )
 
@@ -622,7 +644,9 @@ class PipelineStages:
                 job = self._extract_job_from_item(item)
                 score_display = self._format_score_display(item)
                 info = info_map.get(job.job_id)
-                auto_submit_flag = "[AUTO]" if info and info.can_auto_submit else "[MANUAL]"
+                auto_submit_flag = (
+                    "[AUTO]" if info and info.can_auto_submit else "[MANUAL]"
+                )
 
                 self.logger.info(
                     f"{idx}. {auto_submit_flag} {job.title} at {job.company}"
@@ -644,7 +668,8 @@ class PipelineStages:
                 "presented_count": len(to_present),
                 "selected_count": len(selected),
                 "auto_submit_available": sum(
-                    1 for job in selected
+                    1
+                    for job in selected
                     if info_map.get(job.job_id) and info_map[job.job_id].can_auto_submit
                 ),
             }
@@ -772,23 +797,27 @@ class PipelineStages:
                     cover_letter_path = cover_letter_dir / f"{job.job_id}.txt"
                     cover_letter_path.write_text(cover_letter.content)
 
-                    generated.append({
-                        "job": job,
-                        "resume": generated_resume,
-                        "cover_letter": cover_letter,
-                        "pdf_path": str(pdf_path),
-                        "docx_path": str(docx_path),
-                        "cover_letter_path": str(cover_letter_path),
-                        "validation": validation,
-                        "cover_letter_validation": cl_validation,
-                    })
+                    generated.append(
+                        {
+                            "job": job,
+                            "resume": generated_resume,
+                            "cover_letter": cover_letter,
+                            "pdf_path": str(pdf_path),
+                            "docx_path": str(docx_path),
+                            "cover_letter_path": str(cover_letter_path),
+                            "validation": validation,
+                            "cover_letter_validation": cl_validation,
+                        }
+                    )
 
                     self.logger.info(
                         f"Resume generated: {pdf_path} (validation: {validation.score}/100)"
                     )
 
                 except Exception as e:
-                    self.logger.error(f"Failed to generate resume for {job.title}: {str(e)}")
+                    self.logger.error(
+                        f"Failed to generate resume for {job.title}: {str(e)}"
+                    )
                     continue
 
             # Calculate validation statistics
@@ -855,7 +884,9 @@ class PipelineStages:
                 if info and info.can_auto_submit:
                     submissions_to_make.append(info)
                 else:
-                    self.logger.info(f"Manual application required: {job.title} at {job.company}")
+                    self.logger.info(
+                        f"Manual application required: {job.title} at {job.company}"
+                    )
 
             # Batch submit
             results = self.auto_submitter.submit_batch(submissions_to_make)
@@ -969,7 +1000,9 @@ class PipelineStages:
                     if cross_encoder.is_available:
                         self.logger.info("Cross-encoder reranker initialized")
                     else:
-                        self.logger.info("Cross-encoder unavailable, reranking disabled")
+                        self.logger.info(
+                            "Cross-encoder unavailable, reranking disabled"
+                        )
                         cross_encoder = None
                 except Exception as e:
                     self.logger.warning("Cross-encoder initialization failed: %s", e)
@@ -1019,13 +1052,14 @@ class PipelineStages:
                     stage_name=stage_name,
                     success=True,
                     data=scored_listings,
-                    metadata={"rag_enabled": False, "passed_through": len(scored_listings)},
+                    metadata={
+                        "rag_enabled": False,
+                        "passed_through": len(scored_listings),
+                    },
                     timestamp=start_time,
                 )
 
-            self.logger.info(
-                "RAG re-ranking %d scored listings", len(scored_listings)
-            )
+            self.logger.info("RAG re-ranking %d scored listings", len(scored_listings))
 
             rag_scores = self._rag_ranker.re_rank(
                 scored_listings=scored_listings,
@@ -1042,8 +1076,16 @@ class PipelineStages:
                 "rag_enabled": True,
                 "input_count": len(scored_listings),
                 "output_count": len(rag_scores),
-                "avg_semantic": sum(semantic_scores) / len(semantic_scores) if semantic_scores else 0.0,
-                "avg_combined": sum(combined_scores) / len(combined_scores) if combined_scores else 0.0,
+                "avg_semantic": (
+                    sum(semantic_scores) / len(semantic_scores)
+                    if semantic_scores
+                    else 0.0
+                ),
+                "avg_combined": (
+                    sum(combined_scores) / len(combined_scores)
+                    if combined_scores
+                    else 0.0
+                ),
             }
 
             self.logger.info(
@@ -1088,7 +1130,7 @@ class PipelineStages:
                 jobs.append(item[0])
             elif isinstance(item, RAGMatchScore):
                 jobs.append(item.job)
-            elif hasattr(item, 'job'):
+            elif hasattr(item, "job"):
                 jobs.append(item.job)
             else:
                 jobs.append(item)
@@ -1107,7 +1149,7 @@ class PipelineStages:
             return item[0]
         elif isinstance(item, RAGMatchScore):
             return item.job
-        elif hasattr(item, 'job'):
+        elif hasattr(item, "job"):
             return item.job
         return item
 

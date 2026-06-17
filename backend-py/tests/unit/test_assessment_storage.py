@@ -3,21 +3,21 @@
 # Date: 2026-05-22
 
 import json
-import pytest
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
+from src.assessment.storage import AssessmentStorage
 from src.models.assessment import (
+    AnswerFormat,
     AssessmentMode,
     AssessmentSession,
     DifficultyLevel,
     Question,
     QuestionScore,
     QuestionType,
-    AnswerFormat,
 )
-from src.assessment.storage import AssessmentStorage
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -169,14 +169,22 @@ class TestProgressStats:
 
     def test_with_completed_sessions(self, storage):
         """Should compute average score from completed sessions."""
-        storage.save_session(_make_session(
-            "s1", overall_score=80.0, completed_at=datetime(2026, 1, 1),
-            topic_breakdown={"Python": 80.0},
-        ))
-        storage.save_session(_make_session(
-            "s2", overall_score=60.0, completed_at=datetime(2026, 1, 2),
-            topic_breakdown={"SQL": 60.0},
-        ))
+        storage.save_session(
+            _make_session(
+                "s1",
+                overall_score=80.0,
+                completed_at=datetime(2026, 1, 1),
+                topic_breakdown={"Python": 80.0},
+            )
+        )
+        storage.save_session(
+            _make_session(
+                "s2",
+                overall_score=60.0,
+                completed_at=datetime(2026, 1, 2),
+                topic_breakdown={"SQL": 60.0},
+            )
+        )
 
         stats = storage.get_progress_stats()
         assert stats["total_sessions"] == 2
@@ -186,9 +194,13 @@ class TestProgressStats:
     def test_ignores_incomplete_sessions(self, storage):
         """Sessions without overall_score should not affect averages."""
         storage.save_session(_make_session("incomplete"))
-        storage.save_session(_make_session(
-            "complete", overall_score=90.0, completed_at=datetime(2026, 1, 1),
-        ))
+        storage.save_session(
+            _make_session(
+                "complete",
+                overall_score=90.0,
+                completed_at=datetime(2026, 1, 1),
+            )
+        )
 
         stats = storage.get_progress_stats()
         assert stats["completed_sessions"] == 1
@@ -196,14 +208,22 @@ class TestProgressStats:
 
     def test_topic_breakdown(self, storage):
         """Should aggregate topic scores across sessions."""
-        storage.save_session(_make_session(
-            "s1", overall_score=75.0, completed_at=datetime(2026, 1, 1),
-            topic_breakdown={"Python": 80.0, "SQL": 70.0},
-        ))
-        storage.save_session(_make_session(
-            "s2", overall_score=85.0, completed_at=datetime(2026, 1, 2),
-            topic_breakdown={"Python": 90.0, "Docker": 80.0},
-        ))
+        storage.save_session(
+            _make_session(
+                "s1",
+                overall_score=75.0,
+                completed_at=datetime(2026, 1, 1),
+                topic_breakdown={"Python": 80.0, "SQL": 70.0},
+            )
+        )
+        storage.save_session(
+            _make_session(
+                "s2",
+                overall_score=85.0,
+                completed_at=datetime(2026, 1, 2),
+                topic_breakdown={"Python": 90.0, "Docker": 80.0},
+            )
+        )
 
         stats = storage.get_progress_stats()
         strongest = dict(stats["strongest_topics"])
@@ -213,10 +233,13 @@ class TestProgressStats:
     def test_score_trend(self, storage):
         """Should return score trend for recent sessions."""
         for i in range(5):
-            storage.save_session(_make_session(
-                f"s{i}", overall_score=50.0 + i * 10,
-                completed_at=datetime(2026, 1, i + 1),
-            ))
+            storage.save_session(
+                _make_session(
+                    f"s{i}",
+                    overall_score=50.0 + i * 10,
+                    completed_at=datetime(2026, 1, i + 1),
+                )
+            )
 
         stats = storage.get_progress_stats()
         trend = stats["score_trend"]
@@ -238,7 +261,9 @@ class TestCacheWarmUp:
 
         session_data = _make_session("pre-existing")
         file_path = dir / "pre-existing.json"
-        file_path.write_text(json.dumps(session_data.model_dump(mode="json"), default=str))
+        file_path.write_text(
+            json.dumps(session_data.model_dump(mode="json"), default=str)
+        )
 
         new_storage = AssessmentStorage(base_dir=str(tmp_path / "data"))
         assert new_storage.get_session("pre-existing") is not None

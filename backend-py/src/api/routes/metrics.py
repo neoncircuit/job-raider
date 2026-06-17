@@ -7,15 +7,15 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException
 
-from ...metrics.cost_tracker import CostTracker
-from ...metrics.outcome_tracker import OutcomeTracker, ApplicationStatus, InterviewStage
 from ...health.health_check import check_health
-from ...utils.logger import get_logger, Components
-from ..models.responses import MetricsResponse, HealthCheckResponse
+from ...metrics.cost_tracker import CostTracker
+from ...metrics.outcome_tracker import ApplicationStatus, InterviewStage, OutcomeTracker
+from ...utils.logger import Components, get_logger
+from ..models.responses import HealthCheckResponse, MetricsResponse
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)

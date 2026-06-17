@@ -8,7 +8,7 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-from .jd_extractor import JDExtractor, ExtractionResult
+from .jd_extractor import ExtractionResult, JDExtractor
 from .resume_parser import ResumeParser
 
 __all__ = [

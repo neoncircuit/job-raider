@@ -1,17 +1,24 @@
 """Unit tests for the TextChunker."""
 
+from datetime import datetime
+
 import pytest
 
-from src.rag.chunker import TextChunker, TextChunk
-from src.rag.config import ChunkingConfig
-from src.models.job_listing import (
-    JobListing, JobSource, JobRequirement, Skill,
-)
+from src.models.job_listing import JobListing, JobRequirement, JobSource, Skill
 from src.models.user_profile import (
-    UserProfile, ContactInfo, Skill as UserSkill, SkillCategory,
-    WorkExperience, Project, TargetJob, Education,
+    ContactInfo,
+    Education,
+    Project,
 )
-from datetime import datetime
+from src.models.user_profile import Skill as UserSkill
+from src.models.user_profile import (
+    SkillCategory,
+    TargetJob,
+    UserProfile,
+    WorkExperience,
+)
+from src.rag.chunker import TextChunk, TextChunker
+from src.rag.config import ChunkingConfig
 
 
 class TestChunkText:
@@ -36,11 +43,15 @@ class TestChunkText:
 
     def test_long_text_multiple_chunks(self):
         """Long text should be split into multiple chunks."""
-        chunker = TextChunker(ChunkingConfig(max_chunk_size=20, overlap=5, strategy="recursive"))
+        chunker = TextChunker(
+            ChunkingConfig(max_chunk_size=20, overlap=5, strategy="recursive")
+        )
         # Create text with multiple paragraphs to force splitting
         paragraphs = []
         for i in range(10):
-            paragraphs.append(f"This is paragraph number {i} with enough text to exceed small chunk limits and force splitting into multiple pieces.")
+            paragraphs.append(
+                f"This is paragraph number {i} with enough text to exceed small chunk limits and force splitting into multiple pieces."
+            )
         long_text = "\n\n".join(paragraphs)
         chunks = chunker.chunk_text(long_text, "test_1", "job")
 

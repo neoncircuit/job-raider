@@ -12,11 +12,13 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
+
 from pydantic import BaseModel, Field
 
 
 class MessageType(str, Enum):
     """Message types for LLM interactions."""
+
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
@@ -25,6 +27,7 @@ class MessageType(str, Enum):
 @dataclass
 class Message:
     """Represents a single message in a conversation."""
+
     role: MessageType
     content: str
 
@@ -35,59 +38,83 @@ class Message:
 
 class LLMResponse(BaseModel):
     """Standard response format for all LLM clients."""
+
     content: str = Field(description="The generated text content")
     model: str = Field(description="The model used for generation")
     tokens_used: Optional[int] = Field(default=None, description="Total tokens used")
     prompt_tokens: Optional[int] = Field(default=None, description="Tokens in prompt")
-    completion_tokens: Optional[int] = Field(default=None, description="Tokens in completion")
+    completion_tokens: Optional[int] = Field(
+        default=None, description="Tokens in completion"
+    )
     cost: Optional[float] = Field(default=None, description="Cost in USD")
-    latency_ms: Optional[int] = Field(default=None, description="Request latency in milliseconds")
+    latency_ms: Optional[int] = Field(
+        default=None, description="Request latency in milliseconds"
+    )
     cached: bool = Field(default=False, description="Whether response was from cache")
 
 
 class LLMConfig(BaseModel):
     """Base configuration for LLM clients."""
+
     model: str = Field(description="Model identifier")
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="Sampling temperature")
-    max_tokens: int = Field(default=4096, gt=0, description="Maximum tokens to generate")
-    top_p: float = Field(default=1.0, ge=0.0, le=1.0, description="Nucleus sampling parameter")
-    top_k: Optional[int] = Field(default=None, gt=0, description="Top-k sampling parameter")
-    stop_sequences: Optional[List[str]] = Field(default=None, description="Sequences that stop generation")
+    temperature: float = Field(
+        default=0.7, ge=0.0, le=2.0, description="Sampling temperature"
+    )
+    max_tokens: int = Field(
+        default=4096, gt=0, description="Maximum tokens to generate"
+    )
+    top_p: float = Field(
+        default=1.0, ge=0.0, le=1.0, description="Nucleus sampling parameter"
+    )
+    top_k: Optional[int] = Field(
+        default=None, gt=0, description="Top-k sampling parameter"
+    )
+    stop_sequences: Optional[List[str]] = Field(
+        default=None, description="Sequences that stop generation"
+    )
     stream: bool = Field(default=False, description="Whether to stream responses")
     timeout: int = Field(default=120, gt=0, description="Request timeout in seconds")
     max_retries: int = Field(default=3, ge=0, description="Maximum retry attempts")
-    retry_delay: float = Field(default=1.0, ge=0.0, description="Initial retry delay in seconds")
+    retry_delay: float = Field(
+        default=1.0, ge=0.0, description="Initial retry delay in seconds"
+    )
 
 
 class TokenUsage(BaseModel):
     """Token usage statistics."""
+
     prompt_tokens: int = Field(default=0, ge=0, description="Tokens in the prompt")
-    completion_tokens: int = Field(default=0, ge=0, description="Tokens in the completion")
+    completion_tokens: int = Field(
+        default=0, ge=0, description="Tokens in the completion"
+    )
     total_tokens: int = Field(default=0, ge=0, description="Total tokens used")
 
-    def __add__(self, other: 'TokenUsage') -> 'TokenUsage':
+    def __add__(self, other: "TokenUsage") -> "TokenUsage":
         """Combine token usage statistics."""
         return TokenUsage(
             prompt_tokens=self.prompt_tokens + other.prompt_tokens,
             completion_tokens=self.completion_tokens + other.completion_tokens,
-            total_tokens=self.total_tokens + other.total_tokens
+            total_tokens=self.total_tokens + other.total_tokens,
         )
 
 
 class CostEstimate(BaseModel):
     """Cost estimation for LLM usage."""
+
     input_cost: float = Field(default=0.0, ge=0.0, description="Cost for input tokens")
-    output_cost: float = Field(default=0.0, ge=0.0, description="Cost for output tokens")
+    output_cost: float = Field(
+        default=0.0, ge=0.0, description="Cost for output tokens"
+    )
     total_cost: float = Field(default=0.0, ge=0.0, description="Total cost")
     currency: str = Field(default="USD", description="Currency for cost")
 
-    def __add__(self, other: 'CostEstimate') -> 'CostEstimate':
+    def __add__(self, other: "CostEstimate") -> "CostEstimate":
         """Combine cost estimates."""
         return CostEstimate(
             input_cost=self.input_cost + other.input_cost,
             output_cost=self.output_cost + other.output_cost,
             total_cost=self.total_cost + other.total_cost,
-            currency=self.currency
+            currency=self.currency,
         )
 
 
@@ -108,7 +135,7 @@ class BaseLLMClient(ABC):
             **kwargs: Additional provider-specific parameters
         """
         self.config = config
-        self._provider = kwargs.get('provider', 'unknown')
+        self._provider = kwargs.get("provider", "unknown")
         self._total_tokens_used = 0
         self._total_cost = 0.0
 
@@ -125,11 +152,7 @@ class BaseLLMClient(ABC):
         pass
 
     @abstractmethod
-    async def generate_async(
-        self,
-        messages: List[Message],
-        **kwargs
-    ) -> LLMResponse:
+    async def generate_async(self, messages: List[Message], **kwargs) -> LLMResponse:
         """
         Generate a response asynchronously.
 
@@ -143,11 +166,7 @@ class BaseLLMClient(ABC):
         pass
 
     @abstractmethod
-    def generate(
-        self,
-        messages: List[Message],
-        **kwargs
-    ) -> LLMResponse:
+    def generate(self, messages: List[Message], **kwargs) -> LLMResponse:
         """
         Generate a response synchronously.
 
@@ -219,7 +238,7 @@ class BaseLLMClient(ABC):
         self,
         system_prompt: Optional[str] = None,
         user_prompt: Optional[str] = None,
-        conversation_history: Optional[List[Message]] = None
+        conversation_history: Optional[List[Message]] = None,
     ) -> List[Message]:
         """
         Prepare messages from various input formats.
@@ -263,29 +282,35 @@ class BaseLLMClient(ABC):
 
 class LLMClientError(Exception):
     """Base exception for LLM client errors."""
+
     pass
 
 
 class RateLimitError(LLMClientError):
     """Raised when rate limit is exceeded."""
+
     pass
 
 
 class AuthenticationError(LLMClientError):
     """Raised when authentication fails."""
+
     pass
 
 
 class ModelNotFoundError(LLMClientError):
     """Raised when the requested model is not found."""
+
     pass
 
 
 class TimeoutError(LLMClientError):
     """Raised when a request times out."""
+
     pass
 
 
 class InvalidRequestError(LLMClientError):
     """Raised when the request is invalid."""
+
     pass

@@ -10,30 +10,23 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.generation.cover_letter_writer import (
-    CoverLetterWriter,
-    GeneratedCoverLetter,
-)
+from src.generation.cover_letter_writer import CoverLetterWriter, GeneratedCoverLetter
 from src.generation.selector import SelectionOutput
-from src.models.user_profile import (
-    UserProfile,
-    ContactInfo,
-    Skill,
-    SkillCategory,
-    ProficiencyLevel,
-    Project,
-    WorkExperience,
-    Education,
-    TargetJob,
-)
-from src.models.job_listing import (
-    JobListing,
-    JobRequirement,
-    JobSource,
-    Skill as JobSkill,
-)
 from src.llm.base import LLMResponse
 from src.llm.router import TaskType
+from src.models.job_listing import JobListing, JobRequirement, JobSource
+from src.models.job_listing import Skill as JobSkill
+from src.models.user_profile import (
+    ContactInfo,
+    Education,
+    ProficiencyLevel,
+    Project,
+    Skill,
+    SkillCategory,
+    TargetJob,
+    UserProfile,
+    WorkExperience,
+)
 
 
 @pytest.fixture

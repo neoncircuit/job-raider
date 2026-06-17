@@ -9,28 +9,28 @@ Date: 2026-05-04
 """
 
 import re
-import yaml
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Callable, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import yaml
 from pydantic import BaseModel, Field
 
-from .form_models import (
-    FormQuestion,
-    QuestionAnswer,
-    QuestionType,
-    AnswerConfidence,
-    ParsedForm,
-)
 from ..models.user_profile import (
+    Education,
+    Skill,
     UserProfile,
     VisaStatus,
-    Skill,
     WorkExperience,
-    Education,
 )
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
+from .form_models import (
+    AnswerConfidence,
+    FormQuestion,
+    ParsedForm,
+    QuestionAnswer,
+    QuestionType,
+)
 
 
 class AnswerBank(BaseModel):
@@ -342,7 +342,8 @@ class QuestionAnswerEngine:
             if "{" in answer_text:
                 try:
                     import json
-                    parsed = json.loads(answer_text[answer_text.index("{"):])
+
+                    parsed = json.loads(answer_text[answer_text.index("{") :])
                     answer_value = parsed.get("answer", answer_text)
                     conf = parsed.get("confidence", "medium")
                     confidence = AnswerConfidence(conf)
@@ -355,7 +356,8 @@ class QuestionAnswerEngine:
                 answer_value=answer_value,
                 confidence=confidence,
                 source="llm",
-                needs_review=confidence in (AnswerConfidence.LOW, AnswerConfidence.UNKNOWN),
+                needs_review=confidence
+                in (AnswerConfidence.LOW, AnswerConfidence.UNKNOWN),
                 reasoning=reasoning,
             )
 
@@ -390,7 +392,9 @@ class QuestionAnswerEngine:
         if p.salary_expectation_min or p.salary_expectation_max:
             salary = f"Salary Expectation: {p.salary_currency} "
             if p.salary_expectation_min and p.salary_expectation_max:
-                salary += f"{p.salary_expectation_min:,.0f} - {p.salary_expectation_max:,.0f}"
+                salary += (
+                    f"{p.salary_expectation_min:,.0f} - {p.salary_expectation_max:,.0f}"
+                )
             elif p.salary_expectation_min:
                 salary += f"{p.salary_expectation_min:,.0f}+"
             lines.append(salary)
@@ -407,7 +411,9 @@ class QuestionAnswerEngine:
             total_years = sum(e.duration_years for e in p.experience)
             lines.append(f"\nTotal Experience: {total_years:.1f} years")
             for exp in p.experience[:3]:
-                lines.append(f"  - {exp.title} at {exp.company} ({exp.duration_years:.1f} yrs)")
+                lines.append(
+                    f"  - {exp.title} at {exp.company} ({exp.duration_years:.1f} yrs)"
+                )
 
         if p.education:
             edu = p.education[0]
@@ -430,11 +436,22 @@ class QuestionAnswerEngine:
         rules: List[RuleMatcher] = []
 
         # Visa / work authorization
-        rules.append(RuleMatcher(
-            keywords=["visa", "authorization", "sponsor", "work permit", "legally authorized", "right to work"],
-            answer_fn=lambda p: self.VISA_STATUS_MAP.get(p.visa_status) if p.visa_status else None,
-            description="visa_status",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=[
+                    "visa",
+                    "authorization",
+                    "sponsor",
+                    "work permit",
+                    "legally authorized",
+                    "right to work",
+                ],
+                answer_fn=lambda p: (
+                    self.VISA_STATUS_MAP.get(p.visa_status) if p.visa_status else None
+                ),
+                description="visa_status",
+            )
+        )
 
         # Salary expectations
         def _salary_answer(p: UserProfile) -> Optional[str]:
@@ -444,18 +461,28 @@ class QuestionAnswerEngine:
                 return f"{p.salary_expectation_min:,.0f}+ {p.salary_currency}"
             return None
 
-        rules.append(RuleMatcher(
-            keywords=["salary", "compensation", "pay expectation", "expected salary", "salary range"],
-            answer_fn=_salary_answer,
-            description="salary_expectation",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=[
+                    "salary",
+                    "compensation",
+                    "pay expectation",
+                    "expected salary",
+                    "salary range",
+                ],
+                answer_fn=_salary_answer,
+                description="salary_expectation",
+            )
+        )
 
         # Relocation
-        rules.append(RuleMatcher(
-            keywords=["relocate", "move", "willing to relocate", "relocation"],
-            answer_fn=lambda p: "Yes" if p.willing_to_relocate else "No",
-            description="relocation",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=["relocate", "move", "willing to relocate", "relocation"],
+                answer_fn=lambda p: "Yes" if p.willing_to_relocate else "No",
+                description="relocation",
+            )
+        )
 
         # Notice period / start date
         def _notice_answer(p: UserProfile) -> Optional[str]:
@@ -465,11 +492,19 @@ class QuestionAnswerEngine:
                 return f"{p.notice_period_weeks} weeks notice"
             return None
 
-        rules.append(RuleMatcher(
-            keywords=["notice period", "start date", "when can you start", "earliest start", "available from"],
-            answer_fn=_notice_answer,
-            description="notice_period",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=[
+                    "notice period",
+                    "start date",
+                    "when can you start",
+                    "earliest start",
+                    "available from",
+                ],
+                answer_fn=_notice_answer,
+                description="notice_period",
+            )
+        )
 
         # Years of experience
         def _years_experience(p: UserProfile) -> Optional[str]:
@@ -478,39 +513,66 @@ class QuestionAnswerEngine:
                 return f"{total:.0f} years"
             return None
 
-        rules.append(RuleMatcher(
-            keywords=["years of experience", "how many years", "total experience", "experience years"],
-            answer_fn=_years_experience,
-            description="years_of_experience",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=[
+                    "years of experience",
+                    "how many years",
+                    "total experience",
+                    "experience years",
+                ],
+                answer_fn=_years_experience,
+                description="years_of_experience",
+            )
+        )
 
         # Phone number
-        rules.append(RuleMatcher(
-            keywords=["phone", "phone number", "contact number", "telephone", "mobile"],
-            answer_fn=lambda p: p.contact.phone,
-            description="phone",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=[
+                    "phone",
+                    "phone number",
+                    "contact number",
+                    "telephone",
+                    "mobile",
+                ],
+                answer_fn=lambda p: p.contact.phone,
+                description="phone",
+            )
+        )
 
         # Email
-        rules.append(RuleMatcher(
-            keywords=["email", "email address", "e-mail"],
-            answer_fn=lambda p: p.contact.email,
-            description="email",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=["email", "email address", "e-mail"],
+                answer_fn=lambda p: p.contact.email,
+                description="email",
+            )
+        )
 
         # Location / address
-        rules.append(RuleMatcher(
-            keywords=["address", "city", "location", "where do you live", "current location"],
-            answer_fn=lambda p: p.contact.location,
-            description="location",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=[
+                    "address",
+                    "city",
+                    "location",
+                    "where do you live",
+                    "current location",
+                ],
+                answer_fn=lambda p: p.contact.location,
+                description="location",
+            )
+        )
 
         # Languages
-        rules.append(RuleMatcher(
-            keywords=["language", "languages", "speak", "fluent"],
-            answer_fn=lambda p: ", ".join(p.languages) if p.languages else None,
-            description="languages",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=["language", "languages", "speak", "fluent"],
+                answer_fn=lambda p: ", ".join(p.languages) if p.languages else None,
+                description="languages",
+            )
+        )
 
         # Education / degree
         def _education_answer(p: UserProfile) -> Optional[str]:
@@ -522,25 +584,38 @@ class QuestionAnswerEngine:
                 return " - ".join(parts)
             return None
 
-        rules.append(RuleMatcher(
-            keywords=["education", "degree", "university", "college", "highest education", "academic"],
-            answer_fn=_education_answer,
-            description="education",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=[
+                    "education",
+                    "degree",
+                    "university",
+                    "college",
+                    "highest education",
+                    "academic",
+                ],
+                answer_fn=_education_answer,
+                description="education",
+            )
+        )
 
         # LinkedIn profile
-        rules.append(RuleMatcher(
-            keywords=["linkedin", "linkedin profile", "linkedin url"],
-            answer_fn=lambda p: p.contact.linkedin,
-            description="linkedin_url",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=["linkedin", "linkedin profile", "linkedin url"],
+                answer_fn=lambda p: p.contact.linkedin,
+                description="linkedin_url",
+            )
+        )
 
         # Name
-        rules.append(RuleMatcher(
-            keywords=["full name", "your name", "first name", "last name"],
-            answer_fn=lambda p: p.name,
-            description="name",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=["full name", "your name", "first name", "last name"],
+                answer_fn=lambda p: p.name,
+                description="name",
+            )
+        )
 
         # Experience with specific skill
         def _skill_experience(p: UserProfile) -> Optional[str]:
@@ -554,10 +629,12 @@ class QuestionAnswerEngine:
                 return "; ".join(f"{k}: {v}" for k, v in years_map.items())
             return None
 
-        rules.append(RuleMatcher(
-            keywords=["experience with", "skill in", "proficiency in", "how long"],
-            answer_fn=_skill_experience,
-            description="skill_experience",
-        ))
+        rules.append(
+            RuleMatcher(
+                keywords=["experience with", "skill in", "proficiency in", "how long"],
+                answer_fn=_skill_experience,
+                description="skill_experience",
+            )
+        )
 
         return rules

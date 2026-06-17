@@ -13,17 +13,12 @@ Date: 2026-04-20
 
 from datetime import datetime, timedelta
 from typing import List, Optional
-from urllib.parse import urljoin, urlencode, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
-from .base import (
-    BaseScraper,
-    SearchParams,
-    ScraperError,
-    ScrapingException,
-)
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
+from .base import BaseScraper, ScraperError, ScrapingException, SearchParams
 
 
 class LinkedInScraper(BaseScraper):
@@ -83,11 +78,11 @@ class LinkedInScraper(BaseScraper):
         # Experience level
         if params.experience_level:
             level_map = {
-                "entry": "1",      # Entry level
+                "entry": "1",  # Entry level
                 "associate": "2",  # Associate
-                "mid": "3",        # Mid-Senior
-                "senior": "4",     # Senior
-                "director": "5",   # Director
+                "mid": "3",  # Mid-Senior
+                "senior": "4",  # Senior
+                "director": "5",  # Director
                 "executive": "6",  # Executive
             }
             if params.experience_level.lower() in level_map:
@@ -96,8 +91,8 @@ class LinkedInScraper(BaseScraper):
         # Time posted
         if params.days_since_posted:
             time_map = {
-                24: "r86400",     # Past 24 hours
-                168: "r604800",   # Past week
+                24: "r86400",  # Past 24 hours
+                168: "r604800",  # Past week
                 720: "r2592000",  # Past month
             }
             if params.days_since_posted in time_map:
@@ -213,14 +208,20 @@ class LinkedInScraper(BaseScraper):
             job_url = urljoin(self.BASE_URL, link_elem["href"])
 
         # Extract job ID from URL
-        job_id = self._extract_job_id_from_url(job_url) if job_url else self._generate_job_id(title, company)
+        job_id = (
+            self._extract_job_id_from_url(job_url)
+            if job_url
+            else self._generate_job_id(title, company)
+        )
 
         # Extract posted date (LinkedIn uses <time> element, not <span>)
-        posted_elem = card.find("time", class_="job-search-card__listdate") or \
-            card.find("span", class_="job-search-card__listdate")
+        posted_elem = card.find(
+            "time", class_="job-search-card__listdate"
+        ) or card.find("span", class_="job-search-card__listdate")
         if posted_elem and posted_elem.get("datetime"):
             # Prefer the machine-readable datetime attribute
             from datetime import datetime as dt
+
             try:
                 posted_date = dt.strptime(posted_elem["datetime"], "%Y-%m-%d")
             except ValueError:
@@ -424,6 +425,7 @@ class LinkedInScraper(BaseScraper):
             Job ID or None
         """
         import re
+
         try:
             parsed = urlparse(url)
             path_parts = parsed.path.split("/")
@@ -435,7 +437,7 @@ class LinkedInScraper(BaseScraper):
                     return part
                 # New format: job ID at end of slug (e.g., "software-engineer-at-company-1234567890")
                 elif any(c.isdigit() for c in part):
-                    numbers = re.findall(r'\d+', part)
+                    numbers = re.findall(r"\d+", part)
                     if numbers:
                         return numbers[-1]
 

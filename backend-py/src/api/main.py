@@ -11,19 +11,27 @@ Date: 2026-04-21
 import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 from ..utils.sentry import init_sentry
 from .auth import verify_api_key
-from .routes import pipeline, profile, jobs, metrics, settings, applications
+from .routes import (
+    agents,
+    applications,
+    assessment,
+    jobs,
+    metrics,
+    pipeline,
+    profile,
+    settings,
+)
 from .websocket.progress import manager
-
 
 logger = get_logger(Components.SCRAPERS)
 
@@ -39,8 +47,100 @@ async def lifespan(app: FastAPI):
     """
     logger.info("Job Raider API starting up...")
     init_sentry()
+
+    # Critical: Check available LLM providers
+    await validate_llm_providers()
+
+    # Initialize the multi-agent system. Non-fatal: the API still boots if the
+    # agent system cannot start; agent endpoints return 503 until it is ready.
+    try:
+        from ..llm.router import LLMRouter
+        from .routes.agents import initialize_agent_system
+
+        initialize_agent_system(LLMRouter())
+        logger.info("Multi-agent system initialized")
+    except Exception as e:
+        logger.warning(
+            "Multi-agent system initialization failed (agent endpoints will "
+            f"return 503): {e}"
+        )
+
     yield
     logger.info("Job Raider API shutting down...")
+
+
+async def validate_llm_providers():
+    """
+    Validate available LLM providers at startup.
+
+    This is a critical safety check to ensure the application can function.
+    If no providers are available, we log a warning but don't crash -
+    the application will fail gracefully when LLM features are used.
+    """
+    import os
+    import sys
+
+    logger.info("=== LLM Provider Validation ===")
+
+    available_providers = []
+    missing_providers = []
+
+    # Check Ollama
+    ollama_host = os.getenv("OLLAMA_HOST", "localhost:11434")
+    try:
+        import requests
+
+        response = requests.get(
+            f"http://{ollama_host.replace('http://', '')}/api/tags", timeout=3
+        )
+        if response.status_code == 200:
+            models = response.json().get("models", [])
+            available_providers.append(
+                f"✅ Ollama ({ollama_host}): {len(models)} models"
+            )
+            if len(models) == 0:
+                available_providers.append(
+                    "  ⚠️  WARNING: Ollama connected but no models loaded!"
+                )
+        else:
+            missing_providers.append(
+                f"❌ Ollama ({ollama_host}): Returned status {response.status_code}"
+            )
+    except Exception as e:
+        missing_providers.append(f"❌ Ollama ({ollama_host}): {str(e)[:50]}")
+
+    # Check Anthropic
+    if os.getenv("ANTHROPIC_API_KEY"):
+        available_providers.append("✅ Anthropic: API key configured")
+    else:
+        missing_providers.append("❌ Anthropic: No API key (fallback unavailable)")
+
+    # Check Gemini
+    if os.getenv("GEMINI_API_KEY"):
+        available_providers.append("✅ Gemini: API key configured")
+    else:
+        missing_providers.append("❌ Gemini: No API key (fallback unavailable)")
+
+    # Report results
+    logger.info("Available Providers:")
+    for provider in available_providers:
+        logger.info(f"  {provider}")
+
+    if missing_providers:
+        logger.warning("Missing Providers:")
+        for provider in missing_providers:
+            logger.warning(f"  {provider}")
+        logger.warning("⚠️  WARNING: Application has limited LLM fallback options!")
+        logger.warning(
+            "   Set ANTHROPIC_API_KEY or GEMINI_API_KEY in .env for fallback"
+        )
+
+    if not available_providers:
+        logger.error(
+            "🚨 CRITICAL: No LLM providers available! Application will fail when LLM features are used."
+        )
+
+    logger.info("=== Provider Validation Complete ===")
 
 
 # Create FastAPI application
@@ -70,12 +170,32 @@ if static_dir.exists():
 # runs its own connect handshake before the auth header is available).
 _auth = [Depends(verify_api_key)]
 
-app.include_router(pipeline.router, prefix="/api/pipeline", tags=["Pipeline"], dependencies=_auth)
-app.include_router(profile.router, prefix="/api/profile", tags=["Profile"], dependencies=_auth)
+app.include_router(
+    pipeline.router, prefix="/api/pipeline", tags=["Pipeline"], dependencies=_auth
+)
+app.include_router(
+    profile.router, prefix="/api/profile", tags=["Profile"], dependencies=_auth
+)
 app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"], dependencies=_auth)
-app.include_router(applications.router, prefix="/api/applications", tags=["Applications"], dependencies=_auth)
-app.include_router(metrics.router, prefix="/api/metrics", tags=["Metrics"], dependencies=_auth)
-app.include_router(settings.router, prefix="/api/settings", tags=["Settings"], dependencies=_auth)
+app.include_router(
+    applications.router,
+    prefix="/api/applications",
+    tags=["Applications"],
+    dependencies=_auth,
+)
+app.include_router(
+    metrics.router, prefix="/api/metrics", tags=["Metrics"], dependencies=_auth
+)
+app.include_router(
+    settings.router, prefix="/api/settings", tags=["Settings"], dependencies=_auth
+)
+app.include_router(
+    assessment.router, prefix="/api/assessment", tags=["Assessment"], dependencies=_auth
+)
+# The agents router declares its own prefix ("/api/agents") on the APIRouter
+# itself (see routes/agents.py), so it is registered here WITHOUT a prefix to
+# avoid double-prefixing to /api/api/agents.
+app.include_router(agents.router, tags=["Agents"], dependencies=_auth)
 
 
 @app.get("/")

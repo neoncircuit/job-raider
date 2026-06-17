@@ -110,10 +110,12 @@ class CrossEncoderReranker:
 
         scored_results = []
         for result, score in zip(results, scores):
-            scored_results.append({
-                **result,
-                "cross_encoder_score": float(score),
-            })
+            scored_results.append(
+                {
+                    **result,
+                    "cross_encoder_score": float(score),
+                }
+            )
         scored_results.sort(key=lambda r: r["cross_encoder_score"], reverse=True)
 
         logger.debug(

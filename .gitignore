@@ -16,19 +16,7 @@ out/
 .env*.local
 
 # Data (runtime generated)
-data/kaggle/
-data/**/cache/
-data/chroma/
-data/listings/
-data/applications/
-data/results/
-data/profiles/
-data/outputs/
-data/experiments/
-data/logs/
-data/metrics/
-data/settings/
-data/screenshots/
+data/**
 backend-py/data/
 *.csv
 *.csv.zip

@@ -83,22 +83,28 @@ class TextChunker:
         # Short text fits in a single chunk
         estimated_tokens = self._estimate_tokens(text)
         if estimated_tokens <= self.config.max_chunk_size:
-            return [TextChunk(
-                content=text.strip(),
-                chunk_index=0,
-                source_id=source_id,
-                source_type=source_type,
-                section=section,
-                token_count=estimated_tokens,
-            )]
+            return [
+                TextChunk(
+                    content=text.strip(),
+                    chunk_index=0,
+                    source_id=source_id,
+                    source_type=source_type,
+                    section=section,
+                    token_count=estimated_tokens,
+                )
+            ]
 
         # Apply chunking strategy
         if self.config.strategy == "recursive":
-            pieces = self._chunk_recursive(text, self.config.max_chunk_size, self.config.overlap)
+            pieces = self._chunk_recursive(
+                text, self.config.max_chunk_size, self.config.overlap
+            )
         elif self.config.strategy == "fixed":
             pieces = self._chunk_fixed(text, self.config.max_chunk_size)
         else:
-            pieces = self._chunk_recursive(text, self.config.max_chunk_size, self.config.overlap)
+            pieces = self._chunk_recursive(
+                text, self.config.max_chunk_size, self.config.overlap
+            )
 
         return [
             TextChunk(
@@ -134,21 +140,21 @@ class TextChunker:
             context_prefix += f", Level: {job.experience_level}"
 
         # Title + company (always fits in one chunk)
-        chunks.append(TextChunk(
-            content=context_prefix,
-            chunk_index=0,
-            source_id=job.job_id,
-            source_type="job",
-            section="header",
-            token_count=self._estimate_tokens(context_prefix),
-        ))
+        chunks.append(
+            TextChunk(
+                content=context_prefix,
+                chunk_index=0,
+                source_id=job.job_id,
+                source_type="job",
+                section="header",
+                token_count=self._estimate_tokens(context_prefix),
+            )
+        )
 
         # Description
         if job.description:
             desc_text = f"{context_prefix}\n\nDescription: {job.description}"
-            desc_chunks = self.chunk_text(
-                desc_text, job.job_id, "job", "description"
-            )
+            desc_chunks = self.chunk_text(desc_text, job.job_id, "job", "description")
             for c in desc_chunks:
                 c.chunk_index = len(chunks)
                 chunks.append(c)
@@ -157,9 +163,7 @@ class TextChunker:
         if job.requirements:
             req_text = "\n".join(f"- {r.text}" for r in job.requirements)
             req_full = f"{context_prefix}\n\nRequirements:\n{req_text}"
-            req_chunks = self.chunk_text(
-                req_full, job.job_id, "job", "requirements"
-            )
+            req_chunks = self.chunk_text(req_full, job.job_id, "job", "requirements")
             for c in req_chunks:
                 c.chunk_index = len(chunks)
                 chunks.append(c)
@@ -167,15 +171,19 @@ class TextChunker:
         # Skills
         if job.skills:
             skill_names = [s.name for s in job.skills]
-            skill_text = f"{context_prefix}\n\nRequired Skills: {', '.join(skill_names)}"
-            chunks.append(TextChunk(
-                content=skill_text,
-                chunk_index=len(chunks),
-                source_id=job.job_id,
-                source_type="job",
-                section="skills",
-                token_count=self._estimate_tokens(skill_text),
-            ))
+            skill_text = (
+                f"{context_prefix}\n\nRequired Skills: {', '.join(skill_names)}"
+            )
+            chunks.append(
+                TextChunk(
+                    content=skill_text,
+                    chunk_index=len(chunks),
+                    source_id=job.job_id,
+                    source_type="job",
+                    section="skills",
+                    token_count=self._estimate_tokens(skill_text),
+                )
+            )
 
         # Responsibilities
         if job.responsibilities:
@@ -208,34 +216,42 @@ class TextChunker:
         # Summary
         if profile.summary:
             summary_text = f"Professional Summary: {profile.summary}"
-            chunks.append(TextChunk(
-                content=summary_text,
-                chunk_index=len(chunks),
-                source_id=source_id,
-                source_type="profile",
-                section="summary",
-                token_count=self._estimate_tokens(summary_text),
-            ))
+            chunks.append(
+                TextChunk(
+                    content=summary_text,
+                    chunk_index=len(chunks),
+                    source_id=source_id,
+                    source_type="profile",
+                    section="summary",
+                    token_count=self._estimate_tokens(summary_text),
+                )
+            )
 
         # Skills grouped by category
         if profile.skills:
             by_category: Dict[str, List[str]] = {}
             for skill in profile.skills:
-                cat = skill.category if isinstance(skill.category, str) else str(skill.category)
+                cat = (
+                    skill.category
+                    if isinstance(skill.category, str)
+                    else str(skill.category)
+                )
                 by_category.setdefault(cat, []).append(skill.name)
 
             skill_parts = []
             for cat, names in by_category.items():
                 skill_parts.append(f"{cat}: {', '.join(names)}")
             skill_text = f"Skills:\n" + "\n".join(skill_parts)
-            chunks.append(TextChunk(
-                content=skill_text,
-                chunk_index=len(chunks),
-                source_id=source_id,
-                source_type="profile",
-                section="skills",
-                token_count=self._estimate_tokens(skill_text),
-            ))
+            chunks.append(
+                TextChunk(
+                    content=skill_text,
+                    chunk_index=len(chunks),
+                    source_id=source_id,
+                    source_type="profile",
+                    section="skills",
+                    token_count=self._estimate_tokens(skill_text),
+                )
+            )
 
         # Experience entries
         for exp in profile.experience:
@@ -248,9 +264,7 @@ class TextChunker:
                 exp_parts.append("Technologies: " + ", ".join(exp.technologies))
 
             exp_text = "\n".join(exp_parts)
-            exp_chunks = self.chunk_text(
-                exp_text, source_id, "profile", "experience"
-            )
+            exp_chunks = self.chunk_text(exp_text, source_id, "profile", "experience")
             for c in exp_chunks:
                 c.chunk_index = len(chunks)
                 chunks.append(c)
@@ -264,26 +278,30 @@ class TextChunker:
                 proj_parts.append("Impact: " + "; ".join(project.highlights))
 
             proj_text = "\n".join(proj_parts)
-            chunks.append(TextChunk(
-                content=proj_text,
-                chunk_index=len(chunks),
-                source_id=source_id,
-                source_type="profile",
-                section="project",
-                token_count=self._estimate_tokens(proj_text),
-            ))
+            chunks.append(
+                TextChunk(
+                    content=proj_text,
+                    chunk_index=len(chunks),
+                    source_id=source_id,
+                    source_type="profile",
+                    section="project",
+                    token_count=self._estimate_tokens(proj_text),
+                )
+            )
 
         # Education
         for edu in profile.education:
             edu_text = f"Education - {edu.degree} from {edu.school}"
-            chunks.append(TextChunk(
-                content=edu_text,
-                chunk_index=len(chunks),
-                source_id=source_id,
-                source_type="profile",
-                section="education",
-                token_count=self._estimate_tokens(edu_text),
-            ))
+            chunks.append(
+                TextChunk(
+                    content=edu_text,
+                    chunk_index=len(chunks),
+                    source_id=source_id,
+                    source_type="profile",
+                    section="education",
+                    token_count=self._estimate_tokens(edu_text),
+                )
+            )
 
         # Target job preferences
         targets = profile.targets
@@ -294,14 +312,16 @@ class TextChunker:
             target_parts.append("Preferred locations: " + ", ".join(targets.locations))
         if target_parts:
             target_text = "\n".join(target_parts)
-            chunks.append(TextChunk(
-                content=target_text,
-                chunk_index=len(chunks),
-                source_id=source_id,
-                source_type="profile",
-                section="targets",
-                token_count=self._estimate_tokens(target_text),
-            ))
+            chunks.append(
+                TextChunk(
+                    content=target_text,
+                    chunk_index=len(chunks),
+                    source_id=source_id,
+                    source_type="profile",
+                    section="targets",
+                    token_count=self._estimate_tokens(target_text),
+                )
+            )
 
         return chunks
 
@@ -361,10 +381,12 @@ class TextChunker:
         max_chars = max_tokens * 4  # ~4 chars per token
         pieces = []
         for i in range(0, len(text), max_chars):
-            pieces.append(text[i:i + max_chars])
+            pieces.append(text[i : i + max_chars])
         return pieces
 
-    def _split_by_sentences(self, text: str, max_tokens: int, overlap: int) -> List[str]:
+    def _split_by_sentences(
+        self, text: str, max_tokens: int, overlap: int
+    ) -> List[str]:
         """Split text by sentences when paragraphs are too large.
 
         Args:

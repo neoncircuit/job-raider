@@ -9,15 +9,15 @@ Date: 2026-05-13
 """
 
 import re
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 from .cover_letter_writer import GeneratedCoverLetter
 from .selector import SelectionOutput
 
@@ -152,9 +152,8 @@ class CoverLetterValidator:
         else:
             recommendation = "reject"
 
-        is_valid = (
-            recommendation == "approve"
-            or (not self.strict_mode and recommendation == "needs_revision")
+        is_valid = recommendation == "approve" or (
+            not self.strict_mode and recommendation == "needs_revision"
         )
 
         details = {
@@ -458,7 +457,7 @@ class CoverLetterValidator:
 
             import json
 
-            json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
             if not json_match:
                 raise ValueError("Failed to extract JSON from validation response")
 

@@ -8,38 +8,38 @@ Author: Job Raider
 Date: 2026-04-27
 """
 
-from typing import List, Dict, Any, Optional
-from pathlib import Path
-from dataclasses import dataclass, field
 import io
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 try:
-    from reportlab.lib.pagesizes import LETTER
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
     from reportlab.lib import colors
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
+
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
 
 try:
     from docx import Document
-    from docx.shared import Inches, Pt, RGBColor
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    from docx.shared import Inches, Pt, RGBColor
+
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
 
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 from .resume_writer import GeneratedResume
 
 logger = get_logger(Components.GENERATION)
 
 # Default section order for resume generation
-DEFAULT_SECTIONS_ORDER = [
-    "summary", "skills", "experience", "projects", "education"
-]
+DEFAULT_SECTIONS_ORDER = ["summary", "skills", "experience", "projects", "education"]
 
 
 @dataclass
@@ -56,6 +56,7 @@ class FormatOptions:
         sections_hidden: Sections to omit from output
         sections_renamed: Map of section name to custom header text
     """
+
     template: str = "professional"
     ats_mode: bool = False
     sections_order: Optional[List[str]] = None
@@ -74,6 +75,7 @@ class FormattedResume:
         success: Whether at least one format was generated
         errors: List of error messages from failed generations
     """
+
     pdf_path: Optional[str] = None
     docx_path: Optional[str] = None
     success: bool = False
@@ -204,12 +206,14 @@ class ResumeFormatter:
             options = FormatOptions()
 
         if not self._get_ordered_sections(options):
-            self.logger.warning("All resume sections hidden -- output will contain name only")
+            self.logger.warning(
+                "All resume sections hidden -- output will contain name only"
+            )
 
         result = FormattedResume()
 
         if not filename:
-            timestamp = __import__('datetime').datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"resume_{timestamp}"
 
         if "pdf" in formats and REPORTLAB_AVAILABLE:
@@ -235,9 +239,7 @@ class ResumeFormatter:
 
         return result
 
-    def _get_section_header(
-        self, section: str, options: FormatOptions
-    ) -> str:
+    def _get_section_header(self, section: str, options: FormatOptions) -> str:
         """
         Get the display header for a section, applying renames.
 
@@ -277,7 +279,9 @@ class ResumeFormatter:
         result = [s for s in order if s not in hidden]
         for section in result:
             if section not in valid_sections:
-                self.logger.warning("Unknown section '%s' in sections_order, skipping", section)
+                self.logger.warning(
+                    "Unknown section '%s' in sections_order, skipping", section
+                )
         return [s for s in result if s in valid_sections]
 
     def _has_section_data(self, resume: GeneratedResume, section: str) -> bool:
@@ -328,34 +332,44 @@ class ResumeFormatter:
 
         if options.ats_mode:
             title_style = ParagraphStyle(
-                'ATSTitle', parent=base_styles['Normal'],
-                fontSize=14, spaceAfter=6,
+                "ATSTitle",
+                parent=base_styles["Normal"],
+                fontSize=14,
+                spaceAfter=6,
             )
             heading_style = ParagraphStyle(
-                'ATSHeading', parent=base_styles['Normal'],
-                fontSize=12, spaceAfter=4, spaceBefore=10,
+                "ATSHeading",
+                parent=base_styles["Normal"],
+                fontSize=12,
+                spaceAfter=4,
+                spaceBefore=10,
             )
         else:
             title_style = ParagraphStyle(
-                'CustomTitle', parent=base_styles['Heading1'],
+                "CustomTitle",
+                parent=base_styles["Heading1"],
                 fontSize=template["title_size"],
-                textColor=heading_color, spaceAfter=12,
+                textColor=heading_color,
+                spaceAfter=12,
             )
             heading_style = ParagraphStyle(
-                'CustomHeading', parent=base_styles['Heading2'],
+                "CustomHeading",
+                parent=base_styles["Heading2"],
                 fontSize=template["heading_size"],
-                textColor=heading_color, spaceAfter=8, spaceBefore=12,
+                textColor=heading_color,
+                spaceAfter=8,
+                spaceBefore=12,
             )
 
-        normal_style = base_styles['Normal']
+        normal_style = base_styles["Normal"]
         bullet_char = "-" if options.ats_mode else "•"
 
         story: List[Any] = []
 
         # Name/Title from summary
-        lines = resume.summary.split('\n') if resume.summary else []
+        lines = resume.summary.split("\n") if resume.summary else []
         if lines:
-            name = lines[0].split('-')[0].strip()
+            name = lines[0].split("-")[0].strip()
             story.append(Paragraph(name, title_style))
             story.append(Spacer(0.1 * inch))
 
@@ -376,24 +390,41 @@ class ResumeFormatter:
             if not options.ats_mode:
                 sep = template.get("separator", "space")
                 if sep == "line":
-                    story.append(HRFlowable(
-                        width="100%", thickness=0.5,
-                        color=heading_color, spaceAfter=4,
-                    ))
+                    story.append(
+                        HRFlowable(
+                            width="100%",
+                            thickness=0.5,
+                            color=heading_color,
+                            spaceAfter=4,
+                        )
+                    )
                 elif sep == "dash":
-                    story.append(HRFlowable(
-                        width="100%", thickness=0.5,
-                        color=colors.grey, spaceAfter=4, dash=[3, 3],
-                    ))
+                    story.append(
+                        HRFlowable(
+                            width="100%",
+                            thickness=0.5,
+                            color=colors.grey,
+                            spaceAfter=4,
+                            dash=[3, 3],
+                        )
+                    )
                 elif sep == "double_line":
-                    story.append(HRFlowable(
-                        width="100%", thickness=1.0,
-                        color=heading_color, spaceAfter=2,
-                    ))
-                    story.append(HRFlowable(
-                        width="100%", thickness=0.5,
-                        color=heading_color, spaceAfter=4,
-                    ))
+                    story.append(
+                        HRFlowable(
+                            width="100%",
+                            thickness=1.0,
+                            color=heading_color,
+                            spaceAfter=2,
+                        )
+                    )
+                    story.append(
+                        HRFlowable(
+                            width="100%",
+                            thickness=0.5,
+                            color=heading_color,
+                            spaceAfter=4,
+                        )
+                    )
 
             # Section content
             if section == "summary":
@@ -406,32 +437,32 @@ class ResumeFormatter:
             elif section == "experience":
                 for exp in resume.experience:
                     title_line = f"{exp.get('title', 'Unknown')} at {exp.get('company', 'Unknown')}"
-                    story.append(Paragraph(title_line, base_styles['Heading3']))
-                    story.append(Paragraph(exp.get('dates', ''), normal_style))
-                    for hl in exp.get('highlights', []):
+                    story.append(Paragraph(title_line, base_styles["Heading3"]))
+                    story.append(Paragraph(exp.get("dates", ""), normal_style))
+                    for hl in exp.get("highlights", []):
                         story.append(Paragraph(f"{bullet_char} {hl}", normal_style))
                     story.append(Spacer(0.1 * inch))
 
             elif section == "projects":
                 for project in resume.projects:
-                    story.append(Paragraph(project['name'], base_styles['Heading3']))
-                    if project.get('description'):
-                        story.append(Paragraph(project['description'], normal_style))
-                    if project.get('technologies'):
-                        tech_text = ", ".join(project['technologies'])
-                        story.append(Paragraph(
-                            f"<b>Technologies:</b> {tech_text}", normal_style
-                        ))
-                    for hl in project.get('highlights', []):
+                    story.append(Paragraph(project["name"], base_styles["Heading3"]))
+                    if project.get("description"):
+                        story.append(Paragraph(project["description"], normal_style))
+                    if project.get("technologies"):
+                        tech_text = ", ".join(project["technologies"])
+                        story.append(
+                            Paragraph(f"<b>Technologies:</b> {tech_text}", normal_style)
+                        )
+                    for hl in project.get("highlights", []):
                         story.append(Paragraph(f"{bullet_char} {hl}", normal_style))
                     story.append(Spacer(0.1 * inch))
 
             elif section == "education":
                 for edu in resume.education:
-                    edu_line = edu['degree']
-                    if edu.get('school'):
+                    edu_line = edu["degree"]
+                    if edu.get("school"):
                         edu_line += f" - {edu['school']}"
-                    if edu.get('year'):
+                    if edu.get("year"):
                         edu_line += f" ({edu['year']})"
                     story.append(Paragraph(edu_line, normal_style))
 
@@ -462,14 +493,14 @@ class ResumeFormatter:
         template = TemplateManager.get_template(options.template)
 
         doc = Document()
-        heading_color_hex = template["heading_color"].lstrip('#')
+        heading_color_hex = template["heading_color"].lstrip("#")
         heading_rgb = RGBColor.from_string(heading_color_hex)
         bullet_char = "-" if options.ats_mode else "•"
 
         # Name/Title from summary
-        lines = resume.summary.split('\n') if resume.summary else []
+        lines = resume.summary.split("\n") if resume.summary else []
         if lines:
-            name = lines[0].split('-')[0].strip()
+            name = lines[0].split("-")[0].strip()
             heading = doc.add_heading(name, 0)
             if not options.ats_mode:
                 for run in heading.runs:
@@ -499,43 +530,43 @@ class ResumeFormatter:
                 for i, skill in enumerate(resume.skills):
                     p.add_run(skill)
                     if i < len(resume.skills) - 1:
-                        p.add_run(', ')
+                        p.add_run(", ")
 
             elif section == "experience":
                 for exp in resume.experience:
                     p = doc.add_paragraph()
-                    p.add_run(exp.get('title', 'Unknown'), bold=True)
+                    p.add_run(exp.get("title", "Unknown"), bold=True)
                     p.add_run(f" at {exp.get('company', 'Unknown')}")
                     p.add_run(f"\n{exp.get('dates', '')}", italic=True)
 
-                    for hl in exp.get('highlights', []):
-                        doc.add_paragraph(hl, style='List Bullet')
+                    for hl in exp.get("highlights", []):
+                        doc.add_paragraph(hl, style="List Bullet")
 
             elif section == "projects":
                 for project in resume.projects:
-                    doc.add_heading(project['name'], level=2)
+                    doc.add_heading(project["name"], level=2)
 
-                    if project.get('description'):
-                        doc.add_paragraph(project['description'])
+                    if project.get("description"):
+                        doc.add_paragraph(project["description"])
 
-                    if project.get('technologies'):
+                    if project.get("technologies"):
                         p = doc.add_paragraph()
-                        p.add_run('Technologies: ', bold=True)
-                        for i, tech in enumerate(project['technologies']):
+                        p.add_run("Technologies: ", bold=True)
+                        for i, tech in enumerate(project["technologies"]):
                             p.add_run(tech)
-                            if i < len(project['technologies']) - 1:
-                                p.add_run(', ')
+                            if i < len(project["technologies"]) - 1:
+                                p.add_run(", ")
 
-                    for hl in project.get('highlights', []):
-                        doc.add_paragraph(hl, style='List Bullet')
+                    for hl in project.get("highlights", []):
+                        doc.add_paragraph(hl, style="List Bullet")
 
             elif section == "education":
                 for edu in resume.education:
                     p = doc.add_paragraph()
-                    p.add_run(edu['degree'], bold=True)
-                    if edu.get('school'):
+                    p.add_run(edu["degree"], bold=True)
+                    if edu.get("school"):
                         p.add_run(f" - {edu['school']}")
-                    if edu.get('year'):
+                    if edu.get("year"):
                         p.add_run(f" ({edu['year']})")
 
         doc.save(str(filepath))

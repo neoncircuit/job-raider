@@ -10,29 +10,25 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.generation.cover_letter_writer import GeneratedCoverLetter
 from src.generation.cover_letter_validator import (
-    CoverLetterValidator,
-    CoverLetterValidationResult,
     CoverLetterIssue,
+    CoverLetterValidationResult,
+    CoverLetterValidator,
 )
+from src.generation.cover_letter_writer import GeneratedCoverLetter
 from src.generation.selector import SelectionOutput
+from src.models.job_listing import JobListing, JobRequirement, JobSource
+from src.models.job_listing import Skill as JobSkill
 from src.models.user_profile import (
-    UserProfile,
     ContactInfo,
-    Skill,
-    SkillCategory,
+    Education,
     ProficiencyLevel,
     Project,
-    WorkExperience,
-    Education,
+    Skill,
+    SkillCategory,
     TargetJob,
-)
-from src.models.job_listing import (
-    JobListing,
-    JobRequirement,
-    JobSource,
-    Skill as JobSkill,
+    UserProfile,
+    WorkExperience,
 )
 
 
@@ -183,9 +179,7 @@ GENERIC_COVER_LETTER = GeneratedCoverLetter(
 class TestCoverLetterValidator:
     """Test suite for CoverLetterValidator."""
 
-    def test_validates_good_letter(
-        self, sample_job, sample_profile, sample_selection
-    ):
+    def test_validates_good_letter(self, sample_job, sample_profile, sample_selection):
         """Test that a well-structured cover letter passes validation."""
         validator = CoverLetterValidator()
         result = validator.validate(
@@ -198,9 +192,7 @@ class TestCoverLetterValidator:
         assert CoverLetterIssue.MISSING_COMPANY not in result.issues
         assert CoverLetterIssue.MISSING_JOB_TITLE not in result.issues
 
-    def test_detects_too_short(
-        self, sample_job, sample_profile, sample_selection
-    ):
+    def test_detects_too_short(self, sample_job, sample_profile, sample_selection):
         """Test that a very short cover letter is flagged."""
         validator = CoverLetterValidator()
         result = validator.validate(
@@ -225,7 +217,9 @@ class TestCoverLetterValidator:
             model_used="test",
         )
         validator = CoverLetterValidator()
-        result = validator.validate(letter, sample_job, sample_profile, sample_selection)
+        result = validator.validate(
+            letter, sample_job, sample_profile, sample_selection
+        )
 
         assert CoverLetterIssue.MISSING_COMPANY in result.issues
         assert result.content_score < 100
@@ -245,7 +239,9 @@ class TestCoverLetterValidator:
             model_used="test",
         )
         validator = CoverLetterValidator()
-        result = validator.validate(letter, sample_job, sample_profile, sample_selection)
+        result = validator.validate(
+            letter, sample_job, sample_profile, sample_selection
+        )
 
         assert CoverLetterIssue.MISSING_JOB_TITLE in result.issues
 
@@ -277,13 +273,13 @@ class TestCoverLetterValidator:
             model_used="test",
         )
         validator = CoverLetterValidator()
-        result = validator.validate(letter, sample_job, sample_profile, sample_selection)
+        result = validator.validate(
+            letter, sample_job, sample_profile, sample_selection
+        )
 
         assert CoverLetterIssue.MISSING_SELECTED_PROJECT in result.issues
 
-    def test_scoring_dimensions(
-        self, sample_job, sample_profile, sample_selection
-    ):
+    def test_scoring_dimensions(self, sample_job, sample_profile, sample_selection):
         """Test that all three scoring dimensions are populated."""
         validator = CoverLetterValidator()
         result = validator.validate(
@@ -295,9 +291,7 @@ class TestCoverLetterValidator:
         assert 0 <= result.tone_score <= 100
         assert 0 <= result.score <= 100
 
-    def test_recommendation_levels(
-        self, sample_job, sample_profile, sample_selection
-    ):
+    def test_recommendation_levels(self, sample_job, sample_profile, sample_selection):
         """Test that recommendation is set correctly based on score."""
         validator = CoverLetterValidator()
 
@@ -311,9 +305,7 @@ class TestCoverLetterValidator:
         )
         assert bad_result.recommendation in ("needs_revision", "reject")
 
-    def test_details_populated(
-        self, sample_job, sample_profile, sample_selection
-    ):
+    def test_details_populated(self, sample_job, sample_profile, sample_selection):
         """Test that validation details are populated."""
         validator = CoverLetterValidator()
         result = validator.validate(
@@ -344,7 +336,9 @@ class TestCoverLetterValidator:
             model_used="test",
         )
 
-        result = validator.validate(letter, sample_job, sample_profile, sample_selection)
+        result = validator.validate(
+            letter, sample_job, sample_profile, sample_selection
+        )
 
         if result.recommendation == "needs_revision":
             assert not result.is_valid
@@ -367,7 +361,9 @@ class TestCoverLetterValidator:
             model_used="test",
         )
 
-        result = validator.validate(letter, sample_job, sample_profile, sample_selection)
+        result = validator.validate(
+            letter, sample_job, sample_profile, sample_selection
+        )
 
         if result.recommendation == "needs_revision":
             assert result.is_valid

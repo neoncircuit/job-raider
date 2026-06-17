@@ -7,14 +7,16 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class PipelineStatus(str, Enum):
     """Pipeline execution status."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -99,10 +101,15 @@ class JobListingResponse(BaseModel):
     requirements: List[str] = Field(default_factory=list)
 
     # Rich classification (if available)
-    classification: Optional[Dict[str, Any]] = Field(default=None, description="LLM-based job classification")
+    classification: Optional[Dict[str, Any]] = Field(
+        default=None, description="LLM-based job classification"
+    )
 
     # Trust analysis (if available)
-    trust_analysis: Optional[Dict[str, Any]] = Field(default=None, description="Trust analysis with tier, reasons, and category scores")
+    trust_analysis: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Trust analysis with tier, reasons, and category scores",
+    )
 
 
 class ProfileResponse(BaseModel):

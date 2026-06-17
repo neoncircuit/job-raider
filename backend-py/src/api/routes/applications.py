@@ -4,28 +4,25 @@ Job Raider - Application Tracking API Routes
 API endpoints for job application tracking, quick actions, and dashboard.
 """
 
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 
-from ...metrics.outcome_tracker import (
-    OutcomeTracker,
-    ApplicationStatus,
-)
-from ...utils.logger import get_logger, Components
+from ...metrics.outcome_tracker import ApplicationStatus, OutcomeTracker
+from ...utils.logger import Components, get_logger
 from ..models.requests import (
-    JobActionRequest,
-    TrackExternalApplicationRequest,
     CreateCustomStatusRequest,
+    JobActionRequest,
     SetCustomStatusRequest,
+    TrackExternalApplicationRequest,
     UpdateApplicationStatusRequest,
 )
 from ..models.responses import (
-    JobActionResponse,
+    ApplicationDetailResponse,
     CustomStatusResponse,
     DashboardResponse,
-    ApplicationDetailResponse,
+    JobActionResponse,
 )
 
 router = APIRouter()
@@ -41,8 +38,14 @@ async def perform_job_action(request: JobActionRequest) -> JobActionResponse:
     Perform quick action on a job (save, hide, etc.).
     """
     if request.action == "save":
-        title = request.metadata.get("title", "Unknown") if request.metadata else "Unknown"
-        company = request.metadata.get("company", "Unknown") if request.metadata else "Unknown"
+        title = (
+            request.metadata.get("title", "Unknown") if request.metadata else "Unknown"
+        )
+        company = (
+            request.metadata.get("company", "Unknown")
+            if request.metadata
+            else "Unknown"
+        )
         source_url = request.metadata.get("source_url") if request.metadata else None
 
         outcome = outcome_tracker.save_job(
@@ -102,7 +105,9 @@ async def perform_job_action(request: JobActionRequest) -> JobActionResponse:
 
 
 @router.post("/external")
-async def track_external_application(request: TrackExternalApplicationRequest) -> Dict[str, Any]:
+async def track_external_application(
+    request: TrackExternalApplicationRequest,
+) -> Dict[str, Any]:
     """
     Track an application made outside the system.
     """
@@ -131,7 +136,9 @@ async def track_external_application(request: TrackExternalApplicationRequest) -
 
 
 @router.post("/statuses/custom", response_model=CustomStatusResponse)
-async def create_custom_status(request: CreateCustomStatusRequest) -> CustomStatusResponse:
+async def create_custom_status(
+    request: CreateCustomStatusRequest,
+) -> CustomStatusResponse:
     """
     Create a new custom application status.
     """
@@ -165,7 +172,9 @@ async def get_custom_statuses(active_only: bool = True) -> List[CustomStatusResp
     usage_counts = {}
     for outcome in outcome_tracker.get_all_applications():
         if outcome.custom_status_id:
-            usage_counts[outcome.custom_status_id] = usage_counts.get(outcome.custom_status_id, 0) + 1
+            usage_counts[outcome.custom_status_id] = (
+                usage_counts.get(outcome.custom_status_id, 0) + 1
+            )
 
     return [
         CustomStatusResponse(
@@ -207,7 +216,9 @@ async def set_custom_status(request: SetCustomStatusRequest) -> Dict[str, Any]:
 
 
 @router.put("/status")
-async def update_application_status(request: UpdateApplicationStatusRequest) -> Dict[str, Any]:
+async def update_application_status(
+    request: UpdateApplicationStatusRequest,
+) -> Dict[str, Any]:
     """
     Update application status.
     """
@@ -259,7 +270,11 @@ async def get_dashboard(
     if not include_bookmarked:
         applications = [a for a in applications if not a.is_bookmarked]
     if not include_external:
-        applications = [a for a in applications if a.current_status != ApplicationStatus.APPLIED_ELSEWHERE]
+        applications = [
+            a
+            for a in applications
+            if a.current_status != ApplicationStatus.APPLIED_ELSEWHERE
+        ]
 
     # Get custom statuses
     custom_statuses = outcome_tracker.get_custom_statuses()
@@ -294,19 +309,21 @@ async def get_dashboard(
                     created_at=cs.created_at,
                 )
 
-        apps_data.append({
-            "application_id": app.application_id,
-            "job_title": app.job_title,
-            "company": app.company,
-            "applied_date": app.applied_date.isoformat(),
-            "current_status": app.current_status.value,
-            "custom_status": custom_status.model_dump() if custom_status else None,
-            "is_bookmarked": app.is_bookmarked,
-            "is_hidden": app.is_hidden,
-            "final_outcome": app.final_outcome.value if app.final_outcome else None,
-            "interview_count": app.interview_count,
-            "days_since_application": app.days_since_application,
-        })
+        apps_data.append(
+            {
+                "application_id": app.application_id,
+                "job_title": app.job_title,
+                "company": app.company,
+                "applied_date": app.applied_date.isoformat(),
+                "current_status": app.current_status.value,
+                "custom_status": custom_status.model_dump() if custom_status else None,
+                "is_bookmarked": app.is_bookmarked,
+                "is_hidden": app.is_hidden,
+                "final_outcome": app.final_outcome.value if app.final_outcome else None,
+                "interview_count": app.interview_count,
+                "days_since_application": app.days_since_application,
+            }
+        )
 
     return DashboardResponse(
         applications=apps_data,
@@ -372,22 +389,30 @@ async def get_application_details(job_id: str) -> ApplicationDetailResponse:
         interviews=[
             {
                 "stage": i.stage.value,
-                "scheduled_date": i.scheduled_date.isoformat() if i.scheduled_date else None,
-                "completed_date": i.completed_date.isoformat() if i.completed_date else None,
+                "scheduled_date": (
+                    i.scheduled_date.isoformat() if i.scheduled_date else None
+                ),
+                "completed_date": (
+                    i.completed_date.isoformat() if i.completed_date else None
+                ),
                 "feedback": i.feedback,
                 "outcome": i.outcome,
             }
             for i in outcome.interviews
         ],
-        offer={
-            "salary_min": outcome.offer.salary_min,
-            "salary_max": outcome.offer.salary_max,
-            "salary_period": outcome.offer.salary_period,
-            "bonus": outcome.offer.bonus,
-            "equity": outcome.offer.equity,
-            "benefits": outcome.offer.benefits,
-            "notes": outcome.offer.notes,
-        } if outcome.offer else None,
+        offer=(
+            {
+                "salary_min": outcome.offer.salary_min,
+                "salary_max": outcome.offer.salary_max,
+                "salary_period": outcome.offer.salary_period,
+                "bonus": outcome.offer.bonus,
+                "equity": outcome.offer.equity,
+                "benefits": outcome.offer.benefits,
+                "notes": outcome.offer.notes,
+            }
+            if outcome.offer
+            else None
+        ),
         timeline_notes=outcome.timeline_notes,
         metadata=outcome.metadata,
     )

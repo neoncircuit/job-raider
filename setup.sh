@@ -35,6 +35,213 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Track check results for summary
+CHECK_RESULTS=()
+
+# Record a check result for the summary
+record_check() {
+    local status="$1"
+    local label="$2"
+    CHECK_RESULTS+=("$status|$label")
+}
+
+# Check if git is installed
+check_git() {
+    print_status "Checking git..."
+    if command -v git &> /dev/null; then
+        GIT_VERSION=$(git --version | cut -d' ' -f3)
+        print_status "git $GIT_VERSION found [OK]"
+        record_check "PASS" "git"
+    else
+        print_warning "git not found. Install with: sudo apt-get install -y git"
+        record_check "FAIL" "git"
+    fi
+}
+
+# Check if make is installed
+check_make() {
+    print_status "Checking make..."
+    if command -v make &> /dev/null; then
+        print_status "make found [OK]"
+        record_check "PASS" "make"
+    else
+        print_warning "make not found. Install with: sudo apt-get install -y build-essential"
+        print_warning "Commands like 'make dev' will not work without make."
+        record_check "FAIL" "make"
+    fi
+}
+
+# Check if Docker is installed and running (hard requirement)
+check_docker() {
+    print_status "Checking Docker..."
+    if ! command -v docker &> /dev/null; then
+        print_error "Docker is not installed!"
+        echo ""
+        echo "Install Docker for your platform:"
+        echo "  WSL2/Windows: https://docs.docker.com/desktop/setup/install/windows-install/"
+        echo "  Linux:        curl -fsSL https://get.docker.com | sh"
+        echo "  Then add your user: sudo usermod -aG docker \$USER"
+        echo ""
+        record_check "FAIL" "Docker"
+        exit 1
+    fi
+
+    DOCKER_VERSION=$(docker --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+' | head -1)
+    print_status "Docker $DOCKER_VERSION found [OK]"
+
+    # Check Docker daemon
+    if ! docker info &> /dev/null; then
+        print_error "Docker daemon is not running!"
+        echo ""
+        echo "  WSL2/Windows: Start Docker Desktop from the Start menu"
+        echo "  Linux:        sudo systemctl start docker"
+        echo ""
+        record_check "FAIL" "Docker daemon"
+        exit 1
+    fi
+    print_status "Docker daemon is running [OK]"
+
+    # Check Docker Compose v2
+    if ! docker compose version &> /dev/null; then
+        print_warning "Docker Compose v2 not found. Install via Docker Desktop or:"
+        print_warning "  sudo apt-get install -y docker-compose-plugin"
+        record_check "FAIL" "Docker Compose"
+    else
+        COMPOSE_VERSION=$(docker compose version --short 2>/dev/null)
+        print_status "Docker Compose $COMPOSE_VERSION found [OK]"
+        record_check "PASS" "Docker Compose"
+    fi
+
+    record_check "PASS" "Docker"
+}
+
+# Check NVIDIA GPU and Container Toolkit
+check_gpu() {
+    print_status "Checking GPU support..."
+    if ! command -v nvidia-smi &> /dev/null; then
+        print_warning "nvidia-smi not found - no NVIDIA GPU drivers installed"
+        print_warning "Ollama will fall back to CPU-only mode (slower inference)"
+        record_check "WARN" "NVIDIA GPU (CPU fallback)"
+        return
+    fi
+
+    # Check if nvidia-smi actually works (driver loaded)
+    if ! nvidia-smi &> /dev/null; then
+        print_warning "nvidia-smi found but failed to run - driver issue?"
+        print_warning "Check with: nvidia-smi"
+        record_check "WARN" "NVIDIA GPU (driver error)"
+        return
+    fi
+
+    GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
+    GPU_VRAM=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader 2>/dev/null | head -1 | tr -d ' ')
+    print_status "NVIDIA GPU: $GPU_NAME ($GPU_VRAM) [OK]"
+
+    # Check NVIDIA Container Toolkit
+    if docker info 2>/dev/null | grep -q "nvidia"; then
+        print_status "NVIDIA Container Toolkit configured [OK]"
+        record_check "PASS" "NVIDIA GPU + Toolkit"
+    else
+        print_warning "NVIDIA Container Toolkit not configured"
+        print_warning "GPU passthrough to Docker containers will not work."
+        echo ""
+        echo "  Install:  sudo apt-get install -y nvidia-container-toolkit"
+        echo "  Configure: sudo nvidia-ctk runtime configure --runtime=docker"
+        echo "  Restart:   Restart Docker Desktop (WSL2) or sudo systemctl restart docker (Linux)"
+        echo "  Verify:    docker run --rm --gpus all nvidia/cuda:12.4.0-runtime-ubuntu22.04 nvidia-smi"
+        echo ""
+        record_check "WARN" "NVIDIA GPU (toolkit missing)"
+    fi
+}
+
+# Check Node.js version (v20+ required for Next.js frontend)
+check_node() {
+    print_status "Checking Node.js..."
+    if ! command -v node &> /dev/null; then
+        print_warning "Node.js not found. The Next.js frontend requires Node.js 20+."
+        print_warning "Install via: https://nodejs.org/ or nvm (https://github.com/nvm-sh/nvm)"
+        print_warning "Frontend setup will be skipped."
+        record_check "FAIL" "Node.js"
+        return
+    fi
+
+    NODE_VERSION=$(node --version | cut -c2- | cut -d'.' -f1)
+    if [ "$NODE_VERSION" -lt 20 ] 2>/dev/null; then
+        print_warning "Node.js $(node --version) found but v20+ is required for Next.js."
+        print_warning "Upgrade via: nvm install 20"
+        print_warning "Frontend setup will be skipped."
+        record_check "FAIL" "Node.js (version too old)"
+        return
+    fi
+
+    print_status "Node.js $(node --version) found [OK]"
+    record_check "PASS" "Node.js"
+}
+
+# Check if shared-services Docker network exists
+check_shared_network() {
+    print_status "Checking shared Docker network..."
+    if docker network inspect shared-services &> /dev/null; then
+        print_status "shared-services network exists [OK]"
+        record_check "PASS" "shared-services network"
+    else
+        print_warning "shared-services Docker network not found."
+        print_status "Creating shared-services network..."
+        if docker network create shared-services &> /dev/null; then
+            print_status "shared-services network created [OK]"
+            record_check "PASS" "shared-services network (created)"
+        else
+            print_warning "Failed to create network. Create manually: docker network create shared-services"
+            record_check "FAIL" "shared-services network"
+        fi
+    fi
+}
+
+# Check if shared MLflow service is configured
+check_shared_mlflow() {
+    print_status "Checking shared MLflow service..."
+    if [ -f "$HOME/docker-services/docker-compose.yml" ]; then
+        print_status "Shared MLflow config found at ~/docker-services/ [OK]"
+        record_check "PASS" "Shared MLflow"
+    else
+        print_warning "Shared MLflow service not configured."
+        print_warning "See docs/mlflow-setup.md for one-time setup instructions."
+        print_warning "MLflow experiment tracking will be unavailable until configured."
+        record_check "WARN" "Shared MLflow (not configured)"
+    fi
+}
+
+# Check if required ports are available
+check_ports() {
+    print_status "Checking port availability..."
+
+    local PORTS=("8000:Backend API" "3000:Frontend (Next.js)" "11434:Ollama" "5000:MLflow")
+    local ALL_FREE=true
+
+    for ENTRY in "${PORTS[@]}"; do
+        local PORT="${ENTRY%%:*}"
+        local LABEL="${ENTRY#*:}"
+
+        # Check if port is in use (Linux/WSL)
+        if ss -tlnp 2>/dev/null | grep -q ":${PORT} "; then
+            local PROCESS=$(ss -tlnp 2>/dev/null | grep ":${PORT} " | head -1 | grep -oP 'users:\("\K[^"]+' || echo "unknown")
+            print_warning "Port $PORT ($LABEL) is in use by: $PROCESS"
+            ALL_FREE=false
+        elif lsof -i ":${PORT}" &> /dev/null 2>&1; then
+            print_warning "Port $PORT ($LABEL) is already in use"
+            ALL_FREE=false
+        fi
+    done
+
+    if [ "$ALL_FREE" = true ]; then
+        print_status "All required ports are available [OK]"
+        record_check "PASS" "Ports"
+    else
+        print_warning "Some ports are occupied. Stop conflicting services or set custom ports via .env"
+        record_check "WARN" "Ports (some occupied)"
+    fi
+}
+
 # Check disk space for Docker and project requirements
 check_disk_space() {
     print_status "Checking available disk space..."
@@ -137,6 +344,7 @@ create_directories() {
     mkdir -p "$PROJECT_ROOT/data/cache"
     mkdir -p "$PROJECT_ROOT/data/results"
     mkdir -p "$PROJECT_ROOT/data/applications"
+    mkdir -p "$PROJECT_ROOT/data/assessments"
     mkdir -p "$PROJECT_ROOT/data/settings"
     mkdir -p "$PROJECT_ROOT/data/metrics"
     mkdir -p "$PROJECT_ROOT/data/experiments"
@@ -205,24 +413,20 @@ check_env() {
     fi
 }
 
-# Set up Next.js frontend
+# Set up Next.js frontend (called after check_node)
 setup_frontend() {
-    print_status "Setting up Next.js frontend..."
-
     FRONTEND_DIR="$PROJECT_ROOT/frontend-ts"
 
+    # Skip if Node.js check failed
     if ! command -v node &> /dev/null; then
-        print_warning "Node.js not found. Install Node 20+ to run the frontend locally."
-        print_warning "Skipping frontend dependency installation."
+        return
+    fi
+    NODE_VERSION=$(node --version | cut -c2- | cut -d'.' -f1)
+    if [ "$NODE_VERSION" -lt 20 ] 2>/dev/null; then
         return
     fi
 
-    NODE_VERSION=$(node --version | cut -c2- | cut -d'.' -f1)
-    if [ "$NODE_VERSION" -lt 20 ] 2>/dev/null; then
-        print_warning "Node.js $NODE_VERSION found but 20+ is recommended."
-    else
-        print_status "Node.js $(node --version) found [OK]"
-    fi
+    print_status "Setting up Next.js frontend..."
 
     if [ -d "$FRONTEND_DIR/node_modules" ]; then
         print_status "Frontend node_modules already exists [OK]"
@@ -268,17 +472,37 @@ pull_embedding_model() {
 print_summary() {
     echo ""
     echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}    Setup Complete! [OK]${NC}"
+    echo -e "${GREEN}    Setup Complete!${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo ""
+
+    # Show check results
+    echo -e "${BLUE}System Check Results:${NC}"
+    HAS_FAILURES=false
+    for ENTRY in "${CHECK_RESULTS[@]}"; do
+        STATUS="${ENTRY%%|*}"
+        LABEL="${ENTRY#*|}"
+        if [ "$STATUS" = "PASS" ]; then
+            echo -e "  ${GREEN}[PASS]${NC} $LABEL"
+        elif [ "$STATUS" = "WARN" ]; then
+            echo -e "  ${YELLOW}[WARN]${NC} $LABEL"
+        else
+            echo -e "  ${RED}[FAIL]${NC} $LABEL"
+            HAS_FAILURES=true
+        fi
+    done
+    echo ""
+
+    if [ "$HAS_FAILURES" = true ]; then
+        echo -e "${YELLOW}Some checks failed. See warnings above for fix instructions.${NC}"
+        echo ""
+    fi
+
     echo -e "To activate the virtual environment, run:"
     echo -e "${BLUE}source backend-py/.venv/bin/activate${NC}"
     echo ""
-    echo -e "Or add this to your ~/.bashrc or ~/.zshrc:"
-    echo -e "${BLUE}export PATH=\"$(pwd)/backend-py/.venv/bin:\$PATH\"${NC}"
-    echo ""
     echo -e "Next steps:"
-    echo "  1. Edit backend-py/.env with your API keys (ANTHROPIC_API_KEY, GEMINI_API_KEY, RAPIDAPI_KEY)"
+    echo "  1. Edit backend-py/.env with your API keys (ANTHROPIC_API_KEY, RAPIDAPI_KEY)"
     echo "  2. Configure settings via web UI (Settings page) or backend-py/config/*.yaml"
     echo "  3. Run: make dev-api          (backend on :8000)"
     echo "  4. Run: make dev-frontend     (Next.js on :3000)"
@@ -289,39 +513,63 @@ print_summary() {
     echo "  - Docker Desktop stores ALL data on C: drive (see docs/docker-storage.md)"
     echo "  - Requirements: 200GB+ on C:, 100GB+ on project drive"
     echo ""
-    echo -e "Project status (32 phases completed):"
-    echo "  - Next.js + Tailwind frontend (replaces Streamlit)"
-    echo "  - RAG semantic matching with pgvector (Supabase PostgreSQL) and nomic-embed-text embeddings"
-    echo "  - JSearch API scraper via RapidAPI (replaces broken Indeed/Glassdoor)"
-    echo "  - Applications tracker with custom statuses"
-    echo "  - AI-powered resume analysis (general + job-specific gap analysis)"
-    echo "  - 5 resume templates with ATS-friendly mode and section customization"
-    echo "  - MLflow experiment tracking (shared service at ~/docker-services/)"
-    echo "  - Sentry error tracking (optional, disabled by default)"
-    echo "  - LLM-based job classification with rich metadata (industry, role, company size, etc.)"
-    echo "  - LinkedIn Easy Apply automation with form parsing, answer engine, and safety limits"
-    echo "  - Job trust scoring with tiered ratings, per-category breakdowns, and LLM-enhanced analysis"
-    echo ""
     echo -e "Docker development tips:"
     echo "  - Use './docker-rebuild.sh' after code changes (NOT 'docker compose restart')"
     echo "  - This prevents WSL2 DrvFs caching issues that cause stale code in containers"
+    echo ""
+    echo -e "Phase 36 Features (2026-06-07):"
+    echo "  - Theme Toggle: Light/dark mode switching via sidebar button"
+    echo "  - Odysseus Design: Fira Code font, red accents, sharp borders"
+    echo "  - Fresh Grad Mode: Projects 35%, Skills 30%, Education 20% (vs 40% exp)"
+    echo "  - DISC Assessment: Most/Least forced-choice format with job matching"
+    echo "  - Location Filtering: Post-filter to ensure API accuracy"
+    echo "  - Documentation: See docs/fresh-grad-profile-guide.md for tips"
+    echo ""
+    echo -e "Phase 38 Features (2026-06-08):"
+    echo "  - Test Infrastructure: Vitest for unit tests, Playwright for E2E"
+    echo "  - MSW API Mocking: Realistic API responses for isolated testing"
+    echo "  - Test Utilities: Common helpers reduce test code duplication"
+    echo "  - Run tests: npm run test (unit), npm run test:e2e (E2E)"
+    echo ""
+    echo -e "Phase 41 Features (2026-06-16):"
+    echo "  - Multi-Agent System: AgentCoordinator + communication bus + CareerCoachAgent"
+    echo "  - 9 /api/agents/* endpoints (career analysis, gap analysis, roadmaps, goals)"
+    echo "  - Non-fatal startup init; agent endpoints return 503 until the coordinator is ready"
+    echo "  - Config: backend-py/config/agent_config.yaml"
     echo ""
 }
 
 # Main execution
 main() {
+    # System prerequisites
     check_disk_space
+    check_git
     check_python
+    check_node
+    check_make
+    check_docker
+    check_gpu
+    check_shared_network
+    check_shared_mlflow
+    check_ports
+
+    # Python environment
     create_venv
     activate_venv
     upgrade_pip
     install_dependencies
+
+    # Project structure
     create_directories
     setup_auto_activation
     check_env
+
+    # Tools and frontend
     install_playwright
     pull_embedding_model
     setup_frontend
+
+    # Results
     print_summary
 }
 

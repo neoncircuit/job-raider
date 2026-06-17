@@ -8,15 +8,16 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-import subprocess
 import re
-from typing import Optional, Dict, List, Tuple
+import subprocess
 from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass
 class GPUInfo:
     """Information about a GPU."""
+
     gpu_id: int
     name: str
     memory_total_mb: int
@@ -30,7 +31,7 @@ class GPUInfo:
         """Return memory usage as a percentage."""
         if self.memory_total_mb == 0:
             return 0.0
-        return (self.memory_used_mb / self.memory_total_mb)
+        return self.memory_used_mb / self.memory_total_mb
 
 
 class GPUMonitor:
@@ -103,7 +104,11 @@ class GPUMonitor:
                     memory_used_mb=int(parts[3]),
                     memory_free_mb=int(parts[4]),
                     utilization_percent=float(parts[5]),
-                    temperature_celsius=float(parts[6]) if len(parts) > 6 and parts[6] != "N/A" else None,
+                    temperature_celsius=(
+                        float(parts[6])
+                        if len(parts) > 6 and parts[6] != "N/A"
+                        else None
+                    ),
                 )
 
             self._gpu_count = len(self._gpu_info)
@@ -202,7 +207,9 @@ class GPUMonitor:
                         self._gpu_info[gpu_id].memory_free_mb = int(parts[2])
                         self._gpu_info[gpu_id].utilization_percent = float(parts[3])
                         self._gpu_info[gpu_id].temperature_celsius = (
-                            float(parts[4]) if len(parts) > 4 and parts[4] != "N/A" else None
+                            float(parts[4])
+                            if len(parts) > 4 and parts[4] != "N/A"
+                            else None
                         )
                 except (ValueError, IndexError):
                     continue
@@ -258,15 +265,19 @@ class GPUMonitor:
 
         for gpu_info in self.get_all_gpu_info():
             print(f"\nGPU {gpu_info.gpu_id}: {gpu_info.name}")
-            print(f"  Memory: {gpu_info.memory_used_mb} MB / {gpu_info.memory_total_mb} MB "
-                  f"({gpu_info.memory_usage_percent:.1%})")
+            print(
+                f"  Memory: {gpu_info.memory_used_mb} MB / {gpu_info.memory_total_mb} MB "
+                f"({gpu_info.memory_usage_percent:.1%})"
+            )
             print(f"  Utilization: {gpu_info.utilization_percent:.1f}%")
             if gpu_info.temperature_celsius:
                 print(f"  Temperature: {gpu_info.temperature_celsius:.0f}°C")
 
             # Warn if approaching threshold
             if gpu_info.memory_usage_percent >= self.vram_threshold:
-                print(f"  ⚠️  WARNING: VRAM usage exceeds {self.vram_threshold:.0%} threshold")
+                print(
+                    f"  ⚠️  WARNING: VRAM usage exceeds {self.vram_threshold:.0%} threshold"
+                )
 
         print(f"{'='*60}\n")
 
@@ -294,9 +305,13 @@ class GPUMonitor:
         elif available_gb >= 8:
             return f"Can run models up to ~14B parameters ({available_gb:.1f} GB available)"
         elif available_gb >= 4:
-            return f"Can run models up to ~7B parameters ({available_gb:.1f} GB available)"
+            return (
+                f"Can run models up to ~7B parameters ({available_gb:.1f} GB available)"
+            )
         elif available_gb >= 2:
-            return f"Can run models up to ~3B parameters ({available_gb:.1f} GB available)"
+            return (
+                f"Can run models up to ~3B parameters ({available_gb:.1f} GB available)"
+            )
         else:
             return f"Limited VRAM available ({available_gb:.1f} GB) - use CPU or smaller models"
 

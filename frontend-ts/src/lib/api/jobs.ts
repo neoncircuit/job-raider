@@ -61,4 +61,18 @@ export const jobsApi = {
     }>("POST", `/jobs/${jobId}/apply`, {
       params: { dry_run: dryRun },
     }),
+
+  generateCoverLetter: (jobId: string, jobData: { title: string; company: string; description?: string; location?: string; source?: string }) =>
+    request<{
+      success: boolean;
+      job_id: string;
+      cover_letter: {
+        content: string;
+        word_count: number;
+        model_used: string;
+        highlighted_experiences: Array<{ name: string; reason: string }>;
+      };
+    }>("POST", `/jobs/${jobId}/cover-letter`, {
+      body: jobData,
+    }),
 };

@@ -5,13 +5,14 @@
 # Author: Job Raider
 # Date: 2026-04-21
 
-import pytest
 import os
 import sys
-from pathlib import Path
 from datetime import datetime
-from unittest.mock import Mock, MagicMock, patch
-from typing import Dict, Any, List
+from pathlib import Path
+from typing import Any, Dict, List
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -21,8 +22,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 def sample_job_listing():
     """Sample job listing for testing."""
     from src.models.job_listing import (
-        JobListing, JobSource, SalaryRange,
-        JobRequirement, JobResponsibility, Skill,
+        JobListing,
+        JobRequirement,
+        JobResponsibility,
+        JobSource,
+        SalaryRange,
+        Skill,
     )
 
     return JobListing(
@@ -63,18 +68,18 @@ def sample_job_listing():
 @pytest.fixture
 def sample_user_profile():
     """Sample user profile for testing."""
+    from src.models.job_listing import ExperienceLevel
     from src.models.user_profile import (
-        UserProfile,
         ContactInfo,
-        Skill,
-        SkillCategory,
+        Education,
         ProficiencyLevel,
         Project,
+        Skill,
+        SkillCategory,
         TargetJob,
+        UserProfile,
         WorkExperience,
-        Education,
     )
-    from src.models.job_listing import ExperienceLevel
 
     return UserProfile(
         name="John Doe",
@@ -86,11 +91,36 @@ def sample_user_profile():
             github="https://github.com/johndoe",
         ),
         skills=[
-            Skill(name="Python", category=SkillCategory.PROGRAMMING_LANGUAGE, proficiency=ProficiencyLevel.EXPERT, years_experience=7),
-            Skill(name="JavaScript", category=SkillCategory.PROGRAMMING_LANGUAGE, proficiency=ProficiencyLevel.INTERMEDIATE, years_experience=3),
-            Skill(name="Django", category=SkillCategory.FRAMEWORK, proficiency=ProficiencyLevel.EXPERT, years_experience=6),
-            Skill(name="FastAPI", category=SkillCategory.FRAMEWORK, proficiency=ProficiencyLevel.ADVANCED, years_experience=3),
-            Skill(name="AWS", category=SkillCategory.CLOUD, proficiency=ProficiencyLevel.INTERMEDIATE, years_experience=2),
+            Skill(
+                name="Python",
+                category=SkillCategory.PROGRAMMING_LANGUAGE,
+                proficiency=ProficiencyLevel.EXPERT,
+                years_experience=7,
+            ),
+            Skill(
+                name="JavaScript",
+                category=SkillCategory.PROGRAMMING_LANGUAGE,
+                proficiency=ProficiencyLevel.INTERMEDIATE,
+                years_experience=3,
+            ),
+            Skill(
+                name="Django",
+                category=SkillCategory.FRAMEWORK,
+                proficiency=ProficiencyLevel.EXPERT,
+                years_experience=6,
+            ),
+            Skill(
+                name="FastAPI",
+                category=SkillCategory.FRAMEWORK,
+                proficiency=ProficiencyLevel.ADVANCED,
+                years_experience=3,
+            ),
+            Skill(
+                name="AWS",
+                category=SkillCategory.CLOUD,
+                proficiency=ProficiencyLevel.INTERMEDIATE,
+                years_experience=2,
+            ),
         ],
         experience=[
             WorkExperience(
@@ -132,8 +162,8 @@ def sample_user_profile():
 @pytest.fixture
 def sample_submission_info():
     """Sample submission info for testing."""
-    from src.submission.detector import SubmissionInfo, ApplyMethod
     from src.models.job_listing import JobSource
+    from src.submission.detector import ApplyMethod, SubmissionInfo
 
     job = Mock()
     job.title = "Software Engineer"
@@ -174,6 +204,21 @@ def temp_data_dir(tmp_path):
     (data_dir / "applications").mkdir()
     (data_dir / "metrics").mkdir()
     return data_dir
+
+
+@pytest.fixture
+def client():
+    """Shared FastAPI TestClient for API route tests.
+
+    Modules that need mocked dependencies (e.g. ``test_assessment_api.py`` and
+    ``test_application_api.py``) define their own local ``client`` fixture,
+    which takes precedence over this shared one.
+    """
+    from fastapi.testclient import TestClient
+
+    from src.api.main import app
+
+    return TestClient(app, raise_server_exceptions=False)
 
 
 @pytest.fixture
@@ -227,7 +272,7 @@ def sample_token_usage():
 @pytest.fixture
 def sample_job_listings():
     """Sample list of job listings for testing."""
-    from src.models.job_listing import JobListing, JobSource, JobRequirement, Skill
+    from src.models.job_listing import JobListing, JobRequirement, JobSource, Skill
 
     listings = []
     companies = ["Tech Corp", "Data Inc", "Cloud Co", "AI Labs", "Startup XYZ"]
@@ -260,6 +305,7 @@ def pytest_addoption(parser):
         help="Run LLM integration tests (requires API keys or Ollama)",
     )
 
+
 @pytest.fixture
 def skip_if_no_api_key():
     """Skip test if API key is not available."""
@@ -272,6 +318,7 @@ def skip_if_no_gpu():
     """Skip test if GPU is not available."""
     try:
         import subprocess
+
         result = subprocess.run(
             ["nvidia-smi"],
             capture_output=True,
@@ -288,6 +335,7 @@ def skip_if_no_ollama():
     """Skip test if Ollama is not available."""
     try:
         import subprocess
+
         result = subprocess.run(
             ["ollama", "list"],
             capture_output=True,
@@ -306,15 +354,21 @@ def skip_if_no_ollama():
 def rag_config():
     """Sample RAG configuration for testing."""
     from src.rag.config import (
-        RAGConfig, EmbeddingConfig, VectorStoreConfig,
-        ChunkingConfig, ReRankingConfig,
+        ChunkingConfig,
+        EmbeddingConfig,
+        RAGConfig,
+        ReRankingConfig,
+        VectorStoreConfig,
     )
+
     return RAGConfig(
         embedding=EmbeddingConfig(model="nomic-embed-text", dimension=768),
         vector_store=VectorStoreConfig(persist_directory="data/chroma"),
         chunking={
             "job_description": ChunkingConfig(max_chunk_size=512, overlap=64),
-            "profile": ChunkingConfig(max_chunk_size=512, overlap=64, strategy="section"),
+            "profile": ChunkingConfig(
+                max_chunk_size=512, overlap=64, strategy="section"
+            ),
         },
         re_ranking=ReRankingConfig(
             enabled=True,
@@ -331,6 +385,7 @@ def rag_config():
 def mock_embedding_client():
     """Mock embedding client returning deterministic vectors."""
     import hashlib
+
     import numpy as np
 
     client = MagicMock()
@@ -365,6 +420,7 @@ def temp_chroma_dir(tmp_path):
 def skip_if_no_embedding_model():
     """Skip test if nomic-embed-text is not available in Ollama."""
     import requests
+
     try:
         resp = requests.get("http://localhost:11434/api/tags", timeout=3)
         models = [m["name"] for m in resp.json().get("models", [])]

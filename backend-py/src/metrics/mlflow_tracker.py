@@ -8,19 +8,20 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import Dict, List, Any, Optional, Callable
+import os
 from dataclasses import dataclass
 from datetime import datetime
-import os
+from typing import Any, Callable, Dict, List, Optional
 
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 # MLflow is optional - only required if using this feature
 try:
     import mlflow
-    import mlflow.sklearn
     import mlflow.pytorch
+    import mlflow.sklearn
     from mlflow.entities import Metric as MLflowMetric
+
     MLFLOW_AVAILABLE = True
 except ImportError:
     MLFLOW_AVAILABLE = False
@@ -29,6 +30,7 @@ except ImportError:
 @dataclass
 class ExperimentConfig:
     """Configuration for MLflow experiment."""
+
     tracking_uri: Optional[str] = None
     experiment_name: str = "job_raider"
     auto_log: bool = True
@@ -76,7 +78,9 @@ class MLflowTracker:
         experiment = mlflow.get_experiment_by_name(self.config.experiment_name)
         if experiment is None:
             mlflow.create_experiment(self.config.experiment_name)
-            self.logger.info(f"Created MLflow experiment: {self.config.experiment_name}")
+            self.logger.info(
+                f"Created MLflow experiment: {self.config.experiment_name}"
+            )
 
         mlflow.set_experiment(self.config.experiment_name)
 
@@ -256,8 +260,10 @@ class MLflowTracker:
         metrics = {
             "total_applications": outcome_metrics.get("total_applications", 0),
             "funnel_score": outcome_metrics.get("funnel_score", 0.0),
-            "screening_rate": float(conversion.get("screening", "0%").rstrip("%")) / 100,
-            "technical_rate": float(conversion.get("technical", "0%").rstrip("%")) / 100,
+            "screening_rate": float(conversion.get("screening", "0%").rstrip("%"))
+            / 100,
+            "technical_rate": float(conversion.get("technical", "0%").rstrip("%"))
+            / 100,
             "onsite_rate": float(conversion.get("onsite", "0%").rstrip("%")) / 100,
             "offer_rate": float(conversion.get("offer", "0%").rstrip("%")) / 100,
         }
@@ -480,12 +486,16 @@ class MLflowTracker:
 
             history = []
             for _, run in runs.iterrows():
-                history.append({
-                    "run_id": run["run_id"],
-                    "start_time": run.get("start_time"),
-                    "status": run.get("status"),
-                    "metrics": {k: v for k, v in run.items() if k.startswith("metrics.")},
-                })
+                history.append(
+                    {
+                        "run_id": run["run_id"],
+                        "start_time": run.get("start_time"),
+                        "status": run.get("status"),
+                        "metrics": {
+                            k: v for k, v in run.items() if k.startswith("metrics.")
+                        },
+                    }
+                )
 
             return history
 

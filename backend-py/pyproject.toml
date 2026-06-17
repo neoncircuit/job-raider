@@ -1,0 +1,5 @@
+# Tooling configuration for the Job Raider backend.
+# isort uses the "black" profile so its import sorting is consistent with
+# `black` formatting (avoids the two tools fighting over multi-line imports).
+[tool.isort]
+profile = "black"

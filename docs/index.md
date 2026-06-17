@@ -56,6 +56,82 @@ The dashboard includes an AI-powered resume analysis feature that:
 - Provides qualitative scoring, summaries, and improvement recommendations
 - Supports both general analysis and job-specific gap analysis
 
+### Recent Updates (Phase 41 - 2026-06-16)
+
+**Multi-Agent System (now wired and live):**
+- The multi-agent system (`src/agents/`) was built in a prior session but had never been registered with the FastAPI app. This phase wires it in, fixes four latent bugs that had hidden because the module never imported, and documents it.
+- **Architecture:** `AgentCoordinator` orchestrates specialized agents over an `AgentCommunicationBus`; `BaseAgent` defines the contract (Task, TaskResult, TaskType, AgentCapability). The first concrete agent is `CareerCoachAgent`.
+- **9 REST endpoints** under `/api/agents/*` (status, performance, health, shutdown, career-analysis, gap-analysis, upskilling-roadmap, career-goals, recommendations), rate-limited via `src/api/rate_limiter.py`.
+- **Startup:** initialized non-fatally in the app lifespan (`initialize_agent_system(LLMRouter())`); agent endpoints return 503 until the coordinator is ready, so the API always boots.
+- **Config:** `backend-py/config/agent_config.yaml` (coordinator, career-coach, communication settings).
+- **Verification:** `GET /api/agents/status` returns 200 (coordinator running, communication healthy, 1 registered agent). Backend suite: 376 passed, 2 skipped.
+- See [Architecture - Multi-Agent Layer](architecture.md#multi-agent-layer) and [Usage - Multi-Agent API](usage.md#multi-agent-api).
+
+### Recent Updates (Phase 36 - 2026-06-07)
+
+**UI/UX Overhaul + Fresh Graduate Features:**
+- **Odysseus Design Theme** - Complete UI overhaul inspired by modern design patterns
+  - Fira Code monospaced font for technical aesthetic
+  - Red accent color (#e63946) for CTAs and highlights
+  - Sharp card borders (4px radius) instead of rounded
+  - Space-themed dark mode with neon effects (cyan, magenta, blue, gold glows)
+  - Starfield background and gradient mesh overlays
+  - Geometric corner accents with animated pulses
+- **Theme Toggle System** - Light/dark mode switching
+  - Toggle button in sidebar with Sun/Moon icons
+  - System theme detection with manual override
+  - Theme persistence across sessions
+  - Fixed contrast issues in both themes (visible tab icons and text)
+- **Fresh Graduate Scoring Mode** - Optimized for entry-level candidates
+  - Projects (35%), Skills (30%), Education (20%), Experience (10%), Location (5%)
+  - Lower threshold (50 vs 60) to increase opportunities
+  - Dedicated weight configuration in `scoring_config.yaml`
+  - `fresh_grad_mode` parameter in job search API
+- **DISC Personality Assessment** - Industry-standard assessment format
+  - Most/Least forced-choice format (24 questions across 4 categories)
+  - Categories: Leadership, Communication, Work Style, Problem Solving
+  - Backend engine with session generation, scoring, and job matching
+  - Job profile matching (Software Engineer, Sales, PM, Data Analyst, Team Lead)
+  - Question bank: `backend-py/config/disc_questions.json`
+  - Frontend component with two-column selection UI
+- **Jobs Location Filtering** - Post-filter to ensure API results match requested location
+  - Fixes issue where Singapore searches returned USA listings
+  - Case-insensitive matching with location variation support
+  - Logs filtering results for debugging
+- **Jobs State Management Fix** - Fixed issue where search results disappeared after appearing
+  - Fixed useEffect dependency array causing race conditions
+  - Stable state management for search results persistence
+
+### Recent Updates (Phase 35 - 2026-05-30)
+
+**Shared Ollama Migration:**
+- Migrated Ollama from project-specific to shared services container pattern
+- Created `~/docker-services/docker-compose.yml` with Ollama and MLflow services
+- Removed Ollama service from job-raider docker-compose.yml
+- All projects now share one Ollama instance for GPU resource efficiency
+- Model cache shared across all projects
+- Consistent endpoints via `shared-services` Docker network
+- Cleanup: Pruned 1.5GB of stale Docker images
+- All services verified healthy and connected
+
+### Recent Updates (Phase 34 - 2026-05-22)
+
+**Cover Letter Generation + Technical Assessment Trainer:**
+- Cover letter generation wired into job detail panel with copy-to-clipboard
+- `POST /jobs/{job_id}/cover-letter` API endpoint using ResumeSelector + CoverLetterWriter
+- Full assessment trainer feature for technical interview preparation
+  - Dynamic LLM-generated questions (never from a fixed bank) with random nonce and shuffled topics
+  - Both job-targeted and skill-based practice modes
+  - Freeform (LLM-evaluated) and multiple-choice question formats
+  - Adaptive difficulty: adjusts after every 3 answers based on average score
+  - Session lifecycle: create, answer, get feedback with strengths/improvements/model answer, complete
+  - Progress tracking: aggregate stats, score trend, strongest/weakest topics
+- Backend: `src/assessment/` package (engine, storage) + `src/models/assessment.py` (6 enums, 5 models)
+- 10 REST endpoints at `/api/assessment/*`
+- Frontend: assessment page with SetupView, SessionView, ResultsView
+- 57 backend tests (29 engine + 15 storage + 13 API), 0 failures
+- TypeScript compiles clean
+
 ### Recent Updates (Phase 31 - 2026-05-06)
 
 **Job Trust Scoring with Reasons:**
@@ -336,6 +412,7 @@ job-raider/                      # Project root (monorepo)
 │   ├── .python-version          # Pins Python 3.10 for pyenv / CI
 │   ├── config/                  # Configuration files (YAML)
 │   ├── src/                     # Source code
+│   │   ├── agents/             # Multi-agent system (coordinator, communication bus, career coach)
 │   │   ├── api/                # FastAPI REST API + auth
 │   │   ├── config/             # Config loader
 │   │   ├── llm/                # LLM clients (Claude, Ollama)
@@ -345,6 +422,7 @@ job-raider/                      # Project root (monorepo)
 │   │   ├── scoring/            # Filtering and matching
 │   │   ├── rag/                # RAG pipeline (embeddings, vector store, ranker)
 │   │   ├── linkedin/           # LinkedIn Easy Apply automation
+│   │   ├── assessment/         # Technical assessment trainer (engine, storage)
 │   │   ├── generation/         # Resume generation + analysis
 │   │   ├── submission/         # Application submission
 │   │   ├── pipeline/           # Pipeline orchestration
@@ -352,13 +430,13 @@ job-raider/                      # Project root (monorepo)
 │   │   ├── metrics/            # Cost and outcome tracking
 │   │   ├── reports/            # Report generation
 │   │   └── utils/              # Shared utilities
-│   ├── tests/                   # Python test suite (142 passing)
+│   ├── tests/                   # Python test suite (376 passing)
 │   ├── notebooks/               # Jupyter notebooks
 │   ├── main.py                  # CLI entry point
 │   └── requirements.txt         # Python dependencies
 ├── frontend-ts/                 # Next.js 16 + Tailwind CSS dashboard
 │   ├── src/
-│   │   ├── app/                # Next.js App Router pages (8 pages)
+│   │   ├── app/                # Next.js App Router pages (9 pages)
 │   │   ├── components/         # Shared UI components + layout
 │   │   └── lib/                # API client, types, utilities
 │   ├── Dockerfile               # Multi-stage production build (standalone)

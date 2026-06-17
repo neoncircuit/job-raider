@@ -43,11 +43,14 @@ class TestApplicationAPI:
     def test_perform_hide_action(self, client):
         """Test hiding a job via API."""
         # First create an application
-        client.post("/api/applications/external", json={
-            "job_id": "test_hide_1",
-            "job_title": "Developer",
-            "company": "Test Company",
-        })
+        client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "test_hide_1",
+                "job_title": "Developer",
+                "company": "Test Company",
+            },
+        )
 
         # Then hide it
         response = client.post(
@@ -105,17 +108,24 @@ class TestApplicationAPI:
         """Test getting all custom statuses via API."""
         # Use unique names to avoid conflicts with other tests
         import time
+
         suffix = str(int(time.time()))
 
         # Create a few custom statuses
-        client.post("/api/applications/statuses/custom", json={
-            "name": f"Status 1 {suffix}",
-            "description": "First status",
-        })
-        client.post("/api/applications/statuses/custom", json={
-            "name": f"Status 2 {suffix}",
-            "description": "Second status",
-        })
+        client.post(
+            "/api/applications/statuses/custom",
+            json={
+                "name": f"Status 1 {suffix}",
+                "description": "First status",
+            },
+        )
+        client.post(
+            "/api/applications/statuses/custom",
+            json={
+                "name": f"Status 2 {suffix}",
+                "description": "Second status",
+            },
+        )
 
         response = client.get("/api/applications/statuses/custom")
 
@@ -128,17 +138,23 @@ class TestApplicationAPI:
     def test_set_custom_status_on_application(self, client):
         """Test setting custom status on application via API."""
         # Create an external application
-        client.post("/api/applications/external", json={
-            "job_id": "custom_status_test",
-            "job_title": "Engineer",
-            "company": "Company",
-        })
+        client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "custom_status_test",
+                "job_title": "Engineer",
+                "company": "Company",
+            },
+        )
 
         # Create a custom status
-        status_response = client.post("/api/applications/statuses/custom", json={
-            "name": "Interviewing",
-            "description": "In interview process",
-        })
+        status_response = client.post(
+            "/api/applications/statuses/custom",
+            json={
+                "name": "Interviewing",
+                "description": "In interview process",
+            },
+        )
         status_id = status_response.json()["status_id"]
 
         # Set the custom status
@@ -159,11 +175,14 @@ class TestApplicationAPI:
     def test_update_application_status(self, client):
         """Test updating application status via API."""
         # Create an application
-        client.post("/api/applications/external", json={
-            "job_id": "status_update_test",
-            "job_title": "Developer",
-            "company": "Tech Corp",
-        })
+        client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "status_update_test",
+                "job_title": "Developer",
+                "company": "Tech Corp",
+            },
+        )
 
         # Update status
         response = client.put(
@@ -183,16 +202,22 @@ class TestApplicationAPI:
     def test_get_dashboard(self, client):
         """Test retrieving dashboard data via API."""
         # Create some test data
-        client.post("/api/applications/actions", json={
-            "job_id": "dash_job_1",
-            "action": "save",
-            "metadata": {"title": "Engineer", "company": "Company"},
-        })
-        client.post("/api/applications/external", json={
-            "job_id": "dash_ext_1",
-            "job_title": "Developer",
-            "company": "Startup",
-        })
+        client.post(
+            "/api/applications/actions",
+            json={
+                "job_id": "dash_job_1",
+                "action": "save",
+                "metadata": {"title": "Engineer", "company": "Company"},
+            },
+        )
+        client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "dash_ext_1",
+                "job_title": "Developer",
+                "company": "Startup",
+            },
+        )
 
         response = client.get("/api/applications/dashboard")
 
@@ -211,21 +236,27 @@ class TestApplicationAPI:
     def test_get_dashboard_with_filters(self, client):
         """Test dashboard with filtering parameters."""
         # Create test data
-        client.post("/api/applications/actions", json={
-            "job_id": "filter_test_1",
-            "action": "save",
-            "metadata": {"title": "Engineer", "company": "Company A"},
-        })
-        client.post("/api/applications/external", json={
-            "job_id": "filter_test_2",
-            "job_title": "Developer",
-            "company": "Company B",
-        })
+        client.post(
+            "/api/applications/actions",
+            json={
+                "job_id": "filter_test_1",
+                "action": "save",
+                "metadata": {"title": "Engineer", "company": "Company A"},
+            },
+        )
+        client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "filter_test_2",
+                "job_title": "Developer",
+                "company": "Company B",
+            },
+        )
 
         # Get dashboard without hidden
         response = client.get(
             "/api/applications/dashboard",
-            params={"include_hidden": False, "include_bookmarked": True}
+            params={"include_hidden": False, "include_bookmarked": True},
         )
 
         assert response.status_code == 200
@@ -236,12 +267,15 @@ class TestApplicationAPI:
     def test_get_application_details(self, client):
         """Test getting detailed application information."""
         # Create an application
-        client.post("/api/applications/external", json={
-            "job_id": "detail_test_1",
-            "job_title": "Senior Engineer",
-            "company": "Big Tech",
-            "application_method": "referral",
-        })
+        client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "detail_test_1",
+                "job_title": "Senior Engineer",
+                "company": "Big Tech",
+                "application_method": "referral",
+            },
+        )
 
         response = client.get("/api/applications/detail_test_1")
 
@@ -257,11 +291,14 @@ class TestApplicationAPI:
     def test_unsave_job_via_api(self, client):
         """Test unsaving a job via API."""
         # Save a job
-        client.post("/api/applications/actions", json={
-            "job_id": "unsave_test_1",
-            "action": "save",
-            "metadata": {"title": "Engineer", "company": "Company"},
-        })
+        client.post(
+            "/api/applications/actions",
+            json={
+                "job_id": "unsave_test_1",
+                "action": "save",
+                "metadata": {"title": "Engineer", "company": "Company"},
+            },
+        )
 
         # Unsave it
         response = client.post(
@@ -280,15 +317,21 @@ class TestApplicationAPI:
     def test_unhide_job_via_api(self, client):
         """Test unhiding a job via API."""
         # Create and hide a job
-        client.post("/api/applications/external", json={
-            "job_id": "unhide_test_1",
-            "job_title": "Developer",
-            "company": "Company",
-        })
-        client.post("/api/applications/actions", json={
-            "job_id": "unhide_test_1",
-            "action": "hide",
-        })
+        client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "unhide_test_1",
+                "job_title": "Developer",
+                "company": "Company",
+            },
+        )
+        client.post(
+            "/api/applications/actions",
+            json={
+                "job_id": "unhide_test_1",
+                "action": "hide",
+            },
+        )
 
         # Unhide it
         response = client.post(

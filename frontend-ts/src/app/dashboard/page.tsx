@@ -29,21 +29,17 @@ interface StatCardProps {
 
 function StatCard({ title, value, sub, icon, gradient, iconBg }: StatCardProps) {
   return (
-    <div className={cn("relative overflow-hidden rounded-xl p-5 text-white shadow-md transition-all duration-300 hover:shadow-lg", gradient)}>
+    <div className={cn("relative overflow-hidden rounded border p-5 text-foreground shadow-sm transition-all duration-150 font-mono", "bg-card hover:shadow-md hover:border-primary/30")}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-white/70 uppercase tracking-widest">{title}</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
-          {sub && <p className="mt-1 text-xs text-white/60">{sub}</p>}
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{value}</p>
+          {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
         </div>
-        <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg shadow-md", iconBg)}>
+        <div className={cn("flex h-8 w-8 items-center justify-center rounded border bg-card shadow-sm", iconBg)}>
           {icon}
         </div>
       </div>
-      {/* Decorative circle with glow */}
-      <div className="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-white/5 shadow-[0_0_20px_rgba(255,255,255,0.1)]" />
-      {/* Subtle top accent line */}
-      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
     </div>
   );
 }

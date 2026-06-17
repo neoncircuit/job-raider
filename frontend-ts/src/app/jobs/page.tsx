@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Search, Bookmark, BookmarkCheck, ExternalLink, MapPin, Building2, Clock, ChevronDown, FileText, Copy } from "lucide-react";
 import { jobsApi } from "@/lib/api/jobs";
 import { applicationsApi } from "@/lib/api/applications";
-import type { JobListing, JobSearchResponse } from "@/lib/types/api";
+import type { JobListing, JobSearchResponse, ExperienceLevel } from "@/lib/types/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ import { useAppState } from "@/app/providers";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatSalaryRange } from "@/lib/utils/format";
 import { formatJobDescription, isBulletPoint, cleanBulletPoint } from "@/lib/utils/job-description";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("JobsPage");
 import { SOURCE_COLORS, DEFAULT_SOURCES, PAGE_SIZE } from "@/lib/utils/constants";
 import { JobClassificationDisplay } from "@/components/job-classification";
 import { TrustAnalysisDisplay, TrustTierBadge } from "@/components/trust-analysis";
@@ -263,15 +266,42 @@ function SearchBar({ onSearch, onGoogleSearch }: {
         sources: selectedSources,
         limit: v.limit,
         remote_only: v.remoteOnly,
-        experience_levels: selectedExperience.length > 0 ? selectedExperience as any : undefined,
+        experience_levels: selectedExperience.length > 0 ? (selectedExperience as ExperienceLevel[]) : undefined,
       }),
-    onSuccess: (data) => onSearch({ total: data.total, jobs: data.jobs }),
-    onError: () => toast.error("Search failed. Is the backend running?"),
+    onSuccess: (data) => {
+      logger.info(`Search successful: ${data.jobs.length} jobs found`);
+      onSearch({ total: data.total, jobs: data.jobs });
+    },
+    onError: (error: Error) => {
+      logger.error("Search failed", error);
+
+      // Provide user-friendly error messages based on error type
+      if (error.message.includes("Backend unreachable")) {
+        toast.error("Cannot connect to the backend server. Please ensure it's running.");
+      } else if (error.message.includes("401") || error.message.includes("403")) {
+        toast.error("Authentication failed. Please check your API key configuration.");
+      } else if (error.message.includes("400") || error.message.includes("422")) {
+        toast.error("Invalid search parameters. Please check your input.");
+      } else if (error.message.includes("500")) {
+        toast.error("Server error occurred. Please try again later.");
+      } else if (error.message.includes("503")) {
+        toast.error("Service temporarily unavailable. Please try again in a moment.");
+      } else {
+        toast.error(`Search failed: ${error.message}`);
+      }
+    },
   });
 
   const remoteOnly = watch("remoteOnly");
 
   const handleSubmit_ = handleSubmit((v) => {
+    // Validate keywords
+    const keywordsArray = v.keywords.split(/[\s,]+/).filter(Boolean);
+    if (keywordsArray.length === 0) {
+      toast.error("Please enter at least one keyword");
+      return;
+    }
+
     if (noSources) {
       // No sources selected — trigger Google search inline
       const q = [v.keywords, v.location, "jobs"].filter(Boolean).join(" ");
@@ -297,7 +327,9 @@ function SearchBar({ onSearch, onGoogleSearch }: {
       </div>
       <div className="space-y-1">
         <Label>Experience</Label>
-        <ExperienceSelector selected={selectedExperience} onChange={setSelectedExperience} />
+        <div className="px-3 py-2 text-sm text-gray-500 italic border rounded bg-gray-100">
+          Experience filter disabled (most jobs have &quot;Not Specified&quot; level)
+        </div>
       </div>
       <div className="flex items-center gap-2 pb-0.5">
         <Switch
@@ -349,10 +381,10 @@ function JobListItem({
     <button
       onClick={onClick}
       className={cn(
-        "w-full rounded-lg border p-3 text-left transition-all duration-200 hover:shadow-sm",
+        "w-full rounded border p-3 text-left transition-all duration-150 font-mono text-sm",
         isSelected
-          ? "border-primary bg-primary/5 shadow-[inset_0_0_12px_var(--cosmic-glow)]"
-          : "border-border bg-card/50 hover:border-primary/30 hover:bg-card/80"
+          ? "border-primary bg-primary/5 shadow-sm"
+          : "border-border bg-card hover:border-primary/30 hover:shadow-sm"
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -427,7 +459,7 @@ function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkA
   onGenerateCoverLetter: () => void;
 }) {
   return (
-    <div className="flex flex-col h-full rounded-lg border bg-card/80 backdrop-blur-sm">
+    <div className="flex flex-col h-full rounded-lg border bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
       {/* Fixed header section */}
       <div className="p-5 space-y-4 border-b border-border/50">
         <div className="flex items-start justify-between gap-3">
@@ -577,17 +609,17 @@ function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkA
 
         {/* Description */}
         {job.description && (
-          <div className="flex-1 overflow-y-auto">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Job Description</p>
-            <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto job-description-container">
+            <p className="text-xs font-semibold uppercase tracking-wide text-foreground mb-4 border-b border-border pb-2">Job Description</p>
+            <div className="space-y-5 job-description-content">
               {formatJobDescription(job.description).map((section, idx) => (
-                <div key={idx} className="space-y-2">
+                <div key={idx} className="space-y-3">
                   {section.title && (
-                    <h3 className="text-sm font-semibold text-gray-900 capitalize">
+                    <h3 className="text-lg font-bold capitalize border-l-4 border-cyan-400 pl-3 py-2 bg-gradient-to-r from-gray-800/80 to-gray-900/80 rounded-r job-description-title shadow-sm">
                       {section.title}
                     </h3>
                   )}
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {section.content.map((line, lineIdx) => {
                       const isBullet = isBulletPoint(line);
                       const cleanText = cleanBulletPoint(line);
@@ -596,14 +628,14 @@ function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkA
                         <div
                           key={lineIdx}
                           className={cn(
-                            "text-sm text-gray-600",
-                            isBullet ? "flex gap-2" : "leading-relaxed"
+                            "text-sm job-description-text",
+                            isBullet ? "flex gap-3 items-start" : "leading-relaxed"
                           )}
                         >
                           {isBullet && (
-                            <span className="shrink-0 text-gray-400 mt-0.5">•</span>
+                            <span className="shrink-0 font-bold mt-0.5 text-lg text-cyan-400">•</span>
                           )}
-                          <span>{cleanText}</span>
+                          <span className="flex-1 job-description-text">{cleanText}</span>
                         </div>
                       );
                     })}
@@ -739,10 +771,14 @@ export default function JobsPage() {
     mutationFn: ({ id, saved }: { id: string; saved: boolean }) =>
       applicationsApi.action(id, saved ? "unsave" : "save"),
     onSuccess: (_, { id, saved }) => {
+      logger.info(`Job ${saved ? "saved" : "unsaved"} - ID: ${id}`);
       saved ? removeSavedJobId(id) : addSavedJobId(id);
       toast.success(saved ? "Removed from saved" : "Job saved");
     },
-    onError: () => toast.error("Action failed"),
+    onError: () => {
+      logger.error("Job save action failed");
+      toast.error("Action failed");
+    },
   });
 
   const apply = useMutation({
@@ -851,7 +887,34 @@ export default function JobsPage() {
 
   const isAppliedExternally = (id: string) => externallyAppliedJobIds.has(id);
 
+  // Don't auto-load jobs - backend requires keywords for search
+  // Users must enter search terms to see results
+  // const recentJobsQuery = useQuery({
+  //   queryKey: ["recent-jobs"],
+  //   queryFn: () =>
+  //     jobsApi.search({
+  //       keywords: [],
+  //       locations: [],
+  //       sources: undefined,
+  //       limit: 50,
+  //       remote_only: false,
+  //       experience_levels: undefined,
+  //     }),
+  //   enabled: !searchResults, // Only run if no search results
+  //   staleTime: 10 * 60 * 1000, // 10 minutes
+  // });
+
+  // Load recent jobs into search results on mount (only if empty)
+  // Disabled - backend requires keywords for all searches
+  // useEffect(() => {
+  //   if (!searchResults && recentJobsQuery.data) {
+  //     setSearchResults({ total: recentJobsQuery.data.total, jobs: recentJobsQuery.data.jobs });
+  //   }
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [recentJobsQuery.data]);
+
   const handleSearch = (results: { total: number; jobs: JobListing[] }) => {
+    logger.info(`Search completed - total jobs: ${results.total}, jobs received: ${results.jobs.length}`);
     setSearchResults(results);
     setJobsPage(0);
     setSelectedJobId(null);
@@ -860,6 +923,7 @@ export default function JobsPage() {
   };
 
   const handleGoogleSearch = (query: string) => {
+    logger.info(`Google search triggered - query: ${query}`);
     setGoogleQuery(query);
     setSearchResults(null); // Clear backend results
     setSelectedJobId(null);

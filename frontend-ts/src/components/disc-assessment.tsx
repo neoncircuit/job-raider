@@ -1,161 +1,135 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, CheckCircle2 } from "lucide-react";
+import { Target, CheckCircle2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-
-// DISC Question type
-interface DISCQuestion {
-  id: string;
-  question: string;
-  options: { label: string; scores: { D: number; I: number; S: number; C: number } }[];
-}
-
-// DISC questions covering different aspects
-const DISC_QUESTIONS: DISCQuestion[] = [
-  {
-    id: "q1",
-    question: "In team meetings, I usually...",
-    options: [
-      { label: "Take charge and drive the discussion", scores: { D: 3, I: 0, S: 0, C: 0 } },
-      { label: "Energetically share ideas and opinions", scores: { D: 0, I: 3, S: 0, C: 0 } },
-      { label: "Listen carefully and support others", scores: { D: 0, I: 0, S: 3, C: 0 } },
-      { label: "Analyze the details and logic", scores: { D: 0, I: 0, S: 0, C: 3 } },
-    ],
-  },
-  {
-    id: "q2",
-    question: "When facing a problem, I prefer to...",
-    options: [
-      { label: "Take immediate action to solve it", scores: { D: 3, I: 0, S: 0, C: 0 } },
-      { label: "Brainstorm with others for ideas", scores: { D: 0, I: 3, S: 0, C: 0 } },
-      { label: "Maintain stability and consensus", scores: { D: 0, I: 0, S: 3, C: 0 } },
-      { label: "Research and analyze all options", scores: { D: 0, I: 0, S: 0, C: 3 } },
-    ],
-  },
-  {
-    id: "q3",
-    question: "My communication style is typically...",
-    options: [
-      { label: "Direct and to the point", scores: { D: 3, I: 0, S: 0, C: 0 } },
-      { label: "Enthusiastic and expressive", scores: { D: 0, I: 3, S: 0, C: 0 } },
-      { label: "Patient and supportive", scores: { D: 0, I: 0, S: 3, C: 0 } },
-      { label: "Precise and factual", scores: { D: 0, I: 0, S: 0, C: 3 } },
-    ],
-  },
-  {
-    id: "q4",
-    question: "When working on deadlines, I...",
-    options: [
-      { label: "Push hard to get results fast", scores: { D: 3, I: 0, S: 0, C: 0 } },
-      { label: "Stay motivated and energized", scores: { D: 0, I: 3, S: 0, C: 0 } },
-      { label: "Work steadily to avoid stress", scores: { D: 0, I: 0, S: 3, C: 0 } },
-      { label: "Plan carefully and track progress", scores: { D: 0, I: 0, S: 0, C: 3 } },
-    ],
-  },
-  {
-    id: "q5",
-    question: "In group projects, I naturally...",
-    options: [
-      { label: "Step into leadership roles", scores: { D: 3, I: 0, S: 0, C: 0 } },
-      { label: "Keep the energy and morale high", scores: { D: 0, I: 3, S: 0, C: 0 } },
-      { label: "Help everyone work together", scores: { D: 0, I: 0, S: 3, C: 0 } },
-      { label: "Ensure quality and accuracy", scores: { D: 0, I: 0, S: 0, C: 3 } },
-    ],
-  },
-  {
-    id: "q6",
-    question: "When receiving feedback, I tend to...",
-    options: [
-      { label: "Want to get straight to the point", scores: { D: 3, I: 0, S: 0, C: 0 } },
-      { label: "Appreciate the recognition", scores: { D: 0, I: 3, S: 0, C: 0 } },
-      { label: "Take it personally but work on it", scores: { D: 0, I: 0, S: 3, C: 0 } },
-      { label: "Analyze the specifics carefully", scores: { D: 0, I: 0, S: 0, C: 3 } },
-    ],
-  },
-  {
-    id: "q7",
-    question: "My ideal work environment is...",
-    options: [
-      { label: "Fast-paced and competitive", scores: { D: 3, I: 0, S: 0, C: 0 } },
-      { label: "Social and collaborative", scores: { D: 0, I: 3, S: 0, C: 0 } },
-      { label: "Stable and predictable", scores: { D: 0, I: 0, S: 3, C: 0 } },
-      { label: "Structured and detailed", scores: { D: 0, I: 0, S: 0, C: 3 } },
-    ],
-  },
-  {
-    id: "q8",
-    question: "When making decisions, I...",
-    options: [
-      { label: "Go with my gut instinct", scores: { D: 3, I: 0, S: 0, C: 0 } },
-      { label: "Consider how it affects people", scores: { D: 0, I: 3, S: 0, C: 0 } },
-      { label: "Think about team harmony", scores: { D: 0, I: 0, S: 3, C: 0 } },
-      { label: "Need all the facts first", scores: { D: 0, I: 0, S: 0, C: 3 } },
-    ],
-  },
-];
-
-interface DISCResult {
-  dominance: number;
-  influence: number;
-  steadiness: number;
-  conscientiousness: number;
-}
+import { discApi } from "@/lib/api/assessment";
+import type { DISCQuestion, DISCAnswer, DISCResult } from "@/lib/types/api";
 
 interface DISCAssessmentProps {
-  onComplete: (result: DISCResult) => void;
-  existingResult?: DISCResult | null;
+  onComplete?: (result: DISCResult) => void;
 }
 
-export function DISCAssessment({ onComplete, existingResult }: DISCAssessmentProps) {
-  const [currentStep, setCurrentStep] = useState<"intro" | "assessment" | "complete">(
-    existingResult ? "complete" : "intro"
-  );
+export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
+  const [currentStep, setCurrentStep] = useState<"intro" | "loading" | "assessment" | "submitting" | "complete">("intro");
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<DISCQuestion[]>([]);
 
-  const handleStart = () => setCurrentStep("assessment");
+  // Track answers: question_id -> { most_like: "A"|"B"|"C"|"D", least_like: "A"|"B"|"C"|"D" }
+  const [answers, setAnswers] = useState<Record<string, { most_like?: string; least_like?: string }>>({});
 
-  const handleAnswer = (questionId: string, optionIndex: string) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: optionIndex }));
+  // Load existing profile query
+  const { data: existingProfile } = useQuery({
+    queryKey: ["disc-profile"],
+    queryFn: async () => {
+      try {
+        return await discApi.getProfile();
+      } catch (error) {
+        // 404 is expected if no profile exists yet
+        return null;
+      }
+    },
+  });
 
-    // Move to next question or complete
-    const questionIndex = DISC_QUESTIONS.findIndex((q) => q.id === questionId);
-    if (questionIndex < DISC_QUESTIONS.length - 1) {
-      setCurrentQuestion(questionIndex + 1);
+  // Start session mutation
+  const startMutation = useMutation({
+    mutationFn: async () => {
+      setCurrentStep("loading");
+      const session = await discApi.start();
+      return session;
+    },
+    onSuccess: (session) => {
+      setSessionId(session.session_id);
+      setQuestions(session.questions);
+      setCurrentStep("assessment");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to start assessment: ${error.message}`);
+      setCurrentStep("intro");
+    },
+  });
+
+  // Submit mutation
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      if (!sessionId) throw new Error("No active session");
+
+      // Convert answers to backend format
+      const discAnswers: DISCAnswer[] = questions.map((q) => {
+        const answer = answers[q.id];
+        if (!answer?.most_like || !answer?.least_like) {
+          throw new Error(`Missing answer for question ${q.id}`);
+        }
+        return {
+          question_id: q.id,
+          most_like: answer.most_like,
+          least_like: answer.least_like,
+          answered_at: new Date().toISOString(),
+        };
+      });
+
+      setCurrentStep("submitting");
+      return await discApi.submit({ session_id: sessionId, answers: discAnswers });
+    },
+    onSuccess: (result) => {
+      setCurrentStep("complete");
+      onComplete?.(result);
+      toast.success("DISC assessment completed!");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to submit assessment: ${error.message}`);
+      setCurrentStep("assessment");
+    },
+  });
+
+  const handleStart = () => {
+    startMutation.mutate();
+  };
+
+  const handleSelection = (questionId: string, type: "most_like" | "least_like", label: string) => {
+    // Validate: can't select same option for both most and least
+    const currentAnswer = answers[questionId] || {};
+    const otherType = type === "most_like" ? "least_like" : "most_like";
+
+    if (currentAnswer[otherType] === label) {
+      toast.error("You cannot select the same option for both Most and Least");
+      return;
+    }
+
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        [type]: label,
+      },
+    }));
+  };
+
+  const handleNext = () => {
+    const question = questions[currentQuestion];
+    const answer = answers[question.id];
+
+    if (!answer?.most_like || !answer?.least_like) {
+      toast.error("Please select both Most like you and Least like you before continuing");
+      return;
+    }
+
+    // Move to next question or submit
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
     } else {
-      calculateResults();
+      submitMutation.mutate();
     }
   };
 
-  const calculateResults = () => {
-    let D = 0, I = 0, S = 0, C = 0;
-
-    Object.entries(answers).forEach(([questionId, optionIndex]) => {
-      const question = DISC_QUESTIONS.find((q) => q.id === questionId);
-      const idx = parseInt(optionIndex);
-      if (question && question.options[idx]) {
-        D += question.options[idx].scores.D;
-        I += question.options[idx].scores.I;
-        S += question.options[idx].scores.S;
-        C += question.options[idx].scores.C;
-      }
-    });
-
-    // Normalize to percentages
-    const total = D + I + S + C;
-    const result: DISCResult = {
-      dominance: Math.round((D / total) * 100),
-      influence: Math.round((I / total) * 100),
-      steadiness: Math.round((S / total) * 100),
-      conscientiousness: Math.round((C / total) * 100),
-    };
-
-    setCurrentStep("complete");
-    onComplete(result);
-    toast.success("DISC assessment completed!");
+  const handleBack = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+    }
   };
 
   const handleRetake = () => {
@@ -166,29 +140,41 @@ export function DISCAssessment({ onComplete, existingResult }: DISCAssessmentPro
 
   // Intro screen
   if (currentStep === "intro") {
+    const hasExistingProfile = !!existingProfile;
+
     return (
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Target className="h-4 w-4 text-indigo-600" />
-            Working Style Assessment
+            DISC Personality Assessment
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <p className="text-sm text-gray-700">
-              Discover your work style with our quick DISC assessment. Understanding your style helps with:
+              Discover your work style with our DISC personality assessment. Many job applications
+              include similar assessments, so this helps you practice and understand your results.
             </p>
             <ul className="text-xs text-gray-600 space-y-1 ml-4 list-disc">
-              <li>Finding roles that match your strengths</li>
-              <li>Understanding your communication style</li>
-              <li>Building better team relationships</li>
+              <li>24 questions covering leadership, communication, work style, and problem-solving</li>
+              <li>Most/Least format: choose which options are most and least like you</li>
+              <li>Get job match recommendations based on your profile</li>
             </ul>
             <div className="rounded-md bg-indigo-50 p-3 text-xs text-indigo-800">
-              <strong>Takes 2-3 minutes</strong> · 8 questions · No wrong answers
+              <strong>Takes 5-8 minutes</strong> · Industry-standard format · No wrong answers
             </div>
-            <Button onClick={handleStart} className="w-full">
-              Start Assessment
+            {hasExistingProfile && (
+              <div className="rounded-md bg-green-50 p-3 text-xs text-green-800">
+                ✓ You have a completed profile. Retake to update your results.
+              </div>
+            )}
+            <Button
+              onClick={handleStart}
+              className="w-full"
+              disabled={startMutation.isPending}
+            >
+              {startMutation.isPending ? "Loading..." : hasExistingProfile ? "Retake Assessment" : "Start Assessment"}
             </Button>
           </div>
         </CardContent>
@@ -196,10 +182,26 @@ export function DISCAssessment({ onComplete, existingResult }: DISCAssessmentPro
     );
   }
 
+  // Loading screen
+  if (currentStep === "loading") {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <div className="flex flex-col items-center justify-center space-y-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <p className="text-sm text-gray-600">Loading assessment...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Assessment screen
-  if (currentStep === "assessment") {
-    const question = DISC_QUESTIONS[currentQuestion];
-    const progress = ((currentQuestion + 1) / DISC_QUESTIONS.length) * 100;
+  if (currentStep === "assessment" || currentStep === "submitting") {
+    const question = questions[currentQuestion];
+    const answer = answers[question.id] || {};
+    const progress = ((currentQuestion + 1) / questions.length) * 100;
+    const isLastQuestion = currentQuestion === questions.length - 1;
 
     return (
       <Card>
@@ -207,11 +209,12 @@ export function DISCAssessment({ onComplete, existingResult }: DISCAssessmentPro
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Target className="h-4 w-4 text-indigo-600" />
-              Question {currentQuestion + 1} of {DISC_QUESTIONS.length}
+              Question {currentQuestion + 1} of {questions.length}
             </CardTitle>
             <button
               onClick={handleRetake}
               className="text-xs text-gray-400 hover:text-gray-600"
+              disabled={currentStep === "submitting"}
             >
               Cancel
             </button>
@@ -222,20 +225,81 @@ export function DISCAssessment({ onComplete, existingResult }: DISCAssessmentPro
               style={{ width: `${progress}%` }}
             />
           </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {question.category.replace("_", " ")}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <p className="text-sm font-medium text-gray-900">{question.question}</p>
-            <div className="space-y-2">
-              {question.options.map((option, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleAnswer(question.id, idx.toString())}
-                  className="w-full text-left rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
-                >
-                  {option.label}
-                </button>
-              ))}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Most Like column */}
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-green-700 bg-green-50 px-3 py-1.5 rounded">
+                  MOST like you
+                </div>
+                {question.options.map((option) => (
+                  <button
+                    key={option.label}
+                    onClick={() => handleSelection(question.id, "most_like", option.label)}
+                    disabled={currentStep === "submitting"}
+                    className={`w-full text-left rounded-lg border px-4 py-3 text-sm transition-all ${
+                      answer.most_like === option.label
+                        ? "border-green-500 bg-green-50 text-green-900"
+                        : "border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50"
+                    }`}
+                  >
+                    <span className="font-medium mr-2">{option.label}.</span>
+                    {option.text}
+                  </button>
+                ))}
+              </div>
+
+              {/* Least Like column */}
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-red-700 bg-red-50 px-3 py-1.5 rounded">
+                  LEAST like you
+                </div>
+                {question.options.map((option) => (
+                  <button
+                    key={option.label}
+                    onClick={() => handleSelection(question.id, "least_like", option.label)}
+                    disabled={currentStep === "submitting"}
+                    className={`w-full text-left rounded-lg border px-4 py-3 text-sm transition-all ${
+                      answer.least_like === option.label
+                        ? "border-red-500 bg-red-50 text-red-900"
+                        : "border-gray-200 text-gray-700 hover:border-red-300 hover:bg-red-50"
+                    }`}
+                  >
+                    <span className="font-medium mr-2">{option.label}.</span>
+                    {option.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between pt-2">
+              <Button
+                variant="outline"
+                onClick={handleBack}
+                disabled={currentQuestion === 0 || currentStep === "submitting"}
+              >
+                Back
+              </Button>
+              <Button
+                onClick={handleNext}
+                disabled={!answer.most_like || !answer.least_like || currentStep === "submitting"}
+                className="min-w-[100px]"
+              >
+                {currentStep === "submitting" ? (
+                  "Submitting..."
+                ) : isLastQuestion ? (
+                  <>Submit Results <ChevronRight className="ml-1 h-4 w-4" /></>
+                ) : (
+                  <>Next <ChevronRight className="ml-1 h-4 w-4" /></>
+                )}
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -255,11 +319,55 @@ export function DISCAssessment({ onComplete, existingResult }: DISCAssessmentPro
       <CardContent>
         <div className="space-y-3">
           <p className="text-sm text-gray-700">
-            Your working style profile has been calculated and saved.
+            Your DISC personality profile has been calculated and saved.
           </p>
-          <div className="rounded-md bg-green-50 p-3 text-xs text-green-800">
-            ✓ Results displayed in your Strength Assessment
-          </div>
+
+          {submitMutation.data && (
+            <div className="space-y-3 mt-4">
+              <div className="rounded-md bg-indigo-50 p-4">
+                <h3 className="text-sm font-semibold text-indigo-900 mb-2">Your Profile</h3>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="font-medium">Dominance (D):</span>{" "}
+                    {submitMutation.data.profile.D}%
+                  </div>
+                  <div>
+                    <span className="font-medium">Influence (I):</span>{" "}
+                    {submitMutation.data.profile.I}%
+                  </div>
+                  <div>
+                    <span className="font-medium">Steadiness (S):</span>{" "}
+                    {submitMutation.data.profile.S}%
+                  </div>
+                  <div>
+                    <span className="font-medium">Conscientiousness (C):</span>{" "}
+                    {submitMutation.data.profile.C}%
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-indigo-200">
+                  <p className="text-xs text-indigo-800">
+                    <strong>Primary Type:</strong> {submitMutation.data.primary_type}
+                    {submitMutation.data.secondary_type && (
+                      <span> · <strong>Secondary:</strong> {submitMutation.data.secondary_type}</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-md bg-green-50 p-4">
+                <h3 className="text-sm font-semibold text-green-900 mb-2">Top Job Matches</h3>
+                <div className="space-y-2">
+                  {submitMutation.data.job_matches.slice(0, 3).map((match) => (
+                    <div key={match.job_type} className="flex justify-between items-center">
+                      <span className="text-xs text-green-800">{match.job_type}</span>
+                      <span className="text-xs font-semibold text-green-700">{match.match_score}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <Button variant="outline" onClick={handleRetake} className="w-full">
             Retake Assessment
           </Button>

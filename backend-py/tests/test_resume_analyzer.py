@@ -7,32 +7,32 @@ general analysis and job-specific analysis modes.
 
 import json
 from datetime import datetime
-from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from src.generation.resume_analyzer import ResumeAnalyzer
-from src.models.user_profile import (
-    UserProfile,
-    ContactInfo,
-    Skill,
-    SkillCategory,
-    ProficiencyLevel,
-    Project,
-    WorkExperience,
-    Education,
-    TargetJob,
-)
+from src.llm.base import LLMResponse, Message
 from src.models.job_listing import (
     JobListing,
     JobRequirement,
     JobResponsibility,
-    Skill as JobSkill,
     JobSource,
 )
+from src.models.job_listing import Skill as JobSkill
 from src.models.resume_analysis import ResumeAnalysis
-from src.llm.base import LLMResponse, Message
+from src.models.user_profile import (
+    ContactInfo,
+    Education,
+    ProficiencyLevel,
+    Project,
+    Skill,
+    SkillCategory,
+    TargetJob,
+    UserProfile,
+    WorkExperience,
+)
 
 
 @pytest.fixture
@@ -53,12 +53,24 @@ def sample_profile():
         ),
         summary="Software engineer with 5 years of experience",
         skills=[
-            Skill(name="Python", category=SkillCategory.PROGRAMMING_LANGUAGE, proficiency=ProficiencyLevel.ADVANCED,
-                  years_of_experience=5),
-            Skill(name="JavaScript", category=SkillCategory.PROGRAMMING_LANGUAGE, proficiency=ProficiencyLevel.INTERMEDIATE,
-                  years_of_experience=3),
-            Skill(name="React", category=SkillCategory.FRAMEWORK, proficiency=ProficiencyLevel.INTERMEDIATE,
-                  years_of_experience=2),
+            Skill(
+                name="Python",
+                category=SkillCategory.PROGRAMMING_LANGUAGE,
+                proficiency=ProficiencyLevel.ADVANCED,
+                years_of_experience=5,
+            ),
+            Skill(
+                name="JavaScript",
+                category=SkillCategory.PROGRAMMING_LANGUAGE,
+                proficiency=ProficiencyLevel.INTERMEDIATE,
+                years_of_experience=3,
+            ),
+            Skill(
+                name="React",
+                category=SkillCategory.FRAMEWORK,
+                proficiency=ProficiencyLevel.INTERMEDIATE,
+                years_of_experience=2,
+            ),
         ],
         projects=[
             Project(
@@ -127,120 +139,128 @@ def sample_job():
 @pytest.fixture
 def sample_analysis_response():
     """Create a sample LLM analysis response."""
-    return json.dumps({
-        "overall_score": 75,
-        "summary": "Strong profile with good technical skills and relevant experience.",
-        "key_strengths": [
-            "Strong Python experience",
-            "Full-stack development skills",
-            "Relevant work experience",
-        ],
-        "key_improvements": [
-            "Add more quantifiable achievements",
-            "Highlight leadership experience",
-            "Include more specific project outcomes",
-        ],
-        "skills_assessment": [
-            {
-                "skill_name": "Python",
-                "proficiency_level": "Advanced",
-                "years_experience": 5,
-                "is_industry_relevant": True,
-                "improvement_suggestions": [],
+    return json.dumps(
+        {
+            "overall_score": 75,
+            "summary": "Strong profile with good technical skills and relevant experience.",
+            "key_strengths": [
+                "Strong Python experience",
+                "Full-stack development skills",
+                "Relevant work experience",
+            ],
+            "key_improvements": [
+                "Add more quantifiable achievements",
+                "Highlight leadership experience",
+                "Include more specific project outcomes",
+            ],
+            "skills_assessment": [
+                {
+                    "skill_name": "Python",
+                    "proficiency_level": "Advanced",
+                    "years_experience": 5,
+                    "is_industry_relevant": True,
+                    "improvement_suggestions": [],
+                },
+                {
+                    "skill_name": "React",
+                    "proficiency_level": "Intermediate",
+                    "years_experience": 2,
+                    "is_industry_relevant": True,
+                    "improvement_suggestions": [
+                        "Consider learning advanced React patterns"
+                    ],
+                },
+            ],
+            "experience_insights": [
+                {
+                    "company": "Tech Corp",
+                    "title": "Senior Software Engineer",
+                    "period": "2020 - Present",
+                    "strengths": ["Senior role", "Relevant experience"],
+                    "gaps": ["Could add more achievements"],
+                    "achievements_to_highlight": [
+                        "Led development of web applications"
+                    ],
+                },
+            ],
+            "project_insights": [
+                {
+                    "name": "E-commerce Platform",
+                    "technologies": ["Python", "Django", "React"],
+                    "impact_score": 85,
+                    "strengths": ["Full-stack project", "Real-world application"],
+                    "improvements": ["Add performance metrics"],
+                },
+            ],
+            "resume_improvements": [
+                "Add metrics to achievements",
+                "Highlight leadership experience",
+            ],
+            "skill_gaps": [],
+            "next_steps": [
+                "Add quantifiable achievements to work experience",
+                "Highlight leadership and mentorship experience",
+            ],
+            "metadata": {
+                "analysis_version": "1.0",
+                "analysis_type": "general",
             },
-            {
-                "skill_name": "React",
-                "proficiency_level": "Intermediate",
-                "years_experience": 2,
-                "is_industry_relevant": True,
-                "improvement_suggestions": ["Consider learning advanced React patterns"],
-            },
-        ],
-        "experience_insights": [
-            {
-                "company": "Tech Corp",
-                "title": "Senior Software Engineer",
-                "period": "2020 - Present",
-                "strengths": ["Senior role", "Relevant experience"],
-                "gaps": ["Could add more achievements"],
-                "achievements_to_highlight": ["Led development of web applications"],
-            },
-        ],
-        "project_insights": [
-            {
-                "name": "E-commerce Platform",
-                "technologies": ["Python", "Django", "React"],
-                "impact_score": 85,
-                "strengths": ["Full-stack project", "Real-world application"],
-                "improvements": ["Add performance metrics"],
-            },
-        ],
-        "resume_improvements": [
-            "Add metrics to achievements",
-            "Highlight leadership experience",
-        ],
-        "skill_gaps": [],
-        "next_steps": [
-            "Add quantifiable achievements to work experience",
-            "Highlight leadership and mentorship experience",
-        ],
-        "metadata": {
-            "analysis_version": "1.0",
-            "analysis_type": "general",
-        },
-    })
+        }
+    )
 
 
 @pytest.fixture
 def sample_job_specific_response():
     """Create a sample job-specific LLM analysis response."""
-    return json.dumps({
-        "overall_score": 80,
-        "target_alignment_score": 85,
-        "summary": "Strong alignment with the target role. Good Python experience and relevant skills.",
-        "key_strengths": [
-            "Excellent Python experience",
-            "Full-stack development matches requirements",
-            "Relevant work experience at senior level",
-        ],
-        "key_improvements": [
-            "Emphasize Django experience more",
-            "Add more SQL experience details",
-        ],
-        "skills_assessment": [
-            {
-                "skill_name": "Python",
-                "proficiency_level": "Advanced",
-                "years_experience": 5,
-                "is_industry_relevant": True,
-                "improvement_suggestions": [],
+    return json.dumps(
+        {
+            "overall_score": 80,
+            "target_alignment_score": 85,
+            "summary": "Strong alignment with the target role. Good Python experience and relevant skills.",
+            "key_strengths": [
+                "Excellent Python experience",
+                "Full-stack development matches requirements",
+                "Relevant work experience at senior level",
+            ],
+            "key_improvements": [
+                "Emphasize Django experience more",
+                "Add more SQL experience details",
+            ],
+            "skills_assessment": [
+                {
+                    "skill_name": "Python",
+                    "proficiency_level": "Advanced",
+                    "years_experience": 5,
+                    "is_industry_relevant": True,
+                    "improvement_suggestions": [],
+                },
+            ],
+            "experience_insights": [],
+            "project_insights": [],
+            "resume_improvements": [
+                "Highlight Django framework experience",
+                "Emphasize SQL database skills",
+            ],
+            "skill_gaps": [
+                "Consider adding more database experience",
+            ],
+            "next_steps": [
+                "Add specific Django project examples",
+                "Include SQL query optimization examples",
+            ],
+            "competitive_advantages": [
+                "Strong full-stack background",
+                "Senior-level experience",
+            ],
+            "competitive_gaps": [
+                "Could add more cloud experience",
+            ],
+            "metadata": {
+                "analysis_version": "1.0",
+                "analysis_type": "job_specific",
             },
-        ],
-        "experience_insights": [],
-        "project_insights": [],
-        "resume_improvements": [
-            "Highlight Django framework experience",
-            "Emphasize SQL database skills",
-        ],
-        "skill_gaps": [
-            "Consider adding more database experience",
-        ],
-        "next_steps": [
-            "Add specific Django project examples",
-            "Include SQL query optimization examples",
-        ],
-        "competitive_advantages": [
-            "Strong full-stack background",
-            "Senior-level experience",
-        ],
-        "competitive_gaps": [
-            "Could add more cloud experience",
-        ],
-        "metadata": {
-            "analysis_version": "1.0",
-            "analysis_type": "job_specific",
-        },
-    })
+        }
+    )
 
 
 class TestResumeAnalyzer:
@@ -254,7 +274,7 @@ class TestResumeAnalyzer:
         assert analyzer.general_template is not None
         assert analyzer.job_specific_template is not None
 
-    @patch('src.generation.resume_analyzer.LLMRouter')
+    @patch("src.generation.resume_analyzer.LLMRouter")
     def test_analyze_general_success(
         self,
         mock_router_class,
@@ -281,11 +301,13 @@ class TestResumeAnalyzer:
         assert result.overall_score == 75
         assert result.analysis_type == "general"
         assert len(result.key_strengths) == 3
-        assert len(result.skills_assessment) == 3  # Profile has Python, JavaScript, React
+        assert (
+            len(result.skills_assessment) == 3
+        )  # Profile has Python, JavaScript, React
         assert result.is_strong_resume is True
         assert "Good" in result.competitive_edge
 
-    @patch('src.generation.resume_analyzer.LLMRouter')
+    @patch("src.generation.resume_analyzer.LLMRouter")
     def test_analyze_job_specific_success(
         self,
         mock_router_class,
@@ -306,7 +328,9 @@ class TestResumeAnalyzer:
         mock_router_class.return_value = mock_router
 
         analyzer = ResumeAnalyzer(mock_router)
-        result = analyzer.analyze_job_specific(sample_profile, sample_job, "test_resume.pdf")
+        result = analyzer.analyze_job_specific(
+            sample_profile, sample_job, "test_resume.pdf"
+        )
 
         # Verify result
         assert isinstance(result, ResumeAnalysis)
@@ -342,7 +366,9 @@ class TestResumeAnalyzer:
         mock_llm_router.generate.side_effect = Exception("LLM error")
 
         analyzer = ResumeAnalyzer(mock_llm_router)
-        result = analyzer.analyze_job_specific(sample_profile, sample_job, "test_resume.pdf")
+        result = analyzer.analyze_job_specific(
+            sample_profile, sample_job, "test_resume.pdf"
+        )
 
         # Verify fallback result
         assert isinstance(result, ResumeAnalysis)
@@ -370,7 +396,9 @@ class TestResumeAnalyzer:
         assert "San Francisco" in context
         assert "Python" in context
 
-    def test_parse_llm_assessment_general(self, mock_llm_router, sample_analysis_response):
+    def test_parse_llm_assessment_general(
+        self, mock_llm_router, sample_analysis_response
+    ):
         """Test parsing of general analysis LLM response."""
         analyzer = ResumeAnalyzer(mock_llm_router)
         result = analyzer._parse_llm_assessment(sample_analysis_response)

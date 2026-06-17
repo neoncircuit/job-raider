@@ -9,11 +9,13 @@ Author: Job Raider
 Date: 2026-05-22
 """
 
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from ...assessment.disc_engine import DISCEngine, DISCJobMatcher
 from ...assessment.engine import AssessmentEngine
 from ...assessment.storage import AssessmentStorage
 from ...models.assessment import (
@@ -21,8 +23,10 @@ from ...models.assessment import (
     AssessmentMode,
     AssessmentSession,
     DifficultyLevel,
+    DISCAnswer,
+    DISCResult,
 )
-from ...utils.logger import get_logger, Components
+from ...utils.logger import Components, get_logger
 
 router = APIRouter()
 logger = get_logger(Components.GENERATION)
@@ -44,6 +48,7 @@ class AssessmentStartRequest(BaseModel):
         difficulty: Starting difficulty level.
         question_count: Number of questions to generate.
     """
+
     mode: AssessmentMode = AssessmentMode.SKILL_BASED
     target_job_ids: List[str] = Field(default_factory=list)
     target_skills: List[str] = Field(default_factory=list)
@@ -60,10 +65,32 @@ class SubmitAnswerRequest(BaseModel):
         freeform_text: Text answer for freeform questions.
         time_taken_seconds: Time spent on the question.
     """
+
     question_id: str
     selected_option: Optional[str] = None
     freeform_text: Optional[str] = None
     time_taken_seconds: Optional[int] = None
+
+
+class DISCStartRequest(BaseModel):
+    """Request to start a DISC assessment session.
+
+    Empty request - DISC assessments have fixed configuration.
+    """
+
+    pass
+
+
+class DISCSubmitRequest(BaseModel):
+    """Request to submit DISC assessment answers.
+
+    Attributes:
+        session_id: The assessment session identifier.
+        answers: List of Most/Least answers for all 24 questions.
+    """
+
+    session_id: str
+    answers: List[DISCAnswer]
 
 
 # ── Helper Functions ───────────────────────────────────────────────────────────
@@ -116,7 +143,7 @@ async def start_session(request: AssessmentStartRequest):
     Returns:
         New assessment session with questions.
     """
-    from ..routes.profile import stored_profiles, active_profile_id
+    from ..routes.profile import active_profile_id, stored_profiles
 
     session = AssessmentSession(
         mode=request.mode,
@@ -197,7 +224,7 @@ async def get_available_skills():
     Returns:
         List of skill names derived from the user profile.
     """
-    from ..routes.profile import stored_profiles, active_profile_id
+    from ..routes.profile import active_profile_id, stored_profiles
 
     skills = []
     if active_profile_id and active_profile_id in stored_profiles:
@@ -209,9 +236,16 @@ async def get_available_skills():
     # Add common technical skills if profile is sparse
     if len(skills) < 5:
         defaults = [
-            "Python", "JavaScript", "SQL", "Git", "Docker",
-            "REST APIs", "Data Structures", "Algorithms",
-            "System Design", "Testing",
+            "Python",
+            "JavaScript",
+            "SQL",
+            "Git",
+            "Docker",
+            "REST APIs",
+            "Data Structures",
+            "Algorithms",
+            "System Design",
+            "Testing",
         ]
         for s in defaults:
             if s not in skills:
@@ -234,11 +268,13 @@ async def get_available_jobs():
 
     jobs = []
     for app in bookmarked:
-        jobs.append({
-            "job_id": app.job_id,
-            "title": app.job_title or "Unknown",
-            "company": app.company or "Unknown",
-        })
+        jobs.append(
+            {
+                "job_id": app.job_id,
+                "title": app.job_title or "Unknown",
+                "company": app.company or "Unknown",
+            }
+        )
 
     return {"jobs": jobs}
 
@@ -385,3 +421,88 @@ async def delete_session(session_id: str):
     if not deleted:
         raise HTTPException(status_code=404, detail="Session not found")
     return {"success": True, "message": "Session deleted"}
+
+
+# ── DISC Assessment Endpoints ───────────────────────────────────────────────────
+
+
+@router.post("/disc/start")
+async def start_disc_session():
+    """Start a new DISC personality assessment session.
+
+    Returns a new session with 24 questions in Most/Least format.
+
+    Returns:
+        Dictionary containing session_id and list of DISC questions.
+    """
+    engine = DISCEngine()
+    session = engine.generate_session()
+    return session
+
+
+@router.post("/disc/submit")
+async def submit_disc_answers(request: DISCSubmitRequest):
+    """Submit all DISC assessment answers and receive results.
+
+    Calculates trait scores, determines personality profile, and
+    returns job match recommendations.
+
+    Args:
+        request: DISC submission with session_id and answers.
+
+    Returns:
+        DISCResult with scores, profile, and job matches.
+    """
+    engine = DISCEngine()
+    matcher = DISCJobMatcher()
+
+    # Calculate scores
+    scores = engine.calculate_scores(request.answers)
+
+    # Determine profile type
+    primary, secondary = engine.determine_profile_type(scores)
+
+    # Calculate profile percentages
+    profile = engine.calculate_profile_percentages(scores)
+
+    # Get job matches
+    job_matches = matcher.get_top_matches(profile, limit=5)
+
+    # Create result
+    result = DISCResult(
+        session_id=request.session_id,
+        answers=request.answers,
+        scores=scores,
+        profile=profile,
+        primary_type=primary,
+        secondary_type=secondary,
+        completed_at=datetime.now(),
+        job_matches=job_matches,
+    )
+
+    # Save result
+    engine.save_result(result)
+
+    return result.model_dump(mode="json")
+
+
+@router.get("/disc/profile")
+async def get_disc_profile():
+    """Get the most recent DISC assessment result.
+
+    Returns the latest completed DISC profile including scores,
+    personality type, and job matches.
+
+    Returns:
+        DISCResult if found, 404 if no assessments completed.
+    """
+    engine = DISCEngine()
+    result = engine.load_latest_result()
+
+    if not result:
+        raise HTTPException(
+            status_code=404,
+            detail="No DISC assessment found. Complete an assessment first.",
+        )
+
+    return result.model_dump(mode="json")

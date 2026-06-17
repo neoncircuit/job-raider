@@ -4,6 +4,7 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-04-28
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -95,8 +96,7 @@ def upgrade() -> None:
     op.create_index("ix_job_listings_job_id", "job_listings", ["job_id"])
 
     # pgvector: 768-dim for nomic-embed-text
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE job_embeddings (
             id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             job_id      TEXT UNIQUE NOT NULL
@@ -104,8 +104,7 @@ def upgrade() -> None:
             embedding   vector(768) NOT NULL,
             created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
         )
-        """
-    )
+        """)
     op.execute(
         "CREATE INDEX ON job_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)"
     )
@@ -133,7 +132,9 @@ def upgrade() -> None:
         sa.Column("job_id", sa.String, nullable=False),
         sa.Column("job_title", sa.String, nullable=False),
         sa.Column("company", sa.String, nullable=False),
-        sa.Column("current_status", sa.String, nullable=False, server_default="pending"),
+        sa.Column(
+            "current_status", sa.String, nullable=False, server_default="pending"
+        ),
         sa.Column(
             "custom_status_id",
             postgresql.UUID(as_uuid=False),

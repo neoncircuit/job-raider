@@ -5,8 +5,8 @@ In-memory BM25 retrieval for lexical search over chunked documents.
 Uses the Okapi BM25 variant for term-frequency-based ranking.
 """
 
-import re
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
@@ -106,11 +106,11 @@ class BM25Retriever:
         self._doc_ids.extend(new_ids)
         self._documents.extend(new_docs)
         self._metadatas.extend(new_metas)
-        self._tokenized_corpus.extend(
-            [self._tokenizer(doc) for doc in new_docs]
-        )
+        self._tokenized_corpus.extend([self._tokenizer(doc) for doc in new_docs])
         self._build_index()
-        logger.debug("Added %d documents to BM25 index (total: %d)", len(new_ids), self.doc_count)
+        logger.debug(
+            "Added %d documents to BM25 index (total: %d)", len(new_ids), self.doc_count
+        )
 
     def query(self, query_text: str, n_results: int = 20) -> List[BM25Result]:
         """Query the BM25 index for matching documents.

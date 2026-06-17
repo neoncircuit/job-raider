@@ -36,7 +36,7 @@ from ..models.assessment import (
 )
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 # Standard CS/SE topics to supplement profile and job skills
 _SUPPLEMENTAL_TOPICS = [
@@ -324,7 +324,7 @@ class AssessmentEngine:
             for job in jobs:
                 for skill in job.skills:
                     topics.add(skill.name.lower())
-                for req in (job.requirements or []):
+                for req in job.requirements or []:
                     words = req.text.lower().split()
                     if len(words) <= 4:
                         topics.add(req.text.lower())
@@ -438,9 +438,7 @@ class AssessmentEngine:
                 AssessmentSession(mode="skill_based"), expected
             )
 
-    def _evaluate_freeform(
-        self, question: Question, answer: Answer
-    ) -> QuestionScore:
+    def _evaluate_freeform(self, question: Question, answer: Answer) -> QuestionScore:
         """Evaluate a freeform answer using LLM.
 
         Args:
@@ -497,18 +495,14 @@ class AssessmentEngine:
         Returns:
             QuestionScore with correctness and explanation.
         """
-        correct_option = next(
-            (o for o in question.options if o.is_correct), None
-        )
+        correct_option = next((o for o in question.options if o.is_correct), None)
         selected = answer.selected_option or ""
         is_correct = (
             correct_option is not None
             and correct_option.label.upper() == selected.upper()
         )
 
-        options_text = "\n".join(
-            f"  {o.label}: {o.text}" for o in question.options
-        )
+        options_text = "\n".join(f"  {o.label}: {o.text}" for o in question.options)
         correct_label = correct_option.label if correct_option else "?"
 
         user_content = (
@@ -545,7 +539,11 @@ class AssessmentEngine:
                 question_id=question.question_id,
                 score=100.0 if is_correct else 0.0,
                 is_correct=is_correct,
-                feedback="Correct!" if is_correct else f"Incorrect. The answer was {correct_label}.",
+                feedback=(
+                    "Correct!"
+                    if is_correct
+                    else f"Incorrect. The answer was {correct_label}."
+                ),
                 model_answer=correct_option.text if correct_option else "",
             )
 
@@ -598,9 +596,11 @@ class AssessmentEngine:
         Returns:
             List of basic conceptual questions.
         """
-        topics = session.target_skills[:count] if session.target_skills else [
-            "software engineering fundamentals"
-        ]
+        topics = (
+            session.target_skills[:count]
+            if session.target_skills
+            else ["software engineering fundamentals"]
+        )
         questions = []
         for i, topic in enumerate(topics):
             questions.append(

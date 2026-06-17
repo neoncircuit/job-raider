@@ -8,21 +8,22 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-from typing import List, Dict, Any, Optional, Set
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional, Set
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 from .resume_writer import GeneratedResume
 from .selector import SelectionOutput
 
 
 class ValidationIssue(str, Enum):
     """Types of validation issues."""
+
     MISSING_PROJECT = "missing_project"
     MISSING_KEYWORD = "missing_keyword"
     FABRICATED_CONTENT = "fabricated_content"
@@ -33,6 +34,7 @@ class ValidationIssue(str, Enum):
 @dataclass
 class ValidationResult:
     """Result of validating a generated resume."""
+
     is_valid: bool
     missing_projects: List[str]
     missing_keywords: List[str]
@@ -98,10 +100,7 @@ class ResumeValidator:
         # 1. Check that all selected projects are present
         for project_spec in selection.selected_projects:
             project_name = project_spec["name"]
-            found = any(
-                p["name"] == project_name
-                for p in resume.projects
-            )
+            found = any(p["name"] == project_name for p in resume.projects)
             if not found:
                 missing_projects.append(project_name)
                 issues.append(ValidationIssue.MISSING_PROJECT)
@@ -126,9 +125,12 @@ class ResumeValidator:
         for exp in resume.experience:
             # Find corresponding profile experience
             profile_exp = next(
-                (e for e in profile.experience
-                 if e.title == exp["title"] and e.company == exp["company"]),
-                None
+                (
+                    e
+                    for e in profile.experience
+                    if e.title == exp["title"] and e.company == exp["company"]
+                ),
+                None,
             )
 
             if profile_exp:
@@ -147,8 +149,12 @@ class ResumeValidator:
                     issues.append(ValidationIssue.DATE_INCONSISTENCY)
 
         # Calculate score
-        total_items = len(selection.selected_projects) + len(selection.keywords_to_emphasize)
-        failed_items = len(missing_projects) + len(missing_keywords) + len(fabricated_content)
+        total_items = len(selection.selected_projects) + len(
+            selection.keywords_to_emphasize
+        )
+        failed_items = (
+            len(missing_projects) + len(missing_keywords) + len(fabricated_content)
+        )
 
         overall_score = max(0, 100 - int((failed_items / max(total_items, 1)) * 100))
 
@@ -160,7 +166,9 @@ class ResumeValidator:
         else:
             recommendation = "reject"
 
-        is_valid = recommendation == "approve" or (not self.strict_mode and recommendation == "needs_revision")
+        is_valid = recommendation == "approve" or (
+            not self.strict_mode and recommendation == "needs_revision"
+        )
 
         return ValidationResult(
             is_valid=is_valid,
@@ -200,7 +208,7 @@ class ResumeValidator:
         messages = [
             Message(
                 role=MessageType.SYSTEM,
-                content="You are a resume validator. Ensure all required elements are present and accurate."
+                content="You are a resume validator. Ensure all required elements are present and accurate.",
             ),
             Message(
                 role=MessageType.USER,
@@ -228,7 +236,7 @@ Return a JSON object:
   "date_inconsistencies": ["inconsistency1"],
   "overall_score": 0-100,
   "recommendation": "approve/needs_revision/reject"
-}}"""
+}}""",
             ),
         ]
 
@@ -244,7 +252,7 @@ Return a JSON object:
             import json
             import re
 
-            json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
             if not json_match:
                 raise ValueError("Failed to extract JSON from validation response")
 

@@ -8,32 +8,32 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-import re
 import logging
-from pathlib import Path
-from typing import List, Optional, Dict, Any, Tuple
+import re
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-from pypdf import PdfReader
 from docx import Document
+from pypdf import PdfReader
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 
 logger = logging.getLogger(__name__)
+from ..models.job_listing import ExperienceLevel
 from ..models.user_profile import (
-    UserProfile,
+    ApprenticeshipContract,
+    Certification,
     ContactInfo,
+    Education,
+    Project,
     Skill,
     SkillCategory,
     TargetJob,
-    ApprenticeshipContract,
-    Project,
+    UserProfile,
     WorkExperience,
-    Education,
-    Certification,
 )
-from ..models.job_listing import ExperienceLevel
 
 
 class ResumeParser:
@@ -241,11 +241,12 @@ IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored t
             )
 
             # Extract JSON from response
-            json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
             if not json_match:
                 raise ValueError("Failed to extract JSON from LLM response")
 
             import json
+
             data = json.loads(json_match.group(0))
 
             # Create UserProfile from dict
@@ -260,7 +261,12 @@ IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored t
         """Create UserProfile from extracted dictionary data."""
         # Normalize top-level keys: LLM may return different field names
         basics = data.get("basics") or data.get("basic_info") or {}
-        summary = data.get("summary") or data.get("profile") or data.get("professional_summary") or ""
+        summary = (
+            data.get("summary")
+            or data.get("profile")
+            or data.get("professional_summary")
+            or ""
+        )
         skills_dict = data.get("skills") or data.get("technical_skills") or {}
         # If skills is a flat list instead of categorized dict, convert it
         if isinstance(skills_dict, list):
@@ -296,8 +302,15 @@ IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored t
         experience = []
         for exp_data in data.get("experience", []):
             title = exp_data.get("title") or exp_data.get("position") or "Unknown"
-            company = exp_data.get("company") or exp_data.get("organization") or "Unknown"
-            highlights = exp_data.get("highlights") or exp_data.get("achievements") or exp_data.get("responsibilities") or []
+            company = (
+                exp_data.get("company") or exp_data.get("organization") or "Unknown"
+            )
+            highlights = (
+                exp_data.get("highlights")
+                or exp_data.get("achievements")
+                or exp_data.get("responsibilities")
+                or []
+            )
 
             # Handle dates: prefer explicit start_date/end_date, fall back to parsing "dates" string
             start_date = self._parse_date(exp_data.get("start_date"))
@@ -305,14 +318,26 @@ IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored t
             if not start_date and not end_date_str:
                 dates_raw = exp_data.get("dates") or exp_data.get("date_range") or ""
                 start_date, end_date_str = self._split_date_range(dates_raw)
-            end_date = None if (end_date_str or "").lower() in ("present", "current", "") else self._parse_date(end_date_str)
+            end_date = (
+                None
+                if (end_date_str or "").lower() in ("present", "current", "")
+                else self._parse_date(end_date_str)
+            )
 
             description = exp_data.get("description") or ""
             if isinstance(description, list):
                 description = " ".join(str(h) for h in description)
             if not description and highlights:
-                first = highlights[0] if isinstance(highlights, list) and highlights else highlights
-                description = str(first) if not isinstance(first, list) else " ".join(str(h) for h in first)
+                first = (
+                    highlights[0]
+                    if isinstance(highlights, list) and highlights
+                    else highlights
+                )
+                description = (
+                    str(first)
+                    if not isinstance(first, list)
+                    else " ".join(str(h) for h in first)
+                )
 
             experience.append(
                 WorkExperience(
@@ -331,15 +356,21 @@ IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored t
         projects = []
         for proj_data in data.get("projects", []):
             description = proj_data.get("description") or ""
-            highlights = proj_data.get("highlights") or proj_data.get("achievements") or []
+            highlights = (
+                proj_data.get("highlights") or proj_data.get("achievements") or []
+            )
             if not description and highlights:
-                description = highlights[0] if isinstance(highlights, list) else str(highlights)
+                description = (
+                    highlights[0] if isinstance(highlights, list) else str(highlights)
+                )
 
             projects.append(
                 Project(
                     name=proj_data.get("name") or proj_data.get("title") or "Unknown",
                     description=description[:500] if description else "",
-                    technologies=proj_data.get("technologies") or proj_data.get("tech_stack") or [],
+                    technologies=proj_data.get("technologies")
+                    or proj_data.get("tech_stack")
+                    or [],
                     url=proj_data.get("url"),
                     highlights=highlights if isinstance(highlights, list) else [],
                 )
@@ -358,8 +389,13 @@ IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored t
 
             education.append(
                 Education(
-                    degree=edu_data.get("degree") or edu_data.get("qualification") or "Unknown",
-                    school=edu_data.get("school") or edu_data.get("university") or edu_data.get("institution") or "Unknown",
+                    degree=edu_data.get("degree")
+                    or edu_data.get("qualification")
+                    or "Unknown",
+                    school=edu_data.get("school")
+                    or edu_data.get("university")
+                    or edu_data.get("institution")
+                    or "Unknown",
                     location=edu_data.get("location"),
                     end_date=end_date,
                     gpa=edu_data.get("gpa"),
@@ -439,7 +475,9 @@ IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored t
             industries=data.get("industries", []),
         )
 
-    def _build_apprenticeship(self, data: Dict[str, Any]) -> Optional[ApprenticeshipContract]:
+    def _build_apprenticeship(
+        self, data: Dict[str, Any]
+    ) -> Optional[ApprenticeshipContract]:
         """Build an ApprenticeshipContract from extracted dictionary data.
 
         Returns None if no apprenticeship data is present or the field
@@ -482,15 +520,15 @@ IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored t
         name = lines[0].strip() if lines else "User"
 
         # Extract email
-        email_match = re.search(r'\b[\w\.-]+@[\w\.-]+\.\w+\b', text)
+        email_match = re.search(r"\b[\w\.-]+@[\w\.-]+\.\w+\b", text)
         email = email_match.group(0) if email_match else "user@example.com"
 
         # Extract phone - more flexible patterns for international formats
         phone_patterns = [
-            r'\+\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}',  # International
-            r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',  # US format
-            r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}',  # Simple format
-            r'\b\d{10}\b',  # 10 digits
+            r"\+\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}",  # International
+            r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}",  # US format
+            r"\d{3}[-.\s]?\d{3}[-.\s]?\d{4}",  # Simple format
+            r"\b\d{10}\b",  # 10 digits
         ]
         phone = None
         for pattern in phone_patterns:
@@ -505,16 +543,32 @@ IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored t
 
         # Blocklist of words that indicate a job title, not a location
         location_blocklist = {
-            "assistant", "manager", "engineer", "developer", "analyst",
-            "director", "coordinator", "specialist", "consultant", "intern",
-            "associate", "designer", "administrator", "lead", "architect",
-            "scientist", "officer", "executive", "supervisor", "technician",
+            "assistant",
+            "manager",
+            "engineer",
+            "developer",
+            "analyst",
+            "director",
+            "coordinator",
+            "specialist",
+            "consultant",
+            "intern",
+            "associate",
+            "designer",
+            "administrator",
+            "lead",
+            "architect",
+            "scientist",
+            "officer",
+            "executive",
+            "supervisor",
+            "technician",
         }
 
         # Try specific patterns first
         location_patterns = [
-            r'(?:Location|City|Address|Based in?):\s*([A-Z][a-zA-Z\s]+?(?:,\s*[A-Z]{2}|,\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)?(?:\n|$))',
-            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),\s*([A-Z]{2}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)',  # City, State/Country (e.g. "Singapore, Singapore")
+            r"(?:Location|City|Address|Based in?):\s*([A-Z][a-zA-Z\s]+?(?:,\s*[A-Z]{2}|,\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)?(?:\n|$))",
+            r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),\s*([A-Z]{2}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",  # City, State/Country (e.g. "Singapore, Singapore")
         ]
 
         for pattern in location_patterns:
@@ -553,11 +607,11 @@ IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored t
 
         # Common programming languages and frameworks
         skill_patterns = [
-            r'\b(Python|JavaScript|TypeScript|Java|C\+\+|C#|Go|Rust|Ruby|PHP|Swift|Kotlin|Scala|R|MATLAB)\b',
-            r'\b(React|Angular|Vue|Next\.js|Nuxt|Django|Flask|FastAPI|Spring|Express\.js|Node\.js|\.NET)\b',
-            r'\b(AWS|Azure|GCP|Docker|Kubernetes|Terraform|Ansible|Jenkins|Git|GitHub|GitLab|CI/CD)\b',
-            r'\b(SQL|NoSQL|MongoDB|PostgreSQL|MySQL|Redis|Elasticsearch|GraphQL|REST|GraphQL)\b',
-            r'\b(Machine Learning|Deep Learning|AI|Data Science|NLP|Computer Vision)\b',
+            r"\b(Python|JavaScript|TypeScript|Java|C\+\+|C#|Go|Rust|Ruby|PHP|Swift|Kotlin|Scala|R|MATLAB)\b",
+            r"\b(React|Angular|Vue|Next\.js|Nuxt|Django|Flask|FastAPI|Spring|Express\.js|Node\.js|\.NET)\b",
+            r"\b(AWS|Azure|GCP|Docker|Kubernetes|Terraform|Ansible|Jenkins|Git|GitHub|GitLab|CI/CD)\b",
+            r"\b(SQL|NoSQL|MongoDB|PostgreSQL|MySQL|Redis|Elasticsearch|GraphQL|REST|GraphQL)\b",
+            r"\b(Machine Learning|Deep Learning|AI|Data Science|NLP|Computer Vision)\b",
         ]
 
         for pattern in skill_patterns:

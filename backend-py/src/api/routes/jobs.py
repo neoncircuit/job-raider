@@ -8,22 +8,22 @@ Date: 2026-04-21
 """
 
 import asyncio
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
 from ...models.job_listing import JobListing, JobListingCollection
-from ...scrapers.manager import ScraperManager
-from ...scrapers.linkedin_scraper import LinkedInScraper
-from ...scrapers.jsearch_scraper import JSearchScraper
-from ...scoring.matcher import JobMatcher
 from ...models.user_profile import UserProfile
-from ...utils.logger import get_logger, Components
+from ...scoring.matcher import JobMatcher
+from ...scrapers.jsearch_scraper import JSearchScraper
+from ...scrapers.linkedin_scraper import LinkedInScraper
+from ...scrapers.manager import ScraperManager
 from ...utils.location_normalizer import normalize_all_locations
+from ...utils.logger import Components, get_logger
 from ..models.requests import JobSearchRequest, SemanticSearchRequest
 from ..models.responses import JobListingResponse, SemanticSearchResult
-from .profile import stored_profiles, active_profile_id
+from .profile import active_profile_id, stored_profiles
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
@@ -80,11 +80,19 @@ async def search_jobs(
     Returns:
         List of job listings
     """
+    # Log incoming request
+    logger.info(
+        f"[JOBS_SEARCH] Request received - keywords: {request.keywords}, locations: {request.locations}, sources: {request.sources}, limit: {request.limit}"
+    )
+
     # Initialize scrapers
+    from ...models.job_listing import ExperienceLevel, JobSource
     from ...scrapers.base import SearchParams
-    from ...models.job_listing import JobSource, ExperienceLevel
 
     manager = ScraperManager()
+    logger.info(
+        f"[JOBS_SEARCH] Scrapers initialized: {[s.value for s in manager.scrapers.keys()]}"
+    )
 
     # Map source names to JobSource enums
     source_map = {
@@ -93,6 +101,17 @@ async def search_jobs(
     }
     source_names = request.sources or ["linkedin", "jsearch"]
     sources = [source_map[s] for s in source_names if s in source_map]
+    logger.info(f"[JOBS_SEARCH] Sources selected: {[s.value for s in sources]}")
+
+    # Validate keywords
+    if not request.keywords or all(k.strip() == "" for k in request.keywords):
+        logger.warning(
+            f"[JOBS_SEARCH] Validation failed - empty keywords received: {request.keywords}"
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="Keywords are required for job search. Please provide at least one keyword.",
+        )
 
     # Build search params
     location = request.locations[0] if request.locations else None
@@ -104,15 +123,54 @@ async def search_jobs(
 
     # Scrape jobs
     try:
-        logger.info(f"Starting job search: keywords={request.keywords}, locations={request.locations}, experience_levels={request.experience_levels}")
+        logger.info(
+            f"[JOBS_SEARCH] Starting scraping with params: keywords={params.keywords}, location={params.location}"
+        )
+        logger.info(f"[JOBS_SEARCH] Calling scrapers: {[s.value for s in sources]}")
 
         collection = manager.search_all(params, sources=sources)
         all_listings = collection.listings
+        logger.info(
+            f"[JOBS_SEARCH] Scraping complete - total listings: {len(all_listings)}"
+        )
+
+        # Filter by location if specified (post-filter to ensure API results match)
+        if request.locations:
+            requested_location = request.locations[0].lower()
+            logger.info(f"[JOBS_SEARCH] Applying location filter: {requested_location}")
+            filtered_listings = []
+            for listing in all_listings:
+                # Check if listing location contains the requested location
+                if listing.location:
+                    listing_location_lower = listing.location.lower()
+                    # Match if requested location is contained in listing location or vice versa
+                    if (
+                        requested_location in listing_location_lower
+                        or listing_location_lower in requested_location
+                        or
+                        # Handle common country/city variations
+                        any(
+                            loc in listing_location_lower
+                            for loc in [
+                                requested_location,
+                                requested_location.replace(" ", ""),
+                                requested_location[:3],
+                            ]
+                        )
+                    ):
+                        filtered_listings.append(listing)
+                else:
+                    # If listing has no location, include it (better to have extra results)
+                    filtered_listings.append(listing)
+            all_listings = filtered_listings
+            logger.info(f"After location filtering: {len(all_listings)} jobs")
 
         # Filter by experience level if specified
         if request.experience_levels:
             # Normalize experience level names
-            requested_levels = [level.lower().replace(" ", "_") for level in request.experience_levels]
+            requested_levels = [
+                level.lower().replace(" ", "_") for level in request.experience_levels
+            ]
             # Map frontend names to backend enum values
             level_map = {
                 "entry_level": "entry_level",
@@ -132,43 +190,137 @@ async def search_jobs(
                 elif level in level_map:
                     target_levels.add(level_map[level])
 
-            # Filter listings
+            # Filter listings - include jobs that match OR are Not Specified (inclusive filtering)
             filtered_listings = []
             for listing in all_listings:
-                listing_level = listing.experience_level.value if hasattr(listing.experience_level, "value") else str(listing.experience_level).lower().replace(" ", "_") if listing.experience_level else None
-                if not target_levels or listing_level in target_levels or listing_level is None:
+                listing_level = (
+                    listing.experience_level.value
+                    if hasattr(listing.experience_level, "value")
+                    else (
+                        str(listing.experience_level).lower().replace(" ", "_")
+                        if listing.experience_level
+                        else None
+                    )
+                )
+                logger.info(
+                    f"Filter check - requested: {target_levels}, listing level: {listing_level}, result: {listing_level in target_levels or listing_level == 'not_specified' or listing_level is None}"
+                )
+                # Include if: no filter, matches requested level, OR is Not Specified (inclusive filtering)
+                if (
+                    not target_levels
+                    or listing_level in target_levels
+                    or listing_level == "not_specified"
+                    or listing_level is None
+                ):
                     filtered_listings.append(listing)
             all_listings = filtered_listings
 
-        logger.info(f"Found {len(all_listings)} jobs after filtering")
+        logger.info(
+            f"[JOBS_SEARCH] Total jobs after all filtering: {len(all_listings)}"
+        )
+
+        # Score jobs if profile is available
+        scored_listings = []
+        if active_profile_id and active_profile_id in stored_profiles:
+            from ...models.user_profile import UserProfile
+
+            profile_data = stored_profiles[active_profile_id].get("profile")
+            if profile_data:
+                try:
+                    profile = UserProfile(**profile_data)
+                    matcher = JobMatcher(fresh_grad_mode=request.fresh_grad_mode)
+
+                    for listing in all_listings:
+                        try:
+                            score_result = matcher.score_job(listing, profile)
+                            scored_listings.append((listing, score_result))
+                        except Exception as e:
+                            logger.warning(f"Failed to score job {listing.job_id}: {e}")
+                            scored_listings.append((listing, None))
+
+                    # Sort by score if scoring succeeded
+                    if scored_listings and scored_listings[0][1] is not None:
+                        scored_listings.sort(
+                            key=lambda x: x[1].total_score if x[1] else 0, reverse=True
+                        )
+                        logger.info(
+                            f"Scored {len(scored_listings)} jobs using fresh_grad_mode={request.fresh_grad_mode}"
+                        )
+                except Exception as e:
+                    logger.warning(f"Profile scoring failed: {e}")
+                    scored_listings = [(listing, None) for listing in all_listings]
+        else:
+            # No profile available, return unsorted
+            scored_listings = [(listing, None) for listing in all_listings]
 
         # Convert to response format
+        jobs_response = []
+        for listing, score_result in scored_listings[: request.limit]:
+            job_data = {
+                "job_id": listing.job_id
+                or f"{listing.source}_{hash(str(listing.source_url))}",
+                "title": listing.title,
+                "company": listing.company,
+                "location": normalize_all_locations(listing.location),
+                "description": (listing.description or "")[:5000],
+                "url": str(listing.source_url) if listing.source_url else None,
+                "source_url": str(listing.source_url) if listing.source_url else None,
+                "source": (
+                    listing.source.value
+                    if isinstance(listing.source, JobSource)
+                    else str(listing.source)
+                ),
+                "apply_method": _compute_apply_method(
+                    (
+                        listing.source.value
+                        if isinstance(listing.source, JobSource)
+                        else str(listing.source)
+                    ),
+                    listing.already_applied,
+                ),
+                "job_type": (
+                    listing.job_type.value
+                    if hasattr(listing.job_type, "value")
+                    else listing.job_type if listing.job_type else None
+                ),
+                "experience_level": (
+                    listing.experience_level.value
+                    if hasattr(listing.experience_level, "value")
+                    else listing.experience_level if listing.experience_level else None
+                ),
+                "salary_range": listing.salary_range,
+                "remote": listing.is_remote,
+                "already_applied": listing.already_applied,
+                "posted_date": (
+                    listing.posted_date.isoformat() if listing.posted_date else None
+                ),
+                "scraped_at": (
+                    listing.scraped_at.isoformat()
+                    if hasattr(listing, "scraped_at") and listing.scraped_at
+                    else None
+                ),
+            }
+
+            # Add score data if available
+            if score_result:
+                job_data["relevance_score"] = score_result.total_score
+                job_data["match_breakdown"] = score_result.breakdown
+                job_data["recommendation"] = score_result.recommendation
+                job_data["reasoning"] = score_result.reasoning
+                job_data["matched_keywords"] = score_result.matched_keywords
+                job_data["missing_skills"] = score_result.missing_skills
+                job_data["passed_threshold"] = score_result.passed_threshold
+
+            jobs_response.append(job_data)
+
+        logger.info(
+            f"[JOBS_SEARCH] Returning {len(jobs_response)} jobs (requested limit: {request.limit})"
+        )
+
         return {
             "total": len(all_listings),
-            "jobs": [
-                {
-                    "job_id": listing.job_id or f"{listing.source}_{hash(str(listing.source_url))}",
-                    "title": listing.title,
-                    "company": listing.company,
-                    "location": normalize_all_locations(listing.location),
-                    "description": (listing.description or "")[:5000],
-                    "url": str(listing.source_url) if listing.source_url else None,
-                    "source_url": str(listing.source_url) if listing.source_url else None,
-                    "source": listing.source.value if isinstance(listing.source, JobSource) else str(listing.source),
-                    "apply_method": _compute_apply_method(
-                        listing.source.value if isinstance(listing.source, JobSource) else str(listing.source),
-                        listing.already_applied,
-                    ),
-                    "job_type": listing.job_type.value if hasattr(listing.job_type, "value") else listing.job_type if listing.job_type else None,
-                    "experience_level": listing.experience_level.value if hasattr(listing.experience_level, "value") else listing.experience_level if listing.experience_level else None,
-                    "salary_range": listing.salary_range,
-                    "remote": listing.is_remote,
-                    "already_applied": listing.already_applied,
-                    "posted_date": listing.posted_date.isoformat() if listing.posted_date else None,
-                    "scraped_at": listing.scraped_at.isoformat() if hasattr(listing, 'scraped_at') and listing.scraped_at else None,
-                }
-                for listing in all_listings[:request.limit]
-            ],
+            "fresh_grad_mode": request.fresh_grad_mode,
+            "jobs": jobs_response,
         }
 
     except Exception as e:
@@ -325,8 +477,8 @@ async def trust_analysis(
         Trust analysis with tier, confidence, reasons, and category scores
     """
     try:
-        from ...scoring.trust_analyzer import TrustAnalyzer
         from ...models.job_listing import JobListing, JobSource
+        from ...scoring.trust_analyzer import TrustAnalyzer
 
         llm_router = None
         if deep:
@@ -389,30 +541,36 @@ async def apply_to_job(
     """
     Apply to a specific job.
 
-    Generates tailored resume and submits application.
+    NOTE: This endpoint currently supports dry-run mode only.
+    Full auto-apply submission requires LinkedIn Easy Apply integration and
+    is planned for future implementation.
 
     Args:
         job_id: Job ID
-        dry_run: Generate resume without submitting
+        dry_run: Generate resume without submitting (default: True)
         background_tasks: FastAPI background tasks for async processing
 
     Returns:
-        Application result
+        Application result with dry-run information
     """
-    logger.info(f"[Auto Apply] Application requested for job: {job_id}, dry_run: {dry_run}")
+    logger.info(
+        f"[Auto Apply] Application requested for job: {job_id}, dry_run: {dry_run}"
+    )
 
     # Check for active profile
     if not active_profile_id:
         logger.warning("[Auto Apply] No active profile found")
         raise HTTPException(
             status_code=400,
-            detail="No active profile found. Upload a resume first.",
+            detail="No active profile found. Please upload a resume first.",
         )
 
     # Get the active profile
     profile = stored_profiles.get(active_profile_id)
     if not profile:
-        logger.error(f"[Auto Apply] Profile ID {active_profile_id} not found in stored profiles")
+        logger.error(
+            f"[Auto Apply] Profile ID {active_profile_id} not found in stored profiles"
+        )
         raise HTTPException(
             status_code=404,
             detail=f"Profile {active_profile_id} not found",
@@ -420,35 +578,113 @@ async def apply_to_job(
 
     logger.info(f"[Auto Apply] Using profile: {active_profile_id}")
 
-    # For now, return a successful response with dry-run information
-    # Full implementation will include:
-    # - Detect apply method (Easy Apply vs External)
-    # - Parse application questions
-    # - Generate answers from profile
-    # - Submit application
-
+    # Dry run mode - simulate application without submission
     if dry_run:
         logger.info(f"[Auto Apply] Dry run mode - simulating application for {job_id}")
         return {
             "success": True,
             "job_id": job_id,
             "dry_run": True,
-            "message": "Dry run: Application simulated successfully. Full auto-apply coming soon.",
+            "message": "Application simulated successfully in dry-run mode. This validates your profile and job data without actually submitting.",
             "application_id": f"dry_run_{job_id}",
             "status": "simulated",
             "next_steps": [
-                "Full auto-apply implementation in progress",
-                "Will detect Easy Apply vs External applications",
-                "Will parse and answer application questions automatically",
-            ]
+                "For actual submission, please apply directly through the job listing",
+                "Full auto-apply is planned for future release",
+                "This requires LinkedIn Easy Apply API integration",
+            ],
         }
 
     # Non-dry run: not yet implemented
-    logger.warning("[Auto Apply] Non-dry run not yet implemented")
+    logger.warning("[Auto Apply] Non-dry run requested but not yet implemented")
     raise HTTPException(
         status_code=501,
-        detail="Full auto-submit not yet implemented. Use dry_run=true for now.",
+        detail="Full auto-submit not yet implemented. Automatic application submission requires LinkedIn Easy Apply integration. For now, please use dry_run=True or apply directly through the job listing.",
     )
+
+
+@router.post("/{job_id}/cover-letter")
+async def generate_cover_letter(job_id: str, job_data: Dict[str, Any] = None):
+    """Generate a tailored cover letter for a specific job.
+
+    Requires an active profile to have been uploaded. Uses the LLM to
+    generate a concise, tailored cover letter connecting the candidate's
+    experience to the job requirements.
+
+    Args:
+        job_id: Job ID.
+        job_data: Optional job data (title, company, description, etc.).
+
+    Returns:
+        Generated cover letter with metadata.
+    """
+    if not active_profile_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No active profile found. Upload a resume first.",
+        )
+
+    profile = stored_profiles.get(active_profile_id)
+    if not profile:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Profile {active_profile_id} not found",
+        )
+
+    try:
+        from ...generation.cover_letter_writer import CoverLetterWriter
+        from ...generation.selector import ResumeSelector
+        from ...llm.router import create_router
+        from ...models.job_listing import JobListing, JobSource
+
+        llm_router = create_router(prefer_local=True)
+
+        # Reconstruct UserProfile from stored data
+        user_profile = UserProfile(**profile["profile"])
+
+        # Build JobListing from request data
+        if job_data:
+            job_listing = JobListing(
+                title=job_data.get("title", "Unknown"),
+                company=job_data.get("company", "Unknown"),
+                job_id=job_id,
+                source=JobSource(job_data.get("source", "manual")),
+                description=job_data.get("description", ""),
+                location=job_data.get("location"),
+            )
+        else:
+            job_listing = JobListing(
+                title="Unknown",
+                company="Unknown",
+                job_id=job_id,
+                source=JobSource.MANUAL,
+            )
+
+        # Run selector first to get selection strategy
+        selector = ResumeSelector(llm_router=llm_router)
+        selection = selector.select(job_listing, user_profile)
+
+        # Generate cover letter using the selection strategy
+        writer = CoverLetterWriter(llm_router=llm_router)
+        result = writer.write(job_listing, user_profile, selection)
+
+        return {
+            "success": True,
+            "job_id": job_id,
+            "cover_letter": {
+                "content": result.content,
+                "word_count": result.word_count,
+                "model_used": result.model_used,
+                "highlighted_experiences": result.highlighted_experiences,
+            },
+        }
+
+    except Exception as e:
+        logger.error("Cover letter generation failed: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Cover letter generation failed: {str(e)}",
+        )
 
 
 @router.post("/search/semantic")
@@ -465,8 +701,8 @@ async def semantic_search(request: SemanticSearchRequest):
         List of jobs ranked by semantic similarity.
     """
     try:
-        from ...rag.config import RAGConfig
         from ...llm.embedding_client import EmbeddingClient, EmbeddingError
+        from ...rag.config import RAGConfig
         from ...rag.vector_store import ChromaStore
 
         rag_config = RAGConfig.from_yaml("config/rag_config.yaml")
@@ -506,11 +742,13 @@ async def semantic_search(request: SemanticSearchRequest):
         # Format response
         semantic_results = []
         for r in sorted(seen.values(), key=lambda x: x["similarity"], reverse=True):
-            semantic_results.append(SemanticSearchResult(
-                job_id=r["metadata"].get("job_id", ""),
-                similarity_score=r["similarity"],
-                description_snippet=r["document"][:200] if r["document"] else "",
-            ))
+            semantic_results.append(
+                SemanticSearchResult(
+                    job_id=r["metadata"].get("job_id", ""),
+                    similarity_score=r["similarity"],
+                    description_snippet=r["document"][:200] if r["document"] else "",
+                )
+            )
 
         return {
             "query": request.query,
@@ -544,12 +782,13 @@ async def get_job_similarity(job_id: str):
         )
 
     try:
-        from ...rag.config import RAGConfig
-        from ...llm.embedding_client import EmbeddingClient, EmbeddingError
-        from ...rag.vector_store import ChromaStore
-        from ...rag.ranker import RAGRanker
-        from ...rag.chunker import TextChunker
         import numpy as np
+
+        from ...llm.embedding_client import EmbeddingClient, EmbeddingError
+        from ...rag.chunker import TextChunker
+        from ...rag.config import RAGConfig
+        from ...rag.ranker import RAGRanker
+        from ...rag.vector_store import ChromaStore
 
         rag_config = RAGConfig.from_yaml("config/rag_config.yaml")
         embedding_client = EmbeddingClient(model=rag_config.embedding.model)

@@ -7,38 +7,50 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
+from .assessment import (
+    Answer,
+    AnswerFormat,
+    AssessmentMode,
+    AssessmentSession,
+    DifficultyLevel,
+    MultipleChoiceOption,
+    Question,
+    QuestionScore,
+    QuestionType,
+    SessionStatus,
+)
 from .job_listing import (
+    ExperienceLevel,
     JobListing,
     JobListingCollection,
     JobRequirement,
     JobResponsibility,
-    Skill,
-    SalaryRange,
-    ExperienceLevel,
-    JobType,
-    WorkMode,
     JobSource,
+    JobType,
+    SalaryRange,
+    Skill,
+    WorkMode,
 )
-
-from .user_profile import (
-    UserProfile,
-    ContactInfo,
-    Skill as UserSkill,
-    SkillCategory,
-    ProficiencyLevel,
-    Project,
-    WorkExperience,
-    Education,
-    Certification,
-    TargetJob,
-)
-
 from .resume_analysis import (
-    ResumeAnalysis,
-    SkillAssessment,
+    AnalysisFocus,
     ExperienceInsight,
     ProjectInsight,
-    AnalysisFocus,
+    ResumeAnalysis,
+    SkillAssessment,
+)
+from .user_profile import (
+    Certification,
+    ContactInfo,
+    Education,
+    ProficiencyLevel,
+    Project,
+)
+from .user_profile import Skill as UserSkill
+from .user_profile import (
+    SkillCategory,
+    TargetJob,
+    UserProfile,
+    WorkExperience,
 )
 
 __all__ = [
@@ -70,4 +82,15 @@ __all__ = [
     "ExperienceInsight",
     "ProjectInsight",
     "AnalysisFocus",
+    # Assessment
+    "AssessmentMode",
+    "QuestionType",
+    "AnswerFormat",
+    "DifficultyLevel",
+    "SessionStatus",
+    "MultipleChoiceOption",
+    "Question",
+    "Answer",
+    "QuestionScore",
+    "AssessmentSession",
 ]

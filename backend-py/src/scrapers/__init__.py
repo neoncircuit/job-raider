@@ -8,16 +8,15 @@ Date: 2026-04-20
 """
 
 from .base import (
-    BaseScraper,
-    SearchParams,
-    ScraperError,
-    RateLimitError,
     AuthenticationError,
+    BaseScraper,
+    RateLimitError,
+    ScraperError,
     ScrapingException,
+    SearchParams,
 )
-
-from .linkedin_scraper import LinkedInScraper
 from .jsearch_scraper import JSearchScraper
+from .linkedin_scraper import LinkedInScraper
 from .manager import ScraperManager
 from .storage import JobListingStorage
 

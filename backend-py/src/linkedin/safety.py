@@ -11,40 +11,47 @@ Date: 2026-05-04
 import random
 import time
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class SafetyConfig(BaseModel):
     """Configuration for application submission safety limits."""
 
     daily_application_limit: int = Field(
-        default=20, description="Maximum applications per day",
+        default=20,
+        description="Maximum applications per day",
     )
     hourly_application_limit: int = Field(
-        default=5, description="Maximum applications per hour",
+        default=5,
+        description="Maximum applications per hour",
     )
     min_seconds_between_applications: float = Field(
-        default=30.0, description="Minimum wait between applications in seconds",
+        default=30.0,
+        description="Minimum wait between applications in seconds",
     )
     max_seconds_between_applications: float = Field(
-        default=120.0, description="Maximum wait between applications in seconds",
+        default=120.0,
+        description="Maximum wait between applications in seconds",
     )
     random_delay_range: tuple = Field(
         default=(5.0, 15.0),
         description="Additional random delay range in seconds",
     )
     take_breaks: bool = Field(
-        default=True, description="Whether to take periodic breaks",
+        default=True,
+        description="Whether to take periodic breaks",
     )
     break_after_n_applications: int = Field(
-        default=5, description="Number of applications before a break",
+        default=5,
+        description="Number of applications before a break",
     )
     break_duration_minutes: float = Field(
-        default=10.0, description="Break duration in minutes",
+        default=10.0,
+        description="Break duration in minutes",
     )
 
 
@@ -107,8 +114,14 @@ class SafetyController:
         if self.config.take_breaks and daily_count > 0:
             if daily_count % self.config.break_after_n_applications == 0:
                 last_break = self._last_break_time()
-                if last_break and (now - last_break).total_seconds() < self.config.break_duration_minutes * 60:
-                    self.logger.info("Break period active, waiting before next application")
+                if (
+                    last_break
+                    and (now - last_break).total_seconds()
+                    < self.config.break_duration_minutes * 60
+                ):
+                    self.logger.info(
+                        "Break period active, waiting before next application"
+                    )
                     return False
 
         return True

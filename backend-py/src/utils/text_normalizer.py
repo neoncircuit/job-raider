@@ -12,62 +12,62 @@ import re
 from typing import List, Tuple
 
 # Bullet characters to normalize to a consistent dash
-_BULLET_CHARS = re.compile(r'[•◦▪▸►‣⋅∙]')
+_BULLET_CHARS = re.compile(r"[•◦▪▸►‣⋅∙]")
 
 # HTML tags to strip (any remaining after BeautifulSoup extraction)
-_HTML_TAG_RE = re.compile(r'<[^>]+>')
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 # Three or more consecutive newlines -> two
-_EXCESSIVE_NEWLINES_RE = re.compile(r'\n{3,}')
+_EXCESSIVE_NEWLINES_RE = re.compile(r"\n{3,}")
 
 # Multiple consecutive spaces -> one (but preserve newlines)
-_MULTIPLE_SPACES_RE = re.compile(r'[^\S\n]{2,}')
+_MULTIPLE_SPACES_RE = re.compile(r"[^\S\n]{2,}")
 
 # Common boilerplate patterns to remove from job descriptions
 _BOILERPLATE_PATTERNS: List[Tuple[re.Pattern, str]] = [
     # EEO / diversity statements
     (
         re.compile(
-            r'(?i)(we are an equal opportunity employer.*?)(?:\n\n|\Z)',
+            r"(?i)(we are an equal opportunity employer.*?)(?:\n\n|\Z)",
             re.DOTALL,
         ),
-        '',
+        "",
     ),
     (
         re.compile(
-            r'(?i)(is an equal opportunity employer.*?)(?:\n\n|\Z)',
+            r"(?i)(is an equal opportunity employer.*?)(?:\n\n|\Z)",
             re.DOTALL,
         ),
-        '',
+        "",
     ),
     (
         re.compile(
-            r'(?i)(we celebrate diversity.*?)(?:\n\n|\Z)',
+            r"(?i)(we celebrate diversity.*?)(?:\n\n|\Z)",
             re.DOTALL,
         ),
-        '',
+        "",
     ),
     # Reasonable accommodation
     (
         re.compile(
-            r'(?i)(reasonable accommodation.*?)(?:\n\n|\Z)',
+            r"(?i)(reasonable accommodation.*?)(?:\n\n|\Z)",
             re.DOTALL,
         ),
-        '',
+        "",
     ),
     # "Apply now" / "Click here" calls to action
     (
-        re.compile(r'(?i)(click here to apply.*?)(?:\n|\Z)'),
-        '',
+        re.compile(r"(?i)(click here to apply.*?)(?:\n|\Z)"),
+        "",
     ),
     (
-        re.compile(r'(?i)(apply now at https?://\S+)'),
-        '',
+        re.compile(r"(?i)(apply now at https?://\S+)"),
+        "",
     ),
     # LinkedIn-specific boilerplate
     (
         re.compile(r"(?i)(see how we're matching job seekers to opportunities)"),
-        '',
+        "",
     ),
 ]
 
@@ -123,16 +123,16 @@ def normalize_job_description(raw_text: str) -> str:
 
     # 1. HTML cleanup
     text = html.unescape(text)
-    text = _HTML_TAG_RE.sub('', text)
+    text = _HTML_TAG_RE.sub("", text)
 
     # 2. Bullet normalization
-    text = _BULLET_CHARS.sub('- ', text)
-    text = re.sub(r'(-)\s{2,}', r'\1 ', text)
+    text = _BULLET_CHARS.sub("- ", text)
+    text = re.sub(r"(-)\s{2,}", r"\1 ", text)
 
     # 3. Whitespace collapse
-    text = re.sub(r'[ \t]+\n', '\n', text)
-    text = _MULTIPLE_SPACES_RE.sub(' ', text)
-    text = _EXCESSIVE_NEWLINES_RE.sub('\n\n', text)
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = _MULTIPLE_SPACES_RE.sub(" ", text)
+    text = _EXCESSIVE_NEWLINES_RE.sub("\n\n", text)
 
     # 4. Section header separation
     text = _separate_sections(text)
@@ -140,12 +140,12 @@ def normalize_job_description(raw_text: str) -> str:
     # 5. Boilerplate removal
     for pattern, replacement in _BOILERPLATE_PATTERNS:
         text = pattern.sub(replacement, text)
-    text = _EXCESSIVE_NEWLINES_RE.sub('\n\n', text)
+    text = _EXCESSIVE_NEWLINES_RE.sub("\n\n", text)
 
     # 6. Final cleanup
     text = text.strip()
-    while text.endswith('\n'):
-        text = text[:-1].rstrip('\n')
+    while text.endswith("\n"):
+        text = text[:-1].rstrip("\n")
 
     return text
 
@@ -159,7 +159,7 @@ def _separate_sections(text: str) -> str:
     Returns:
         Text with consistently separated sections.
     """
-    lines = text.split('\n')
+    lines = text.split("\n")
     result_lines: List[str] = []
 
     for i, line in enumerate(lines):
@@ -167,14 +167,14 @@ def _separate_sections(text: str) -> str:
 
         if _is_section_header(stripped):
             if result_lines and result_lines[-1].strip():
-                result_lines.append('')
+                result_lines.append("")
             result_lines.append(stripped)
             if i + 1 < len(lines) and lines[i + 1].strip():
-                result_lines.append('')
+                result_lines.append("")
         else:
             result_lines.append(line)
 
-    return '\n'.join(result_lines)
+    return "\n".join(result_lines)
 
 
 def _is_section_header(line: str) -> bool:
@@ -190,16 +190,16 @@ def _is_section_header(line: str) -> bool:
         return False
 
     # Lines ending with colon
-    if line.endswith(':') and len(line) > 3:
+    if line.endswith(":") and len(line) > 3:
         return True
 
     # ALL CAPS lines (at least 3 alpha chars, not just separators)
-    if line == line.upper() and len(re.findall(r'[A-Z]', line)) >= 3:
-        if not re.match(r'^[\s\-_=*]+$', line):
+    if line == line.upper() and len(re.findall(r"[A-Z]", line)) >= 3:
+        if not re.match(r"^[\s\-_=*]+$", line):
             return True
 
     # Known section keywords (case-insensitive)
-    lower = line.lower().rstrip(':')
+    lower = line.lower().rstrip(":")
     for keyword in _SECTION_KEYWORDS:
         if lower == keyword:
             return True

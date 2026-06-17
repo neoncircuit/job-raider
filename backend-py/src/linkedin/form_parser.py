@@ -8,17 +8,12 @@ Author: Job Raider
 Date: 2026-05-04
 """
 
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
-from playwright.sync_api import Page, ElementHandle
+from playwright.sync_api import ElementHandle, Page
 
-from .form_models import (
-    ParsedForm,
-    FormStep,
-    FormQuestion,
-    QuestionType,
-)
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
+from .form_models import FormQuestion, FormStep, ParsedForm, QuestionType
 
 
 class EasyApplyFormParser:
@@ -235,12 +230,17 @@ class EasyApplyFormParser:
 
         question_type = self._identify_question_type(container)
         is_required = self._is_required(container)
-        options = self._extract_options(container) if question_type in (
-            QuestionType.DROPDOWN,
-            QuestionType.RADIO,
-            QuestionType.CHECKBOX,
-            QuestionType.MULTI_SELECT,
-        ) else []
+        options = (
+            self._extract_options(container)
+            if question_type
+            in (
+                QuestionType.DROPDOWN,
+                QuestionType.RADIO,
+                QuestionType.CHECKBOX,
+                QuestionType.MULTI_SELECT,
+            )
+            else []
+        )
 
         # Try to get a selector for Playwright interaction
         field_selector = self._get_field_selector(container, question_type)

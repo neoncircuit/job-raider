@@ -8,6 +8,14 @@ weights:
   experience: 20     # Experience level alignment
   location: 10       # Location and remote preference
 
+# Fresh graduate mode weights (prioritizes potential and projects)
+fresh_grad_weights:
+  projects: 35       # Academic projects, portfolio, hackathons
+  skills: 30         # Skills match against user profile
+  education: 20      # University quality, major relevance, achievements
+  experience: 10     # Reduced emphasis on work experience
+  location: 5        # Location and remote preference
+
 # Scoring thresholds
 thresholds:
   apply: 60          # Minimum score to "apply"
@@ -25,11 +33,34 @@ quick_filter:
     - "vice president"
     - "cto"
     - "chief"
-    - "internship"
     - "unpaid"
     - "volunteer"
     - "contract to hire"
   max_age_days: 60   # Reject jobs older than this
+
+# Fresh grad quick filter (allows internships and entry-level)
+fresh_grad_quick_filter:
+  reject_patterns:
+    - "director"
+    - "vp "
+    - "vice president"
+    - "cto"
+    - "chief"
+    - "senior"
+    - "lead"
+    - "principal"
+    - "10+ years"
+    - "unpaid"
+    - "contract to hire"
+  keep_patterns:
+    - "entry level"
+    - "junior"
+    - "associate"
+    - "graduate"
+    - "internship"
+    - "0-2 years"
+    - "recent graduate"
+  max_age_days: 90   # Allow older job postings for fresh grads
 
 # Filter settings
 filter:
@@ -140,3 +171,51 @@ skill_categories:
     - "Backend"
     - "Frontend"
     - "Full Stack"
+
+# Fresh graduate specific scoring criteria
+fresh_grad_scoring:
+  education:
+    university_tiers:
+      tier1: ["MIT", "Stanford", "Carnegie Mellon", "UC Berkeley", "Harvard", "Princeton"]
+      tier2: ["Georgia Tech", "UIUC", "University of Washington", "UT Austin", "University of Michigan"]
+      tier3: ["State universities", "Regional universities"]
+    relevant_majors:
+      - "Computer Science"
+      - "Software Engineering"
+      - "Data Science"
+      - "Computer Engineering"
+      - "Information Technology"
+      - "Mathematics"
+      - "Statistics"
+      - "Physics"
+    gpa_weighting:
+      excellent: [3.5, 4.0]  # 20 points
+      good: [3.0, 3.5]       # 15 points
+      average: [2.5, 3.0]     # 10 points
+      below_average: [0, 2.5] # 5 points
+
+  projects:
+    categories:
+      academic_capstone: 20     # Senior design/final year project
+      personal_projects: 15    # GitHub portfolio, personal apps
+      hackathon: 10           # Hackathon participation/awards
+      research: 15             # Published research, papers
+    quality_indicators:
+      - "GitHub repository with stars/forks"
+      - "Deployed application"
+      - "Open source contributions"
+      - "Technical blog posts"
+      - "Comprehensive documentation"
+      - "Test coverage"
+
+  internships:
+    relevant_experience:
+      - "Software development internship"
+      - "Research assistant"
+      - "Teaching assistant (CS)"
+      - "Tech startup experience"
+    quality_scoring:
+      tech_company: 15         # Known tech company
+      startup: 12              # Early-stage startup
+      research_lab: 10         # Academic research position
+      general: 8               # Other relevant experience

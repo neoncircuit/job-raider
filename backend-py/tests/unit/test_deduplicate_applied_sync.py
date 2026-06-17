@@ -6,9 +6,10 @@ JobListing, the deduplicate stage persists those IDs to the AppliedJobsTracker
 and filters them from the output.
 """
 
-import pytest
 from datetime import datetime
 from pathlib import Path
+
+import pytest
 
 from src.models.job_listing import JobListing, JobSource
 from src.submission.applied_tracker import AppliedJobsTracker
@@ -20,7 +21,9 @@ def tracker(tmp_path: Path) -> AppliedJobsTracker:
     return AppliedJobsTracker(storage_dir=str(tmp_path / "applied_jobs"))
 
 
-def _make_listing(job_id: str, title: str, company: str, already_applied: bool = False) -> JobListing:
+def _make_listing(
+    job_id: str, title: str, company: str, already_applied: bool = False
+) -> JobListing:
     """Create a minimal JobListing for testing."""
     return JobListing(
         job_id=job_id,
@@ -35,7 +38,9 @@ def _make_listing(job_id: str, title: str, company: str, already_applied: bool =
 class TestDeduplicateAppliedSync:
     """Tests for syncing scraper-detected applied status during deduplication."""
 
-    def test_scraper_detected_applied_synced_to_tracker(self, tracker: AppliedJobsTracker) -> None:
+    def test_scraper_detected_applied_synced_to_tracker(
+        self, tracker: AppliedJobsTracker
+    ) -> None:
         """Jobs with already_applied=True should be synced to the tracker."""
         listings = [
             _make_listing("job_1", "Engineer", "TechCorp", already_applied=True),
@@ -49,7 +54,11 @@ class TestDeduplicateAppliedSync:
                     job_id=job.job_id,
                     job_title=job.title,
                     company=job.company,
-                    source=job.source if isinstance(job.source, str) else str(job.source.value),
+                    source=(
+                        job.source
+                        if isinstance(job.source, str)
+                        else str(job.source.value)
+                    ),
                 )
 
         assert tracker.is_applied("job_1")
@@ -61,7 +70,9 @@ class TestDeduplicateAppliedSync:
         assert data["company"] == "TechCorp"
         assert data["source"] == "linkedin"
 
-    def test_already_applied_jobs_filtered_from_results(self, tracker: AppliedJobsTracker) -> None:
+    def test_already_applied_jobs_filtered_from_results(
+        self, tracker: AppliedJobsTracker
+    ) -> None:
         """Jobs with already_applied=True should be removed from deduplicated output."""
         listings = [
             _make_listing("job_1", "Engineer", "TechCorp", already_applied=True),
@@ -75,14 +86,17 @@ class TestDeduplicateAppliedSync:
                 tracker.mark_applied(job.job_id, job.title, job.company, "linkedin")
 
         result = [
-            job for job in listings
+            job
+            for job in listings
             if not job.already_applied and not tracker.is_applied(job.job_id)
         ]
 
         assert len(result) == 1
         assert result[0].job_id == "job_2"
 
-    def test_tracker_already_knows_no_double_sync(self, tracker: AppliedJobsTracker) -> None:
+    def test_tracker_already_knows_no_double_sync(
+        self, tracker: AppliedJobsTracker
+    ) -> None:
         """If tracker already knows a job, mark_applied should not be called again."""
         tracker.mark_applied("job_1", "Old Title", "Old Co", "linkedin")
 
@@ -109,7 +123,9 @@ class TestDeduplicateAppliedSync:
 
         listings = [
             _make_listing("job_badge", "Badge Job", "BadgeCo", already_applied=True),
-            _make_listing("job_tracked", "Tracked Job", "TrackerCo", already_applied=False),
+            _make_listing(
+                "job_tracked", "Tracked Job", "TrackerCo", already_applied=False
+            ),
             _make_listing("job_fresh", "Fresh Job", "FreshCo", already_applied=False),
             _make_listing("job_both", "Both Job", "BothCo", already_applied=True),
         ]
@@ -124,7 +140,8 @@ class TestDeduplicateAppliedSync:
 
         # Filter
         result = [
-            job for job in listings
+            job
+            for job in listings
             if not job.already_applied and not tracker.is_applied(job.job_id)
         ]
 

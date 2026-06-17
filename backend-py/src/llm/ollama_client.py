@@ -12,18 +12,19 @@ import json
 import os
 import time
 from typing import Any, Dict, List, Optional
+
 import requests
 
 from .base import (
     BaseLLMClient,
+    CostEstimate,
+    LLMClientError,
     LLMConfig,
     LLMResponse,
     Message,
     MessageType,
-    TokenUsage,
-    CostEstimate,
-    LLMClientError,
     ModelNotFoundError,
+    TokenUsage,
 )
 
 
@@ -40,7 +41,7 @@ class OllamaClient(BaseLLMClient):
         host: Optional[str] = None,
         port: Optional[int] = None,
         gpu_monitor: Optional[Any] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the Ollama client.
@@ -146,11 +147,7 @@ class OllamaClient(BaseLLMClient):
             print(f"Failed to check VRAM: {e}, using GPU")
             return True
 
-    def generate(
-        self,
-        messages: List[Message],
-        **kwargs
-    ) -> LLMResponse:
+    def generate(self, messages: List[Message], **kwargs) -> LLMResponse:
         """
         Generate a response synchronously.
 
@@ -169,13 +166,15 @@ class OllamaClient(BaseLLMClient):
         # Build request payload
         payload = {
             "model": self.config.model,
-            "messages": [{"role": msg.role.value, "content": msg.content} for msg in messages],
+            "messages": [
+                {"role": msg.role.value, "content": msg.content} for msg in messages
+            ],
             "stream": False,
             "options": {
                 "temperature": kwargs.get("temperature", self.config.temperature),
                 "num_predict": kwargs.get("max_tokens", self.config.max_tokens),
                 "top_p": kwargs.get("top_p", self.config.top_p),
-            }
+            },
         }
 
         # Add stop sequences if provided
@@ -221,9 +220,11 @@ class OllamaClient(BaseLLMClient):
                 )
 
             except requests.Timeout:
-                last_error = TimeoutError(f"Request timed out after {self.config.timeout}s")
+                last_error = TimeoutError(
+                    f"Request timed out after {self.config.timeout}s"
+                )
                 if attempt < self.config.max_retries:
-                    time.sleep(self.config.retry_delay * (2 ** attempt))
+                    time.sleep(self.config.retry_delay * (2**attempt))
                     continue
                 else:
                     raise last_error
@@ -231,7 +232,7 @@ class OllamaClient(BaseLLMClient):
             except requests.RequestException as e:
                 last_error = LLMClientError(f"Request failed: {e}")
                 if attempt < self.config.max_retries:
-                    time.sleep(self.config.retry_delay * (2 ** attempt))
+                    time.sleep(self.config.retry_delay * (2**attempt))
                     continue
                 else:
                     raise last_error
@@ -241,11 +242,7 @@ class OllamaClient(BaseLLMClient):
 
         raise LLMClientError(f"Failed to generate response: {last_error}")
 
-    async def generate_async(
-        self,
-        messages: List[Message],
-        **kwargs
-    ) -> LLMResponse:
+    async def generate_async(self, messages: List[Message], **kwargs) -> LLMResponse:
         """
         Generate a response asynchronously.
 

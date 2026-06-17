@@ -19,26 +19,33 @@ from pydantic import BaseModel, Field
 
 class AssessmentMode(str, Enum):
     """Mode of assessment session."""
+
     JOB_TARGETED = "job_targeted"
     SKILL_BASED = "skill_based"
+    DISC = "disc"  # DISC personality assessment
 
 
 class QuestionType(str, Enum):
     """Type of assessment question."""
+
     CONCEPTUAL = "conceptual"
     SCENARIO = "scenario"
     CODING = "coding"
     SYSTEM_DESIGN = "system_design"
+    DISC = "disc"  # DISC personality question
 
 
 class AnswerFormat(str, Enum):
     """Format of the expected answer."""
+
     FREEFORM = "freeform"
     MULTIPLE_CHOICE = "multiple_choice"
+    FORCED_CHOICE_MOST_LEAST = "forced_choice_most_least"  # Most/Least DISC format
 
 
 class DifficultyLevel(str, Enum):
     """Difficulty level for questions."""
+
     BEGINNER = "beginner"
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"
@@ -47,6 +54,7 @@ class DifficultyLevel(str, Enum):
 
 class SessionStatus(str, Enum):
     """Status of an assessment session."""
+
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     ABANDONED = "abandoned"
@@ -60,6 +68,7 @@ class MultipleChoiceOption(BaseModel):
         text: The option text.
         is_correct: Whether this is the correct answer.
     """
+
     label: str
     text: str
     is_correct: bool = False
@@ -80,6 +89,7 @@ class Question(BaseModel):
         time_limit_seconds: Optional time limit for the question.
         order_index: Display order within the session.
     """
+
     question_id: str = Field(default_factory=lambda: str(uuid4()))
     question_type: QuestionType
     answer_format: AnswerFormat
@@ -102,6 +112,7 @@ class Answer(BaseModel):
         answered_at: Timestamp when the answer was submitted.
         time_taken_seconds: Time spent on the question.
     """
+
     question_id: str
     selected_option: Optional[str] = None
     freeform_text: Optional[str] = None
@@ -121,6 +132,7 @@ class QuestionScore(BaseModel):
         improvements: Areas for improvement.
         model_answer: The ideal answer for learning.
     """
+
     question_id: str
     score: float = Field(ge=0, le=100)
     is_correct: Optional[bool] = None
@@ -153,6 +165,7 @@ class AssessmentSession(BaseModel):
         question_count: Total number of questions in the session.
         metadata: Additional session metadata.
     """
+
     session_id: str = Field(default_factory=lambda: str(uuid4()))
     mode: AssessmentMode
     status: SessionStatus = SessionStatus.IN_PROGRESS
@@ -176,3 +189,71 @@ class AssessmentSession(BaseModel):
     completed_at: Optional[datetime] = None
     question_count: int = 0
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# ─────────────────────────────────────────────────────────────────────────────────────────
+# DISC Personality Assessment Models
+# ─────────────────────────────────────────────────────────────────────────────────────────
+
+
+class DISCTrait(str, Enum):
+    """DISC personality trait dimensions."""
+
+    DOMINANCE = "D"
+    INFLUENCE = "I"
+    STEADINESS = "S"
+    CONSCIENTIOUSNESS = "C"
+
+
+class DISCAnswer(BaseModel):
+    """A user's answer to a DISC question using Most/Least format.
+
+    Attributes:
+        question_id: The question being answered.
+        most_like: Option label (A, B, C, or D) that is most like the user.
+        least_like: Option label (A, B, C, or D) that is least like the user.
+        answered_at: Timestamp when the answer was submitted.
+    """
+
+    question_id: str
+    most_like: str  # Option label (A, B, C, D)
+    least_like: str  # Option label (A, B, C, D)
+    answered_at: datetime = Field(default_factory=datetime.now)
+
+
+class DISCScore(BaseModel):
+    """Score for a single DISC trait.
+
+    Attributes:
+        trait: The DISC trait (D, I, S, or C).
+        raw_score: Raw score accumulated across all questions (-9 to +9).
+        percentage: Normalized percentage (0-100).
+    """
+
+    trait: DISCTrait
+    raw_score: int  # Range: -9 to +9 after 24 questions
+    percentage: float = Field(ge=0, le=100)  # Normalized to 0-100
+
+
+class DISCResult(BaseModel):
+    """Complete DISC assessment result.
+
+    Attributes:
+        session_id: The assessment session identifier.
+        answers: All user answers (Most/Least selections).
+        scores: Score breakdown by trait.
+        profile: Final D/I/S/C profile percentages.
+        primary_type: User's dominant DISC trait.
+        secondary_type: User's secondary DISC trait.
+        completed_at: When the assessment was completed.
+        job_matches: Job types that match this DISC profile.
+    """
+
+    session_id: str
+    answers: List[DISCAnswer]
+    scores: List[DISCScore]
+    profile: Dict[str, float]  # {"D": 25, "I": 30, "S": 25, "C": 20}
+    primary_type: DISCTrait
+    secondary_type: Optional[DISCTrait] = None
+    completed_at: datetime
+    job_matches: List[Dict[str, Any]] = Field(default_factory=list)

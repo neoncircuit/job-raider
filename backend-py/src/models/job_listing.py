@@ -9,13 +9,22 @@ Date: 2026-04-20
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Dict, Any, Union
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator, ConfigDict
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    field_validator,
+    model_validator,
+)
 
 
 class ExperienceLevel(str, Enum):
     """Experience level for job positions."""
+
     ENTRY = "Entry Level"
     MID = "Mid Level"
     SENIOR = "Senior"
@@ -28,6 +37,7 @@ class ExperienceLevel(str, Enum):
 
 class JobType(str, Enum):
     """Type of employment."""
+
     FULL_TIME = "Full-time"
     PART_TIME = "Part-time"
     CONTRACT = "Contract"
@@ -39,6 +49,7 @@ class JobType(str, Enum):
 
 class WorkMode(str, Enum):
     """Work arrangement mode."""
+
     ON_SITE = "On-site"
     REMOTE = "Remote"
     HYBRID = "Hybrid"
@@ -46,10 +57,13 @@ class WorkMode(str, Enum):
 
 class SalaryRange(BaseModel):
     """Salary range for a position."""
+
     min_amount: Optional[float] = Field(default=None, description="Minimum salary")
     max_amount: Optional[float] = Field(default=None, description="Maximum salary")
     currency: str = Field(default="USD", description="Currency code")
-    period: str = Field(default="annual", description="Salary period: annual, monthly, hourly")
+    period: str = Field(
+        default="annual", description="Salary period: annual, monthly, hourly"
+    )
     is_estimated: bool = Field(default=False, description="True if salary is estimated")
 
     @field_validator("currency")
@@ -78,28 +92,45 @@ class SalaryRange(BaseModel):
 
 class JobRequirement(BaseModel):
     """A specific job requirement."""
-    category: Optional[str] = Field(default=None, description="Category of requirement (e.g., 'Skills', 'Education')")
+
+    category: Optional[str] = Field(
+        default=None,
+        description="Category of requirement (e.g., 'Skills', 'Education')",
+    )
     text: str = Field(description="Requirement text")
-    is_required: bool = Field(default=True, description="Whether this is a must-have requirement")
-    years_of_experience: Optional[float] = Field(default=None, description="Required years of experience")
+    is_required: bool = Field(
+        default=True, description="Whether this is a must-have requirement"
+    )
+    years_of_experience: Optional[float] = Field(
+        default=None, description="Required years of experience"
+    )
 
 
 class JobResponsibility(BaseModel):
     """A specific job responsibility."""
-    category: Optional[str] = Field(default=None, description="Category of responsibility")
+
+    category: Optional[str] = Field(
+        default=None, description="Category of responsibility"
+    )
     text: str = Field(description="Responsibility text")
 
 
 class Skill(BaseModel):
     """A skill or competency."""
+
     name: str = Field(description="Skill name")
-    category: Optional[str] = Field(default=None, description="Skill category (technical, soft, language, etc.)")
-    proficiency: Optional[str] = Field(default=None, description="Proficiency level if specified")
+    category: Optional[str] = Field(
+        default=None, description="Skill category (technical, soft, language, etc.)"
+    )
+    proficiency: Optional[str] = Field(
+        default=None, description="Proficiency level if specified"
+    )
     is_required: bool = Field(default=True, description="Whether skill is required")
 
 
 class JobSource(str, Enum):
     """Source of the job listing."""
+
     LINKEDIN = "linkedin"
     JSEARCH = "jsearch"
     MANUAL = "manual"
@@ -113,49 +144,80 @@ class JobListing(BaseModel):
     Represents a job posting with all relevant information for
     scoring and matching against user profiles.
     """
+
     # Basic Information
     title: str = Field(description="Job title")
     company: str = Field(description="Company name")
     job_id: str = Field(description="Unique identifier for the job listing")
     source: JobSource = Field(description="Source of the listing")
-    source_url: Optional[HttpUrl] = Field(default=None, description="URL to original posting")
+    source_url: Optional[HttpUrl] = Field(
+        default=None, description="URL to original posting"
+    )
 
     # Location & Work Mode
-    location: Optional[str] = Field(default=None, description="Job location (city, state, country)")
-    work_mode: WorkMode = Field(default=WorkMode.ON_SITE, description="Work arrangement")
+    location: Optional[str] = Field(
+        default=None, description="Job location (city, state, country)"
+    )
+    work_mode: WorkMode = Field(
+        default=WorkMode.ON_SITE, description="Work arrangement"
+    )
     is_remote: bool = Field(default=False, description="Whether position is remote")
 
     # Employment Details
     job_type: JobType = Field(default=JobType.FULL_TIME, description="Employment type")
-    experience_level: ExperienceLevel = Field(default=ExperienceLevel.NOT_SPECIFIED, description="Required experience level")
+    experience_level: ExperienceLevel = Field(
+        default=ExperienceLevel.NOT_SPECIFIED, description="Required experience level"
+    )
 
     # Compensation
-    salary_range: Optional[SalaryRange] = Field(default=None, description="Salary information")
+    salary_range: Optional[SalaryRange] = Field(
+        default=None, description="Salary information"
+    )
 
     # Job Content
     description: Optional[str] = Field(default=None, description="Full job description")
-    requirements: List[JobRequirement] = Field(default_factory=list, description="List of requirements")
-    responsibilities: List[JobResponsibility] = Field(default_factory=list, description="List of responsibilities")
-    skills: List[Skill] = Field(default_factory=list, description="List of required/preferred skills")
+    requirements: List[JobRequirement] = Field(
+        default_factory=list, description="List of requirements"
+    )
+    responsibilities: List[JobResponsibility] = Field(
+        default_factory=list, description="List of responsibilities"
+    )
+    skills: List[Skill] = Field(
+        default_factory=list, description="List of required/preferred skills"
+    )
 
     # Additional Details
     department: Optional[str] = Field(default=None, description="Department or team")
-    posted_date: Optional[datetime] = Field(default=None, description="When job was posted")
-    application_deadline: Optional[datetime] = Field(default=None, description="Application deadline")
-    applicants_count: Optional[int] = Field(default=None, description="Number of applicants if shown")
+    posted_date: Optional[datetime] = Field(
+        default=None, description="When job was posted"
+    )
+    application_deadline: Optional[datetime] = Field(
+        default=None, description="Application deadline"
+    )
+    applicants_count: Optional[int] = Field(
+        default=None, description="Number of applicants if shown"
+    )
 
     # Recruiter Info
-    recruiter_name: Optional[str] = Field(default=None, description="Name of recruiter or hiring manager")
+    recruiter_name: Optional[str] = Field(
+        default=None, description="Name of recruiter or hiring manager"
+    )
     recruiter_email: Optional[str] = Field(default=None, description="Recruiter email")
     recruiter_phone: Optional[str] = Field(default=None, description="Recruiter phone")
 
     # Application Status
-    already_applied: bool = Field(default=False, description="Whether user has already applied to this job")
+    already_applied: bool = Field(
+        default=False, description="Whether user has already applied to this job"
+    )
 
     # Metadata
-    scraped_at: datetime = Field(default_factory=datetime.now, description="When this was scraped")
+    scraped_at: datetime = Field(
+        default_factory=datetime.now, description="When this was scraped"
+    )
     raw_html: Optional[str] = Field(default=None, description="Raw HTML for debugging")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
     @field_validator("location")
     @classmethod
@@ -168,12 +230,19 @@ class JobListing(BaseModel):
     @property
     def is_entry_level(self) -> bool:
         """Check if this is an entry-level position."""
-        return self.experience_level in [ExperienceLevel.ENTRY, ExperienceLevel.INTERNSHIP]
+        return self.experience_level in [
+            ExperienceLevel.ENTRY,
+            ExperienceLevel.INTERNSHIP,
+        ]
 
     @property
     def is_senior_level(self) -> bool:
         """Check if this is a senior-level position."""
-        return self.experience_level in [ExperienceLevel.SENIOR, ExperienceLevel.LEAD, ExperienceLevel.PRINCIPAL]
+        return self.experience_level in [
+            ExperienceLevel.SENIOR,
+            ExperienceLevel.LEAD,
+            ExperienceLevel.PRINCIPAL,
+        ]
 
     @property
     def days_since_posted(self) -> Optional[int]:
@@ -236,11 +305,20 @@ class JobListing(BaseModel):
 
 class JobListingCollection(BaseModel):
     """Collection of job listings with metadata."""
-    listings: List[JobListing] = Field(default_factory=list, description="List of job listings")
+
+    listings: List[JobListing] = Field(
+        default_factory=list, description="List of job listings"
+    )
     total_count: int = Field(default=0, description="Total number of listings")
-    source: Optional[JobSource] = Field(default=None, description="Source of these listings")
-    scraped_at: datetime = Field(default_factory=datetime.now, description="When collection was created")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    source: Optional[JobSource] = Field(
+        default=None, description="Source of these listings"
+    )
+    scraped_at: datetime = Field(
+        default_factory=datetime.now, description="When collection was created"
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -271,7 +349,8 @@ class JobListingCollection(BaseModel):
             New JobListingCollection with filtered listings
         """
         filtered = [
-            listing for listing in self.listings
+            listing
+            for listing in self.listings
             if any(listing.matches_keyword(keyword) for keyword in keywords)
         ]
         return JobListingCollection(
@@ -291,8 +370,10 @@ class JobListingCollection(BaseModel):
             New JobListingCollection with filtered listings
         """
         filtered = [
-            listing for listing in self.listings
-            if listing.location and any(loc.lower() in listing.location.lower() for loc in locations)
+            listing
+            for listing in self.listings
+            if listing.location
+            and any(loc.lower() in listing.location.lower() for loc in locations)
         ]
         return JobListingCollection(
             listings=filtered,

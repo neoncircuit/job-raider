@@ -512,3 +512,132 @@ export interface ResumeAnalysis {
   competitive_gaps: string[];
   competitive_edge: string;
 }
+
+// ── Assessment ─────────────────────────────────────────────────────────────────
+
+export type AssessmentMode = "job_targeted" | "skill_based";
+export type QuestionType = "conceptual" | "scenario" | "coding" | "system_design";
+export type AnswerFormat = "freeform" | "multiple_choice";
+export type DifficultyLevel = "beginner" | "intermediate" | "advanced" | "expert";
+export type SessionStatus = "in_progress" | "completed" | "abandoned";
+
+export interface MultipleChoiceOption {
+  label: string;
+  text: string;
+  is_correct?: boolean;
+}
+
+export interface AssessmentQuestion {
+  question_id: string;
+  question_type: QuestionType;
+  answer_format: AnswerFormat;
+  difficulty: DifficultyLevel;
+  topic: string;
+  question_text: string;
+  options: MultipleChoiceOption[];
+  time_limit_seconds?: number | null;
+  order_index: number;
+}
+
+export interface QuestionScore {
+  question_id: string;
+  score: number;
+  is_correct?: boolean | null;
+  feedback: string;
+  strengths: string[];
+  improvements: string[];
+  model_answer: string;
+}
+
+export interface AssessmentSession {
+  session_id: string;
+  mode: AssessmentMode;
+  status: SessionStatus;
+  difficulty: DifficultyLevel;
+  target_job_ids: string[];
+  target_skills: string[];
+  questions: AssessmentQuestion[];
+  answers: Array<{
+    question_id: string;
+    selected_option?: string | null;
+    freeform_text?: string | null;
+    answered_at: string;
+    time_taken_seconds?: number | null;
+  }>;
+  scores: QuestionScore[];
+  overall_score: number | null;
+  topic_breakdown: Record<string, number>;
+  current_difficulty: DifficultyLevel;
+  difficulty_history: Array<{
+    from: string;
+    to: string;
+    avg_score: number;
+    triggered_at: number;
+  }>;
+  created_at: string;
+  completed_at: string | null;
+  question_count: number;
+}
+
+export interface ProgressStats {
+  total_sessions: number;
+  completed_sessions: number;
+  average_score: number;
+  score_trend: Array<{ date: string; score: number }>;
+  strongest_topics: Array<[string, number]>;
+  weakest_topics: Array<[string, number]>;
+}
+
+// ── DISC Assessment ───────────────────────────────────────────────────────────────
+
+export type DISCTrait = "D" | "I" | "S" | "C";
+export type DISCCategory = "leadership" | "communication" | "work_style" | "problem_solving";
+
+export interface DISCQuestionOption {
+  label: string;
+  text: string;
+  scores: Record<DISCTrait, number>;
+}
+
+export interface DISCQuestion {
+  id: string;
+  category: DISCCategory;
+  question: string;
+  options: DISCQuestionOption[];
+}
+
+export interface DISCAnswer {
+  question_id: string;
+  most_like: string;
+  least_like: string;
+  answered_at?: string;
+}
+
+export interface DISCScore {
+  trait: DISCTrait;
+  raw_score: number;
+  percentage: number;
+}
+
+export interface DISCJobMatch {
+  job_type: string;
+  match_score: number;
+  description: string;
+  ideal_profile: Record<DISCTrait, number>;
+}
+
+export interface DISCResult {
+  session_id: string;
+  answers: DISCAnswer[];
+  scores: DISCScore[];
+  profile: Record<DISCTrait, number>;
+  primary_type: DISCTrait;
+  secondary_type?: DISCTrait | null;
+  completed_at: string;
+  job_matches: DISCJobMatch[];
+}
+
+export interface DISCSession {
+  session_id: string;
+  questions: DISCQuestion[];
+}

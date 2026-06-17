@@ -141,13 +141,17 @@ job-raider/                      # Project root (monorepo)
 │   │   ├── scoring_config.yaml
 │   │   └── logging_config.yaml
 │   ├── src/                     # Source code
+│   │   ├── agents/             # Multi-agent system (coordinator, communication bus, career coach)
 │   │   ├── api/                # FastAPI REST API (routes, models, websocket)
+│   │   ├── assessment/         # Technical assessment trainer + DISC engine
+│   │   ├── classifiers/        # LLM-based job classification
 │   │   ├── config/             # YAML config loader
 │   │   ├── llm/                # LLM clients (Claude, Ollama, router)
+│   │   ├── linkedin/           # LinkedIn Easy Apply automation
 │   │   ├── models/             # Pydantic V2 data models
 │   │   ├── scrapers/           # Job scraping (LinkedIn, JSearch API)
 │   │   ├── extractors/         # Resume and JD parsing (pypdf)
-│   │   ├── scoring/            # Filtering, matching, scam detection
+│   │   ├── scoring/            # Filtering, matching, scam detection, trust analysis
 │   │   ├── rag/                # RAG pipeline (embeddings, vector store, ranker, chunker)
 │   │   ├── generation/         # Resume generation (selector, writer, formatter with 5 templates)
 │   │   ├── submission/         # Application submission and detection
@@ -161,18 +165,15 @@ job-raider/                      # Project root (monorepo)
 │   ├── notebooks/               # Jupyter notebooks
 │   ├── main.py                  # CLI entry point
 │   └── requirements.txt         # Python dependencies
-├── frontend-py/                 # Streamlit web dashboard
-│   ├── .venv/                   # Frontend virtual environment
-│   ├── config/                  # Frontend configuration
+├── frontend-ts/                 # Next.js + Tailwind dashboard (active frontend)
 │   ├── src/
-│   │   ├── api/                # Backend API client
-│   │   ├── pages/              # Streamlit pages (dashboard, pipeline, jobs, profile, metrics, resume analysis, applications, settings)
-│   │   ├── components/         # Reusable UI components (sidebar, status badges)
-│   │   └── utils/              # Formatting, session state, error handling
-│   ├── tests/                   # Frontend tests (55 tests, all passing)
-│   ├── docker/                  # Frontend Dockerfile
-│   ├── main.py                  # Streamlit entry point
-│   └── requirements.txt         # Frontend dependencies
+│   │   ├── app/                # Next.js App Router pages (9 pages)
+│   │   ├── components/         # Shared UI components + layout
+│   │   └── lib/                # API client, types, utilities
+│   ├── tests/                   # Vitest unit + Playwright E2E tests
+│   ├── Dockerfile               # Multi-stage production build (standalone)
+│   └── package.json             # Node dependencies
+├── frontend-py/                 # Legacy Streamlit dashboard (superseded by frontend-ts; still tested in CI)
 ├── data/                        # Shared data storage
 │   ├── listings/                # Scraped listings
 │   ├── profiles/                # User profile data
@@ -282,20 +283,19 @@ keywords:
 
 ## Development
 
-### Streamlit Dashboard
+### Web Dashboard (Next.js)
 
-The web dashboard provides a visual interface for the full pipeline.
+The web dashboard (`frontend-ts/`) is a Next.js + Tailwind CSS application that provides a visual interface for the full pipeline. It is the active frontend; the legacy Streamlit dashboard in `frontend-py/` is retained but superseded.
 
 ```bash
-# Start backend API first
-cd backend-py
-source .venv/bin/activate
-python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+# Start backend API first (http://localhost:8000)
+make dev-api
 
-# In another terminal, start the dashboard
-cd frontend-py
-source .venv/bin/activate
-streamlit run main.py --server.port 8501 --server.headless true
+# In another terminal, start the Next.js dashboard (http://localhost:3000)
+make dev-frontend
+
+# Or start both together
+make dev
 ```
 
 Or use Docker to start all services at once:
@@ -304,7 +304,7 @@ Or use Docker to start all services at once:
 bash docker-run.sh
 ```
 
-The dashboard includes eight pages: Dashboard (overview), Pipeline (run/monitor), Jobs (search/browse), Profile (resume upload), Metrics (costs/outcomes), Resume Analysis (AI scoring), Applications (tracker), and Settings (configuration).
+The dashboard includes nine pages: Dashboard (overview), Pipeline (run/monitor), Jobs (search/browse), Profile (resume upload), Resume Analysis (AI scoring), Assessment (technical trainer + DISC), Applications (tracker), Metrics (costs/outcomes), and Settings (configuration).
 
 ### Running Tests
 
@@ -316,10 +316,9 @@ cd backend-py
 source .venv/bin/activate
 pytest
 
-# Frontend tests
-cd frontend-py
-source .venv/bin/activate
-pytest
+# Frontend tests (Next.js — Vitest unit + Playwright E2E)
+cd frontend-ts
+npm test
 
 # Or use make from project root
 make test

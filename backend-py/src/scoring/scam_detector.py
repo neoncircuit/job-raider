@@ -8,17 +8,18 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-from typing import List, Dict, Any, Optional, Set
+import re
 from dataclasses import dataclass
 from enum import Enum
-import re
+from typing import Any, Dict, List, Optional, Set
 
 from ..models.job_listing import JobListing, JobSource
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class ScamIndicator(str, Enum):
     """Types of scam indicators."""
+
     PAYMENT_REQUIRED = "payment_required"
     PERSONAL_EMAIL = "personal_email"
     MESSAGING_APP_ONLY = "messaging_app_only"
@@ -79,6 +80,7 @@ class TrustTier(str, Enum):
 @dataclass
 class ScamReport:
     """Report of scam analysis for a job listing."""
+
     is_scam: bool
     confidence: float  # 0-1
     indicators: List[ScamIndicator]
@@ -94,6 +96,7 @@ class TrustAnalysis:
     Provides a tiered trust rating with per-category scoring,
     specific indicators, and human-readable reasons for the rating.
     """
+
     tier: TrustTier
     confidence: float
     risk_score: int
@@ -158,8 +161,14 @@ class JobScamDetector:
 
     # Legitimate company domains (for verification)
     KNOWN_COMPANY_DOMAINS = {
-        "google.com", "amazon.com", "microsoft.com", "apple.com",
-        "meta.com", "netflix.com", "twitter.com", "salesforce.com",
+        "google.com",
+        "amazon.com",
+        "microsoft.com",
+        "apple.com",
+        "meta.com",
+        "netflix.com",
+        "twitter.com",
+        "salesforce.com",
         # Add more as needed
     }
 
@@ -301,7 +310,9 @@ class JobScamDetector:
 
         return score, reasons
 
-    def _check_description(self, job: JobListing) -> tuple[int, List[str], List[ScamIndicator]]:
+    def _check_description(
+        self, job: JobListing
+    ) -> tuple[int, List[str], List[ScamIndicator]]:
         """
         Check job description for scam indicators.
 
@@ -367,7 +378,9 @@ class JobScamDetector:
 
         return score, reasons, indicators
 
-    def _check_company(self, job: JobListing) -> tuple[int, List[str], List[ScamIndicator]]:
+    def _check_company(
+        self, job: JobListing
+    ) -> tuple[int, List[str], List[ScamIndicator]]:
         """
         Check company for legitimacy.
 
@@ -432,11 +445,15 @@ class JobScamDetector:
                 approx_hourly = hourly_rate / 2080
                 if approx_hourly > 75:
                     score += 30
-                    reasons.append(f"High implied hourly rate: ~${approx_hourly:.0f}/hr")
+                    reasons.append(
+                        f"High implied hourly rate: ~${approx_hourly:.0f}/hr"
+                    )
 
         return score, reasons
 
-    def _check_contact(self, job: JobListing) -> tuple[int, List[str], List[ScamIndicator]]:
+    def _check_contact(
+        self, job: JobListing
+    ) -> tuple[int, List[str], List[ScamIndicator]]:
         """
         Check contact information for legitimacy.
 
@@ -462,7 +479,9 @@ class JobScamDetector:
         # Check if no company email/domain is provided
         if not job.recruiter_email and job.company:
             # Try to infer company email from company name
-            expected_domain = job.company.lower().replace(" ", "").replace(",", "") + ".com"
+            expected_domain = (
+                job.company.lower().replace(" ", "").replace(",", "") + ".com"
+            )
             if expected_domain not in str(job.source_url or "").lower():
                 score += 10
                 reasons.append("No company email provided")
@@ -482,14 +501,14 @@ class JobScamDetector:
         issues = 0
 
         # Check for multiple consecutive spaces
-        if re.search(r'\s{3,}', text):
+        if re.search(r"\s{3,}", text):
             issues += 1
 
         # Check for missing punctuation at end of sentences
-        lines = text.split('\n')
+        lines = text.split("\n")
         for line in lines:
             line = line.strip()
-            if line and not line[-1] in '.!?':
+            if line and not line[-1] in ".!?":
                 # Might be a bullet point or heading, but count it
                 if len(line.split()) > 5:  # Only check actual sentences
                     issues += 1

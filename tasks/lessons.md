@@ -1523,3 +1523,649 @@
 **How to apply:**
 - After modifying network, volume, or environment settings in docker-compose.yml, use `--force-recreate` for affected services
 - Verify with `docker inspect <container> --format '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}'`
+
+### Phase 34: Cover Letter Frontend + Assessment Trainer (2026-05-22)
+
+#### Mock Constructor Dependencies by Bypassing __init__
+
+**Lesson:** When a class's `__init__` calls external dependencies (file I/O, network), mock at the attribute level using `__new__` rather than trying to patch internal method calls.
+
+**Why:**
+- `AssessmentEngine.__init__` calls `self._load_templates()` which reads YAML from disk using `Path(__file__)`
+- Patching `yaml.safe_load` and `Path` in the fixture didn't work because `Path("string").parent.parent.parent / "config"` returns a `PosixPath`, and the mock's string assignment broke the `/` operator
+- The error was `TypeError: unsupported operand type(s) for /: 'str' and 'str'`
+
+**How to apply:**
+- Use `AssessmentEngine.__new__(AssessmentEngine)` to create an instance without calling `__init__`
+- Set required attributes directly: `eng.llm_router = mock_router`, `eng._gen_template = {...}`
+- This avoids all constructor side effects and is faster than deep patching
+
+#### Patch Lazy Imports at Their Source Module
+
+**Lesson:** When routes use lazy imports (`from ..routes.profile import stored_profiles` inside a function body), patch the source module, not the importing module.
+
+**Why:**
+- `assessment.py` has `from ..routes.profile import stored_profiles` inside `start_session()` and `get_available_skills()`
+- Patching `src.api.routes.assessment.stored_profiles` fails with `AttributeError` because the name doesn't exist at module level
+- The import happens at call time, pulling from `profile` module
+
+**How to apply:**
+- Patch `src.api.routes.profile.stored_profiles` (the source)
+- Use `create=True` flag if the attribute might not exist yet
+- For function-scoped lazy imports, the source module is always the correct patch target
+
+#### Pydantic Model Required Fields Must Be Provided in Tests
+
+**Lesson:** When creating model instances in tests, always check which fields are required. Pydantic V2 enforces required fields strictly.
+
+**Why:**
+- `UserProfile` requires `name` and `contact` (which requires `location`)
+- Test created `UserProfile(skills=[...])` without these fields
+- Pydantic V2 raises `ValidationError` listing all missing required fields
+
+**How to apply:**
+- Check the model definition before constructing test instances
+- Provide minimal required fields: `UserProfile(name="Test", contact=ContactInfo(email="t@t.com", location="City"))`
+- Use the project's `conftest.py` fixtures when available (e.g., `sample_user_profile`)
+
+#### Mock Methods That Modify Arguments In-Place
+
+**Lesson:** When a mock replaces a method that modifies its arguments in-place, use `side_effect` with a function that performs the modification, not `return_value`.
+
+**Why:**
+- `calculate_session_results(session)` sets `session.status = "completed"` and `session.overall_score` on the session object
+- `mock_engine.calculate_session_results.return_value = None` doesn't modify the session
+- The test checked `data["status"] == "completed"` but the session was never actually modified
+
+**How to apply:**
+- Use `side_effect` with a real function: `mock.complete.side_effect = lambda s: setattr(s, 'status', 'completed')`
+- Or assert on the post-conditions that the real code would produce
+- In-place mutations through mocks are invisible unless the mock explicitly performs them
+
+### Phase 35: Shared Ollama Migration (2026-05-30)
+
+#### Shared Services Pattern for Heavy Resources
+
+**Lesson:** Move heavy resource services (Ollama, MLflow) to a shared Docker services container pattern. This is industry standard for local development.
+
+**Why:**
+- GPU memory is expensive and finite (8GB on RTX 3070 Ti)
+- Running one Ollama instance shared across projects is far more efficient than per-project instances
+- Model cache is shared across all projects
+- Consistent service endpoints (ollama:11434) across projects
+- Easier maintenance - update once, all projects benefit
+
+**How to apply:**
+- Create `~/docker-services/docker-compose.yml` for shared services
+- Use external `shared-services` Docker network for cross-project communication
+- Add `shared-services` to project networks as `external: true`
+- Remove per-project service definitions and use shared endpoints
+- Start shared-services before starting project containers
+
+#### Service Migration Pattern
+
+**Lesson:** When migrating a service from project-specific to shared, follow this order to minimize downtime.
+
+**Why:**
+- Port conflicts occur if both services try to bind the same port
+- Containers with stale network references won't connect to the new shared service
+- Named volumes from the project need to be preserved or migrated
+
+**How to apply:**
+1. Stop all containers: `docker-compose down`
+2. Add service to shared-services compose with new volume name
+3. Remove service from project compose
+4. Remove old volume from project compose
+5. Remove `depends_on` for migrated service
+6. Start shared-services: `cd ~/docker-services && docker-compose up -d`
+7. Stop old containers if still running: `docker stop <old-container>`
+8. Start project containers: `docker-compose up -d --build`
+9. Verify connectivity: `docker exec <container> curl http://<service-name>:<port>`
+
+#### Image Pruning for Disk Space
+
+**Lesson:** Regularly prune stale Docker images to reclaim disk space. Use `docker image prune -a -f --filter "until=24h"` for automated cleanup.
+
+**Why:**
+- Each container rebuild creates a new image layer
+- Old images accumulate and consume significant space (1.5GB+ in this session)
+- WSL2 Docker data on C: drive can fill up quickly
+- Pruning before rebuilds keeps disk usage manageable
+
+**How to apply:**
+- Prune images older than 24h before major rebuilds
+- Use `--filter "until=24h"` to keep recent images for fast rebuilds
+- Run prune during setup scripts or pre-commit hooks
+- Monitor disk usage with `docker system df`
+
+## Phase 36: UI/UX Overhaul (2026-06-07)
+
+#### Theme Toggle Implementation with next-themes
+
+**Lesson:** Use next-themes library for robust theme switching instead of manual implementation.
+
+**Why:**
+- Handles system theme detection automatically
+- Persists theme across sessions via localStorage
+- Prevents hydration mismatch with provided hooks
+- No flash of unstyled content (FOUC) during page load
+
+**How to apply:**
+- Install next-themes: `npm install next-themes`
+- Wrap app with ThemeProvider in providers.tsx
+- Use `useTheme()` hook to get/set theme
+- Use `className="dark"` with CSS custom properties for theming
+- Disable CSS transitions during theme switch to prevent jarring animations
+
+#### CSS Variable-Based Theming
+
+**Lesson:** Use CSS custom properties (variables) for theme values instead of hard-coded colors.
+
+**Why:**
+- Single source of truth for all theme values
+- Easy to add new themes or tweak existing ones
+- No need to duplicate CSS for light/dark modes
+- Supports runtime theme switching without page reload
+
+**How to apply:**
+- Define colors in `:root` for light theme
+- Override in `.dark` class for dark theme
+- Use `var(--color-name)` throughout CSS
+- Group related variables (fonts, borders, backgrounds)
+- Document non-obvious variable purposes in comments
+
+#### Sharp Border Design vs Rounded
+
+**Lesson:** Sharp borders (4px radius) look more professional/technical than fully rounded corners.
+
+**Why:**
+- Aligns with "Odysseus" aesthetic: precise, technical, clean
+- Rounded corners can look playful or informal
+- Sharp borders create better visual hierarchy
+- Still slightly rounded (not harsh 0px)
+
+**How to apply:**
+- Set `--radius: 0.25rem` (4px) instead of `0.5rem` (8px)
+- Use `rounded` instead of `rounded-lg` for cards
+- Consistent border radius across all UI elements
+- Reserve larger radii only for specific emphasis (buttons, badges)
+
+#### Post-Filtering for Location Accuracy
+
+**Lesson:** Never trust external API filters completely. Always post-filter results to ensure they match requested criteria.
+
+**Why:**
+- Job board APIs (LinkedIn, JSearch) have loose location matching
+- "Singapore" search can return USA jobs if API interprets loosely
+- Users expect accurate results for their location
+- Better to show 0 accurate results than 100 inaccurate ones
+
+**How to apply:**
+- Implement post-filtering after API returns results
+- Case-insensitive substring matching
+- Handle common variations (Singapore, singapore, SG)
+- Log filtering results for debugging
+- Consider fuzzy matching for typos or abbreviations
+
+#### React useEffect Dependency Arrays
+
+**Lesson:** Be extremely careful with what you put in useEffect dependency arrays. Including state that the effect itself modifies can cause infinite loops.
+
+**Why:**
+- useEffect runs when any dependency changes
+- If effect modifies a dependency, it runs again (infinite loop)
+- This is especially subtle with context state that gets updated elsewhere
+- Race conditions can cause state to disappear or reset
+
+**How to apply:**
+- Only include values that the effect "reads from outside" (props, external context)
+- Never include state that the effect "writes to"
+- Use eslint-disable-next-line react-hooks/exhaustive-deps with comment explaining why
+- Test with React DevTools Profiler to detect unnecessary re-renders
+- When in doubt, remove the dependency and see if anything breaks
+
+#### Fresh Graduate Scoring Adjustments
+
+**Lesson:** Entry-level candidates need different scoring weights than experienced professionals.
+
+**Why:**
+- Fresh grads have limited work experience but strong projects/education
+- Standard scoring (40% experience) disadvantages them unfairly
+- Projects and education are better predictors of entry-level success
+- Lower thresholds (50 vs 60) increase opportunities
+
+**How to apply:**
+- Add mode-specific weight configurations
+- Prioritize projects (35%), skills (30%), education (20%)
+- Reduce experience weight to 10%
+- Lower threshold to increase candidate pool
+- Add quality boosters for GitHub stars, deployments, blog posts
+
+#### DISC Assessment Implementation
+
+**Lesson:** Industry-standard personality assessments use Most/Least forced-choice format, not simple single-choice.
+
+**Why:**
+- Prevents response bias (candidates can't just pick "agree" for everything)
+- Forces trade-offs that reveal true preferences
+- Most/Least is the actual format used by real employers
+- Single-choice doesn't provide meaningful personality profiles
+
+**How to apply:**
+- Each question has 4 options (A, B, C, D) mapped to traits
+- User selects "Most like me" and "Least like me" for each question
+- Score +3 for most, -3 for least per trait
+- Normalize to percentages that sum to 100%
+- Match profile against ideal job type profiles
+
+#### Container Rebuild vs Restart
+
+**Lesson:** `docker-compose restart` only restarts containers but doesn't rebuild images. Use `docker-compose up -d --build` to incorporate code changes.
+
+**Why:**
+- Restart uses existing images (old code)
+- Build step copies new code into images
+- Volume mounts can hide this issue for some files but not all
+- Production images are self-contained (no volume mounts for source)
+
+**How to apply:**
+- Use `restart` for configuration changes (env vars, compose file)
+- Use `up -d --build` for code changes (Python, TypeScript, CSS)
+- Stop containers first with `down` to ensure clean rebuild
+- Verify rebuild completed (check CREATED time, not just STATUS)
+
+### Phase 37: Critical Bug Fixes & Error Handling (2026-06-08)
+
+#### Authentication State Visibility
+
+**Lesson:** Provide clear, visible feedback about authentication state. Silent failures and invisible state make debugging nearly impossible.
+
+**Why:**
+- Console errors like "No auth token found" confuse users without context
+- Without clear logging, it's unclear if auth is enabled or working
+- Startup auth validation helps users understand their configuration
+- Per-request logging helps debug authentication issues
+
+**How to apply:**
+- Add auth state validation on app startup
+- Log auth status with clear emoji indicators (🔒 for enabled, 🔓 for disabled)
+- Detect auth state from first API response (401 vs success)
+- Update state and log when auth state changes
+- Provide user-friendly messages when auth is disabled
+
+#### Retry Logic for Transient Failures
+
+**Lesson:** Implement exponential backoff retry for transient network failures. This dramatically improves user experience for unreliable connections.
+
+**Why:**
+- Cloud services (503), rate limits (429), and timeouts (408) are often transient
+- A single retry with exponential backoff can resolve most transient issues
+- Improves perceived reliability significantly
+- Reduces support burden from "it failed randomly" issues
+
+**How to apply:**
+- Configure max retries (3) and base delay (1000ms)
+- Use exponential backoff: delay = base_delay * 2^retry_count
+- Retry on specific status codes: 408, 429, 500, 502, 503, 504
+- Retry on connection errors (network issues)
+- Log retry attempts clearly for debugging
+- Make retry configurable per endpoint if needed
+
+#### Frontend + Backend Validation Layers
+
+**Lesson:** Always validate at both frontend and backend layers. Each layer serves a different purpose and both are necessary for good UX.
+
+**Why:**
+- Frontend validation provides immediate feedback (no network round-trip)
+- Backend validation is the final line of defense (can't bypass with API clients)
+- Dual validation provides clear, specific error messages at each layer
+- Prevents malformed requests from reaching backend services
+
+**How to apply:**
+- Frontend: Check for empty arrays before submission (keywords filter whitespace)
+- Backend: Use Pydantic field validators to enforce data quality
+- Return clear 400 Bad Request errors with specific details
+- Use toast/notifications for frontend feedback
+- Test validation at both layers independently
+
+#### User-Friendly Error Messages
+
+**Lesson:** Map HTTP status codes to specific, actionable user messages. Generic "Search failed" messages frustrate users and provide no guidance.
+
+**Why:**
+- "Backend unreachable" suggests different actions than "Authentication failed"
+- Specific error messages reduce support burden
+- Users can self-diagnose and fix common issues
+- Improves perceived reliability even when failures occur
+
+**How to apply:**
+- Map status codes to specific scenarios:
+  - 401/403: "Check API key configuration"
+  - 400/422: "Invalid search parameters"
+  - 500: "Server error, try again later"
+  - 503: "Service temporarily unavailable"
+- Include action suggestions in error messages
+- Log technical details separately for debugging
+
+#### Dry-Run Mode Communication
+
+**Lesson:** When a feature only supports dry-run mode, communicate this clearly in both documentation and error messages. Don't let users discover limitations through trial and error.
+
+**Why:**
+- Auto-apply returning 501 "Not Implemented" is frustrating
+- Clear documentation sets proper expectations upfront
+- Error messages should explain alternatives and workarounds
+- Prevents wasted time trying to use unimplemented features
+
+**How to apply:**
+- Document current limitations clearly in endpoint docstrings
+- Return helpful error messages with alternatives:
+  - "Use dry_run=True to simulate the application"
+  - "Apply directly through the job listing URL"
+  - "Check back soon for auto-apply updates"
+- Keep error messages informative but not misleading
+- Update documentation when limitations are resolved
+
+
+### Phase 37: Jobs Search Validation (2026-06-07)
+
+#### Empty Keywords Validation
+
+**Lesson:** Always validate required parameters at both frontend and backend to prevent API errors and provide clear feedback.
+
+**Why:**
+- JSearch API requires a `query` parameter - empty arrays cause HTTP 400 errors
+- Frontend string splitting can produce empty arrays from whitespace-only input
+- Backend validation is the last line of defense against malformed requests
+- Frontend validation provides immediate user feedback without network round-trip
+
+**How to apply:**
+- Frontend: Check if split/filtered keywords array is empty before submission
+- Backend: Validate request keywords array has non-empty strings
+- Return clear error messages (400 Bad Request) for validation failures
+- Use toast/notifications for frontend validation feedback
+- Test edge cases: whitespace-only, empty strings, special characters
+
+
+### Phase 38: Frontend Test Infrastructure (2026-06-08)
+
+#### Vitest Over Jest for Next.js Projects
+
+**Lesson:** Use Vitest instead of Jest for Next.js and modern TypeScript projects. Vitest provides better ESM support, faster test execution, and native TypeScript handling.
+
+**Why:**
+- Jest has known issues with ES modules and TypeScript in Node environments
+- Vitest uses Vite's native ESM handling - no configuration needed
+- Faster test execution with native watch mode
+- Better integration with modern tooling (Vite, TypeScript)
+- Built-in coverage reporting with v8 provider
+- Compatible with Jest DOM and Testing Library
+
+**How to apply:**
+- Replace Jest with Vitest in package.json
+- Use vitest.config.ts instead of jest.config.js
+- Configure jsdom environment for React component testing
+- Set up path aliases for cleaner imports
+- Use @vitejs/plugin-react for React component testing
+- Configure coverage thresholds (80% recommended)
+
+#### MSW for API Mocking
+
+**Lesson:** Use Mock Service Worker (MSW) for API mocking instead of manual mocking or nock. MSW provides realistic API interception at the network layer and works for both unit and E2E tests.
+
+**Why:**
+- MSW intercepts HTTP requests at the network layer - works with any fetch library
+- Same mocks work for unit tests, integration tests, and E2E tests
+- No need to modify application code to support mocking
+- Realistic network behavior (delays, errors, streaming)
+- Easy to set up with REST and GraphQL handlers
+- Type-safe mock responses with TypeScript
+
+**How to apply:**
+- Install msw package in devDependencies
+- Create handlers for all API endpoints in tests/setup/mocks.ts
+- Use http.get, http.post, etc. for REST API handlers
+- Return HttpResponse.json() for JSON responses
+- Set up MSW server in tests/setup/globals.ts
+- Reset handlers after each test to prevent test pollution
+
+#### Test Fixtures for Consistency
+
+**Lesson:** Create reusable test fixtures that match real API response structures. This prevents tests from passing with fake data that doesn't match production.
+
+**Why:**
+- Tests using real data structure catch API contract changes early
+- Fixtures reduce test code duplication and improve maintainability
+- Easy to update fixtures when API changes
+- Consistent test data across all test files
+- Type-safe with TypeScript - fixtures match API types
+
+**How to apply:**
+- Create tests/setup/fixtures.ts with sample data
+- Match fixture structure exactly to API response types
+- Include all fields, even optional ones
+- Create variants for different test scenarios
+- Import fixtures in test files: `import { sampleJob } from '@/tests/setup/fixtures'`
+- Update fixtures when API contracts change
+
+#### Global Test Setup
+
+**Lesson:** Use global test setup files for common configuration, mocks, and utilities. This reduces boilerplate and ensures consistent test environment.
+
+**Why:**
+- Single source of truth for test configuration
+- No need to repeat mocks in every test file
+- Consistent test environment across all tests
+- Easy to add new global utilities
+- Automatic cleanup prevents test pollution
+
+**How to apply:**
+- Create tests/setup/globals.ts for global configuration
+- Set up MSW server in beforeAll hook
+- Mock browser APIs (IntersectionObserver, matchMedia)
+- Mock Next.js modules (router, image)
+- Clean up after each test with afterEach
+- Use cleanup from @testing-library/react
+
+#### Playwright for E2E Testing
+
+**Lesson:** Use Playwright for end-to-end testing instead of Cypress or Selenium. Playwright provides better performance, multi-browser support, and automatic waiting.
+
+**Why:**
+- Faster test execution than Cypress
+- Native multi-browser support (Chromium, Firefox, WebKit)
+- Automatic waiting for elements - no flaky tests
+- Built-in screenshot and video capture on failures
+- Network interception for API mocking
+- TypeScript support out of the box
+- Better CI/CD integration
+
+**How to apply:**
+- Install @playwright/test and playwright packages
+- Create playwright.config.ts with test configuration
+- Configure multiple browsers and devices
+- Set up automatic dev server startup
+- Use test.describe() for test grouping
+- Use await expect(element).toBeVisible() for assertions
+- Leverage auto-waiting - no need for manual waits
+
+#### Test Utilities Reduce Duplication
+
+**Lesson:** Create common test utilities to reduce code duplication and improve test maintainability. Custom helpers make tests more readable and easier to maintain.
+
+**Why:**
+- Tests become more readable with descriptive helper names
+- Less code duplication means easier maintenance
+- Common patterns extracted into reusable functions
+- Consistent test patterns across the codebase
+- Easier to update test behavior in one place
+
+**How to apply:**
+- Create tests/utils/test-helpers.ts for common utilities
+- Add custom render functions with providers
+- Create user interaction helpers (typeInInput, selectOption)
+- Add element location helpers (findByTestId, clickByTestId)
+- Implement mock utilities (MockLocalStorage, createMockFile)
+- Use utilities in tests to reduce boilerplate
+
+
+### Phase 39: CI/CD Test Integration (2026-06-08)
+
+#### CI Pipeline Test Jobs
+
+**Lesson:** Always include both unit and E2E tests in CI pipeline. Unit tests catch code-level issues, E2E tests catch integration issues that unit tests miss.
+
+**Why:**
+- Unit tests run fast and catch most regressions
+- E2E tests catch integration issues and UI problems
+- Both are needed for comprehensive coverage
+- CI ensures tests pass before merging code
+- Prevents broken code from reaching production
+
+**How to apply:**
+- Add test-frontend-unit job for Vitest tests
+- Add test-frontend-e2e job for Playwright tests
+- Make build job depend on test jobs passing
+- Upload coverage reports to Codecov
+- Upload Playwright artifacts (reports, screenshots) for debugging
+
+#### Basic Smoke Tests for Infrastructure
+
+**Lesson:** Create basic smoke tests to verify test infrastructure works before investing in comprehensive tests. Smoke tests catch configuration issues early.
+
+**Why:**
+- Verifies test runners are configured correctly
+- Catches dependency issues immediately
+- Provides quick feedback on setup problems
+- Prevents wasting time on failing infrastructure
+- Easy to debug when simple tests fail
+
+**How to apply:**
+- Create tests/basic.test.ts with simple assertions
+- Create tests/e2e/basic.spec.ts with basic page tests
+- Test fundamental functionality (true, arrays, objects)
+- Test async operations and browser interactions
+- Run smoke tests first before complex tests
+
+#### Coverage Reporting to Codecov
+
+**Lesson:** Configure coverage reporting to Codecov (or similar) for tracking test coverage over time. Visual coverage trends help identify untested code.
+
+**Why:**
+- Tracks coverage improvements and regressions
+- Provides visual coverage reports
+- Helps identify untested modules
+- Encourages maintaining high coverage
+- Integrates with PR comments for feedback
+
+**How to apply:**
+- Add coverage upload step to CI workflow
+- Use codecov-action for GitHub Actions
+- Configure coverage flags for different test suites
+- Set coverage thresholds in test configuration
+- Review coverage reports in PRs
+
+#### Playwright Artifacts for Debugging
+
+**Lesson:** Configure Playwright to upload artifacts (reports, screenshots, traces) on test failures. Artifacts are essential for debugging CI failures.
+
+**Why:**
+- CI failures often need visual debugging
+- Screenshots show what the browser saw
+- Traces reveal timing and network issues
+- Reports provide detailed test execution info
+- Artifacts available for download from CI run
+
+**How to apply:**
+- Upload playwright-report on always() condition
+- Upload screenshots on failure() condition
+- Use conditional upload to save storage
+- Set retention period (7 days recommended)
+- Download artifacts for debugging CI failures
+
+#### Testing Documentation
+
+**Lesson:** Create comprehensive testing documentation for the project. Good docs reduce onboarding time and ensure consistent testing practices.
+
+**Why:**
+- New developers can quickly understand test setup
+- Documents how to run tests locally
+- Provides examples for writing new tests
+- Includes debugging tips for common issues
+- Ensures consistent testing practices across team
+
+**How to apply:**
+- Create docs/testing.md with complete guide
+- Include instructions for running all test types
+- Document test structure and organization
+- Provide examples for writing tests
+- Include debugging tips and best practices
+- Add testing checklist for PR submissions
+
+### Phase 41: Multi-Agent System Wiring (2026-06-16)
+
+#### An Unregistered Router Is Dead Code (and Hides Bugs)
+
+**Lesson:** Building an API router module without registering it on the FastAPI app means it never runs, so its latent bugs go undetected for weeks. A feature is not "done" until it is wired in AND smoke-tested end-to-end.
+
+**Why:**
+- The multi-agent router (`routes/agents.py`) was written, had 70 tests, and was documented as Phase-40-ish work, but was never `include_router`-ed in `main.py`
+- Because it never imported at runtime, four separate bugs hid silently: duplicate function definitions with an undefined global, wrong relative-import depth, a missing `get_agent_config` import in `coordinator.py`, and Pydantic V1 validators
+- Tests passed because they import the agent classes directly and mock the runtime paths that contained the bugs
+
+**How to apply:**
+- After creating a router, immediately register it and hit one endpoint (`GET .../status` or `/health`) through a `TestClient` to prove the full path works
+- Treat "module exists + unit tests pass" as insufficient; the wiring layer (imports, registration, startup init) is where integration bugs live
+- Add a smoke test that exercises the real startup lifespan, not just the route handlers
+
+#### Relative Import Depth Depends on Package Nesting
+
+**Lesson:** A route module at `src/api/routes/<x>.py` importing a top-level package `src.<pkg>` needs THREE leading dots (`from ...pkg...`), not two. Two dots resolve to `src.api.*`.
+
+**Why:**
+- `routes/agents.py` used `from ..agents.coordinator`, which Python resolved to `src.api.agents` -> `ModuleNotFoundError` (the package lives at `src.agents`)
+- The convention in this repo: three dots for top-level `src.*` packages (`...models`, `...llm`, `...scrapers`), two dots for within-`api` (`..auth`, `..models.requests`)
+
+**How to apply:**
+- Count package levels: from `src/api/routes/foo.py`, `.`=`routes`, `..`=`api`, `...`=`src`
+- Match the import style of a neighbouring working route file before writing your own
+- Run an `import` smoke check (`python -c "from src.api.main import app"`) after adding imports
+
+#### Duplicate Definitions Silently Shadow
+
+**Lesson:** Defining the same function twice in a module keeps only the LAST definition. If the second copy is broken, the working first copy is silently overridden.
+
+**Why:**
+- `get_agent_coordinator` and `initialize_agent_system` were each defined twice; the second copies referenced a global (`_agent_coordinator`) that was never assigned -> `NameError` at runtime on every endpoint
+- No warning is emitted at import time; the failure only appears when the function is called
+
+**How to apply:**
+- Never paste a function twice; if refactoring, delete the old copy
+- Lint for redefinition (pylint `function-redefined`) in CI
+- Prefer a single canonical definition backed by a singleton manager rather than module globals
+
+#### asyncio.create_task Needs a Retained Reference
+
+**Lesson:** `asyncio.create_task(coro)` without storing the returned Task can be garbage-collected, which cancels the task before it completes.
+
+**Why:**
+- `initialize_agent_system` created `asyncio.create_task(coordinator.start())` and discarded the reference; CPython may GC the Task object (the loop holds only a weak reference)
+- The coordinator would then never actually start
+
+**How to apply:**
+- Always retain a strong reference: store the Task on a long-lived object (here, `AgentSystemManager._background_task`)
+- For app-lifetime tasks, keep a set of background tasks and clear it on shutdown
+
+#### Registering a Module Surfaces Its Deprecation Warnings
+
+**Lesson:** Dead code emits no warnings. The moment you wire a previously-unimported module into the app, every deprecation it contains fires on every startup and test run.
+
+**Why:**
+- `routes/agents.py` used Pydantic V1 `@validator` and `min_items`; while it was unregistered, the codebase's "zero deprecation warnings" standard (Phase 26) was unaffected
+- Registering the router regressed that standard immediately (8 warnings per run)
+
+**How to apply:**
+- When wiring up a dormant module, migrate it to current conventions as part of the same change
+- Do not ship a registration that reintroduces warnings the project explicitly eliminated
+
+

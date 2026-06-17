@@ -1,0 +1,652 @@
+{
+  "questions": [
+    {
+      "id": "disc_001",
+      "category": "leadership",
+      "question": "When making important decisions, I tend to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Act quickly and decisively, even with incomplete information",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Consult with team members and build consensus",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Maintain stability and consider impact on team morale",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Thoroughly analyze all available data and options",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_002",
+      "category": "leadership",
+      "question": "When leading a team project, I prefer to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Set clear goals and expect others to meet them independently",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Inspire enthusiasm and keep energy levels high",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Support team members and ensure everyone feels valued",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Establish detailed plans and track progress methodically",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_003",
+      "category": "leadership",
+      "question": "When facing resistance to my ideas, I typically:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Push forward with confidence and address concerns directly",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Use persuasion and enthusiasm to win people over",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Listen to concerns and seek compromise",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Present logical arguments and evidence to address concerns",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_004",
+      "category": "leadership",
+      "question": "When setting deadlines for team members, I tend to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Set ambitious deadlines and expect everyone to meet them",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Use deadlines as motivational targets and rally the team",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Build in buffer time to reduce stress and ensure quality",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Calculate realistic timeframes based on task complexity",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_005",
+      "category": "leadership",
+      "question": "When delegating tasks, I prefer to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Assign ownership and expect results without micromanaging",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Delegate based on strengths and keep communication open",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Provide guidance and support throughout the process",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Create clear instructions and establish check-in points",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_006",
+      "category": "leadership",
+      "question": "When a project is falling behind schedule, I:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Take immediate action to accelerate the timeline",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Rally the team with renewed energy and optimism",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Assess the situation calmly and adjust expectations if needed",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Analyze the root cause and reallocate resources efficiently",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_007",
+      "category": "communication",
+      "question": "When presenting to a group, I tend to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Be direct and focus on bottom-line results",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Be engaging and use stories to capture attention",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Be warm and create a comfortable atmosphere",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Be thorough and provide detailed supporting information",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_008",
+      "category": "communication",
+      "question": "When receiving feedback, I typically:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Appreciate direct input and immediately address issues",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Respond openly and discuss it enthusiastically",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Listen carefully and take time to process it",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Analyze the feedback objectively and evaluate its merit",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_009",
+      "category": "communication",
+      "question": "When networking or socializing in professional settings, I:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Focus on making strategic connections and exchanging ideas",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Enjoy meeting new people and naturally start conversations",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Prefer deeper conversations with people I already know",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Engage selectively in meaningful technical discussions",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_010",
+      "category": "communication",
+      "question": "When disagreeing with someone, I usually:",
+      "options": [
+        {
+          "label": "A",
+          "text": "State my position clearly and argue my case confidently",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Express my views enthusiastically and try to persuade them",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Consider their perspective and seek common ground",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Present facts and logic to support my viewpoint",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_011",
+      "category": "communication",
+      "question": "When giving feedback to others, I tend to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Be direct and get straight to the point",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Frame it positively and focus on potential improvements",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Deliver it gently and provide reassurance",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Provide specific examples and structured recommendations",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_012",
+      "category": "communication",
+      "question": "When collaborating with colleagues, I prefer to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Take initiative and drive the conversation forward",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Brainstorm openly and build on everyone's ideas",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Listen more than I speak and support consensus",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Contribute well-researched insights and analysis",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_013",
+      "category": "work_style",
+      "question": "When approaching my daily work, I prefer to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Tackle challenging tasks head-on and see rapid progress",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Work on a variety of tasks and keep things dynamic",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Maintain a steady pace and focus on consistency",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Follow a structured routine and work systematically",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_014",
+      "category": "work_style",
+      "question": "When dealing with unexpected changes or priorities, I:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Adapt quickly and take decisive action",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Embrace the change and help others adjust positively",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Prefer gradual transitions and maintain stability",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Analyze the impact and plan adjustments carefully",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_015",
+      "category": "work_style",
+      "question": "When working on long-term projects, I prefer to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Focus on milestones and celebrate quick wins",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Keep the vision exciting and maintain enthusiasm",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Build steady momentum and maintain team harmony",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Follow a detailed plan and track progress methodically",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_016",
+      "category": "work_style",
+      "question": "When handling multiple responsibilities, I tend to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Prioritize aggressively and focus on what matters most",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Juggle everything energetically and adapt as needed",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Maintain balance and avoid becoming overwhelmed",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Organize systematically and follow established procedures",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_017",
+      "category": "work_style",
+      "question": "When working in a team environment, I prefer to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Take charge when necessary and push for results",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Keep things fun and maintain team spirit",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Be supportive and help the team work smoothly together",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Ensure thorough documentation and organized processes",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_018",
+      "category": "work_style",
+      "question": "When managing my time and priorities, I:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Make quick decisions about what to focus on",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Keep flexibility to respond to new opportunities",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Maintain a consistent schedule and reliable routines",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Plan ahead and allocate time systematically",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_019",
+      "category": "problem_solving",
+      "question": "When analyzing a complex problem, I tend to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Identify the core issue quickly and focus efforts there",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Generate multiple options and explore creative solutions",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Consider the impact on people and maintain stability",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Examine all details systematically before deciding",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_020",
+      "category": "problem_solving",
+      "question": "When implementing a solution, I prefer to:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Act quickly and adjust as needed along the way",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Test the solution enthusiastically and iterate rapidly",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Implement gradually to ensure smooth adoption",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Validate thoroughly before rolling out broadly",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_021",
+      "category": "problem_solving",
+      "question": "When solving problems under pressure, I:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Take decisive action and move forward confidently",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Stay positive and encourage creative thinking",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Remain calm and work to restore stability",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Focus on facts and maintain systematic approach",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_022",
+      "category": "problem_solving",
+      "question": "When evaluating different solutions, I prioritize:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Speed of implementation and immediate impact",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Innovation and potential for excitement",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Team acceptance and minimal disruption",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Thoroughness and evidence of effectiveness",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_023",
+      "category": "problem_solving",
+      "question": "When learning new skills to solve problems, I:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Learn by doing and apply knowledge immediately",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Experiment with approaches and share discoveries",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Take time to absorb information and practice steadily",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Study concepts thoroughly before applying them",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    },
+    {
+      "id": "disc_024",
+      "category": "problem_solving",
+      "question": "When reflecting on past problem-solving experiences, I:",
+      "options": [
+        {
+          "label": "A",
+          "text": "Focus on results achieved and lessons for moving faster",
+          "scores": { "D": 3, "I": 0, "S": 0, "C": 0 }
+        },
+        {
+          "label": "B",
+          "text": "Remember the excitement of breakthroughs and team energy",
+          "scores": { "D": 0, "I": 3, "S": 0, "C": 0 }
+        },
+        {
+          "label": "C",
+          "text": "Appreciate how the team worked together through challenges",
+          "scores": { "D": 0, "I": 0, "S": 3, "C": 0 }
+        },
+        {
+          "label": "D",
+          "text": "Analyze what worked and document best practices",
+          "scores": { "D": 0, "I": 0, "S": 0, "C": 3 }
+        }
+      ]
+    }
+  ]
+}

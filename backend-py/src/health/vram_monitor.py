@@ -8,20 +8,21 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import Dict, List, Optional, Callable, Any
-from dataclasses import dataclass
-from enum import Enum
-from datetime import datetime, timedelta
 import subprocess
 import threading
 import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
-from ..utils.logger import get_logger, Components
 from ..health.health_check import GPUMemoryCheck
+from ..utils.logger import Components, get_logger
 
 
 class AlertLevel(str, Enum):
     """Alert severity levels."""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -30,6 +31,7 @@ class AlertLevel(str, Enum):
 @dataclass
 class VRAMAlert:
     """VRAM alert data."""
+
     level: AlertLevel
     message: str
     free_mb: int
@@ -101,32 +103,42 @@ class VRAMMonitor:
     def _register_default_actions(self) -> None:
         """Register default alert actions."""
         # Log alert
-        self._alert_actions.append(AlertAction(
-            name="log_alert",
-            callback=lambda alert: self.logger.warning(
-                f"VRAM Alert [{alert.level.value}]: {alert.message}"
+        self._alert_actions.append(
+            AlertAction(
+                name="log_alert",
+                callback=lambda alert: self.logger.warning(
+                    f"VRAM Alert [{alert.level.value}]: {alert.message}"
+                ),
             )
-        ))
+        )
 
         # Print to console
-        self._alert_actions.append(AlertAction(
-            name="print_alert",
-            callback=lambda alert: print(
-                f"\n[VRAM ALERT] {alert.level.value.upper()}: {alert.message}\n"
+        self._alert_actions.append(
+            AlertAction(
+                name="print_alert",
+                callback=lambda alert: print(
+                    f"\n[VRAM ALERT] {alert.level.value.upper()}: {alert.message}\n"
+                ),
             )
-        ))
+        )
 
         # Save critical alerts to file
-        self._alert_actions.append(AlertAction(
-            name="save_critical_alert",
-            callback=lambda alert: self._save_alert(alert) if alert.level == AlertLevel.CRITICAL else None
-        ))
+        self._alert_actions.append(
+            AlertAction(
+                name="save_critical_alert",
+                callback=lambda alert: (
+                    self._save_alert(alert)
+                    if alert.level == AlertLevel.CRITICAL
+                    else None
+                ),
+            )
+        )
 
     def _save_alert(self, alert: VRAMAlert) -> None:
         """Save alert to file."""
         try:
-            from pathlib import Path
             import json
+            from pathlib import Path
 
             alerts_dir = Path("data/alerts")
             alerts_dir.mkdir(parents=True, exist_ok=True)
@@ -135,16 +147,20 @@ class VRAMMonitor:
             filepath = alerts_dir / f"vram_alert_{timestamp_str}.json"
 
             with open(filepath, "w") as f:
-                json.dump({
-                    "level": alert.level.value,
-                    "message": alert.message,
-                    "free_mb": alert.free_mb,
-                    "used_mb": alert.used_mb,
-                    "total_mb": alert.total_mb,
-                    "used_percent": alert.used_percent,
-                    "timestamp": alert.timestamp.isoformat(),
-                    "metadata": alert.metadata,
-                }, f, indent=2)
+                json.dump(
+                    {
+                        "level": alert.level.value,
+                        "message": alert.message,
+                        "free_mb": alert.free_mb,
+                        "used_mb": alert.used_mb,
+                        "total_mb": alert.total_mb,
+                        "used_percent": alert.used_percent,
+                        "timestamp": alert.timestamp.isoformat(),
+                        "metadata": alert.metadata,
+                    },
+                    f,
+                    indent=2,
+                )
 
             self.logger.info(f"VRAM alert saved to: {filepath}")
 
@@ -283,10 +299,7 @@ class VRAMMonitor:
         """
         cutoff = datetime.now() - timedelta(hours=hours)
 
-        alerts = [
-            alert for alert in self._alerts_history
-            if alert.timestamp >= cutoff
-        ]
+        alerts = [alert for alert in self._alerts_history if alert.timestamp >= cutoff]
 
         if level:
             alerts = [a for a in alerts if a.level == level]

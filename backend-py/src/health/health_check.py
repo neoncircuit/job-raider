@@ -8,20 +8,21 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import Dict, List, Any, Optional, Callable
-from dataclasses import dataclass
-from enum import Enum
-from datetime import datetime
-import subprocess
 import json
 import os
+import subprocess
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class HealthStatus(str, Enum):
     """Health check status levels."""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -31,6 +32,7 @@ class HealthStatus(str, Enum):
 @dataclass
 class HealthCheckResult:
     """Result of a single health check."""
+
     name: str
     status: HealthStatus
     message: str
@@ -59,7 +61,12 @@ class HealthCheck:
 class DiskSpaceCheck(HealthCheck):
     """Check available disk space."""
 
-    def __init__(self, path: str = ".", warning_threshold_gb: int = 10, critical_threshold_gb: int = 5):
+    def __init__(
+        self,
+        path: str = ".",
+        warning_threshold_gb: int = 10,
+        critical_threshold_gb: int = 5,
+    ):
         super().__init__("disk_space")
         self.path = path
         self.warning_threshold_gb = warning_threshold_gb
@@ -70,14 +77,17 @@ class DiskSpaceCheck(HealthCheck):
 
         try:
             import shutil
+
             total, used, free = shutil.disk_usage(self.path)
 
-            free_gb = free / (1024 ** 3)
+            free_gb = free / (1024**3)
             used_percent = (used / total) * 100
 
             if free_gb < self.critical_threshold_gb:
                 status = HealthStatus.UNHEALTHY
-                message = f"Critical: Only {free_gb:.1f}GB free ({used_percent:.1f}% used)"
+                message = (
+                    f"Critical: Only {free_gb:.1f}GB free ({used_percent:.1f}% used)"
+                )
             elif free_gb < self.warning_threshold_gb:
                 status = HealthStatus.DEGRADED
                 message = f"Warning: {free_gb:.1f}GB free ({used_percent:.1f}% used)"
@@ -96,7 +106,7 @@ class DiskSpaceCheck(HealthCheck):
                     "path": self.path,
                     "free_gb": round(free_gb, 2),
                     "used_percent": round(used_percent, 2),
-                    "total_gb": round(total / (1024 ** 3), 2),
+                    "total_gb": round(total / (1024**3), 2),
                 },
                 timestamp=datetime.now(),
             )
@@ -115,7 +125,9 @@ class DiskSpaceCheck(HealthCheck):
 class GPUMemoryCheck(HealthCheck):
     """Check GPU memory usage."""
 
-    def __init__(self, warning_threshold_mb: int = 1000, critical_threshold_mb: int = 500):
+    def __init__(
+        self, warning_threshold_mb: int = 1000, critical_threshold_mb: int = 500
+    ):
         super().__init__("gpu_memory")
         self.warning_threshold_mb = warning_threshold_mb
         self.critical_threshold_mb = critical_threshold_mb
@@ -125,7 +137,11 @@ class GPUMemoryCheck(HealthCheck):
 
         try:
             result = subprocess.run(
-                ["nvidia-smi", "--query-gpu=memory.free,memory.total", "--format=csv,noheader,nounits"],
+                [
+                    "nvidia-smi",
+                    "--query-gpu=memory.free,memory.total",
+                    "--format=csv,noheader,nounits",
+                ],
                 capture_output=True,
                 text=True,
                 timeout=5,
@@ -216,13 +232,17 @@ class OllamaHealthCheck(HealthCheck):
     def __init__(self, base_url: str | None = None):
         super().__init__("ollama")
         import os
-        self.base_url = base_url or f"http://{os.getenv('OLLAMA_HOST', 'localhost:11434')}"
+
+        self.base_url = (
+            base_url or f"http://{os.getenv('OLLAMA_HOST', 'localhost:11434')}"
+        )
 
     def check(self) -> HealthCheckResult:
         start = datetime.now()
 
         try:
             import requests
+
             response = requests.get(f"{self.base_url}/api/tags", timeout=5)
 
             if response.status_code == 200:
@@ -329,11 +349,17 @@ class DataDirectoryCheck(HealthCheck):
                         issues.append(f"{dir_name} does not exist")
 
             if issues:
-                status = HealthStatus.DEGRADED if len(existing_dirs) > 0 else HealthStatus.UNHEALTHY
+                status = (
+                    HealthStatus.DEGRADED
+                    if len(existing_dirs) > 0
+                    else HealthStatus.UNHEALTHY
+                )
                 message = f"Issues found: {', '.join(issues[:3])}"
             else:
                 status = HealthStatus.HEALTHY
-                message = f"All {len(self.expected_dirs)} directories exist and are writable"
+                message = (
+                    f"All {len(self.expected_dirs)} directories exist and are writable"
+                )
 
             duration = (datetime.now() - start).total_seconds() * 1000
 
@@ -388,6 +414,7 @@ class ConfigurationCheck(HealthCheck):
                     # Try to parse YAML
                     try:
                         import yaml
+
                         with open(config_path, "r") as f:
                             yaml.safe_load(f)
                         valid.append(config_file)
@@ -439,15 +466,19 @@ class ChromaDBHealthCheck(HealthCheck):
         start = datetime.now()
 
         try:
-            from ..rag.vector_store import ChromaStore
             from ..rag.config import VectorStoreConfig
+            from ..rag.vector_store import ChromaStore
 
             config = VectorStoreConfig(persist_directory=self.persist_directory)
             store = ChromaStore(config)
             store.initialize()
 
             health = store.health_check()
-            status = HealthStatus.HEALTHY if health["status"] == "healthy" else HealthStatus.DEGRADED
+            status = (
+                HealthStatus.HEALTHY
+                if health["status"] == "healthy"
+                else HealthStatus.DEGRADED
+            )
             message = f"ChromaDB {health['status']}, collections: {list(health.get('collections', {}).keys())}"
 
             return HealthCheckResult(
@@ -486,13 +517,17 @@ class EmbeddingModelHealthCheck(HealthCheck):
         super().__init__("embedding_model")
         self.model = model
         import os
-        self.base_url = base_url or f"http://{os.getenv('OLLAMA_HOST', 'localhost:11434')}"
+
+        self.base_url = (
+            base_url or f"http://{os.getenv('OLLAMA_HOST', 'localhost:11434')}"
+        )
 
     def check(self) -> HealthCheckResult:
         start = datetime.now()
 
         try:
             import requests
+
             response = requests.get(f"{self.base_url}/api/tags", timeout=5)
             response.raise_for_status()
             models = [m["name"] for m in response.json().get("models", [])]
@@ -541,6 +576,7 @@ class MLflowHealthCheck(HealthCheck):
         """
         super().__init__("mlflow")
         import os
+
         self.tracking_uri = tracking_uri or os.getenv(
             "MLFLOW_TRACKING_URI", "http://localhost:5000"
         )
@@ -556,6 +592,7 @@ class MLflowHealthCheck(HealthCheck):
 
         try:
             import requests
+
             response = requests.get(f"{self.tracking_uri}/health", timeout=5)
 
             if response.status_code == 200:
@@ -573,7 +610,10 @@ class MLflowHealthCheck(HealthCheck):
                     status=HealthStatus.DEGRADED,
                     message=f"MLflow returned status {response.status_code}",
                     duration_ms=(datetime.now() - start).total_seconds() * 1000,
-                    metadata={"tracking_uri": self.tracking_uri, "status_code": response.status_code},
+                    metadata={
+                        "tracking_uri": self.tracking_uri,
+                        "status_code": response.status_code,
+                    },
                     timestamp=datetime.now(),
                 )
 
@@ -627,6 +667,7 @@ class HealthMonitor:
         # RAG health checks (graceful if chromadb not installed)
         try:
             import chromadb  # noqa: F401
+
             self.checks.append(ChromaDBHealthCheck())
             self.checks.append(EmbeddingModelHealthCheck())
         except ImportError:
@@ -635,6 +676,7 @@ class HealthMonitor:
         # MLflow health check (graceful if mlflow not installed)
         try:
             import mlflow  # noqa: F401
+
             self.checks.append(MLflowHealthCheck())
         except ImportError:
             pass
@@ -653,14 +695,16 @@ class HealthMonitor:
                 results.append(result)
             except Exception as e:
                 self.logger.error(f"Health check {check.name} failed: {str(e)}")
-                results.append(HealthCheckResult(
-                    name=check.name,
-                    status=HealthStatus.UNKNOWN,
-                    message=f"Check failed: {str(e)}",
-                    duration_ms=0,
-                    metadata={"error": str(e)},
-                    timestamp=datetime.now(),
-                ))
+                results.append(
+                    HealthCheckResult(
+                        name=check.name,
+                        status=HealthStatus.UNKNOWN,
+                        message=f"Check failed: {str(e)}",
+                        duration_ms=0,
+                        metadata={"error": str(e)},
+                        timestamp=datetime.now(),
+                    )
+                )
 
         return results
 
@@ -704,8 +748,12 @@ class HealthMonitor:
             "summary": {
                 "total": len(results),
                 "healthy": sum(1 for r in results if r.status == HealthStatus.HEALTHY),
-                "degraded": sum(1 for r in results if r.status == HealthStatus.DEGRADED),
-                "unhealthy": sum(1 for r in results if r.status == HealthStatus.UNHEALTHY),
+                "degraded": sum(
+                    1 for r in results if r.status == HealthStatus.DEGRADED
+                ),
+                "unhealthy": sum(
+                    1 for r in results if r.status == HealthStatus.UNHEALTHY
+                ),
                 "unknown": sum(1 for r in results if r.status == HealthStatus.UNKNOWN),
             },
         }
@@ -721,9 +769,9 @@ class HealthMonitor:
             HealthStatus.UNKNOWN: "?",
         }
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("Job Raider - Health Check")
-        print("="*60)
+        print("=" * 60)
         print(f"\nOverall Status: {report['status'].upper()}")
         print(f"Timestamp: {report['timestamp']}")
 
@@ -736,8 +784,10 @@ class HealthMonitor:
                     if key not in ["error", "base_url"]:
                         print(f"      {key}: {value}")
 
-        print(f"\nSummary: {report['summary']['healthy']}/{report['summary']['total']} healthy")
-        print("="*60 + "\n")
+        print(
+            f"\nSummary: {report['summary']['healthy']}/{report['summary']['total']} healthy"
+        )
+        print("=" * 60 + "\n")
 
     def save_report(self, filepath: str) -> None:
         """Save health report to file."""

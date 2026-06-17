@@ -8,26 +8,31 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-from typing import List, Dict, Any, Optional, Set
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional, Set
 
-from ..models.job_listing import JobListing, ExperienceLevel
-from ..models.user_profile import UserProfile, Skill as UserSkill
-from ..utils.logger import get_logger, Components
+from ..models.job_listing import ExperienceLevel, JobListing
+from ..models.user_profile import Skill as UserSkill
+from ..models.user_profile import UserProfile
+from ..utils.logger import Components, get_logger
 
 
 class ScoreCategory(str, Enum):
     """Categories of scoring criteria."""
+
     KEYWORD = "keyword"
     SKILLS = "skills"
     EXPERIENCE = "experience"
     LOCATION = "location"
+    PROJECTS = "projects"
+    EDUCATION = "education"
 
 
 @dataclass
 class MatchScore:
     """Result of scoring a job listing."""
+
     job: JobListing
     total_score: int
     passed_threshold: bool
@@ -53,14 +58,25 @@ class JobMatcher:
         ScoreCategory.LOCATION: 10,
     }
 
+    # Fresh graduate mode weights (prioritize potential over experience)
+    FRESH_GRAD_WEIGHTS = {
+        ScoreCategory.PROJECTS: 35,
+        ScoreCategory.SKILLS: 30,
+        ScoreCategory.EDUCATION: 20,
+        ScoreCategory.EXPERIENCE: 10,
+        ScoreCategory.LOCATION: 5,
+    }
+
     # Threshold for "worth applying"
     DEFAULT_THRESHOLD = 60
+    FRESH_GRAD_THRESHOLD = 50  # Lower threshold for fresh grads
 
     def __init__(
         self,
         weights: Optional[Dict[str, int]] = None,
         threshold: int = DEFAULT_THRESHOLD,
         min_skill_match: float = 0.5,
+        fresh_grad_mode: bool = False,
     ):
         """
         Initialize the job matcher.
@@ -69,9 +85,20 @@ class JobMatcher:
             weights: Scoring weights for each category
             threshold: Minimum score to be considered "worth applying"
             min_skill_match: Minimum proportion of required skills to match
+            fresh_grad_mode: Enable fresh graduate scoring mode
         """
-        self.weights = weights or self.DEFAULT_WEIGHTS
-        self.threshold = threshold
+        if fresh_grad_mode:
+            self.weights = weights or self.FRESH_GRAD_WEIGHTS
+            self.threshold = (
+                threshold
+                if threshold != self.DEFAULT_THRESHOLD
+                else self.FRESH_GRAD_THRESHOLD
+            )
+        else:
+            self.weights = weights or self.DEFAULT_WEIGHTS
+            self.threshold = threshold
+
+        self.fresh_grad_mode = fresh_grad_mode
         self.min_skill_match = min_skill_match
 
         self.logger = get_logger(Components.SCORING)
@@ -95,23 +122,47 @@ class JobMatcher:
         matched_keywords = []
         missing_skills = []
 
-        # 1. Keyword overlap (0-30 points)
-        keyword_score, kw_matches = self._score_keywords(job, profile)
-        breakdown[ScoreCategory.KEYWORD.value] = keyword_score
-        matched_keywords.extend(kw_matches)
+        if self.fresh_grad_mode:
+            # Fresh grad mode: prioritize projects and education
+            # 1. Projects/portfolio (0-35 points)
+            proj_score = self._score_projects(job, profile)
+            breakdown[ScoreCategory.PROJECTS.value] = proj_score
 
-        # 2. Skills match (0-40 points)
-        skills_score, missing = self._score_skills(job, profile)
-        breakdown[ScoreCategory.SKILLS.value] = skills_score
-        missing_skills.extend(missing)
+            # 2. Skills match (0-30 points)
+            skills_score, missing = self._score_skills(job, profile)
+            breakdown[ScoreCategory.SKILLS.value] = skills_score
+            missing_skills.extend(missing)
 
-        # 3. Experience alignment (0-20 points)
-        exp_score = self._score_experience(job, profile)
-        breakdown[ScoreCategory.EXPERIENCE.value] = exp_score
+            # 3. Education quality (0-20 points)
+            edu_score = self._score_education(job, profile)
+            breakdown[ScoreCategory.EDUCATION.value] = edu_score
 
-        # 4. Location fit (0-10 points)
-        loc_score = self._score_location(job, profile)
-        breakdown[ScoreCategory.LOCATION.value] = loc_score
+            # 4. Experience alignment (0-10 points) - reduced weight
+            exp_score = self._score_experience(job, profile)
+            breakdown[ScoreCategory.EXPERIENCE.value] = exp_score
+
+            # 5. Location fit (0-5 points) - reduced weight
+            loc_score = self._score_location(job, profile)
+            breakdown[ScoreCategory.LOCATION.value] = loc_score
+        else:
+            # Standard mode
+            # 1. Keyword overlap (0-30 points)
+            keyword_score, kw_matches = self._score_keywords(job, profile)
+            breakdown[ScoreCategory.KEYWORD.value] = keyword_score
+            matched_keywords.extend(kw_matches)
+
+            # 2. Skills match (0-40 points)
+            skills_score, missing = self._score_skills(job, profile)
+            breakdown[ScoreCategory.SKILLS.value] = skills_score
+            missing_skills.extend(missing)
+
+            # 3. Experience alignment (0-20 points)
+            exp_score = self._score_experience(job, profile)
+            breakdown[ScoreCategory.EXPERIENCE.value] = exp_score
+
+            # 4. Location fit (0-10 points)
+            loc_score = self._score_location(job, profile)
+            breakdown[ScoreCategory.LOCATION.value] = loc_score
 
         # Calculate total
         total_score = sum(breakdown.values())
@@ -135,7 +186,9 @@ class JobMatcher:
         return MatchScore(
             job=job,
             total_score=total_score,
-            passed_threshold=(total_score >= self.threshold and not apprenticeship_blocked),
+            passed_threshold=(
+                total_score >= self.threshold and not apprenticeship_blocked
+            ),
             breakdown=breakdown,
             matched_keywords=matched_keywords,
             missing_skills=missing_skills,
@@ -309,6 +362,145 @@ class JobMatcher:
         # No location match
         return int(weight * 0.2)
 
+    def _score_projects(
+        self,
+        job: JobListing,
+        profile: UserProfile,
+    ) -> int:
+        """
+        Score projects and portfolio work (fresh grad mode).
+
+        Args:
+            job: Job listing
+            profile: User profile
+
+        Returns:
+            Project score (0-35)
+        """
+        weight = self.weights.get(ScoreCategory.PROJECTS, 35)
+
+        # Check if profile has project information
+        if not profile.projects:
+            return weight // 4  # Minimal credit if no projects listed
+
+        projects = profile.projects
+        project_count = len(projects)
+
+        score = 0
+
+        # Base score for having projects
+        if project_count >= 3:
+            score = int(weight * 0.25)
+        elif project_count >= 1:
+            score = int(weight * 0.12)
+
+        # Bonus for relevant projects
+        job_skills_lower = {skill.name.lower() for skill in job.skills}
+        for project in projects:
+            # Check project technologies and description
+            proj_text = f"{project.name} {project.description or ''} {' '.join(project.technologies)}".lower()
+
+            # Count matching skills
+            matching_skills = 0
+            for job_skill in job_skills_lower:
+                if job_skill in proj_text:
+                    matching_skills += 1
+
+            if matching_skills >= 2:
+                score += int(weight * 0.12)
+            elif matching_skills >= 1:
+                score += int(weight * 0.06)
+
+        # Bonus for project quality indicators
+        for project in projects:
+            if project.url:  # Has GitHub/portfolio link
+                score += int(weight * 0.03)
+            if project.highlights:  # Has detailed achievements
+                score += int(weight * 0.02)
+
+        # Cap at weight
+        return min(score, weight)
+
+    def _score_education(
+        self,
+        job: JobListing,
+        profile: UserProfile,
+    ) -> int:
+        """
+        Score education quality (fresh grad mode).
+
+        Args:
+            job: Job listing
+            profile: User profile
+
+        Returns:
+            Education score (0-20)
+        """
+        weight = self.weights.get(ScoreCategory.EDUCATION, 20)
+
+        if not profile.education:
+            return weight // 3  # Partial credit if no education info
+
+        score = 0
+        highest_degree_score = 0
+
+        relevant_majors = [
+            "computer science",
+            "software engineering",
+            "data science",
+            "computer engineering",
+            "information technology",
+            "mathematics",
+            "statistics",
+            "physics",
+            "electrical engineering",
+            "informatics",
+        ]
+
+        for edu in profile.education:
+            degree_lower = edu.degree.lower() if edu.degree else ""
+
+            # Score degree level
+            if (
+                "bachelor" in degree_lower
+                or "b.s." in degree_lower
+                or "bs " in degree_lower
+            ):
+                degree_score = int(weight * 0.6)
+            elif (
+                "master" in degree_lower
+                or "m.s." in degree_lower
+                or "ms " in degree_lower
+            ):
+                degree_score = int(weight * 0.8)
+            elif "phd" in degree_lower or "doctor" in degree_lower:
+                degree_score = int(weight * 0.9)
+            else:
+                degree_score = int(weight * 0.3)
+
+            # Bonus for relevant major (check both degree string and school)
+            major_keywords = degree_lower + " " + edu.school.lower()
+            if any(relevant in major_keywords for relevant in relevant_majors):
+                degree_score += int(weight * 0.15)
+
+            # Bonus for GPA
+            if edu.gpa:
+                if edu.gpa >= 3.5:
+                    degree_score += int(weight * 0.1)
+                elif edu.gpa >= 3.0:
+                    degree_score += int(weight * 0.05)
+
+            # Bonus for honors
+            if edu.honors:
+                degree_score += int(weight * 0.05)
+
+            # Track highest degree score
+            if degree_score > highest_degree_score:
+                highest_degree_score = degree_score
+
+        score = highest_degree_score
+        return min(score, weight)
+
     def _apply_apprenticeship_constraint(
         self,
         job: JobListing,
@@ -377,7 +569,11 @@ class JobMatcher:
         Returns:
             True if the job matches the field.
         """
-        field_terms = [term.lower().strip() for term in field.replace("/", " ").split() if term.strip()]
+        field_terms = [
+            term.lower().strip()
+            for term in field.replace("/", " ").split()
+            if term.strip()
+        ]
         searchable = f"{job.title} {job.description or ''}".lower()
         for req in job.requirements:
             searchable += f" {req.text.lower()}"
@@ -407,13 +603,19 @@ class JobMatcher:
         """
         if total_score >= self.threshold * 1.2:
             # Very strong match
-            return "apply", f"Strong match ({total_score}/100). Keywords and skills align well."
+            return (
+                "apply",
+                f"Strong match ({total_score}/100). Keywords and skills align well.",
+            )
         elif total_score >= self.threshold:
             # Good match
             return "apply", f"Good match ({total_score}/100). Meets minimum threshold."
         elif total_score >= self.threshold * 0.7:
             # Maybe
-            return "maybe", f"Possible match ({total_score}/100). Some gaps but consider applying."
+            return (
+                "maybe",
+                f"Possible match ({total_score}/100). Some gaps but consider applying.",
+            )
         else:
             # Poor match
             return "skip", f"Weak match ({total_score}/100). Missing key requirements."
@@ -490,7 +692,11 @@ class SkillMatcher:
         job_skill_names = {s.name.lower() for s in job.skills}
 
         matched_skills = user_skill_names & job_skill_names
-        missing_required = {s.name for s in job.skills if s.is_required and s.name.lower() not in user_skill_names}
+        missing_required = {
+            s.name
+            for s in job.skills
+            if s.is_required and s.name.lower() not in user_skill_names
+        }
         extra_skills = user_skill_names - job_skill_names
 
         return {
@@ -502,7 +708,8 @@ class SkillMatcher:
             "extra_skills": list(extra_skills),
             "overlap_percentage": (
                 len(matched_skills) / len(job_skill_names) * 100
-                if job_skill_names else 0
+                if job_skill_names
+                else 0
             ),
         }
 

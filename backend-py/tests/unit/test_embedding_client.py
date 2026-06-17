@@ -2,6 +2,7 @@
 
 import time
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from src.llm.embedding_client import EmbeddingClient, EmbeddingError
@@ -29,7 +30,9 @@ class TestEmbedSingle:
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.return_value = {"embedding": [0.1] * 768}
 
-        client = EmbeddingClient(model="nomic-embed-text", cache_enabled=True, cache_ttl=60)
+        client = EmbeddingClient(
+            model="nomic-embed-text", cache_enabled=True, cache_ttl=60
+        )
         r1 = client.embed("hello")
         r2 = client.embed("hello")
 
@@ -43,7 +46,9 @@ class TestEmbedSingle:
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.return_value = {"embedding": [0.1] * 768}
 
-        client = EmbeddingClient(model="nomic-embed-text", cache_enabled=True, cache_ttl=0)
+        client = EmbeddingClient(
+            model="nomic-embed-text", cache_enabled=True, cache_ttl=0
+        )
         client.embed("hello")
         # TTL=0 means immediately expired
         client.embed("hello")
@@ -106,6 +111,7 @@ class TestErrorHandling:
     def test_timeout_raises_error(self, mock_post):
         """Should raise EmbeddingError on timeout."""
         import requests
+
         mock_post.side_effect = requests.Timeout("timed out")
 
         client = EmbeddingClient(model="nomic-embed-text", cache_enabled=False)

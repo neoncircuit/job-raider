@@ -9,17 +9,16 @@ Date: 2026-04-21
 """
 
 from .detector import (
-    AutoSubmitDetector,
-    SubmissionInfo,
     ApplyMethod,
+    AutoSubmitDetector,
     SubmissionAnalyzer,
+    SubmissionInfo,
 )
-
 from .submitter import (
+    ApplicationTracker,
     AutoSubmitter,
     SubmissionResult,
     SubmissionStatus,
-    ApplicationTracker,
 )
 
 __all__ = [

@@ -10,24 +10,20 @@ Date: 2026-04-20
 """
 
 import os
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
-from dataclasses import dataclass
 
-from .base import (
-    BaseLLMClient,
-    LLMConfig,
-    LLMResponse,
-    Message,
-)
+from .base import BaseLLMClient, LLMConfig, LLMResponse, Message
 from .claude_client import ClaudeClient
 from .gemini_client import GeminiClient
-from .ollama_client import OllamaClient
 from .gpu_monitor import GPUMonitor
+from .ollama_client import OllamaClient
 
 
 class TaskType(str, Enum):
     """Types of tasks that can be routed."""
+
     SELECTION = "selection"  # Project/keyword selection (fast, cheap)
     SCORING = "scoring"  # Relevance scoring (fast, cheap)
     JD_EXTRACTION = "jd_extraction"  # JD parsing (medium)
@@ -39,13 +35,18 @@ class TaskType(str, Enum):
     EMBEDDING = "embedding"  # Embedding generation (RAG)
     QUESTION_ANSWERING = "question_answering"  # Answering application form questions
     TRUST_ANALYSIS = "trust_analysis"  # Analyzing job listing trustworthiness
-    COVER_LETTER_WRITING = "cover_letter_writing"  # Cover letter generation (high quality)
+    COVER_LETTER_WRITING = (
+        "cover_letter_writing"  # Cover letter generation (high quality)
+    )
+    ASSESSMENT_GENERATION = "assessment_generation"  # Generating assessment questions
+    ASSESSMENT_EVALUATION = "assessment_evaluation"  # Evaluating assessment answers
     GENERAL = "general"  # General purpose tasks
 
 
 @dataclass
 class RouteConfig:
     """Configuration for a specific route."""
+
     task_type: TaskType
     primary_provider: str  # "ollama" or "anthropic"
     primary_model: str
@@ -155,6 +156,20 @@ class LLMRouter:
             fallback_provider="anthropic",
             fallback_model="claude-sonnet-4-6",
         ),
+        TaskType.ASSESSMENT_GENERATION: RouteConfig(
+            task_type=TaskType.ASSESSMENT_GENERATION,
+            primary_provider="ollama",
+            primary_model="qwen2.5:7b",
+            fallback_provider="anthropic",
+            fallback_model="claude-sonnet-4-6",
+        ),
+        TaskType.ASSESSMENT_EVALUATION: RouteConfig(
+            task_type=TaskType.ASSESSMENT_EVALUATION,
+            primary_provider="ollama",
+            primary_model="qwen2.5:7b",
+            fallback_provider="anthropic",
+            fallback_model="claude-sonnet-4-6",
+        ),
     }
 
     def __init__(
@@ -165,7 +180,7 @@ class LLMRouter:
         ollama_port: Optional[int] = None,
         gpu_monitor: Optional[GPUMonitor] = None,
         gemini_api_key: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the LLM router.
@@ -230,10 +245,7 @@ class LLMRouter:
             pass
 
     def _get_client(
-        self,
-        provider: str,
-        model: str,
-        config: Optional[LLMConfig] = None
+        self, provider: str, model: str, config: Optional[LLMConfig] = None
     ) -> BaseLLMClient:
         """
         Get or create a client for the given provider and model.
@@ -276,10 +288,7 @@ class LLMRouter:
         return client
 
     def generate(
-        self,
-        messages: List[Message],
-        task_type: TaskType = TaskType.GENERAL,
-        **kwargs
+        self, messages: List[Message], task_type: TaskType = TaskType.GENERAL, **kwargs
     ) -> LLMResponse:
         """
         Generate a response using the appropriate model for the task.
@@ -311,8 +320,7 @@ class LLMRouter:
             if route.fallback_provider and route.fallback_model:
                 try:
                     client = self._get_client(
-                        route.fallback_provider,
-                        route.fallback_model
+                        route.fallback_provider, route.fallback_model
                     )
                     response = client.generate(messages, **kwargs)
                     self._fallback_used += 1
@@ -326,10 +334,7 @@ class LLMRouter:
             raise
 
     async def generate_async(
-        self,
-        messages: List[Message],
-        task_type: TaskType = TaskType.GENERAL,
-        **kwargs
+        self, messages: List[Message], task_type: TaskType = TaskType.GENERAL, **kwargs
     ) -> LLMResponse:
         """
         Generate a response asynchronously using the appropriate model.
@@ -361,8 +366,7 @@ class LLMRouter:
             if route.fallback_provider and route.fallback_model:
                 try:
                     client = self._get_client(
-                        route.fallback_provider,
-                        route.fallback_model
+                        route.fallback_provider, route.fallback_model
                     )
                     response = await client.generate_async(messages, **kwargs)
                     self._fallback_used += 1
@@ -405,7 +409,8 @@ class LLMRouter:
             "fallback_used": self._fallback_used,
             "fallback_rate": (
                 self._fallback_used / self._total_requests
-                if self._total_requests > 0 else 0.0
+                if self._total_requests > 0
+                else 0.0
             ),
             "total_cost": self._total_cost,
         }
@@ -419,9 +424,7 @@ class LLMRouter:
 
 
 def create_router(
-    prefer_local: bool = True,
-    api_key: Optional[str] = None,
-    **kwargs
+    prefer_local: bool = True, api_key: Optional[str] = None, **kwargs
 ) -> LLMRouter:
     """
     Create an LLM router with optimized settings.

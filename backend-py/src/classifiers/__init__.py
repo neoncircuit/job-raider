@@ -8,6 +8,6 @@ Author: Job Raider
 Date: 2026-04-29
 """
 
-from .job_classifier import JobClassifier, JobClassificationResult
+from .job_classifier import JobClassificationResult, JobClassifier
 
 __all__ = ["JobClassifier", "JobClassificationResult"]

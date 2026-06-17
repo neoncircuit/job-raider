@@ -8,16 +8,17 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from ..models.job_listing import JobListing, JobSource
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class ApplyMethod(str, Enum):
     """Types of application methods."""
+
     EASY_APPLY = "easy_apply"
     EXTERNAL_SITE = "external_site"
     EMAIL = "email"
@@ -28,6 +29,7 @@ class ApplyMethod(str, Enum):
 @dataclass
 class SubmissionInfo:
     """Information about how to submit an application."""
+
     job: JobListing
     can_auto_submit: bool
     apply_method: ApplyMethod
@@ -48,7 +50,11 @@ class AutoSubmitDetector:
     # Platform-specific easy apply indicators
     PLATFORM_INDICATORS = {
         JobSource.LINKEDIN: {
-            "easy_apply_classes": ["apply-button", "jobs-apply-button", "simplified-apply"],
+            "easy_apply_classes": [
+                "apply-button",
+                "jobs-apply-button",
+                "simplified-apply",
+            ],
             "easy_apply_text": ["Easy Apply", "Apply now", "Quick apply"],
         },
         JobSource.JSEARCH: {
@@ -372,14 +378,15 @@ class SubmissionAnalyzer:
 
         return {
             "auto_submit_count": sum(1 for s in submission_info if s.can_auto_submit),
-            "manual_submit_count": sum(1 for s in submission_info if not s.can_auto_submit),
+            "manual_submit_count": sum(
+                1 for s in submission_info if not s.can_auto_submit
+            ),
             "auto_submit_time_minutes": auto_submit_time,
             "manual_submit_time_minutes": manual_submit_time,
             "total_time_minutes": total_time,
             "time_saved_by_auto_submit": manual_submit_time,
             "automation_percentage": (
-                auto_submit_time / total_time * 100
-                if total_time > 0 else 0
+                auto_submit_time / total_time * 100 if total_time > 0 else 0
             ),
         }
 
@@ -414,10 +421,16 @@ class SubmissionAnalyzer:
         manual_jobs = [s for s in submission_info if not s.can_auto_submit]
 
         # Auto-submit can be done in parallel
-        auto_time = max((s.estimated_time_minutes for s in auto_jobs), default=0) if auto_jobs else 0
+        auto_time = (
+            max((s.estimated_time_minutes for s in auto_jobs), default=0)
+            if auto_jobs
+            else 0
+        )
 
         # Manual jobs need sequential processing (with some parallelization)
-        manual_groups = len(manual_jobs) // concurrent_limit + (1 if len(manual_jobs) % concurrent_limit else 0)
+        manual_groups = len(manual_jobs) // concurrent_limit + (
+            1 if len(manual_jobs) % concurrent_limit else 0
+        )
         manual_time = sum(s.estimated_time_minutes for s in manual_jobs)
 
         total_time = auto_time + manual_time

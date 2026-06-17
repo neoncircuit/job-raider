@@ -12,19 +12,19 @@ import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from ...models.user_profile import UserProfile, ApprenticeshipContract
-from ...models.job_listing import JobListing
 from ...extractors.resume_parser import ResumeParser
 from ...generation.resume_analyzer import ResumeAnalyzer
 from ...llm.router import LLMRouter
-from ...utils.logger import get_logger, Components
+from ...models.job_listing import JobListing
+from ...models.user_profile import ApprenticeshipContract, UserProfile
+from ...utils.logger import Components, get_logger
 from ..models.requests import ProfileUpdateRequest
-from ..models.responses import ProfileResponse, ErrorResponse
+from ..models.responses import ErrorResponse, ProfileResponse
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
@@ -43,14 +43,16 @@ def _update_apprenticeship(profile: UserProfile, request: ProfileUpdateRequest) 
     """
     from ...extractors.resume_parser import ResumeParser
 
-    has_apprenticeship_fields = any([
-        request.apprenticeship_field is not None,
-        request.apprenticeship_duration_months is not None,
-        request.apprenticeship_employer is not None,
-        request.apprenticeship_start_date is not None,
-        request.apprenticeship_end_date is not None,
-        request.apprenticeship_is_active is not None,
-    ])
+    has_apprenticeship_fields = any(
+        [
+            request.apprenticeship_field is not None,
+            request.apprenticeship_duration_months is not None,
+            request.apprenticeship_employer is not None,
+            request.apprenticeship_start_date is not None,
+            request.apprenticeship_end_date is not None,
+            request.apprenticeship_is_active is not None,
+        ]
+    )
 
     if not has_apprenticeship_fields:
         return
@@ -73,7 +75,11 @@ def _update_apprenticeship(profile: UserProfile, request: ProfileUpdateRequest) 
         duration_months=(
             request.apprenticeship_duration_months
             if request.apprenticeship_duration_months is not None
-            else (profile.apprenticeship.duration_months if profile.apprenticeship else None)
+            else (
+                profile.apprenticeship.duration_months
+                if profile.apprenticeship
+                else None
+            )
         ),
         employer=(
             request.apprenticeship_employer
@@ -97,6 +103,7 @@ def _update_apprenticeship(profile: UserProfile, request: ProfileUpdateRequest) 
         ),
     )
 
+
 # Profile storage (use database in production)
 stored_profiles: Dict[str, Dict[str, Any]] = {}
 
@@ -110,7 +117,9 @@ UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR", str(_BASE_DIR / "data" / "profile
 try:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 except PermissionError:
-    logger.warning(f"Cannot create upload directory {UPLOAD_DIR}, falling back to /tmp/job-raider/profiles")
+    logger.warning(
+        f"Cannot create upload directory {UPLOAD_DIR}, falling back to /tmp/job-raider/profiles"
+    )
     UPLOAD_DIR = Path("/tmp/job-raider/profiles")
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -225,10 +234,18 @@ async def get_profile():
             "email": profile.contact.email,
             "phone": profile.contact.phone,
             "location": profile.contact.location,
-            "linkedin_url": str(profile.contact.linkedin) if profile.contact.linkedin else None,
-            "github_url": str(profile.contact.github) if profile.contact.github else None,
-            "portfolio_url": str(profile.contact.portfolio) if profile.contact.portfolio else None,
-            "website_url": str(profile.contact.website) if profile.contact.website else None,
+            "linkedin_url": (
+                str(profile.contact.linkedin) if profile.contact.linkedin else None
+            ),
+            "github_url": (
+                str(profile.contact.github) if profile.contact.github else None
+            ),
+            "portfolio_url": (
+                str(profile.contact.portfolio) if profile.contact.portfolio else None
+            ),
+            "website_url": (
+                str(profile.contact.website) if profile.contact.website else None
+            ),
         },
         "summary": profile.summary,
         "core_skills": profile.core_skills,
@@ -247,8 +264,14 @@ async def get_profile():
         "skills": [
             {
                 "name": s.name,
-                "category": s.category.value if hasattr(s.category, "value") else s.category,
-                "proficiency": s.proficiency.value if s.proficiency and hasattr(s.proficiency, "value") else s.proficiency,
+                "category": (
+                    s.category.value if hasattr(s.category, "value") else s.category
+                ),
+                "proficiency": (
+                    s.proficiency.value
+                    if s.proficiency and hasattr(s.proficiency, "value")
+                    else s.proficiency
+                ),
                 "years_of_experience": s.years_of_experience,
             }
             for s in profile.skills
@@ -297,7 +320,9 @@ async def get_profile():
                 "name": c.name,
                 "issuer": c.issuer,
                 "issue_date": c.issue_date.isoformat() if c.issue_date else None,
-                "expiration_date": c.expiration_date.isoformat() if c.expiration_date else None,
+                "expiration_date": (
+                    c.expiration_date.isoformat() if c.expiration_date else None
+                ),
                 "credential_id": c.credential_id,
             }
             for c in profile.certifications
@@ -305,8 +330,16 @@ async def get_profile():
         "languages": profile.languages,
         "years_of_experience": profile.years_of_experience,
         # Application-specific fields
-        "visa_status": profile.visa_status.value if profile.visa_status and hasattr(profile.visa_status, "value") else profile.visa_status,
-        "visa_expiration_date": profile.visa_expiration_date.isoformat() if profile.visa_expiration_date else None,
+        "visa_status": (
+            profile.visa_status.value
+            if profile.visa_status and hasattr(profile.visa_status, "value")
+            else profile.visa_status
+        ),
+        "visa_expiration_date": (
+            profile.visa_expiration_date.isoformat()
+            if profile.visa_expiration_date
+            else None
+        ),
         "salary_expectation_min": profile.salary_expectation_min,
         "salary_expectation_max": profile.salary_expectation_max,
         "salary_currency": profile.salary_currency,
@@ -318,8 +351,16 @@ async def get_profile():
                 "field": profile.apprenticeship.field,
                 "duration_months": profile.apprenticeship.duration_months,
                 "employer": profile.apprenticeship.employer,
-                "start_date": profile.apprenticeship.start_date.isoformat() if profile.apprenticeship.start_date else None,
-                "end_date": profile.apprenticeship.end_date.isoformat() if profile.apprenticeship.end_date else None,
+                "start_date": (
+                    profile.apprenticeship.start_date.isoformat()
+                    if profile.apprenticeship.start_date
+                    else None
+                ),
+                "end_date": (
+                    profile.apprenticeship.end_date.isoformat()
+                    if profile.apprenticeship.end_date
+                    else None
+                ),
                 "is_active": profile.apprenticeship.is_active,
             }
             if profile.apprenticeship
@@ -416,7 +457,9 @@ async def export_profile():
 @router.post("/analyze")
 async def analyze_resume(
     file: UploadFile = File(..., description="Resume file (PDF or DOCX)"),
-    job_description: str = Form(default=None, description="Optional job description for comparison"),
+    job_description: str = Form(
+        default=None, description="Optional job description for comparison"
+    ),
 ):
     """
     Analyze a resume and provide AI-powered insights.
@@ -473,7 +516,9 @@ async def analyze_resume(
                 skills=[Skill(name="skill")] if True else [],
             )
 
-            analysis = analyzer.analyze_job_specific(profile, job, resume_path=file.filename)
+            analysis = analyzer.analyze_job_specific(
+                profile, job, resume_path=file.filename
+            )
         else:
             # General analysis
             analysis = analyzer.analyze_general(profile, resume_path=file.filename)
@@ -530,7 +575,9 @@ async def analyze_resume(
 
     except Exception as e:
         logger.error(f"Failed to analyze resume: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to analyze resume: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to analyze resume: {str(e)}"
+        )
 
     finally:
         # Clean up temporary file

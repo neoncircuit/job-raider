@@ -2,30 +2,33 @@
 # Author: Job Raider
 # Date: 2026-04-21
 
-import pytest
 from datetime import datetime
+
+import pytest
 from pydantic import ValidationError
 
 from src.models.job_listing import (
-    JobListing,
-    JobSource,
     ExperienceLevel,
-    JobType,
-    WorkMode,
-    SalaryRange,
+    JobListing,
     JobListingCollection,
     JobRequirement,
     JobResponsibility,
-    Skill as JobSkill,
+    JobSource,
+    JobType,
+    SalaryRange,
+)
+from src.models.job_listing import Skill as JobSkill
+from src.models.job_listing import (
+    WorkMode,
 )
 from src.models.user_profile import (
-    UserProfile,
     ContactInfo,
-    Skill,
-    SkillCategory,
     ProficiencyLevel,
     Project,
+    Skill,
+    SkillCategory,
     TargetJob,
+    UserProfile,
 )
 
 
@@ -132,9 +135,9 @@ class TestJobListingCollection:
         # All filtered jobs should contain "python" in title, description, or skills
         for job in filtered.listings:
             has_keyword = (
-                "python" in job.title.lower() or
-                (job.description and "python" in job.description.lower()) or
-                any("python" in skill.name.lower() for skill in job.skills)
+                "python" in job.title.lower()
+                or (job.description and "python" in job.description.lower())
+                or any("python" in skill.name.lower() for skill in job.skills)
             )
             assert has_keyword
 
@@ -171,7 +174,11 @@ class TestUserProfile:
         profile = sample_user_profile
 
         # Should have skills with categories
-        programming_skills = [s for s in profile.skills if s.category == SkillCategory.PROGRAMMING_LANGUAGE]
+        programming_skills = [
+            s
+            for s in profile.skills
+            if s.category == SkillCategory.PROGRAMMING_LANGUAGE
+        ]
         assert len(programming_skills) > 0
 
 

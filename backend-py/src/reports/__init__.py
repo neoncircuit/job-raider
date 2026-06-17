@@ -9,9 +9,9 @@ Date: 2026-04-21
 """
 
 from .report_generator import (
+    DashboardData,
     PipelineReport,
     ReportGenerator,
-    DashboardData,
     generate_report,
     save_dashboard_data,
 )

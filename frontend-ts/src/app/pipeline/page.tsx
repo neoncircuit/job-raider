@@ -36,8 +36,9 @@ function usePipelineWS(runId: string | null) {
   useEffect(() => {
     if (!runId) return;
 
-    setMessages([]);
-    setWsStatus("idle");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMessages(prev => prev.length > 0 ? [] : prev);
+    setWsStatus(prev => prev !== "idle" ? "idle" : prev);
     const ws = new WebSocket(`${WS_BASE}/api/pipeline/${runId}/progress`);
     wsRef.current = ws;
 

@@ -8,29 +8,29 @@ Author: Job Raider
 Date: 2026-05-04
 """
 
-import time
 import random
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
 from playwright.sync_api import Page
 
-from .session import LinkedInSession
-from .form_parser import EasyApplyFormParser
+from ..submission.applied_tracker import AppliedJobsTracker
+from ..utils.logger import Components, get_logger
 from .answer_engine import QuestionAnswerEngine
 from .form_models import (
-    ParsedForm,
-    FormStep,
-    FormQuestion,
-    QuestionAnswer,
-    QuestionType,
     AnswerConfidence,
     FormFillResult,
+    FormQuestion,
+    FormStep,
+    ParsedForm,
+    QuestionAnswer,
+    QuestionType,
 )
+from .form_parser import EasyApplyFormParser
 from .safety import SafetyController
-from ..submission.applied_tracker import AppliedJobsTracker
-from ..utils.logger import get_logger, Components
+from .session import LinkedInSession
 
 
 class EasyApplyFormFiller:
@@ -181,7 +181,10 @@ class EasyApplyFormFiller:
 
                     # Fill each field
                     for answer in answers:
-                        if answer.answer_value and answer.confidence != AnswerConfidence.UNKNOWN:
+                        if (
+                            answer.answer_value
+                            and answer.confidence != AnswerConfidence.UNKNOWN
+                        ):
                             filled = self._fill_field(page, answer)
                             if filled:
                                 total_answered += 1
@@ -190,7 +193,10 @@ class EasyApplyFormFiller:
                         else:
                             total_skipped += 1
 
-                        if answer.confidence in (AnswerConfidence.LOW, AnswerConfidence.UNKNOWN):
+                        if answer.confidence in (
+                            AnswerConfidence.LOW,
+                            AnswerConfidence.UNKNOWN,
+                        ):
                             low_confidence.append(answer)
 
                 # Take step screenshot
@@ -341,9 +347,7 @@ class EasyApplyFormFiller:
                 )
                 return False
         except Exception as e:
-            self.logger.warning(
-                f"Failed to fill field '{question.question_text}': {e}"
-            )
+            self.logger.warning(f"Failed to fill field '{question.question_text}': {e}")
             return False
 
     def _fill_text_field(self, page: Page, selector: str, value: str) -> bool:

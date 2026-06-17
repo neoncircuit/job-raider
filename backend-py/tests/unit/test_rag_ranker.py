@@ -1,16 +1,23 @@
 """Unit tests for the RAGRanker."""
 
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
 
-from src.rag.ranker import RAGRanker, RAGMatchScore
-from src.rag.config import RAGConfig, EmbeddingConfig, VectorStoreConfig, ChunkingConfig, ReRankingConfig
-from src.rag.chunker import TextChunker
-from src.rag.vector_store import ChromaStore
+import numpy as np
+import pytest
+
 from src.llm.embedding_client import EmbeddingClient
-from src.scoring.matcher import MatchScore
 from src.models.job_listing import JobListing, JobSource
+from src.rag.chunker import TextChunker
+from src.rag.config import (
+    ChunkingConfig,
+    EmbeddingConfig,
+    RAGConfig,
+    ReRankingConfig,
+    VectorStoreConfig,
+)
+from src.rag.ranker import RAGMatchScore, RAGRanker
+from src.rag.vector_store import ChromaStore
+from src.scoring.matcher import MatchScore
 
 
 @pytest.fixture
@@ -91,7 +98,9 @@ class TestIndexProfile:
 class TestReRank:
     """Tests for re-ranking."""
 
-    def test_re_rank_produces_scores(self, ranker_components, sample_scored_listings, sample_user_profile):
+    def test_re_rank_produces_scores(
+        self, ranker_components, sample_scored_listings, sample_user_profile
+    ):
         """Re-ranking should produce RAGMatchScore objects."""
         results = ranker_components.re_rank(sample_scored_listings, sample_user_profile)
 
@@ -182,7 +191,9 @@ class TestCombinedScore:
 class TestSemanticSearch:
     """Tests for semantic search."""
 
-    def test_search_returns_results(self, ranker_components, sample_job_listing, mock_embedding_client):
+    def test_search_returns_results(
+        self, ranker_components, sample_job_listing, mock_embedding_client
+    ):
         """Semantic search should return matching jobs."""
         ranker_components.index_jobs([sample_job_listing])
 

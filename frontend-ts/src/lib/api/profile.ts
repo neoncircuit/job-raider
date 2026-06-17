@@ -3,10 +3,10 @@ import type { UserProfile, ResumeAnalysis } from "@/lib/types/api";
 
 export const profileApi = {
   get: () =>
-    request<UserProfile>("GET", "/profile/"),
+    request<UserProfile>("GET", "/profile"),
 
   update: (updates: Partial<UserProfile>) =>
-    request<{ message: string }>("PUT", "/profile/", { body: updates }),
+    request<{ message: string }>("PUT", "/profile", { body: updates }),
 
   export: () =>
     request<UserProfile>("GET", "/profile/export"),

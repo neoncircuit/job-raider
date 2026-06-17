@@ -2,16 +2,17 @@
 Unit tests for application tracker feature.
 """
 
-import pytest
-import tempfile
 import shutil
-from pathlib import Path
+import tempfile
 from datetime import datetime, timedelta
+from pathlib import Path
+
+import pytest
 
 from src.metrics.outcome_tracker import (
-    OutcomeTracker,
     ApplicationStatus,
     CustomApplicationStatus,
+    OutcomeTracker,
 )
 
 
@@ -220,7 +221,9 @@ class TestApplicationTracker:
         tracker1 = OutcomeTracker(storage_dir=str(temp_data_dir))
 
         # Create a saved job
-        tracker1.save_job("job_1", "Engineer", "Company", source_url="https://example.com")
+        tracker1.save_job(
+            "job_1", "Engineer", "Company", source_url="https://example.com"
+        )
 
         # Create new tracker instance
         tracker2 = OutcomeTracker(storage_dir=str(temp_data_dir))

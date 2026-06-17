@@ -8,18 +8,19 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import Dict, List, Optional, Any
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import json
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from ..utils.logger import get_logger, Components
+from ..utils.logger import Components, get_logger
 
 
 class ModelProvider(str, Enum):
     """LLM model providers."""
+
     ANTHROPIC = "anthropic"
     OLLAMA = "ollama"
     OPENAI = "openai"
@@ -27,6 +28,7 @@ class ModelProvider(str, Enum):
 
 class TaskType(str, Enum):
     """Types of LLM tasks."""
+
     EXTRACTION = "extraction"
     SCORING = "scoring"
     SELECTION = "selection"
@@ -38,6 +40,7 @@ class TaskType(str, Enum):
 @dataclass
 class TokenUsage:
     """Token usage for a single LLM call."""
+
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
@@ -51,6 +54,7 @@ class TokenUsage:
 @dataclass
 class ModelCost:
     """Cost information for a model."""
+
     provider: ModelProvider
     model_name: str
     input_cost_per_million: float
@@ -67,7 +71,9 @@ class ModelCost:
             Cost in USD
         """
         input_cost = (usage.prompt_tokens / 1_000_000) * self.input_cost_per_million
-        output_cost = (usage.completion_tokens / 1_000_000) * self.output_cost_per_million
+        output_cost = (
+            usage.completion_tokens / 1_000_000
+        ) * self.output_cost_per_million
         return input_cost + output_cost
 
 
@@ -92,7 +98,6 @@ MODEL_PRICING = {
         input_cost_per_million=15.0,
         output_cost_per_million=75.0,
     ),
-
     # Ollama models (free, local)
     "qwen2.5:3b": ModelCost(
         provider=ModelProvider.OLLAMA,
@@ -124,6 +129,7 @@ MODEL_PRICING = {
 @dataclass
 class LLMApiCall:
     """Record of a single LLM API call."""
+
     timestamp: datetime
     task_type: TaskType
     model_name: str
@@ -138,6 +144,7 @@ class LLMApiCall:
 @dataclass
 class PipelineCostSummary:
     """Cost summary for a pipeline run."""
+
     total_cost_usd: float
     total_calls: int
     total_tokens: int
@@ -271,12 +278,16 @@ class CostTracker:
         # Group by model
         by_model: Dict[str, float] = {}
         for call in self._calls:
-            by_model[call.model_name] = by_model.get(call.model_name, 0.0) + call.cost_usd
+            by_model[call.model_name] = (
+                by_model.get(call.model_name, 0.0) + call.cost_usd
+            )
 
         # Group by provider
         by_provider: Dict[ModelProvider, float] = {}
         for call in self._calls:
-            by_provider[call.provider] = by_provider.get(call.provider, 0.0) + call.cost_usd
+            by_provider[call.provider] = (
+                by_provider.get(call.provider, 0.0) + call.cost_usd
+            )
 
         # Calculate cache hit rate
         cache_hits = sum(1 for call in self._calls if call.cache_hit)
@@ -316,7 +327,8 @@ class CostTracker:
         """
         total_cost = sum(call.cost_usd for call in self._calls)
         api_cost = sum(
-            call.cost_usd for call in self._calls
+            call.cost_usd
+            for call in self._calls
             if call.provider == ModelProvider.ANTHROPIC
         )
 
@@ -453,7 +465,8 @@ class CostTracker:
 
         # Check for expensive API usage
         api_cost = sum(
-            call.cost_usd for call in self._calls
+            call.cost_usd
+            for call in self._calls
             if call.provider == ModelProvider.ANTHROPIC
         )
 
@@ -465,7 +478,10 @@ class CostTracker:
 
         # Check for inefficient model usage
         for call in self._calls:
-            if call.task_type == TaskType.SELECTION and call.provider == ModelProvider.ANTHROPIC:
+            if (
+                call.task_type == TaskType.SELECTION
+                and call.provider == ModelProvider.ANTHROPIC
+            ):
                 if call.model_name != "claude-haiku-4-5-20251001":
                     recommendations.append(
                         f"Using {call.model_name} for selection. "
@@ -474,7 +490,9 @@ class CostTracker:
 
         # Check token efficiency
         if self._calls:
-            avg_tokens = sum(call.token_usage.total_tokens for call in self._calls) / len(self._calls)
+            avg_tokens = sum(
+                call.token_usage.total_tokens for call in self._calls
+            ) / len(self._calls)
             if avg_tokens > 5000:
                 recommendations.append(
                     f"High average token count ({avg_tokens:.0f}). "
@@ -496,7 +514,11 @@ class CostTracker:
 
         data = {
             "run_id": self._current_run_id,
-            "start_time": self._pipeline_start_time.isoformat() if self._pipeline_start_time else None,
+            "start_time": (
+                self._pipeline_start_time.isoformat()
+                if self._pipeline_start_time
+                else None
+            ),
             "end_time": datetime.now().isoformat(),
             "summary": {
                 "total_cost_usd": summary.total_cost_usd,
@@ -543,7 +565,9 @@ class CostTracker:
         """
         history = []
 
-        for filepath in sorted(self.storage_dir.glob("cost_run_*.json"), reverse=True)[:limit]:
+        for filepath in sorted(self.storage_dir.glob("cost_run_*.json"), reverse=True)[
+            :limit
+        ]:
             try:
                 with open(filepath, "r") as f:
                     data = json.load(f)
@@ -569,8 +593,10 @@ class CostTracker:
         # Filter by date
         cutoff = datetime.now().timestamp() - (days * 86400)
         recent_runs = [
-            run for run in history
-            if run.get("end_time") and datetime.fromisoformat(run["end_time"]).timestamp() > cutoff
+            run
+            for run in history
+            if run.get("end_time")
+            and datetime.fromisoformat(run["end_time"]).timestamp() > cutoff
         ]
 
         if not recent_runs:

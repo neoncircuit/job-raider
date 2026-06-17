@@ -2,23 +2,29 @@
 # Author: Job Raider
 # Date: 2026-04-21
 
-import pytest
 from datetime import datetime
 
-from src.scoring.matcher import JobMatcher, MatchScore
-from src.scoring.filter import JobFilter
+import pytest
+
+from src.models.job_listing import (
+    ExperienceLevel,
+    JobListing,
+    JobRequirement,
+    JobSource,
+)
+from src.models.job_listing import Skill as JobSkill
 from src.models.user_profile import (
-    UserProfile,
     ContactInfo,
-    Skill,
-    SkillCategory,
     ProficiencyLevel,
     Project,
+    Skill,
+    SkillCategory,
     TargetJob,
+    UserProfile,
     WorkExperience,
 )
-from src.models.job_listing import JobListing, JobSource, JobRequirement, Skill as JobSkill
-from src.models.job_listing import ExperienceLevel
+from src.scoring.filter import JobFilter
+from src.scoring.matcher import JobMatcher, MatchScore
 
 
 class TestJobMatcher:
@@ -126,8 +132,8 @@ class TestJobFilter:
         assert len(filtered.listings) <= len(sample_job_listings)
         for job in filtered.listings:
             has_keyword = any(
-                kw in job.title.lower() or
-                (job.description and kw in job.description.lower())
+                kw in job.title.lower()
+                or (job.description and kw in job.description.lower())
                 for kw in ["python", "engineer"]
             )
             assert has_keyword
@@ -144,8 +150,8 @@ class TestJobFilter:
 
     def test_quick_filter_reject_patterns(self, sample_job_listings):
         """Test quick filter rejection patterns."""
-        from src.scoring.filter import QuickFilter
         from src.models.job_listing import JobListingCollection
+        from src.scoring.filter import QuickFilter
 
         # Add a job matching a reject pattern (e.g., "vice president")
         vp_job = JobListing(

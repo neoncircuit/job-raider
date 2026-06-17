@@ -1,0 +1,136 @@
+# Job Raider - Multi-Agent System Configuration
+# Settings for the multi-agent coordination system
+
+# Agent coordinator settings
+coordinator:
+  # Maximum number of pipelines that can run concurrently
+  max_concurrent_pipelines: 3
+
+  # Timeout for task execution (in seconds)
+  task_timeout: 300.0  # 5 minutes
+
+  # Interval for performance monitoring checks (in seconds)
+  performance_check_interval: 30.0  # 30 seconds
+
+  # Task scheduling settings
+  scheduling:
+    max_queue_size: 1000  # Maximum tasks in queue
+    retry_failed_tasks: true
+    max_retries: 3
+    retry_delay: 5.0  # seconds between retries
+
+# Communication bus settings
+communication:
+  # Maximum size of message queues per agent
+  max_queue_size: 1000
+
+  # Message size and history limits
+  max_message_size: 1048576  # 1MB max message size in bytes
+  max_history_size: 5000  # Maximum messages to keep in history
+
+  # Message time-to-live (TTL) settings
+  message_ttl:
+    hours: 24  # Messages expire after 24 hours
+
+  # Message handling settings
+  message_timeout: 5.0  # seconds to wait for queue availability
+  response_timeout: 30.0  # seconds to wait for message responses
+
+# Agent defaults
+agents:
+  # Default resource requirements
+  default_resources:
+    memory: "medium"  # low, medium, high
+    cpu: "medium"
+    max_concurrent_tasks: 3
+
+  # Performance tracking settings
+  performance:
+    track_execution_time: true
+    track_success_rate: true
+    track_utilization: true
+    history_retention_days: 7
+
+  # Health check settings
+  health:
+    check_interval: 60.0  # seconds between health checks
+    failure_threshold: 3  # consecutive failures before marking unhealthy
+    recovery_threshold: 2  # consecutive successes before marking healthy
+
+# Career coach specific settings
+career_coach:
+  # Analysis settings
+  analysis:
+    confidence_threshold: 0.7  # Minimum confidence for recommendations
+    max_recommendations: 10  # Maximum recommendations to return
+    include_reasoning: true  # Include explanation for recommendations
+
+  # Gap analysis settings
+  gap_analysis:
+    skill_categories:
+      - "technical"
+      - "soft"
+      - "domain"
+      - "certification"
+
+    priority_factors:
+      market_demand: 0.4
+      user_interest: 0.3
+      time_to_acquire: 0.2
+      cost: 0.1
+
+  # Upskilling roadmap settings
+  upskilling:
+    max_skills_roadmap: 5  # Maximum skills in a single roadmap
+    include_free_resources: true
+    include_paid_resources: true
+    timeline_months_max: 12  # Maximum timeline for roadmap in months
+
+  # Goal setting settings
+  goals:
+    smart_framework: true  # Use SMART goal framework
+    max_concurrent_goals: 5
+    default_timeline_months: 6
+
+# Pipeline orchestration settings
+pipeline:
+  # Stage execution settings
+  execution:
+    parallel_stages: true  # Enable parallel stage execution
+    max_parallel_stages: 3
+
+  # Error handling
+  error_handling:
+    stop_on_failure: false  # Continue on non-critical failures
+    retry_failed_stages: true
+    log_all_errors: true
+
+  # Performance optimization
+  optimization:
+    cache_stage_results: true
+    reuse_agent_results: true
+    minimize_communication: true
+
+# Environment-specific overrides
+environments:
+  development:
+    coordinator:
+      max_concurrent_pipelines: 2
+      task_timeout: 600.0  # Longer timeout for debugging
+    communication:
+      message_timeout: 10.0  # More lenient in development
+    agents:
+      health:
+        check_interval: 120.0  # Less frequent in development
+
+  production:
+    coordinator:
+      max_concurrent_pipelines: 5
+      task_timeout: 300.0
+    communication:
+      message_timeout: 5.0
+      max_history_size: 10000  # Larger history for production analytics
+    agents:
+      health:
+        check_interval: 30.0  # More frequent in production
+        failure_threshold: 2  # Faster failure detection

@@ -13,12 +13,14 @@ import logging.config
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
+
 import yaml
 
 
 # Component names for structured logging
 class Components:
     """Logger names for different components."""
+
     ROOT = "job_raider"
     SCRAPERS = "job_raider.scrapers"
     LLM = "job_raider.llm"
@@ -62,12 +64,17 @@ def setup_logging(
                         filename = handler_config["filename"]
                         # Convert relative paths to use log_dir
                         if not Path(filename).is_absolute():
-                            handler_config["filename"] = str(log_dir / Path(filename).name)
+                            handler_config["filename"] = str(
+                                log_dir / Path(filename).name
+                            )
 
             logging.config.dictConfig(config)
             return
         except Exception as e:
-            print(f"Failed to load logging config from {config_path}: {e}", file=sys.stderr)
+            print(
+                f"Failed to load logging config from {config_path}: {e}",
+                file=sys.stderr,
+            )
 
     # Fall back to basic configuration
     setup_basic_logging(log_level, log_dir, console_output)
@@ -101,7 +108,7 @@ def setup_basic_logging(
     # Create formatter
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     # Add console handler
@@ -179,8 +186,7 @@ class TokenUsageLogger:
             handler = logging.FileHandler(log_file)
             handler.setFormatter(
                 logging.Formatter(
-                    "%(asctime)s - %(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S"
+                    "%(asctime)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
                 )
             )
             self.logger.addHandler(handler)
@@ -260,8 +266,7 @@ class TokenUsageLogger:
             "total_tokens": self._total_tokens,
             "total_cost": self._total_cost,
             "cost_per_token": (
-                self._total_cost / self._total_tokens
-                if self._total_tokens > 0 else 0.0
+                self._total_cost / self._total_tokens if self._total_tokens > 0 else 0.0
             ),
         }
 

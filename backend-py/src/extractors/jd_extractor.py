@@ -9,28 +9,30 @@ Date: 2026-04-20
 """
 
 import re
-from typing import List, Optional, Dict, Any, Tuple
-from bs4 import BeautifulSoup
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
+from bs4 import BeautifulSoup
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import (
+    ExperienceLevel,
     JobListing,
     JobRequirement,
     JobResponsibility,
-    Skill,
-    SalaryRange,
-    WorkMode,
-    JobType,
-    ExperienceLevel,
     JobSource,
+    JobType,
+    SalaryRange,
+    Skill,
+    WorkMode,
 )
 
 
 @dataclass
 class ExtractionResult:
     """Result of job description extraction."""
+
     success: bool
     job_listing: Optional[JobListing]
     errors: List[str]
@@ -161,7 +163,9 @@ class JDExtractor:
 
         except Exception as e:
             errors.append(f"HTML parsing failed: {str(e)}")
-            return ExtractionResult(success=False, job_listing=None, errors=errors, warnings=warnings)
+            return ExtractionResult(
+                success=False, job_listing=None, errors=errors, warnings=warnings
+            )
 
     def extract_from_text(
         self,
@@ -193,7 +197,9 @@ class JDExtractor:
 
         except Exception as e:
             errors.append(f"Extraction failed: {str(e)}")
-            return ExtractionResult(success=False, job_listing=None, errors=errors, warnings=warnings)
+            return ExtractionResult(
+                success=False, job_listing=None, errors=errors, warnings=warnings
+            )
 
     def _extract_with_llm(
         self,
@@ -218,7 +224,9 @@ class JDExtractor:
         # Truncate text if too long
         max_length = 50000  # Adjust based on model context
         if len(text) > max_length:
-            warnings.append(f"Text truncated from {len(text)} to {max_length} characters")
+            warnings.append(
+                f"Text truncated from {len(text)} to {max_length} characters"
+            )
             text = text[:max_length]
 
         # Prepare prompt
@@ -258,10 +266,12 @@ Return a JSON object with these exact fields:
             import json
 
             # Extract JSON from response
-            json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
             if not json_match:
                 errors.append("Failed to extract JSON from LLM response")
-                return ExtractionResult(success=False, job_listing=None, errors=errors, warnings=warnings)
+                return ExtractionResult(
+                    success=False, job_listing=None, errors=errors, warnings=warnings
+                )
 
             data = json.loads(json_match.group(0))
 
@@ -344,7 +354,9 @@ Return a JSON object with these exact fields:
 
         except Exception as e:
             errors.append(f"Failed to create JobListing: {str(e)}")
-            return ExtractionResult(success=False, job_listing=None, errors=errors, warnings=warnings)
+            return ExtractionResult(
+                success=False, job_listing=None, errors=errors, warnings=warnings
+            )
 
     def _create_job_listing_from_dict(
         self,
@@ -477,7 +489,7 @@ Return a JSON object with these exact fields:
         section_text = sections.get("requirements", "")
 
         # Split by bullet points or numbered lists
-        items = re.split(r'[\n•\-\*]\s*', section_text)
+        items = re.split(r"[\n•\-\*]\s*", section_text)
 
         for item in items:
             item = item.strip()
@@ -486,13 +498,15 @@ Return a JSON object with these exact fields:
 
         return requirements
 
-    def _extract_responsibilities(self, sections: Dict[str, str]) -> List[JobResponsibility]:
+    def _extract_responsibilities(
+        self, sections: Dict[str, str]
+    ) -> List[JobResponsibility]:
         """Extract responsibilities from sections."""
         responsibilities = []
         section_text = sections.get("responsibilities", "")
 
         # Split by bullet points or numbered lists
-        items = re.split(r'[\n•\-\*]\s*', section_text)
+        items = re.split(r"[\n•\-\*]\s*", section_text)
 
         for item in items:
             item = item.strip()
@@ -509,7 +523,7 @@ Return a JSON object with these exact fields:
         # Look for common programming languages, frameworks, tools
         # This is a simplified version - in production, use a more comprehensive list
         skill_patterns = [
-            r'\b(Python|JavaScript|Java|C\+\+|Go|Rust|TypeScript|SQL|HTML|CSS|React|Angular|Vue|Django|Flask|Node\.js|Docker|AWS|Azure|GCP|Kubernetes|Git|Linux)\b',
+            r"\b(Python|JavaScript|Java|C\+\+|Go|Rust|TypeScript|SQL|HTML|CSS|React|Angular|Vue|Django|Flask|Node\.js|Docker|AWS|Azure|GCP|Kubernetes|Git|Linux)\b",
         ]
 
         all_text = sections.get("full", "")
@@ -544,11 +558,21 @@ Return a JSON object with these exact fields:
             for match in matches:
                 # Parse salary range
                 try:
-                    min_str = match.group(1).replace(',', '').replace('k', '000').replace('K', '000')
+                    min_str = (
+                        match.group(1)
+                        .replace(",", "")
+                        .replace("k", "000")
+                        .replace("K", "000")
+                    )
                     min_amount = float(min_str)
 
                     if match.lastindex >= 2:
-                        max_str = match.group(2).replace(',', '').replace('k', '000').replace('K', '000')
+                        max_str = (
+                            match.group(2)
+                            .replace(",", "")
+                            .replace("k", "000")
+                            .replace("K", "000")
+                        )
                         max_amount = float(max_str)
                     else:
                         max_amount = None
@@ -568,7 +592,9 @@ Return a JSON object with these exact fields:
         """Detect work mode from text."""
         text_lower = text.lower()
 
-        if "remote" in text_lower and ("office" in text_lower or "hybrid" in text_lower):
+        if "remote" in text_lower and (
+            "office" in text_lower or "hybrid" in text_lower
+        ):
             return WorkMode.HYBRID
         elif "remote" in text_lower:
             return WorkMode.REMOTE
