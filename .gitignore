@@ -56,3 +56,12 @@ linkedin_session/
 
 # Docker volumes
 docker/ollama/
+
+# Test outputs
+frontend-ts/playwright-report/
+frontend-ts/playwright-results/
+frontend-ts/test-results/
+
+# Legacy Jest (replaced by Vitest)
+frontend-ts/jest.config.js
+frontend-ts/jest.setup.js
