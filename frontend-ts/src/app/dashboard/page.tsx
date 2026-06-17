@@ -79,7 +79,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 stagger-in">
         <StatCard
           title="Applications"
           value={m?.outcomes.total_applications ?? "—"}
@@ -117,7 +117,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* System health */}
         <Card className="shadow-sm border-border/60 backdrop-blur-sm bg-card/50">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 card-corner-accent">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Activity className="h-4 w-4 text-muted-foreground" />
               System Health
@@ -140,7 +140,7 @@ export default function DashboardPage() {
 
         {/* Recent runs */}
         <Card className="shadow-sm border-border/60 backdrop-blur-sm bg-card/50">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 card-corner-accent">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Activity className="h-4 w-4 text-muted-foreground" />
               Recent Pipeline Runs

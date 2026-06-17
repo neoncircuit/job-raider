@@ -6,13 +6,17 @@ import { PageSkeleton } from "./PageSkeleton";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background relative">
+      {/* Background effects */}
+      <div className="starfield" />
+      <div className="gradient-mesh" />
+
       {/* Desktop sidebar */}
-      <div className="hidden md:flex">
+      <div className="hidden md:flex relative z-10">
         <Sidebar />
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden relative z-10">
         {/* Mobile top nav */}
         <div className="md:hidden">
           <MobileNav />
