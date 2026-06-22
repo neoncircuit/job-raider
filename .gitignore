@@ -65,3 +65,11 @@ frontend-ts/test-results/
 # Legacy Jest (replaced by Vitest)
 frontend-ts/jest.config.js
 frontend-ts/jest.setup.js
+
+# Claude Code - local/personal settings & helpers (not shared project config)
+.claude/settings.local.json
+.claude/commands/
+.claude/PRPs/
+
+# Local cron schedule (hardcoded to a specific machine; keep your local copy)
+crontab.job_raider
