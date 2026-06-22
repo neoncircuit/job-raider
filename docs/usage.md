@@ -4,7 +4,7 @@
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - WSL 2 (Windows) or Linux/macOS
 - NVIDIA GPU with 8GB+ VRAM (recommended)
 - Ollama installed (for local models)

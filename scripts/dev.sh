@@ -32,7 +32,7 @@ ensure_backend() {
     warn "Backend .venv not found -- creating and installing dependencies..."
 
     if ! command -v python3 &> /dev/null; then
-        echo "Error: python3 not found. Install Python 3.10+ first."
+        echo "Error: python3 not found. Install Python 3.11+ first."
         exit 1
     fi
 

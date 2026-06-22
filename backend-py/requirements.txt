@@ -1,5 +1,5 @@
 # Job Raider - Automated Job Application Pipeline
-# Requirements optimized for Python 3.10+
+# Requirements optimized for Python 3.11+
 
 # === Scraping & Web ===
 playwright>=1.40.0            # Headless browser automation for job boards

@@ -37,7 +37,7 @@ This reduces API costs by 80% while maintaining quality.
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - 8GB VRAM (for local models)
 - Ollama installed
 
@@ -270,7 +270,7 @@ keywords:
 
 ### Minimum
 
-- Python 3.10+
+- Python 3.11+
 - 16GB RAM
 - 8GB VRAM
 - Ollama installed

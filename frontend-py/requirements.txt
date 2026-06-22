@@ -1,5 +1,5 @@
 # Job Raider - Streamlit Dashboard
-# Frontend dependencies
+# Frontend dependencies - requires Python 3.11+
 
 # === Core ===
 streamlit>=1.37.0

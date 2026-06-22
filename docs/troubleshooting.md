@@ -90,11 +90,11 @@ WSL2 uses the Windows file system (DrvFs) for bind mounts, which has aggressive 
 
 **Solutions:**
 
-1. **Install Python 3.10+:**
+1. **Install Python 3.11+:**
    ```bash
    # Ubuntu/Debian
    sudo apt update
-   sudo apt install python3.10 python3.10-venv
+   sudo apt install python3.11 python3.11-venv
 
    # Verify installation
    python3 --version
@@ -132,7 +132,7 @@ source backend-py/.venv/bin/activate
 2. **Check Python venv module:**
    ```bash
    python3 -m venv --help
-   # If error, install: sudo apt install python3.10-venv
+   # If error, install: sudo apt install python3.11-venv
    ```
 
 3. **Run setup script:**
@@ -736,7 +736,7 @@ ERROR: This version requires zstd for extraction.
 1. **Add zstd to Dockerfile dependencies:**
    ```dockerfile
    RUN apt-get update && apt-get install -y \
-       python3.10 \
+       python3.11 \
        zstd \
        ...
    ```

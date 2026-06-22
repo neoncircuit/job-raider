@@ -201,7 +201,7 @@ The dashboard includes an AI-powered resume analysis feature that:
 - Makefile rewritten with `make dev`, `make dev-frontend`, `make type-check`
 - `setup.sh` now installs Node dependencies via `npm ci`
 - TypeScript: 0 errors. Next.js production build clean.
-- `.python-version` file added to `backend-py/` (pins Python 3.10)
+- `.python-version` file added to `backend-py/` (pins Python 3.11)
 
 ### Recent Updates (Phase 26 - 2026-04-27)
 
@@ -355,7 +355,7 @@ A comprehensive guide was added to address the critical Docker storage issue on 
 
 ### Minimum
 
-- Python 3.10+
+- Python 3.11+
 - Node.js 20+ (for Next.js frontend)
 - 16GB RAM
 - 8GB VRAM (for local models)
@@ -409,7 +409,7 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000  # WebSocket for live pipeline progress
 job-raider/                      # Project root (monorepo)
 ├── backend-py/                  # Python backend
 │   ├── .venv/                   # Python virtual environment
-│   ├── .python-version          # Pins Python 3.10 for pyenv / CI
+│   ├── .python-version          # Pins Python 3.11 for pyenv / CI
 │   ├── config/                  # Configuration files (YAML)
 │   ├── src/                     # Source code
 │   │   ├── agents/             # Multi-agent system (coordinator, communication bus, career coach)
