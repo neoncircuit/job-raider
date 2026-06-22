@@ -28,7 +28,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version-file: '.python-version'
           cache: 'pip'
           cache-dependency-path: backend-py/requirements.txt
 
@@ -63,7 +63,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version-file: '.python-version'
           cache: 'pip'
           cache-dependency-path: backend-py/requirements.txt
 
@@ -85,17 +85,13 @@ jobs:
       run:
         working-directory: backend-py
 
-    strategy:
-      matrix:
-        python-version: ['3.10', '3.11']
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version-file: '.python-version'
           cache: 'pip'
           cache-dependency-path: backend-py/requirements.txt
 
@@ -130,7 +126,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version-file: '.python-version'
           cache: 'pip'
           cache-dependency-path: frontend-py/requirements.txt
 
@@ -288,7 +284,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version-file: '.python-version'
 
       - name: Install dependencies
         run: |

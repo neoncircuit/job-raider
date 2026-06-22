@@ -2243,4 +2243,19 @@
 - When a webServer fails to become ready, scan the `[WebServer]` log for compile errors (CSS/TS) before blaming Playwright config — the server never came up.
 - Prefer `next/font/google` for fonts to avoid runtime `@import url()` entirely; if you must use `@import url()`, keep it first.
 
+#### Pin CI Python via `.python-version`, and Keep It Above the Floor Your Deps Require
+
+**Lesson:** Drive the CI Python version from `.python-version` (read with `actions/setup-python`'s `python-version-file: '.python-version'`) instead of hardcoding `python-version:` per job, and keep that pin at or above the minimum your dependencies still support — pandas 3.0.0 (Jan 2026) dropped Python 3.10 (min 3.11), so a 3.10 CI pin breaks any job that installs `pandas>=2.1.0`.
+
+**Why:**
+- `Test Frontend` failed in CI on Python 3.10 while passing locally on 3.12. pip resolves `pandas>=2.1.0` to the newest pandas whose `requires-python` matches the interpreter; on 3.10 the resolution backtracks and the surrounding install/test can still fail, whereas on 3.12 the latest pandas installs cleanly.
+- Five jobs in `.github/workflows/ci.yml` had independently hardcoded `python-version: '3.10'` (lint, type-check, test-backend matrix, test-frontend, security), so a bump had to land in five places — a single source of truth removes that drift.
+- `python-version-file` resolves relative to `GITHUB_WORKSPACE` (repo root), so one root `.python-version` feeds every job regardless of each job's `defaults.run.working-directory`.
+- Matching CI's Python to the local venv (both 3.12.3 here) eliminates "works on my machine" divergence.
+
+**How to apply:**
+- Pin ONE version in root `.python-version` (mirror it in `backend-py/.python-version` for local pyenv/asdf). Point every `actions/setup-python` step at it with `python-version-file: '.python-version'`.
+- When CI tests fail but local passes, FIRST diff the Python versions, then check whether any `requirements.txt` dependency shipped a major version that dropped the CI Python (pandas 3.0/3.10 is one example).
+- Dropping the per-job version matrix in favor of the single pinned version is the intended trade-off here (the user prefers one source of truth over multi-version coverage).
+
 
