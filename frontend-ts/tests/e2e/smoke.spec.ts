@@ -1,124 +1,75 @@
 /**
- * Job Raider - Smoke E2E Tests
+ * Job Raider - Navigation Smoke E2E Tests
  *
- * Basic smoke tests to verify application loads and critical paths work.
- * These tests should always pass before running more complex E2E tests.
+ * Verifies the app loads (the root route redirects to /dashboard) and that the
+ * primary routes are reachable from whichever navigation the viewport exposes.
  *
- * Author: Job Raider
- * Date: 2026-06-08
+ * Viewport handling:
+ *  - Desktop renders the sidebar persistently.
+ *  - Mobile hides nav behind a hamburger `<Sheet>` (aria-label "Open
+ *    navigation"), opened before a link is clicked.
+ *  - The Odysseus theme floats the desktop sidebar via an infinite CSS
+ *    animation (`.cosmic-float`), so on desktop the link click uses `force` to
+ *    bypass Playwright's actionability "stable" check; the mobile sheet's links
+ *    are static and need no force.
+ *
+ * A single `navigateTo` helper centralises this, so each test runs unchanged on
+ * both the chromium (desktop) and Mobile Chrome projects with no skips.
  */
 
-import { test, expect, testUserData } from '../utils/test-setup';
-import type { Page } from '@playwright/test';
+import type { Page } from "@playwright/test";
+import { test, expect } from "./support/test";
 
-test.describe('Application Smoke Tests', () => {
-  test('should load homepage', async ({ page }) => {
-    await page.goto('/');
+/**
+ * Navigate to a primary route via whichever nav the current viewport exposes.
+ *
+ * On mobile, open the hamburger `<Sheet>` first; on desktop the sidebar is
+ * persistent. Desktop sidebar links float (Odysseus `.cosmic-float`), so the
+ * click bypasses the actionability "stable" check there; mobile sheet links are
+ * static and use the default checks.
+ *
+ * @param page - The Playwright page to drive.
+ * @param linkName - Accessible name of the nav link to click (e.g. "Jobs").
+ * @returns Resolved once the navigation click has been dispatched.
+ */
+async function navigateTo(page: Page, linkName: string): Promise<void> {
+  const isMobile = (page.viewportSize()?.width ?? 0) < 768;
+  if (isMobile) {
+    await page.getByLabel("Open navigation").click();
+  }
+  await page.getByRole("link", { name: linkName, exact: true }).click({ force: !isMobile });
+}
 
-    // Check that page loads without errors
-    await expect(page).toHaveTitle(/Job Raider/i);
-
-    // Check for main navigation
-    const nav = page.locator('nav');
-    await expect(nav).toBeVisible();
-  });
-
-  test('should navigate to jobs page', async ({ page }) => {
-    await page.goto('/');
-
-    // Click on Jobs link in navigation
-    await page.click('text=Jobs');
-
-    // Should be on jobs page
-    await expect(page).toHaveURL(/\/jobs/);
-
-    // Should see search form
-    const searchForm = page.locator('form[data-testid="job-search-form"]');
-    await expect(searchForm).toBeVisible();
-  });
-
-  test('should navigate to dashboard', async ({ page }) => {
-    await page.goto('/');
-
-    // Click on Dashboard link in navigation
-    await page.click('text=Dashboard');
-
-    // Should be on dashboard page
+test.describe("App load", () => {
+  test("loads and redirects to the dashboard", async ({ page }) => {
+    await page.goto("/");
     await expect(page).toHaveURL(/\/dashboard/);
-
-    // Should see dashboard content
-    const dashboard = page.locator('[data-testid="dashboard"]');
-    await expect(dashboard).toBeVisible();
+    await expect(page).toHaveTitle(/Job Raider/i);
+    await expect(page.locator("h1")).toContainText("Dashboard");
   });
 
-  test('should navigate to profile page', async ({ page }) => {
-    await page.goto('/');
-
-    // Click on Profile link in navigation
-    await page.click('text=Profile');
-
-    // Should be on profile page
-    await expect(page).toHaveURL(/\/profile/);
-
-    // Should see profile form
-    const profileForm = page.locator('form[data-testid="profile-form"]');
-    await expect(profileForm).toBeVisible();
-  });
-
-  test('should handle 404 page', async ({ page }) => {
-    // Navigate to non-existent page
-    await page.goto('/this-page-does-not-exist');
-
-    // Should show 404 page or redirect to homepage
+  test("handles an unknown route gracefully", async ({ page }) => {
+    await page.goto("/this-route-does-not-exist");
     const title = await page.title();
+    // The root layout title is "Job Raider"; a custom not-found page may say 404.
     expect(title).toMatch(/404|Not Found|Job Raider/i);
   });
 });
 
-test.describe('Job Search Smoke Tests', () => {
+test.describe("Primary navigation", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/jobs');
+    await page.goto("/dashboard");
   });
 
-  test('should show job search form', async ({ page }) => {
-    // Check for search input
-    const keywordsInput = page.locator('input[name="keywords"]');
-    await expect(keywordsInput).toBeVisible();
-
-    // Check for location input
-    const locationInput = page.locator('input[name="locations"]');
-    await expect(locationInput).toBeVisible();
-
-    // Check for search button
-    const searchButton = page.locator('button[type="submit"]');
-    await expect(searchButton).toBeVisible();
+  test("opens the Jobs page", async ({ page }) => {
+    await navigateTo(page, "Jobs");
+    await expect(page).toHaveURL(/\/jobs/);
+    await expect(page.locator("h1")).toContainText("Jobs");
   });
 
-  test('should show validation for empty search', async ({ page }) => {
-    // Click search without entering keywords
-    const searchButton = page.locator('button[type="submit"]');
-    await searchButton.click();
-
-    // Should show validation error
-    const errorMessage = page.locator('text=keywords required');
-    await expect(errorMessage).toBeVisible();
-  });
-
-  test('should display job results after search', async ({ page }) => {
-    // Enter search keywords
-    const keywordsInput = page.locator('input[name="keywords"]');
-    await keywordsInput.fill('Software Engineer');
-
-    // Enter location
-    const locationInput = page.locator('input[name="locations"]');
-    await locationInput.fill('San Francisco, CA');
-
-    // Submit search
-    const searchButton = page.locator('button[type="submit"]');
-    await searchButton.click();
-
-    // Wait for results to load
-    const resultsContainer = page.locator('[data-testid="job-results"]');
-    await expect(resultsContainer).toBeVisible({ timeout: 10000 });
+  test("opens the Profile page", async ({ page }) => {
+    await navigateTo(page, "Profile");
+    await expect(page).toHaveURL(/\/profile/);
+    await expect(page.locator("h1")).toContainText("Profile");
   });
 });

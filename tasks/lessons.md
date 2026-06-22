@@ -2168,4 +2168,79 @@
 - When wiring up a dormant module, migrate it to current conventions as part of the same change
 - Do not ship a registration that reintroduces warnings the project explicitly eliminated
 
+### Doc Hygiene (2026-06-21)
+
+#### Do Not Embed Commit SHAs in Tracking Documentation
+
+**Lesson:** Tracking and documentation prose (e.g. `tasks/todo.md` checklist items) should describe completion by *state*, not by raw commit hash.
+
+**Why:**
+- SHAs are opaque to a human reader; they add noise without conveying meaning.
+- A tracking doc records *what state the project is in*, not *which commits landed it there* — git already holds that authoritatively.
+- Pasting SHAs into prose invites drift: the moment the doc and history disagree, the doc becomes misleading.
+- Dates are fine and useful in tracking docs; commit hashes are not.
+
+**How to apply:**
+- In `tasks/todo.md` and similar docs, write "DONE — Phase 41 commits landed on master", not "DONE in commits `cf7d3aa`...".
+- Reserve commit SHAs for `git log`, PR bodies, and release notes where a verifiable reference is the point.
+- Before saving a doc edit, scan for backticked 7-40 char hex strings that look like SHAs and replace them with a state description.
+
+### E2E Mocking & Repair (2026-06-22)
+
+#### Specs Written Speculatively vs. the Real UI Test Nothing (or Fail)
+
+**Lesson:** E2E specs must assert against selectors that actually exist in the rendered components. Specs written from design intent (before/instead of reading the components) drift silently and are worse than no tests.
+
+**Why:**
+- The old `frontend-ts/tests/e2e/*.spec.ts` asserted on `data-testid` hooks (`job-search-form`, `dashboard`, `recent-applications`, `status-breakdown`) and inputs (`input[name="locations"]`) that the real pages never render — the jobs/dashboard/profile components have zero `data-testid`s and use `name="location"` (singular).
+- Several specs wrapped assertions in `.or()` fallbacks plus `if (count > 0)`, so they **passed vacuously** when the element was absent — a green gate that tested nothing.
+- Others targeted dashboard UI that was never built ("recent applications", "status breakdown") — the real dashboard shows System Health + Recent Pipeline Runs.
+
+**How to apply:**
+- Read the component before (or alongside) writing the spec; assert on real markup: headings, role-based link/button locators, real `name=` inputs, or text unique to the data.
+- Never use `if (count > 0) { expect(...) }` as a crutch — if unsure the element exists, the test is not ready. Find a verified selector or drop the assertion.
+- Prefer a few real assertions over many speculative ones.
+
+#### Mock the API at the Playwright Layer, Not via MSW, for E2E
+
+**Lesson:** For Playwright E2E, intercept requests with `page.route('**/api/proxy/**', ...)` and `route.fulfill({ json })` from a custom `test` fixture that overrides `page`. Do not reuse the Vitest/jsdom MSW handlers.
+
+**Why:**
+- `page.route()` intercepts at the browser network layer and short-circuits before the request reaches the Next.js proxy route handler, so no backend (absent in CI) is ever contacted.
+- MSW is installed and its handlers exist, but they are jsdom-shaped and would require injecting a service worker into the Next.js dev server — fragile and couples test plumbing into app code.
+- Wiring the mock through a `page` fixture override means every spec gets a mocked backend by default with one import.
+
+**How to apply:**
+- Put `mockApi(page)` in `tests/e2e/support/mock-api.ts` and a `test = base.extend({ page: ... })` in `tests/e2e/support/test.ts`; specs import `{ test, expect }` from there.
+- Name the fixture callback param `provide`, not `use`, to avoid a `react-hooks/rules-of-hooks` false positive (the linter treats an arg literally named `use` as a Hook) — same convention as `tests/utils/test-setup.ts`.
+- Map every endpoint a tested page calls; return a safe `200 {}` only as a catch-all so an unmocked endpoint surfaces as a render gap rather than a crash.
+
+#### CSS-Animated Elements Need `force` Clicks in Playwright
+
+**Lesson:** An element under an infinite CSS animation (e.g. the Odysseus `.cosmic-float` sidebar) never satisfies Playwright's `stable` actionability check, so `.click()` on it times out even though it is visibly rendered.
+
+**Why:**
+- `.cosmic-float { animation: cosmic-float 4s ease-in-out infinite }` is on the sidebar `<aside>`; every nav link inside it is perpetually moving.
+- Playwright's `locator.click()` waits for the element to be visible, stable, enabled, and receiving events; "stable" never settles on an infinitely-animated element, so it times out.
+- Clicks on elements OUTSIDE the animated region (e.g. the jobs search submit button in `<main>`) are unaffected.
+
+**How to apply:**
+- For clicks on animated elements, pass `{ force: true }` to bypass actionability checks and dispatch the event directly.
+- Confirm via the failure screenshot first: if the element is clearly rendered with no overlay but the click times out, suspect an animation/interception, not a missing element.
+- Gate viewport-dependent UI (desktop sidebar vs mobile hamburger `<Sheet>`) with `test.skip(({ page }) => (page.viewportSize()?.width ?? 0) < 768)` so the same suite stays green across projects.
+
+#### Tailwind v4 `@import` Ordering: Remote Font Imports Must Come First
+
+**Lesson:** In a Tailwind v4 entry CSS, a remote `@import url('https://fonts...')` must appear BEFORE the `@import "tailwindcss"` family, or Lightning CSS rejects it ("@import rules must precede all rules") and the dev server cannot compile.
+
+**Why:**
+- Tailwind expands `@import "tailwindcss"` (and `tw-animate-css`, `shadcn/tailwind.css`) inline into thousands of rules. A remote `@import url()` placed after them then follows real rules, violating the CSS spec.
+- `next build` (production) tolerated the ordering, so the Docker image built fine and the bug stayed hidden; only `next dev` (Turbopack/Lightning) rejected it — exactly what CI's e2e `webServer` runs, so the e2e gate could not even start the server.
+- Symptom: `Error: Timed out waiting 120000ms from config.webServer` with a `Parsing CSS source code failed / @import rules must precede all rules` log.
+
+**How to apply:**
+- Order the entry CSS as: remote `@import url(...)` first, then `@import "tailwindcss"` and sibling tool imports, then `@custom-variant`/`@theme`/rules.
+- When a webServer fails to become ready, scan the `[WebServer]` log for compile errors (CSS/TS) before blaming Playwright config — the server never came up.
+- Prefer `next/font/google` for fonts to avoid runtime `@import url()` entirely; if you must use `@import url()`, keep it first.
+
 
