@@ -2258,4 +2258,44 @@
 - When CI tests fail but local passes, FIRST diff the Python versions, then check whether any `requirements.txt` dependency shipped a major version that dropped the CI Python (pandas 3.0/3.10 is one example).
 - Dropping the per-job version matrix in favor of the single pinned version is the intended trade-off here (the user prefers one source of truth over multi-version coverage).
 
+#### Audit src/ imports against requirements.txt — the local .venv hides undeclared deps
+
+**Lesson:** A package imported in `src/` but absent from `requirements.txt` passes locally (it's in the dev `.venv`) and fails in CI (which installs only from requirements). Run an AST-based import audit vs requirements before pushing.
+
+**Why:**
+- `chromadb` was used by `src/rag/vector_store.py` (`ChromaStore`) and the `test_rag_ranker` fixture (real ChromaDB), even mentioned in a `requirements.txt` comment, but never listed — so CI's `pip install` never got it. The local `.venv` had 1.5.8, so the suite passed locally and the gap stayed hidden until CI ran on a clean install.
+- `numpy` was imported directly in `src/` but pulled in only transitively via pandas — works today, but a direct import should be declared so it survives if the transitive path changes.
+
+**How to apply:**
+- Before pushing CI fixes, AST-walk `src/` for top-level imports, drop stdlib + local packages, normalize (`-`/`_`), and diff against `requirements.txt` package names. Investigate every unmatched import — but expect false positives where the import name differs from the declared package: `bs4`->`beautifulsoup4`, `docx`->`python-docx`, `yaml`->`pyyaml`, `google`->`google-genai`.
+- Treat "passes locally, fails in CI" as a strong signal of an undeclared dep or a version-specific resolution difference — diff the environment first.
+- Separate REQUIRED deps (declare them; tests assert on them) from OPTIONAL ones (guard with `is_available()` + skip tests), as `cross_encoder.py` does for `sentence-transformers`.
+
+#### GitHub auto-fails jobs using deprecated `actions/*` versions
+
+**Lesson:** GitHub disables deprecated versions of first-party actions (`actions/upload-artifact`, `actions/download-artifact`) and **auto-fails** any job referencing them — the job's own steps never run.
+
+**Why:**
+- `actions/upload-artifact@v3` was deprecated (Jan 2025); the `test-frontend-e2e` job failed with "This request has been automatically failed because it uses a deprecated version of actions/upload-artifact: v3" — even though the Playwright tests themselves had passed. The failure was in the post-test artifact-upload step, not the tests.
+- These deprecations are announced on the GitHub Actions changelog and stay silent until you push and the runner rejects the version.
+
+**How to apply:**
+- When a job fails with "automatically failed ... deprecated version", bump the action to the current major (`@v4`/`@v5`) — it's not a test or code problem.
+- Periodically audit `uses:` lines for old majors; prefer `@v4`+ for `upload-artifact`/`download-artifact`. Third-party actions (e.g. `codecov/codecov-action`) are not affected by the `actions/*` deprecation.
+- When upgrading `upload-artifact` v3->v4, remember v4 forbids multiple uploads with the same artifact name in one run (no merging) — use distinct names, which is already best practice.
+
+#### Don't auto-publish Docker `:latest` on every push — publish on release tags / manual dispatch
+
+**Lesson:** A Docker build/publish job should not run (or push) on every commit to the default branch. Building to verify can run on PRs, but **publishing to a registry should be gated to deliberate triggers** — version tags (`v*`) or manual `workflow_dispatch` — never every `main` push.
+
+**Why:**
+- The `build` job auto-ran on every `main` push and failed because the Docker Hub secrets weren't configured, turning the whole workflow badge red even though every lint/test gate was green.
+- Pushing `:latest` on every commit is an anti-pattern: the tag is mutable, points at an unreleased commit, and forces a heavy image rebuild (CUDA base + torch + Playwright + Ollama) on every push.
+- The `build` job doesn't depend on the E2E job, so E2E's status never gated it — and a skipped build doesn't block anything else.
+
+**How to apply:**
+- Gate publish with `if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')` and add `tags: ['v*']` to the workflow's `push:` trigger. On branch pushes/PRs the job is skipped (neutral badge); on a tag or manual run it builds + publishes.
+- Keep the lint/type/test gates running on every push (cheap, catch regressions); only the expensive, secret-dependent publish is deferred.
+- Before triggering publish, set the registry secrets (`DOCKER_USERNAME`/`DOCKER_PASSWORD`); consider GHCR (`ghcr.io`) with the auto-provided `GITHUB_TOKEN` to avoid managing a separate secret.
+
 
