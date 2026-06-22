@@ -13,6 +13,7 @@ ollama>=0.4.0                 # Ollama client for local models
 google-genai>=1.0.0           # Google Gemini API client
 
 # === Data Processing ===
+numpy>=1.26.0                 # Numerical arrays (embeddings, scoring); imported directly in src/
 pandas>=2.1.0                 # Data manipulation and analysis
 pydantic>=2.5.0               # Data validation and settings
 pydantic-settings>=2.1.0      # Settings management
@@ -68,6 +69,7 @@ supabase>=2.4.0                 # Supabase client for Storage bucket operations
 # === RAG / Vector Store ===
 # pgvector used for Supabase PostgreSQL persistence (see src/database/models.py)
 # ChromaDB used for local RAG pipeline (see src/rag/vector_store.py)
+chromadb>=1.0.0                   # Embedded vector store for the local RAG pipeline
 rank-bm25>=0.2.2                  # BM25 sparse retrieval for hybrid search
 sentence-transformers>=2.6.0      # Cross-encoder reranking (optional, lazy-loaded)
 
