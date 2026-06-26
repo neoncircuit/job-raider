@@ -18,8 +18,8 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from ...extractors.resume_parser import ResumeParser
-from ...generation.resume_analyzer import ResumeAnalyzer
 from ...generation.linkedin_analyzer import LinkedInAnalyzer
+from ...generation.resume_analyzer import ResumeAnalyzer
 from ...llm.router import LLMRouter
 from ...models.job_listing import JobListing
 from ...models.linkedin_analysis import LinkedInProfileInput
