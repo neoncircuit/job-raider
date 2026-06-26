@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/utils/format";
 import { STATUS_COLORS } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
@@ -77,7 +76,7 @@ function AppCard({
 
 function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
-  const [jobId, setJobId] = useState("");
+  const jobId = "";
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState("");
   const [method, setMethod] = useState("");

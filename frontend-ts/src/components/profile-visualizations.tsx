@@ -5,14 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import type { UserProfile, DISCResult } from "@/lib/types/api";
-import { BarChart3, TrendingUp, Award, Target, Zap, Shield, Users, Lightbulb, Briefcase, Rocket, Sparkles } from "lucide-react";
-import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import { BarChart3, TrendingUp, Award, Target, Zap, Shield, Lightbulb, Briefcase, Rocket, Sparkles } from "lucide-react";
+import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import { cn } from "@/lib/utils/cn";
 import { DISCAssessment } from "./disc-assessment";
 
@@ -36,17 +33,6 @@ interface DISCProfile {
 interface SkillsRadarProps {
   skills: UserProfile["skills"];
 }
-
-const CATEGORY_COLORS: Record<string, string> = {
-  "Languages": "#6366f1",
-  "Frameworks": "#8b5cf6",
-  "Tools": "#06b6d4",
-  "Cloud": "#14b8a6",
-  "Databases": "#f59e0b",
-  "Soft Skills": "#ec4899",
-  "Domain": "#10b981",
-  "Other": "#6b7280",
-};
 
 export function SkillsRadar({ skills }: SkillsRadarProps) {
   // Check how many skills have proficiency data
@@ -89,7 +75,7 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
     return acc;
   }, {});
 
-  const data: SkillScore[] = Object.entries(categoryScores).map(([cat, { total, count, hasExp }]) => {
+  const data: SkillScore[] = Object.entries(categoryScores).map(([cat, { total, count }]) => {
     const avgScore = Math.min(100, Math.round(total / count));
     const label = cat.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
     return {

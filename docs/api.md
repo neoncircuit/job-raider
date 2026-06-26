@@ -72,6 +72,148 @@ result.jobs_scraped      # int: Number of jobs scraped
 result.jobs_applied      # int: Number of jobs applied
 ```
 
+## Profile API
+
+Base URL: `http://localhost:8000/api/profile`
+
+Endpoints for resume upload, active profile management, resume analysis, and LinkedIn profile analysis.
+
+### Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/profile/upload` | Upload and parse a PDF/DOCX resume |
+| GET | `/api/profile/` | Get the current active profile |
+| PUT | `/api/profile/` | Update the active profile |
+| GET | `/api/profile/export` | Export the active profile as JSON |
+| POST | `/api/profile/analyze` | Analyze a resume (general or job-specific) |
+| POST | `/api/profile/analyze-linkedin` | Analyze a LinkedIn profile for inbound attraction |
+
+#### POST /api/profile/upload
+
+Upload a resume file. Returns a profile ID and resume path.
+
+```bash
+curl -s -X POST http://localhost:8000/api/profile/upload \
+  -F "file=@/path/to/resume.pdf"
+```
+
+**Response:**
+```json
+{
+  "profile_id": "profile_abc123",
+  "resume_path": "backend-py/data/profiles/profile_abc123.pdf",
+  "message": "Resume uploaded and parsed successfully"
+}
+```
+
+#### GET /api/profile/
+
+Returns the active profile with contact info, skills, experience, education, etc.
+
+```bash
+curl -s http://localhost:8000/api/profile/ | jq .
+```
+
+#### PUT /api/profile/
+
+Update fields of the active profile.
+
+```bash
+curl -s -X PUT http://localhost:8000/api/profile/ \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Jane Doe", "target_keywords": ["python", "fastapi"]}'
+```
+
+**Response:**
+```json
+{
+  "message": "Profile updated successfully"
+}
+```
+
+#### GET /api/profile/export
+
+Export the active profile as JSON.
+
+```bash
+curl -s http://localhost:8000/api/profile/export | jq .
+```
+
+#### POST /api/profile/analyze
+
+Analyze a resume. Provide an optional `job_description` form field for job-specific analysis.
+
+```bash
+curl -s -X POST http://localhost:8000/api/profile/analyze \
+  -F "file=@/path/to/resume.pdf" \
+  -F "job_description=Senior Python Engineer with FastAPI experience"
+```
+
+**Response:** Resume analysis with `overall_score`, `key_strengths`, `key_improvements`, `skills_assessment`, `experience_insights`, etc.
+
+#### POST /api/profile/analyze-linkedin
+
+Analyze a LinkedIn profile for inbound attraction. Accepts raw text, structured fields, or both.
+
+```bash
+curl -s -X POST http://localhost:8000/api/profile/analyze-linkedin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "raw_text": "Senior Software Engineer at Acme...",
+    "headline": "Senior Software Engineer | Python | FastAPI",
+    "summary": "I build scalable backend systems...",
+    "experience_entries": [
+      {"title": "Senior Software Engineer", "company": "Acme", "description": "Built APIs..."}
+    ],
+    "education_entries": [
+      {"school": "State University", "degree": "BS", "field": "Computer Science"}
+    ],
+    "skills": ["Python", "FastAPI", "PostgreSQL"],
+    "industry": "Software Engineering",
+    "career_goals": "Staff engineer role in fintech",
+    "target_roles": ["Staff Software Engineer", "Senior Backend Engineer"]
+  }'
+```
+
+**Response:**
+```json
+{
+  "overall_score": 72,
+  "summary": "The profile has solid technical signals...",
+  "section_scores": [
+    {
+      "section_name": "Headline",
+      "score": 80,
+      "weight": 0.15,
+      "feedback": "Add a concrete specialty or outcome."
+    }
+  ],
+  "insights": [
+    {
+      "category": "keywords",
+      "observation": "Top skills are listed but not repeated in the summary.",
+      "recommendation": "Weave target keywords naturally into the About section.",
+      "priority": "high"
+    }
+  ],
+  "keyword_recommendations": ["fintech", "distributed systems", "system design"],
+  "action_plan": ["Rewrite headline to include target role", "Expand About section"],
+  "generated_headline_options": ["Senior Backend Engineer | Fintech | Python"],
+  "summary_rewrite_suggestions": ["..."],
+  "competitive_edge": "Strong open-source presence...",
+  "is_strong_profile": true,
+  "high_priority_insights": [],
+  "weighted_overall_score": 74.2,
+  "metadata": {},
+  "analyzed_at": "2026-06-27T12:00:00"
+}
+```
+
+### Type Definitions
+
+See the [Type Definitions](#type-definitions) section below for `LinkedInProfileInput`, `LinkedInProfileAnalysis`, `ProfileSectionScore`, and `InboundAttractionInsight`.
+
 ### Data Models
 
 #### JobListing
@@ -494,6 +636,121 @@ class SubmissionStatus(str, Enum):
     FAILED = "failed"
     SKIPPED = "skipped"
 ```
+
+#### LinkedInProfileInput
+
+Input data for LinkedIn profile analysis. Accepts either raw pasted text or structured fields (or both). At least one of `raw_text` or a structured field must be provided.
+
+```python
+from src.models.linkedin_analysis import LinkedInProfileInput
+
+input_data = LinkedInProfileInput(
+    raw_text="Senior Software Engineer at Acme...",
+    headline="Senior Software Engineer | Python | FastAPI",
+    summary="I build scalable backend systems...",
+    experience_entries=[...],
+    education_entries=[...],
+    skills=["Python", "FastAPI", "PostgreSQL"],
+    industry="Software Engineering",
+    career_goals="Staff engineer role in fintech",
+    target_roles=["Staff Software Engineer", "Senior Backend Engineer"],
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `raw_text` | `Optional[str]` | Raw pasted LinkedIn profile text |
+| `headline` | `Optional[str]` | Current LinkedIn headline |
+| `summary` | `Optional[str]` | LinkedIn About / summary section |
+| `experience_entries` | `List[Dict[str, Any]]` | Experience entries (title, company, description, dates) |
+| `education_entries` | `List[Dict[str, Any]]` | Education entries (school, degree, field, dates) |
+| `skills` | `List[str]` | Skills listed on the profile |
+| `industry` | `Optional[str]` | Industry or field of work |
+| `career_goals` | `Optional[str]` | Stated career goals or aspirations |
+| `target_roles` | `List[str]` | Target job titles or roles |
+
+#### ProfileSectionScore
+
+Score and feedback for a specific LinkedIn profile section.
+
+```python
+from src.models.linkedin_analysis import ProfileSectionScore
+
+section = ProfileSectionScore(
+    section_name="Headline",
+    score=80,
+    weight=0.15,
+    feedback="Add a concrete specialty or outcome.",
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `section_name` | `str` | Name of the profile section |
+| `score` | `float` | Section score (0-100) |
+| `weight` | `float` | Section weight in overall score (0-1) |
+| `feedback` | `str` | Actionable improvement feedback |
+
+#### InboundAttractionInsight
+
+Prioritized insight for improving inbound recruiter attraction.
+
+```python
+from src.models.linkedin_analysis import InboundAttractionInsight
+
+insight = InboundAttractionInsight(
+    category="keywords",
+    observation="Top skills are listed but not repeated in the summary.",
+    recommendation="Weave target keywords naturally into the About section.",
+    priority="high",
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `category` | `str` | Insight category (e.g., headline, keywords, content) |
+| `observation` | `str` | Observed profile weakness or strength |
+| `recommendation` | `str` | Specific recommendation |
+| `priority` | `Literal["critical", "high", "medium", "low"]` | Priority level |
+
+#### LinkedInProfileAnalysis
+
+Complete LinkedIn profile analysis result.
+
+```python
+from src.models.linkedin_analysis import LinkedInProfileAnalysis
+
+analysis = LinkedInProfileAnalysis(
+    overall_score=72,
+    summary="The profile has solid technical signals...",
+    section_scores=[...],
+    insights=[...],
+    keyword_recommendations=[...],
+    action_plan=[...],
+    generated_headline_options=[...],
+    summary_rewrite_suggestions=[...],
+    competitive_edge="Strong open-source presence...",
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `analyzed_at` | `datetime` | When the analysis was performed |
+| `overall_score` | `float` | Overall profile strength (0-100) |
+| `summary` | `str` | Executive summary |
+| `section_scores` | `List[ProfileSectionScore]` | Per-section scores and feedback |
+| `insights` | `List[InboundAttractionInsight]` | Prioritized insights |
+| `keyword_recommendations` | `List[str]` | Keywords to add or emphasize |
+| `action_plan` | `List[str]` | Step-by-step improvement plan |
+| `generated_headline_options` | `List[str]` | Suggested headline options |
+| `summary_rewrite_suggestions` | `List[str]` | Suggested About-section rewrites |
+| `competitive_edge` | `str` | Competitive positioning assessment |
+| `metadata` | `Dict[str, Any]` | Additional metadata |
+
+**Properties:**
+- `is_strong_profile` — `True` when `overall_score >= 70`
+- `high_priority_insights` — Insights with `priority == "high"`
+- `weighted_overall_score` — Weighted average of `section_scores`
 
 ### Data Classes
 

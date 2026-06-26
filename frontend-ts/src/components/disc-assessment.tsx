@@ -28,7 +28,7 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
     queryFn: async () => {
       try {
         return await discApi.getProfile();
-      } catch (error) {
+      } catch {
         // 404 is expected if no profile exists yet
         return null;
       }

@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Search, Bookmark, BookmarkCheck, ExternalLink, MapPin, Building2, Clock, ChevronDown, FileText, Copy } from "lucide-react";
 import { jobsApi } from "@/lib/api/jobs";
 import { applicationsApi } from "@/lib/api/applications";
 import type { JobListing, JobSearchResponse, ExperienceLevel } from "@/lib/types/api";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +24,7 @@ import { SOURCE_COLORS, DEFAULT_SOURCES, PAGE_SIZE } from "@/lib/utils/constants
 import { JobClassificationDisplay } from "@/components/job-classification";
 import { TrustAnalysisDisplay, TrustTierBadge } from "@/components/trust-analysis";
 
-// ── Experience/Job Type selector dropdown ────────────────────────────────────────
+// ── Experience/Job Type selector dropdown ─────────────────────────────────────
 
 const EXPERIENCE_OPTIONS = [
   { value: "Entry Level", label: "Entry Level" },
@@ -107,7 +106,7 @@ function ExperienceSelector({
           <div className="mt-1 flex gap-1 border-t pt-1">
             <button
               type="button"
-              onClick={() => { onChange(EXPERIENCE_OPTIONS.map(o => o.value)); setOpen(false); }}
+              onClick={() => { onChange(EXPERIENCE_OPTIONS.map((o) => o.value)); setOpen(false); }}
               className="flex-1 rounded px-2 py-1 text-center text-xs text-indigo-600 hover:bg-indigo-50"
             >
               All
@@ -233,7 +232,7 @@ function SearchBar({ onSearch, onGoogleSearch }: {
   onSearch: (results: { total: number; jobs: JobListing[] }) => void;
   onGoogleSearch: (query: string) => void;
 }) {
-  const { register, handleSubmit, watch, setValue } = useForm<SearchValues>({
+  const { register, handleSubmit, control, setValue } = useForm<SearchValues>({
     defaultValues: { keywords: "", location: "", remoteOnly: false, limit: 50 },
   });
 
@@ -244,17 +243,9 @@ function SearchBar({ onSearch, onGoogleSearch }: {
   });
 
   const available = sourcesQuery.data?.sources ?? DEFAULT_SOURCES;
-  const [selectedSources, setSelectedSources] = useState<string[]>(DEFAULT_SOURCES);
-  const [initialized, setInitialized] = useState(false);
+  const [manualSources, setManualSources] = useState<string[] | null>(null);
+  const selectedSources = manualSources ?? available;
   const [selectedExperience, setSelectedExperience] = useState<string[]>([]);
-
-  // Sync selected to full source list once backend responds
-  useEffect(() => {
-    if (!initialized && sourcesQuery.data?.sources) {
-      setSelectedSources(sourcesQuery.data.sources);
-      setInitialized(true);
-    }
-  }, [sourcesQuery.data, initialized]);
 
   const noSources = selectedSources.length === 0;
 
@@ -292,7 +283,7 @@ function SearchBar({ onSearch, onGoogleSearch }: {
     },
   });
 
-  const remoteOnly = watch("remoteOnly");
+  const remoteOnly = useWatch({ control, name: "remoteOnly" });
 
   const handleSubmit_ = handleSubmit((v) => {
     // Validate keywords
@@ -323,13 +314,11 @@ function SearchBar({ onSearch, onGoogleSearch }: {
       </div>
       <div className="space-y-1">
         <Label>Sources</Label>
-        <SourceSelector available={available} selected={selectedSources} onChange={setSelectedSources} />
+        <SourceSelector available={available} selected={selectedSources} onChange={setManualSources} />
       </div>
       <div className="space-y-1">
         <Label>Experience</Label>
-        <div className="px-3 py-2 text-sm text-gray-500 italic border rounded bg-gray-100">
-          Experience filter disabled (most jobs have &quot;Not Specified&quot; level)
-        </div>
+        <ExperienceSelector selected={selectedExperience} onChange={setSelectedExperience} />
       </div>
       <div className="flex items-center gap-2 pb-0.5">
         <Switch
@@ -365,7 +354,6 @@ function JobListItem({
   isAppliedExternally,
   onClick,
   onSave,
-  onMarkAppliedExternally,
 }: {
   job: JobListing;
   isSelected: boolean;
@@ -373,7 +361,6 @@ function JobListItem({
   isAppliedExternally: boolean;
   onClick: () => void;
   onSave: (e: React.MouseEvent) => void;
-  onMarkAppliedExternally: (e: React.MouseEvent) => void;
 }) {
   const sourceColor = SOURCE_COLORS[job.source.toLowerCase()] ?? "bg-gray-500 text-white";
 
@@ -772,7 +759,11 @@ export default function JobsPage() {
       applicationsApi.action(id, saved ? "unsave" : "save"),
     onSuccess: (_, { id, saved }) => {
       logger.info(`Job ${saved ? "saved" : "unsaved"} - ID: ${id}`);
-      saved ? removeSavedJobId(id) : addSavedJobId(id);
+      if (saved) {
+        removeSavedJobId(id);
+      } else {
+        addSavedJobId(id);
+      }
       toast.success(saved ? "Removed from saved" : "Job saved");
     },
     onError: () => {
@@ -988,10 +979,6 @@ export default function JobsPage() {
                   onSave={(e) => {
                     e.stopPropagation();
                     save.mutate({ id: j.job_id, saved: isSaved(j.job_id) });
-                  }}
-                  onMarkAppliedExternally={(e) => {
-                    e.stopPropagation();
-                    markAppliedExternally.mutate(j.job_id);
                   }}
                 />
               ))}

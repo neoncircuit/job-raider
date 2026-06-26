@@ -379,6 +379,84 @@ prompts:
         }}
       }}
 
+  # === Stage 9: LinkedIn Profile Analysis ===
+  linkedin_analysis:
+    system: |
+      You are a LinkedIn profile optimization expert. Analyze LinkedIn profiles to provide
+      actionable recommendations for inbound attraction: making the profile discoverable
+      to recruiters and hiring managers so opportunities come to the candidate.
+
+      CRITICAL RULES:
+      - You MUST use ONLY the data provided in the USER PROFILE below.
+      - Do NOT invent, fabricate, or hallucinate any companies, job titles, skills,
+        experience, or education that are not explicitly listed in the USER PROFILE.
+      - Score ONLY from the provided data. Do not assume missing information.
+      - Every section_score MUST correspond to a real section present in the profile.
+      - Every insight MUST be based on actual observations from the provided data.
+      - If a section is missing, note it as a gap with a low score and specific recommendation.
+      - All generated_headline_options and summary_rewrite_suggestions MUST be based on
+        the actual skills, roles, and industry provided.
+
+      SCORING GUIDELINES:
+      - Headline (weight 0.25): Keyword-rich, includes target role, 80-120 characters
+      - Summary/About (weight 0.25): 3-5 paragraphs, value proposition, keywords, CTA
+      - Experience (weight 0.25): Quantified achievements, keyword-rich descriptions
+      - Skills (weight 0.15): 10-15 relevant skills, top skills endorsed
+      - Education (weight 0.10): Relevant degrees/certifications listed
+
+    user: |
+      Analyze this LinkedIn profile for inbound attraction optimization:
+
+      USER PROFILE:
+      {{profile_context}}
+
+      IMPORTANT: Use ONLY the data explicitly provided above. Do not make up any information.
+      Score each section based solely on the provided content.
+
+      Return a JSON object:
+      {
+        "overall_score": 0-100,
+        "summary": "Executive summary of the LinkedIn profile analysis (2-3 sentences)",
+        "section_scores": [
+          {
+            "section_name": "Headline",
+            "score": 0-100,
+            "weight": 0.25,
+            "feedback": "Specific feedback for this section"
+          }
+        ],
+        "insights": [
+          {
+            "category": "headline|summary|experience|skills|education|keywords|content",
+            "observation": "What was observed about the current profile",
+            "recommendation": "Specific recommendation to improve inbound attraction",
+            "priority": "high|medium|low"
+          }
+        ],
+        "keyword_recommendations": [
+          "keyword1",
+          "keyword2"
+        ],
+        "action_plan": [
+          "Step 1: Do this",
+          "Step 2: Do that"
+        ],
+        "generated_headline_options": [
+          "Headline option 1",
+          "Headline option 2",
+          "Headline option 3"
+        ],
+        "summary_rewrite_suggestions": [
+          "Suggestion 1",
+          "Suggestion 2"
+        ],
+        "competitive_edge": "Assessment of competitive positioning for inbound attraction",
+        "metadata": {
+          "analysis_version": "1.0",
+          "analysis_type": "linkedin_inbound"
+        }
+      }
+
 # === Job-Specific Templates ===
 job_scraping:
   keywords:

@@ -23,11 +23,10 @@ interface StatCardProps {
   value: string | number;
   sub?: string;
   icon: React.ReactNode;
-  gradient: string;
   iconBg: string;
 }
 
-function StatCard({ title, value, sub, icon, gradient, iconBg }: StatCardProps) {
+function StatCard({ title, value, sub, icon, iconBg }: StatCardProps) {
   return (
     <div className={cn("relative overflow-hidden rounded border p-5 text-foreground shadow-sm transition-all duration-150 font-mono", "bg-card hover:shadow-md hover:border-primary/30")}>
       <div className="flex items-start justify-between">
@@ -81,7 +80,6 @@ export default function DashboardPage() {
           value={m?.outcomes.total_applications ?? "—"}
           sub={`${m ? (m.outcomes.interview_rate * 100).toFixed(1) : "—"}% interview rate`}
           icon={<Send className="h-5 w-5 text-white" />}
-          gradient="bg-gradient-to-br from-[var(--neon-cyan)] to-[oklch(0.55_0.18_220)]"
           iconBg="bg-white/15"
         />
         <StatCard
@@ -89,7 +87,6 @@ export default function DashboardPage() {
           value={m ? formatCurrency(m.cost.total_usd) : "—"}
           sub={m ? `${formatCurrency(m.cost.per_application)} / app` : undefined}
           icon={<DollarSign className="h-5 w-5 text-white" />}
-          gradient="bg-gradient-to-br from-[var(--neon-magenta)] to-[oklch(0.62_0.20_330)]"
           iconBg="bg-white/15"
         />
         <StatCard
@@ -97,7 +94,6 @@ export default function DashboardPage() {
           value={m ? `${m.cost.local_usage_percent.toFixed(0)}%` : "—"}
           sub="Ollama vs API calls"
           icon={<TrendingUp className="h-5 w-5 text-white" />}
-          gradient="bg-gradient-to-br from-[var(--neon-blue)] to-[oklch(0.58_0.20_250)]"
           iconBg="bg-white/15"
         />
         <StatCard
@@ -105,7 +101,6 @@ export default function DashboardPage() {
           value={m?.outcomes.offers ?? "—"}
           sub="Received so far"
           icon={<Briefcase className="h-5 w-5 text-white" />}
-          gradient="bg-gradient-to-br from-[var(--neon-gold)] to-[oklch(0.72_0.16_80)]"
           iconBg="bg-white/15"
         />
       </div>

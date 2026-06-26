@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
 import { toast } from "sonner";
@@ -40,7 +40,7 @@ type FormValues = z.infer<typeof schema>;
 function SettingsForm({ initial }: { initial: AppSettings }) {
   const qc = useQueryClient();
 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isDirty } } =
+  const { register, handleSubmit, control, setValue, formState: { errors, isDirty } } =
     useForm<FormValues>({
       resolver: zodResolver(schema),
       defaultValues: {
@@ -84,9 +84,9 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
     },
   });
 
-  const temperature = watch("model_params.temperature");
-  const topP = watch("model_params.top_p");
-  const cacheEnabled = watch("cost_limits.enable_cache");
+  const temperature = useWatch({ control, name: "model_params.temperature" });
+  const topP = useWatch({ control, name: "model_params.top_p" });
+  const cacheEnabled = useWatch({ control, name: "cost_limits.enable_cache" });
 
   return (
     <form onSubmit={handleSubmit((v) => save.mutate(v))} className="space-y-6">

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
 import { toast } from "sonner";
@@ -10,7 +10,6 @@ import { Play, Square, Wifi, WifiOff } from "lucide-react";
 import { pipelineApi } from "@/lib/api/pipeline";
 import { jobsApi } from "@/lib/api/jobs";
 import type { WSMessage } from "@/lib/types/websocket";
-import type { PipelineStatusResponse } from "@/lib/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppState } from "@/app/providers";
-import { formatDatetime, formatDuration } from "@/lib/utils/format";
+import { formatDatetime } from "@/lib/utils/format";
 import { PIPELINE_STAGES, STATUS_COLORS, DEFAULT_SOURCES } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
 
@@ -84,7 +83,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
     staleTime: Infinity,
   });
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } =
+  const { register, handleSubmit, control, setValue, formState: { errors } } =
     useForm<FormValues>({
       resolver: zodResolver(schema),
       defaultValues: {
@@ -114,7 +113,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
     onError: () => toast.error("Failed to start pipeline. Is the backend running?"),
   });
 
-  const dryRun = watch("dryRun");
+  const dryRun = useWatch({ control, name: "dryRun" });
 
   return (
     <form onSubmit={handleSubmit((v) => start.mutate(v))} className="space-y-5">
@@ -155,7 +154,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
         <div className="flex items-center gap-2">
           <Switch
             id="skip_sub"
-            checked={watch("skipSubmission")}
+            checked={useWatch({ control, name: "skipSubmission" })}
             onCheckedChange={(v) => setValue("skipSubmission", v)}
           />
           <Label htmlFor="skip_sub">Skip Submission Stage</Label>
@@ -187,12 +186,6 @@ function LiveMonitor({ runId }: { runId: string }) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
   }, [messages]);
-
-  // Derive latest status from messages
-  const lastStatus = [...messages].reverse().find(
-    (m) => m.type === "stage_started" || m.type === "stage_completed" ||
-            m.type === "pipeline_complete" || m.type === "pipeline_failed"
-  );
 
   const lastProgress = [...messages].reverse().find((m) => m.type === "stage_progress");
   const progressPct = lastProgress?.type === "stage_progress" ? lastProgress.progress : 0;

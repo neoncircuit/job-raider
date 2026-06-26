@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DollarSign, Globe, Calendar, Briefcase } from "lucide-react";
@@ -12,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils/cn";
-import { normalizeCurrencyCode } from "@/lib/utils/format";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +51,7 @@ const VISA_STATUS_OPTIONS: { value: VisaStatus; label: string; description: stri
 ];
 
 export function ApplicationSettingsModal({ profile, open, onClose }: ApplicationSettingsModalProps) {
-  const { register, handleSubmit, watch, setValue, formState: { isDirty } } = useForm({
+  const { register, handleSubmit, control, setValue, formState: { isDirty } } = useForm({
     defaultValues: {
       visa_status: profile.visa_status ?? undefined,
       visa_expiration_date: profile.visa_expiration_date ? profile.visa_expiration_date.split('T')[0] : "",
@@ -89,8 +87,8 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
     onError: () => toast.error("Failed to save settings"),
   });
 
-  const selectedVisaStatus = watch("visa_status");
-  const willingToRelocate = watch("willing_to_relocate");
+  const selectedVisaStatus = useWatch({ control, name: "visa_status" });
+  const willingToRelocate = useWatch({ control, name: "willing_to_relocate" });
 
   const onSubmit = (values: ApplicationSettingsFormValues) => {
     save.mutate(values);

@@ -12,15 +12,17 @@ import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from ...extractors.resume_parser import ResumeParser
 from ...generation.resume_analyzer import ResumeAnalyzer
+from ...generation.linkedin_analyzer import LinkedInAnalyzer
 from ...llm.router import LLMRouter
 from ...models.job_listing import JobListing
+from ...models.linkedin_analysis import LinkedInProfileInput
 from ...models.user_profile import ApprenticeshipContract, UserProfile
 from ...utils.logger import Components, get_logger
 from ..models.requests import ProfileUpdateRequest
@@ -28,6 +30,27 @@ from ..models.responses import ErrorResponse, ProfileResponse
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
+
+# Module-level singletons for expensive analyzer objects
+_llm_router: Optional[LLMRouter] = None
+_linkedin_analyzer: Optional[LinkedInAnalyzer] = None
+
+
+def _get_linkedin_analyzer() -> LinkedInAnalyzer:
+    """
+    Return a shared LinkedInAnalyzer instance.
+
+    Lazily initializes the LLMRouter and LinkedInAnalyzer once per process
+    to avoid repeated setup overhead on every request.
+
+    Returns:
+        Configured LinkedInAnalyzer singleton.
+    """
+    global _llm_router, _linkedin_analyzer
+    if _linkedin_analyzer is None:
+        _llm_router = LLMRouter()
+        _linkedin_analyzer = LinkedInAnalyzer(_llm_router)
+    return _linkedin_analyzer
 
 
 def _update_apprenticeship(profile: UserProfile, request: ProfileUpdateRequest) -> None:
@@ -583,3 +606,72 @@ async def analyze_resume(
         # Clean up temporary file
         if temp_filepath.exists():
             temp_filepath.unlink()
+
+
+@router.post("/analyze-linkedin")
+async def analyze_linkedin(input_data: LinkedInProfileInput):
+    """
+    Analyze a LinkedIn profile and provide inbound attraction insights.
+
+    Accepts a LinkedIn profile as structured fields and/or raw text,
+    and returns AI-powered analysis with scores, recommendations,
+    and generated content suggestions.
+
+    Args:
+        input_data: LinkedIn profile input (raw text and/or structured fields)
+
+    Returns:
+        LinkedIn profile analysis results with scores and recommendations
+    """
+    try:
+        analyzer = _get_linkedin_analyzer()
+        analysis = await analyzer.analyze_async(input_data)
+
+        logger.info("Completed LinkedIn profile analysis")
+
+        return {
+            "overall_score": analysis.overall_score,
+            "summary": analysis.summary,
+            "section_scores": [
+                {
+                    "section_name": s.section_name,
+                    "score": s.score,
+                    "weight": s.weight,
+                    "feedback": s.feedback,
+                }
+                for s in analysis.section_scores
+            ],
+            "insights": [
+                {
+                    "category": i.category,
+                    "observation": i.observation,
+                    "recommendation": i.recommendation,
+                    "priority": i.priority,
+                }
+                for i in analysis.insights
+            ],
+            "keyword_recommendations": analysis.keyword_recommendations,
+            "action_plan": analysis.action_plan,
+            "generated_headline_options": analysis.generated_headline_options,
+            "summary_rewrite_suggestions": analysis.summary_rewrite_suggestions,
+            "competitive_edge": analysis.competitive_edge,
+            "is_strong_profile": analysis.is_strong_profile,
+            "high_priority_insights": [
+                {
+                    "category": i.category,
+                    "observation": i.observation,
+                    "recommendation": i.recommendation,
+                    "priority": i.priority,
+                }
+                for i in analysis.high_priority_insights
+            ],
+            "weighted_overall_score": analysis.weighted_overall_score,
+            "metadata": analysis.metadata,
+            "analyzed_at": analysis.analyzed_at.isoformat(),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to analyze LinkedIn profile: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to analyze LinkedIn profile: {str(e)}"
+        )

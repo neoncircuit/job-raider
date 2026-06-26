@@ -41,67 +41,6 @@ function cleanDescription(text: string): string {
 }
 
 /**
- * Check if a line looks like a header based on heuristics
- */
-function isHeaderHeuristic(line: string): boolean {
-  const trimmed = line.trim();
-
-  // Must be short - headers are rarely long (under 60 chars)
-  if (trimmed.length > 60) return false;
-
-  // Must not be a bullet point
-  if (/^[•\-\*•●]\s/.test(trimmed)) return false;
-
-  // Must not look like a URL or email
-  if (/^https?:\/\//.test(trimmed) || /@/.test(trimmed)) return false;
-
-  // Must not be all numbers or just a number with dots
-  if (/^[\d\s\.]+$/.test(trimmed)) return false;
-
-  // Must not contain sentence structures (commas, conjunctions, etc.)
-  const hasSentenceStructure = /[,\;]\s*(and|or|but|so|because|however|although|therefore|meanwhile|furthermore|moreover)/i.test(trimmed);
-  if (hasSentenceStructure) return false;
-
-  // Should end without sentence-ending punctuation or end with colon
-  const endsWithPunctuation = /[.!?]$/.test(trimmed);
-  const endsWithColon = /:$/.test(trimmed);
-
-  if (endsWithPunctuation) return false;
-
-  // If it ends with colon, it's likely a header
-  if (endsWithColon) return true;
-
-  // Conservative header detection - only noun phrases, not full sentences
-  const words = trimmed.split(/\s+/);
-  if (words.length >= 2 && words.length <= 8) { // Keep word count reasonable
-    // Must start with a capital letter
-    const firstWordCapitalized = words[0].length > 1 && /^[A-Z][a-z]/.test(words[0]);
-    if (!firstWordCapitalized) return false;
-
-    // Check for common header starting words (very strict)
-    const startsWithHeaderWord = /^(Experience|Knowledge|Proficiency|Familiarity|Required|Preferred|Desired|Key|Core|Essential|Technical|Professional|Personal|Skills|About|What|How|Why|Benefits|Responsibilities|Requirements|Qualifications)/i.test(words[0]);
-    if (!startsWithHeaderWord) return false;
-
-    // Check for header-like structure (not sentences)
-    const hasVerbs = /\b(is|are|was|were|be|been|being|have|has|had|do|does|did|will|would|could|should|may|might|must|can|need|dare|ought)\b/i.test(trimmed);
-    if (hasVerbs) return false; // Noun phrases only, no verbs
-
-    // Check capitalization ratio (very strict - must be title case)
-    const capitalizedWords = words.filter(word =>
-      word.length > 2 && /^[A-Z][a-z]/.test(word)
-    );
-    const ratio = capitalizedWords.length / words.length;
-
-    // Must have excellent capitalization (70%+) for non-standard headers
-    if (ratio < 0.7) return false;
-
-    return true;
-  }
-
-  return false;
-}
-
-/**
  * Common section headers in job descriptions
  */
 const SECTION_PATTERNS = [
@@ -137,8 +76,6 @@ function parseSections(text: string): JobDescriptionSection[] {
     content: []
   };
 
-  let inSection = false;
-
   for (const line of lines) {
     // Check if this line is a section header (no heuristic - only exact patterns)
     const isHeader = SECTION_PATTERNS.some(pattern => pattern.test(line));
@@ -154,7 +91,6 @@ function parseSections(text: string): JobDescriptionSection[] {
         title: line.replace(/[•:]/g, '').trim(),
         content: []
       };
-      inSection = true;
     } else {
       // Add line to current section
       currentSection.content.push(line);

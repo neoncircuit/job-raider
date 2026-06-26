@@ -468,6 +468,7 @@ http://localhost:3000
 - **Profile** - Manage your profile, skills, and experience
 - **Assessment** - DISC personality assessment and technical interview practice
 - **Resume Analysis** - AI-powered resume parsing and gap analysis
+- **LinkedIn Analysis** - Inbound-attraction scoring and recruiter-focused profile recommendations
 - **Metrics** - Cost tracking and outcome statistics
 - **Settings** - Configure API keys, scraper sources, and preferences
 

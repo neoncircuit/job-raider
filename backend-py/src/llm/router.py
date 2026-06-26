@@ -30,6 +30,7 @@ class TaskType(str, Enum):
     RESUME_WRITING = "resume_writing"  # Resume generation (high quality)
     RESUME_PARSING = "resume_parsing"  # Resume parsing (medium)
     RESUME_ANALYSIS = "resume_analysis"  # Resume analysis (medium)
+    LINKEDIN_ANALYSIS = "linkedin_analysis"  # LinkedIn profile analysis (medium)
     CLASSIFICATION = "classification"  # Job categorization (medium)
     VALIDATION = "validation"  # Content validation (fast)
     EMBEDDING = "embedding"  # Embedding generation (RAG)
@@ -102,6 +103,13 @@ class LLMRouter:
         ),
         TaskType.RESUME_ANALYSIS: RouteConfig(
             task_type=TaskType.RESUME_ANALYSIS,
+            primary_provider="ollama",
+            primary_model="qwen2.5:7b",
+            fallback_provider="anthropic",
+            fallback_model="claude-sonnet-4-6",
+        ),
+        TaskType.LINKEDIN_ANALYSIS: RouteConfig(
+            task_type=TaskType.LINKEDIN_ANALYSIS,
             primary_provider="ollama",
             primary_model="qwen2.5:7b",
             fallback_provider="anthropic",

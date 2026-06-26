@@ -1,5 +1,5 @@
 import { request } from "./client";
-import type { UserProfile, ResumeAnalysis } from "@/lib/types/api";
+import type { UserProfile, ResumeAnalysis, LinkedInProfileInput, LinkedInProfileAnalysis } from "@/lib/types/api";
 
 export const profileApi = {
   get: () =>
@@ -27,4 +27,7 @@ export const profileApi = {
     if (jobDescription) fd.append("job_description", jobDescription);
     return request<ResumeAnalysis>("POST", "/profile/analyze", { formData: fd });
   },
+
+  analyzeLinkedIn: (input: LinkedInProfileInput) =>
+    request<LinkedInProfileAnalysis>("POST", "/profile/analyze-linkedin", { body: input }),
 };

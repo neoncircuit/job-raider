@@ -65,17 +65,17 @@ npx playwright test tests/e2e/basic.spec.ts
 ```bash
 cd backend-py
 
-# Run all tests
-pytest tests/
+# Run all tests (use the venv interpreter to avoid broken shebangs)
+.venv/bin/python -m pytest tests/
 
 # Run tests with coverage
-pytest tests/ --cov=src --cov-report=term
+.venv/bin/python -m pytest tests/ --cov=src --cov-report=term
 
 # Run a specific test file
-pytest tests/test_example.py
+.venv/bin/python -m pytest tests/unit/test_linkedin_analyzer.py
 
 # Run tests in verbose mode
-pytest tests/ -v
+.venv/bin/python -m pytest tests/ -v
 ```
 
 ## Test Structure
@@ -104,9 +104,40 @@ frontend-ts/tests/
 
 ```
 backend-py/tests/
-├── test_models.py            # Pydantic model tests
-├── test_scrapers.py          # Scraper tests
-└── test_api.py               # API endpoint tests
+├── conftest.py                         # Shared pytest fixtures
+├── test_cover_letter_validator.py
+├── test_cover_letter_writer.py
+├── test_resume_analyzer.py
+├── unit/                               # Unit tests
+│   ├── agents/                         # Multi-agent system tests
+│   │   ├── test_base_agent.py
+│   │   ├── test_communication_bus.py
+│   │   └── test_config_and_rate_limit.py
+│   ├── test_application_tracker.py
+│   ├── test_apply_method.py
+│   ├── test_assessment_api.py
+│   ├── test_assessment_engine.py
+│   ├── test_assessment_storage.py
+│   ├── test_bm25_retriever.py
+│   ├── test_chunker.py
+│   ├── test_cross_encoder.py
+│   ├── test_deduplicate_applied_sync.py
+│   ├── test_embedding_client.py
+│   ├── test_gemini_client.py
+│   ├── test_linkedin_analyzer.py       # LinkedIn profile analyzer
+│   ├── test_metrics.py
+│   ├── test_metrics_api.py
+│   ├── test_models.py
+│   ├── test_rag_ranker.py
+│   ├── test_rrf_fusion.py
+│   ├── test_scorer.py
+│   ├── test_settings_api.py
+│   ├── test_text_normalizer.py
+│   └── test_vector_store.py
+└── integration/                        # Integration tests
+    ├── test_application_api.py
+    ├── test_pipeline.py
+    └── test_rag_pipeline.py
 ```
 
 ## Writing Tests

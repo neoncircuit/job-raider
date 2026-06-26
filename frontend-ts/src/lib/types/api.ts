@@ -641,3 +641,59 @@ export interface DISCSession {
   session_id: string;
   questions: DISCQuestion[];
 }
+
+// ── LinkedIn Profile Analysis ─────────────────────────────────────────────────
+
+export interface LinkedInExperienceEntry {
+  title?: string;
+  company?: string;
+  description?: string;
+  dates?: string;
+}
+
+export interface LinkedInEducationEntry {
+  school?: string;
+  degree?: string;
+  field?: string;
+  dates?: string;
+}
+
+export interface LinkedInProfileInput {
+  raw_text?: string | null;
+  headline?: string | null;
+  summary?: string | null;
+  experience_entries?: LinkedInExperienceEntry[];
+  education_entries?: LinkedInEducationEntry[];
+  skills?: string[];
+  industry?: string | null;
+  career_goals?: string | null;
+  target_roles?: string[];
+}
+
+export interface ProfileSectionScore {
+  section_name: string;
+  score: number;
+  weight: number;
+  feedback: string;
+}
+
+export interface InboundAttractionInsight {
+  category: string;
+  observation: string;
+  recommendation: string;
+  priority: "critical" | "high" | "medium" | "low";
+}
+
+export interface LinkedInProfileAnalysis {
+  analyzed_at: string;
+  overall_score: number;
+  summary: string;
+  section_scores: ProfileSectionScore[];
+  insights: InboundAttractionInsight[];
+  keyword_recommendations: string[];
+  action_plan: string[];
+  generated_headline_options: string[];
+  summary_rewrite_suggestions: string[];
+  competitive_edge: string;
+  metadata?: Record<string, unknown> | null;
+}

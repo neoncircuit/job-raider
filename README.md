@@ -10,6 +10,16 @@ Automated job application pipeline that aggregates listings from multiple platfo
 - **Semantic Matching**: RAG-powered similarity search using ChromaDB vector store and embeddings
 - **Resume Generation**: Two-model approach (small for selection, large for writing)
 - **Resume Analysis**: AI-powered general and job-specific gap analysis with scoring
+- **LinkedIn Profile Analysis**: Inbound-attraction scoring and recruiter-focused recommendations
+- **AI Cover Letter Generation**: Tailored cover letters from profile and job description
+- **Multi-Agent Career Coaching**: `/api/agents/*` career analysis, gap analysis, roadmaps, and goals
+- **DISC Personality Assessment**: Most/least forced-choice assessment with job matching
+- **Technical Assessment Trainer**: Practice engine for coding and technical interviews
+- **Job Trust Analysis**: Scam detection and employer-trust scoring
+- **LinkedIn Easy Apply Automation**: Browser automation for one-click applications
+- **Fresh-Graduate Scoring Mode**: Projects 35%, Skills 30%, Education 20% weighting
+- **Light/Dark Theme Toggle**: UI theme switching via the sidebar
+- **Frontend Testing Infrastructure**: Vitest unit tests + Playwright E2E tests
 - **Auto-Submit Detection**: Identifies "Easy Apply" opportunities
 - **Dry Run Mode**: Test everything without actual submissions
 - **Cost Optimization**: 80% cost reduction using local Ollama models
@@ -136,66 +146,91 @@ job-raider/                      # Project root (monorepo)
 ├── backend-py/                  # Python backend
 │   ├── .venv/                   # Python virtual environment
 │   ├── config/                  # Configuration files
+│   │   ├── agent_config.yaml
+│   │   ├── app_config.yaml
+│   │   ├── logging_config.yaml
 │   │   ├── model_config.yaml
 │   │   ├── prompt_templates.yaml
+│   │   ├── rag_config.yaml
 │   │   ├── scoring_config.yaml
-│   │   └── logging_config.yaml
+│   │   ├── scrapers_config.yaml
+│   │   └── search_config.yaml
 │   ├── src/                     # Source code
-│   │   ├── agents/             # Multi-agent system (coordinator, communication bus, career coach)
-│   │   ├── api/                # FastAPI REST API (routes, models, websocket)
-│   │   ├── assessment/         # Technical assessment trainer + DISC engine
-│   │   ├── classifiers/        # LLM-based job classification
-│   │   ├── config/             # YAML config loader
-│   │   ├── llm/                # LLM clients (Claude, Ollama, router)
-│   │   ├── linkedin/           # LinkedIn Easy Apply automation
-│   │   ├── models/             # Pydantic V2 data models
-│   │   ├── scrapers/           # Job scraping (LinkedIn, JSearch API)
-│   │   ├── extractors/         # Resume and JD parsing (pypdf)
-│   │   ├── scoring/            # Filtering, matching, scam detection, trust analysis
-│   │   ├── rag/                # RAG pipeline (embeddings, vector store, ranker, chunker)
-│   │   ├── generation/         # Resume generation (selector, writer, formatter with 5 templates)
-│   │   ├── submission/         # Application submission and detection
-│   │   ├── pipeline/           # Pipeline orchestration and stages
-│   │   ├── health/             # System health checks (including MLflow)
-│   │   ├── metrics/            # Cost tracking, outcome tracking, MLflow integration
-│   │   ├── reports/            # HTML report generation
-│   │   ├── experiments/        # A/B testing framework
-│   │   └── utils/              # Caching, logging, Sentry, utilities
+│   │   ├── agents/              # Multi-agent system (coordinator, communication bus, career coach)
+│   │   ├── api/                 # FastAPI REST API (routes, models, websocket)
+│   │   ├── assessment/          # Technical assessment trainer + DISC engine
+│   │   ├── classifiers/         # LLM-based job classification
+│   │   ├── config/              # YAML config loader
+│   │   ├── database/            # Database models and connection helpers
+│   │   ├── extractors/          # Resume and JD parsing (pypdf)
+│   │   ├── experiments/         # A/B testing framework
+│   │   ├── generation/          # Resume generation (selector, writer, formatter) + analyzers
+│   │   ├── health/              # System health checks (including MLflow)
+│   │   ├── linkedin/            # LinkedIn Easy Apply automation
+│   │   ├── llm/                 # LLM clients (Claude, Ollama, router)
+│   │   ├── metrics/             # Cost tracking, outcome tracking, MLflow integration
+│   │   ├── models/              # Pydantic V2 data models
+│   │   ├── pipeline/            # Pipeline orchestration and stages
+│   │   ├── rag/                 # RAG pipeline (embeddings, vector store, ranker, chunker)
+│   │   ├── reports/             # HTML report generation
+│   │   ├── scrapers/            # Job scraping (LinkedIn, JSearch API)
+│   │   ├── scoring/             # Filtering, matching, scam detection, trust analysis
+│   │   ├── submission/          # Application submission and detection
+│   │   └── utils/               # Caching, logging, Sentry, utilities
 │   ├── tests/                   # Unit and integration tests
 │   ├── notebooks/               # Jupyter notebooks
 │   ├── main.py                  # CLI entry point
 │   └── requirements.txt         # Python dependencies
 ├── frontend-ts/                 # Next.js + Tailwind dashboard (active frontend)
 │   ├── src/
-│   │   ├── app/                # Next.js App Router pages (9 pages)
-│   │   ├── components/         # Shared UI components + layout
-│   │   └── lib/                # API client, types, utilities
+│   │   ├── app/                 # Next.js App Router pages (10 pages)
+│   │   ├── components/          # Shared UI components + layout
+│   │   └── lib/                 # API client, types, utilities
 │   ├── tests/                   # Vitest unit + Playwright E2E tests
 │   ├── Dockerfile               # Multi-stage production build (standalone)
 │   └── package.json             # Node dependencies
 ├── frontend-py/                 # Legacy Streamlit dashboard (superseded by frontend-ts; still tested in CI)
 ├── data/                        # Shared data storage
-│   ├── listings/                # Scraped listings
-│   ├── profiles/                # User profile data
+│   ├── alerts/                  # Alert records
+│   ├── applications/            # Tracked applications
+│   ├── applied_jobs/            # Jobs already applied to
 │   ├── cache/                   # LLM response cache
-│   └── results/                 # Pipeline results and generated resumes
+│   ├── chroma/                  # ChromaDB vector store persistence
+│   ├── disc_results/            # DISC assessment results
+│   ├── experiments/             # A/B test results
+│   ├── linkedin_session/        # LinkedIn browser session data
+│   ├── listings/                # Scraped listings
+│   ├── logs/                    # Application logs
+│   ├── metrics/                 # Cost/outcome metrics
+│   ├── outputs/                 # General output files
+│   ├── profiles/                # User profile data
+│   ├── reports/                 # Generated HTML reports
+│   ├── results/                 # Pipeline results
+│   │   ├── applications/        # Generated application packages
+│   │   └── resumes/             # Generated resumes
+│   ├── screenshots/             # Automation screenshots
+│   └── settings/                # User settings snapshots
 ├── docker/                      # Backend Dockerfiles
 │   ├── Dockerfile               # Production (CUDA + GPU)
 │   └── Dockerfile.dev           # Development (slim)
 ├── docs/                        # Documentation
-│   ├── index.md                # Documentation hub
-│   ├── architecture.md         # System architecture and data flow
-│   ├── usage.md                # Installation and usage guide
-│   ├── api.md                  # API reference
-│   ├── troubleshooting.md      # Common issues and solutions
-│   └── disk-space.md           # Disk space management
+│   ├── api.md
+│   ├── architecture.md
+│   ├── disk-space.md
+│   ├── fresh-grad-profile-guide.md
+│   ├── index.md
+│   ├── manual-verification-checklist.md
+│   ├── mlflow-setup.md
+│   ├── testing.md
+│   ├── troubleshooting.md
+│   └── usage.md
 ├── scripts/                     # Shell/utility scripts
-│   ├── find-port.sh            # Dynamic port discovery
-│   └── cleanup.sh              # Temporary file cleanup
+│   ├── cleanup.sh               # Temporary file cleanup
+│   └── find-port.sh             # Dynamic port discovery
 ├── tasks/                       # Project tracking (todo.md, lessons.md)
+├── .github/workflows/           # CI/CD pipelines
 ├── docker-compose.yml           # Multi-service orchestration
-├── docker/Dockerfile            # Backend container definition (production)
-├── docker/Dockerfile.dev        # Backend container definition (development)
+├── docker-rebuild.sh            # Docker rebuild helper (WSL2 caching workaround)
 ├── docker-run.sh                # Docker startup with port detection
 ├── setup.sh                     # One-command setup script
 ├── dev.sh                       # Local development with hot reload
@@ -209,6 +244,7 @@ job-raider/                      # Project root (monorepo)
 - **[Architecture](docs/architecture.md)** - System architecture and design
 - **[Usage Guide](docs/usage.md)** - Installation and usage
 - **[API Reference](docs/api.md)** - Complete API documentation
+- **[Testing Guide](docs/testing.md)** - Backend and frontend test commands
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 - **[Disk Space Management](docs/disk-space.md)** - Data retention policies
 
@@ -248,8 +284,10 @@ All non-sensitive configuration lives in YAML files under `backend-py/config/`:
 
 | Config File | Purpose |
 |-------------|---------|
+| `agent_config.yaml` | Multi-agent system configuration (coordinator, career coach) |
 | `app_config.yaml` | General settings (paths, development flags, monitoring) |
 | `model_config.yaml` | LLM model selection, routing, caching, rate limits |
+| `rag_config.yaml` | RAG pipeline configuration (embeddings, chunking, vector store) |
 | `scoring_config.yaml` | Scoring weights, thresholds, skill categories |
 | `scrapers_config.yaml` | Scraper settings, rate limiting, browser automation |
 | `search_config.yaml` | Default keywords, locations, filters |
@@ -304,21 +342,25 @@ Or use Docker to start all services at once:
 bash docker-run.sh
 ```
 
-The dashboard includes nine pages: Dashboard (overview), Pipeline (run/monitor), Jobs (search/browse), Profile (resume upload), Resume Analysis (AI scoring), Assessment (technical trainer + DISC), Applications (tracker), Metrics (costs/outcomes), and Settings (configuration).
+The dashboard includes ten pages: Dashboard (overview), Pipeline (run/monitor), Jobs (search/browse), Profile (resume upload), Resume Analysis (AI scoring), LinkedIn Analysis (inbound-attraction recommendations), Assessment (technical trainer + DISC), Applications (tracker), Metrics (costs/outcomes), and Settings (configuration).
 
 ### Running Tests
-
-Run `pytest` from either backend or frontend to see current counts.
 
 ```bash
 # Backend tests
 cd backend-py
-source .venv/bin/activate
-pytest
+.venv/bin/python -m pytest tests/
+# Expected: 409 passed, 2 skipped
 
-# Frontend tests (Next.js — Vitest unit + Playwright E2E)
+# Frontend unit tests
 cd frontend-ts
-npm test
+npm run test -- --run
+# Expected: 28 passed
+
+# Frontend E2E tests
+cd frontend-ts
+npm run test:e2e
+# Expected: 20 passed
 
 # Or use make from project root
 make test

@@ -5,14 +5,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import {
-  Upload, User, Briefcase, GraduationCap, FolderOpen, Wrench,
+  Upload, Briefcase, GraduationCap, FolderOpen, Wrench,
   Award, Globe, Target, ExternalLink, Link, MapPin, Mail, Phone, Settings,
 } from "lucide-react";
 import { profileApi } from "@/lib/api/profile";
 import type { UserProfile } from "@/lib/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { ApplicationSettingsModal } from "@/components/application-settings-modal";

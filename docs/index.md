@@ -56,6 +56,31 @@ The dashboard includes an AI-powered resume analysis feature that:
 - Provides qualitative scoring, summaries, and improvement recommendations
 - Supports both general analysis and job-specific gap analysis
 
+### Recent Updates (Phase 44 - 2026-06-27)
+
+This release rolls up the LinkedIn Profile Analyzer feature plus the frontend and code-review follow-ups that landed in Phases 42-44.
+
+**LinkedIn Profile Analyzer (Phase 42):**
+- New `POST /api/profile/analyze-linkedin` endpoint backed by `LinkedInAnalyzer`.
+- Pydantic models: `LinkedInProfileInput`, `LinkedInProfileAnalysis`, `ProfileSectionScore`, `InboundAttractionInsight`.
+- Frontend page at `/linkedin-analysis` with raw-text paste and structured-form input tabs.
+- 24 unit tests in `backend-py/tests/unit/test_linkedin_analyzer.py`.
+
+**Frontend ESLint Cleanup (Phase 43):**
+- Eliminated all remaining ESLint warnings across dashboard pages.
+- Migrated from `watch` to `useWatch` in React Hook Form forms to avoid unnecessary re-renders.
+- Type-check and lint gates are now stable.
+
+**Code-Review Follow-up Fixes (Phase 44):**
+- Robust LLM JSON extraction: markdown-fence stripping + brace balancing with string-literal awareness.
+- Converted LinkedIn analyzer route to use an async module-level singleton via `_get_linkedin_analyzer()`.
+- Restored missing `ExperienceSelector` filter wiring on the Jobs page.
+- Refreshed documentation, `tasks/todo.md`, `tasks/lessons.md`, and `setup.sh`.
+
+**Verification:**
+- Backend: 409 passed, 2 skipped.
+- Frontend: 28 Vitest unit tests + 20 Playwright E2E tests.
+
 ### Recent Updates (Phase 41 - 2026-06-16)
 
 **Multi-Agent System (now wired and live):**
@@ -436,7 +461,7 @@ job-raider/                      # Project root (monorepo)
 │   └── requirements.txt         # Python dependencies
 ├── frontend-ts/                 # Next.js 16 + Tailwind CSS dashboard
 │   ├── src/
-│   │   ├── app/                # Next.js App Router pages (9 pages)
+│   │   ├── app/                # Next.js App Router pages (10 pages)
 │   │   ├── components/         # Shared UI components + layout
 │   │   └── lib/                # API client, types, utilities
 │   ├── Dockerfile               # Multi-stage production build (standalone)

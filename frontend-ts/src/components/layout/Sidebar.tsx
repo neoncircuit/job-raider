@@ -9,6 +9,7 @@ import {
   Settings,
   Zap,
   GraduationCap,
+  Link,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ConnectionStatus } from "./ConnectionStatus";
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/profile", icon: <User size={16} />, label: "Profile" },
   { href: "/assessment", icon: <GraduationCap size={16} />, label: "Assessment" },
   { href: "/resume-analysis", icon: <FileSearch size={16} />, label: "Resume Analysis" },
+  { href: "/linkedin-analysis", icon: <Link size={16} />, label: "LinkedIn Analysis" },
   { href: "/metrics", icon: <BarChart3 size={16} />, label: "Metrics" },
   { href: "/settings", icon: <Settings size={16} />, label: "Settings" },
 ];

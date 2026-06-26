@@ -500,7 +500,7 @@ The web dashboard is built with Next.js 16 (App Router) + Tailwind CSS + shadcn/
 ```mermaid
 graph LR
     subgraph "Browser"
-        Pages[8 App Router Pages]
+        Pages[10 App Router Pages]
         Components[Layout + UI Components]
     end
 
@@ -536,6 +536,7 @@ graph LR
 | `/applications` | Tracker: All / Saved / Hidden tabs, track external |
 | `/profile` | Resume upload (dropzone), parsed profile display |
 | `/resume-analysis` | Upload + optional JD → AI score, gaps, recommendations |
+| `/linkedin-analysis` | LinkedIn profile analyzer and inbound-attraction recommendations |
 | `/metrics` | Recharts funnel + pie, cost tiles, LLM call log |
 | `/settings` | Model params, API config, cost limits, validate/reset |
 | `/assessment` | Technical interview practice: skill-based or job-targeted, MC + freeform, adaptive difficulty |

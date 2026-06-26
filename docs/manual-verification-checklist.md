@@ -4,8 +4,8 @@
 
 This checklist provides a comprehensive manual testing guide to verify all features work as intended. Use this checklist before releases, after major changes, or when troubleshooting issues.
 
-**Date:** 2026-06-08
-**Version:** Phase 39
+**Date:** 2026-06-27
+**Version:** Phase 44
 
 ---
 
@@ -239,6 +239,26 @@ This checklist provides a comprehensive manual testing guide to verify all featu
   - Verify: Tooltips or details show
 
 ---
+
+### LinkedIn Profile Analysis
+
+- [ ] LinkedIn Analysis page loads
+  - Navigate to: `/linkedin-analysis`
+  - Verify: Page displays with raw-text and structured-form tabs
+- [ ] Raw-text paste tab accepts input
+  - Paste: Sample LinkedIn profile text
+  - Verify: Input is accepted and analyze button is enabled
+- [ ] Structured form tab accepts input
+  - Fill: Headline, summary, experience, education, skills
+  - Verify: Form fields accept input
+- [ ] Analyze returns actionable results
+  - Submit: Valid profile input
+  - Verify: Overall score, section scores, and prioritized insights display
+- [ ] JSON export button works
+  - Click: Export JSON
+  - Verify: JSON file downloads with analysis data
+- [ ] Sidebar navigation item is visible
+  - Verify: LinkedIn Analysis link appears in sidebar
 
 ## Section 7: DISC Assessment
 
