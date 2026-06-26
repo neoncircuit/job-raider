@@ -498,7 +498,9 @@ class LinkedInAnalyzer:
         elif score >= 60:
             competitive_edge = "Good positioning with room for improvement."
         else:
-            competitive_edge = "Needs significant improvement to attract inbound interest."
+            competitive_edge = (
+                "Needs significant improvement to attract inbound interest."
+            )
 
         return {
             "overall_score": max(0, min(100, score)),
@@ -557,9 +559,7 @@ class LinkedInAnalyzer:
             insights=insights,
             keyword_recommendations=llm_result.get("keyword_recommendations", []),
             action_plan=llm_result.get("action_plan", []),
-            generated_headline_options=llm_result.get(
-                "generated_headline_options", []
-            ),
+            generated_headline_options=llm_result.get("generated_headline_options", []),
             summary_rewrite_suggestions=llm_result.get(
                 "summary_rewrite_suggestions", []
             ),

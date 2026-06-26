@@ -91,9 +91,7 @@ class TestLinkedInAnalyzerRuleBased:
                     "description": "Built core platform",
                 },
             ],
-            education_entries=[
-                {"school": "MIT", "degree": "BS Computer Science"}
-            ],
+            education_entries=[{"school": "MIT", "degree": "BS Computer Science"}],
             skills=["Python", "JavaScript", "AWS", "Docker", "Kubernetes"],
             industry="Technology",
             target_roles=["Staff Engineer", "Principal Engineer"],

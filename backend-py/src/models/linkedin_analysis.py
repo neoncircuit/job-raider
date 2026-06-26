@@ -84,17 +84,13 @@ class ProfileSectionScore(BaseModel):
     """
 
     section_name: str = Field(description="Name of the profile section")
-    score: float = Field(
-        description="Score for this section (0-100)", ge=0, le=100
-    )
+    score: float = Field(description="Score for this section (0-100)", ge=0, le=100)
     weight: float = Field(
         description="Weight of this section in the overall score (0-1)",
         ge=0,
         le=1,
     )
-    feedback: str = Field(
-        description="Actionable feedback for improving this section"
-    )
+    feedback: str = Field(description="Actionable feedback for improving this section")
 
     @field_validator("score")
     @classmethod
@@ -121,9 +117,7 @@ class InboundAttractionInsight(BaseModel):
     category: str = Field(
         description="Category of insight (e.g., 'headline', 'keywords', 'content')"
     )
-    observation: str = Field(
-        description="What was observed about the current profile"
-    )
+    observation: str = Field(description="What was observed about the current profile")
     recommendation: str = Field(
         description="Specific recommendation to improve inbound attraction"
     )
