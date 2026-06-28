@@ -15,18 +15,22 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel
 
 from ...extractors.resume_parser import ResumeParser
 from ...generation.linkedin_analyzer import LinkedInAnalyzer
 from ...generation.resume_analyzer import ResumeAnalyzer
+from ...linkedin.session import LinkedInSession, LinkedInSessionConfig
 from ...llm.router import LLMRouter
 from ...models.job_listing import JobListing
-from ...models.linkedin_analysis import LinkedInProfileInput
+from ...models.linkedin_analysis import (
+    LinkedInPeopleSearchInput,
+    LinkedInPeopleSearchResponse,
+    LinkedInPeopleSearchResult,
+    LinkedInProfileInput,
+)
 from ...models.user_profile import ApprenticeshipContract, UserProfile
 from ...utils.logger import Components, get_logger
 from ..models.requests import ProfileUpdateRequest
-from ..models.responses import ErrorResponse, ProfileResponse
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
@@ -51,6 +55,36 @@ def _get_linkedin_analyzer() -> LinkedInAnalyzer:
         _llm_router = LLMRouter()
         _linkedin_analyzer = LinkedInAnalyzer(_llm_router)
     return _linkedin_analyzer
+
+
+def _get_linkedin_session() -> Optional[LinkedInSession]:
+    """
+    Build and start an authenticated LinkedInSession if credentials are set.
+
+    Reads LINKEDIN_EMAIL and LINKEDIN_PASSWORD from environment variables.
+    Returns None if credentials are missing or the session cannot be started.
+
+    Returns:
+        Authenticated LinkedInSession, or None if unavailable.
+    """
+    email = os.environ.get("LINKEDIN_EMAIL")
+    password = os.environ.get("LINKEDIN_PASSWORD")
+    if not email or not password:
+        logger.warning(
+            "LinkedIn credentials not configured; URL fetch/search unavailable."
+        )
+        return None
+
+    config = LinkedInSessionConfig(email=email, password=password)
+    session = LinkedInSession(config)
+    if not session.start():
+        logger.warning(
+            "Failed to start LinkedIn session; URL fetch/search unavailable."
+        )
+        session.close()
+        return None
+
+    return session
 
 
 def _update_apprenticeship(profile: UserProfile, request: ProfileUpdateRequest) -> None:
@@ -613,18 +647,43 @@ async def analyze_linkedin(input_data: LinkedInProfileInput):
     """
     Analyze a LinkedIn profile and provide inbound attraction insights.
 
-    Accepts a LinkedIn profile as structured fields and/or raw text,
-    and returns AI-powered analysis with scores, recommendations,
-    and generated content suggestions.
+    Accepts a LinkedIn profile URL, raw text, structured fields, or any
+    combination. If a profile_url is provided and LinkedIn credentials are
+    configured, the profile content is fetched and merged with any supplied
+    text before analysis.
 
     Args:
-        input_data: LinkedIn profile input (raw text and/or structured fields)
+        input_data: LinkedIn profile input (URL, raw text, and/or structured fields)
 
     Returns:
         LinkedIn profile analysis results with scores and recommendations
     """
     try:
         analyzer = _get_linkedin_analyzer()
+
+        if input_data.profile_url and input_data.profile_url.strip():
+            session = _get_linkedin_session()
+            if session:
+                try:
+                    fetched_text = session.fetch_profile_text(
+                        input_data.profile_url.strip()
+                    )
+                    if fetched_text:
+                        existing_raw = input_data.raw_text or ""
+                        input_data.raw_text = (
+                            f"FETCHED LINKEDIN PROFILE ({input_data.profile_url}):\n"
+                            f"{fetched_text}\n\n{existing_raw}"
+                        ).strip()
+                except Exception as e:
+                    logger.warning(f"Failed to fetch LinkedIn profile: {e}")
+                finally:
+                    session.close()
+            else:
+                logger.warning(
+                    "LinkedIn credentials/session unavailable; "
+                    "analyzing from provided text only."
+                )
+
         analysis = await analyzer.analyze_async(input_data)
 
         logger.info("Completed LinkedIn profile analysis")
@@ -675,3 +734,50 @@ async def analyze_linkedin(input_data: LinkedInProfileInput):
         raise HTTPException(
             status_code=500, detail=f"Failed to analyze LinkedIn profile: {str(e)}"
         )
+
+
+@router.post("/search-linkedin", response_model=LinkedInPeopleSearchResponse)
+async def search_linkedin_people(input_data: LinkedInPeopleSearchInput):
+    """
+    Search LinkedIn people by name, title, company, keywords, or location.
+
+    Requires LINKEDIN_EMAIL and LINKEDIN_PASSWORD environment variables.
+
+    Args:
+        input_data: People search query parameters.
+
+    Returns:
+        LinkedIn people search results.
+    """
+    session = _get_linkedin_session()
+    if not session:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "LinkedIn search is unavailable. "
+                "Configure LINKEDIN_EMAIL and LINKEDIN_PASSWORD."
+            ),
+        )
+
+    try:
+        raw_results = session.search_people(
+            keywords=input_data.keywords,
+            name=input_data.name,
+            title=input_data.title,
+            company=input_data.company,
+            location=input_data.location,
+            limit=input_data.limit,
+        )
+        results = [LinkedInPeopleSearchResult(**r) for r in raw_results]
+        return LinkedInPeopleSearchResponse(
+            query=input_data.model_dump(exclude={"limit"}),
+            total=len(results),
+            results=results,
+        )
+    except Exception as e:
+        logger.error(f"LinkedIn people search failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"LinkedIn people search failed: {str(e)}"
+        )
+    finally:
+        session.close()

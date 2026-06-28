@@ -659,6 +659,7 @@ export interface LinkedInEducationEntry {
 }
 
 export interface LinkedInProfileInput {
+  profile_url?: string | null;
   raw_text?: string | null;
   headline?: string | null;
   summary?: string | null;
@@ -668,6 +669,28 @@ export interface LinkedInProfileInput {
   industry?: string | null;
   career_goals?: string | null;
   target_roles?: string[];
+}
+
+export interface LinkedInPeopleSearchInput {
+  keywords?: string | null;
+  name?: string | null;
+  title?: string | null;
+  company?: string | null;
+  location?: string | null;
+  limit?: number;
+}
+
+export interface LinkedInPeopleSearchResult {
+  name: string;
+  headline: string;
+  profile_url: string;
+  location?: string | null;
+}
+
+export interface LinkedInPeopleSearchResponse {
+  query: Record<string, unknown>;
+  total: number;
+  results: LinkedInPeopleSearchResult[];
 }
 
 export interface ProfileSectionScore {

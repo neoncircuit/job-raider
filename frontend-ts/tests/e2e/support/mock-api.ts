@@ -70,6 +70,42 @@ export async function mockApi(page: Page): Promise<void> {
         return route.fulfill({ status: 200, json: { sources: ["linkedin", "jsearch"] } });
       case "GET /profile":
         return route.fulfill({ status: 200, json: sampleProfile });
+      case "POST /profile/analyze-linkedin":
+        return route.fulfill({
+          status: 200,
+          json: {
+            overall_score: 76,
+            summary: "Strong LinkedIn profile with clear positioning.",
+            section_scores: [],
+            insights: [],
+            keyword_recommendations: ["TypeScript", "React", "FastAPI"],
+            action_plan: ["Add more quantified achievements"],
+            generated_headline_options: [],
+            summary_rewrite_suggestions: [],
+            competitive_edge: "Solid technical breadth",
+            is_strong_profile: true,
+            high_priority_insights: [],
+            weighted_overall_score: 76,
+            metadata: {},
+            analyzed_at: "2026-06-28T12:00:00Z",
+          },
+        });
+      case "POST /profile/search-linkedin":
+        return route.fulfill({
+          status: 200,
+          json: {
+            query: { keywords: "engineer" },
+            total: 1,
+            results: [
+              {
+                name: "Alex Smith",
+                headline: "Senior Engineer",
+                profile_url: "https://www.linkedin.com/in/alexsmith",
+                location: "Remote",
+              },
+            ],
+          },
+        });
       default:
         // Safety net: any unmapped proxied call returns an empty 200 so an
         // unanticipated endpoint surfaces as a render gap rather than a crash.

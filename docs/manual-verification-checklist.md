@@ -244,7 +244,30 @@ This checklist provides a comprehensive manual testing guide to verify all featu
 
 - [ ] LinkedIn Analysis page loads
   - Navigate to: `/linkedin-analysis`
-  - Verify: Page displays with raw-text and structured-form tabs
+  - Verify: Page displays with four tabs (LinkedIn URL, Search Profiles, Paste Profile Text, Fill Sections Manually)
+- [ ] LinkedIn URL tab accepts a profile URL
+  - Enter: `https://www.linkedin.com/in/janedoe`
+  - Verify: URL is accepted and analyze button is enabled
+- [ ] URL-based analysis fetches and analyzes profile text when credentials are configured
+  - Submit: A valid LinkedIn profile URL
+  - Verify: Analysis results load (overall score, section scores, insights)
+- [ ] URL-based analysis falls back gracefully without credentials
+  - Ensure: `LINKEDIN_EMAIL` and `LINKEDIN_PASSWORD` are not set
+  - Submit: A LinkedIn profile URL with no other input
+  - Verify: UI shows a service-unavailable or fallback message, or the request proceeds using only the provided text
+- [ ] Search Profiles tab accepts search input
+  - Fill: Keywords, name, title, company, or location
+  - Verify: Input is accepted and search button is enabled
+- [ ] People search returns selectable result cards when credentials are configured
+  - Submit: A search with valid keywords
+  - Verify: Result cards with name, headline, location, and profile URL appear
+- [ ] Selecting a search result copies the URL into the URL tab
+  - Click: Use this profile on a result card
+  - Verify: The LinkedIn URL tab is active and the profile URL is filled in
+- [ ] People search shows unavailable message without credentials
+  - Ensure: `LINKEDIN_EMAIL` and `LINKEDIN_PASSWORD` are not set
+  - Submit: Any people search
+  - Verify: A 503 / unavailable message is shown
 - [ ] Raw-text paste tab accepts input
   - Paste: Sample LinkedIn profile text
   - Verify: Input is accepted and analyze button is enabled
@@ -259,6 +282,9 @@ This checklist provides a comprehensive manual testing guide to verify all featu
   - Verify: JSON file downloads with analysis data
 - [ ] Sidebar navigation item is visible
   - Verify: LinkedIn Analysis link appears in sidebar
+- [ ] Mobile navigation item is visible
+  - Set: Mobile viewport (375px width)
+  - Verify: LinkedIn Analysis link appears in mobile menu
 
 ## Section 7: DISC Assessment
 

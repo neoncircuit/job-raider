@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, Zap } from "lucide-react";
+import { Menu, Zap, GraduationCap, Link as LinkIcon } from "lucide-react";
 import {
   LayoutDashboard, Rocket, Briefcase, ClipboardList,
   User, FileSearch, BarChart3, Settings,
@@ -19,7 +19,9 @@ const NAV_ITEMS = [
   { href: "/jobs", icon: <Briefcase size={16} />, label: "Jobs" },
   { href: "/applications", icon: <ClipboardList size={16} />, label: "Applications" },
   { href: "/profile", icon: <User size={16} />, label: "Profile" },
+  { href: "/assessment", icon: <GraduationCap size={16} />, label: "Assessment" },
   { href: "/resume-analysis", icon: <FileSearch size={16} />, label: "Resume Analysis" },
+  { href: "/linkedin-analysis", icon: <LinkIcon size={16} />, label: "LinkedIn Analysis" },
   { href: "/metrics", icon: <BarChart3 size={16} />, label: "Metrics" },
   { href: "/settings", icon: <Settings size={16} />, label: "Settings" },
 ];

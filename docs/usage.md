@@ -300,6 +300,58 @@ cd backend-py
 python main.py --resume resume.pdf --keywords "python" --locations "remote" --skip-submission
 ```
 
+## LinkedIn Profile Analysis
+
+The **LinkedIn Analysis** page evaluates your profile for inbound recruiter attraction and recommends improvements. Open it from the sidebar at `LinkedIn Analysis`.
+
+### Input options
+
+The page provides four tabs so you can provide a profile in the way that suits you:
+
+1. **LinkedIn URL** — paste a public LinkedIn profile URL and click **Analyze**. The backend attempts to fetch the page text using the credentials configured in `backend-py/.env` (`LINKEDIN_EMAIL` and `LINKEDIN_PASSWORD`). The fetched content is merged with anything else you supply before the LLM analyzes it.
+2. **Search Profiles** — find LinkedIn profiles by keywords, name, title, company, or location. Results appear as selectable cards. Click **Use this profile** on a result to copy its URL into the LinkedIn URL tab and switch to it. Searching requires the same LinkedIn credentials as the URL tab.
+3. **Paste Profile Text** — paste the raw text of a LinkedIn profile (or any bio) directly. This works without LinkedIn credentials.
+4. **Fill Sections Manually** — enter structured fields such as headline, summary, experience, education, skills, and career goals. This also works without LinkedIn credentials.
+
+### Requirements for URL fetch and people search
+
+URL-based analysis and people search rely on an authenticated LinkedIn session. Set these variables in `backend-py/.env`:
+
+```bash
+LINKEDIN_EMAIL=your-linkedin-email@example.com
+LINKEDIN_PASSWORD=your-linkedin-password
+```
+
+If the credentials are missing or the session cannot start, the URL tab falls back to analyzing only the data you provided, and the Search tab displays a service-unavailable message.
+
+### Interpreting the results
+
+The analysis card shows:
+
+- **Overall score** — a 0–100 recruiter-attraction score.
+- **Section scores** — per-section scores and feedback for headline, summary, experience, and so on.
+- **Insights** — prioritized recommendations such as keyword gaps, content issues, and profile structure.
+- **Action plan** — concrete steps to improve the profile.
+- **Generated headline options** and **summary rewrite suggestions** — ready-to-use copy alternatives.
+
+### Programmatic example
+
+You can also call the analysis endpoint directly:
+
+```bash
+# Analyze from a LinkedIn URL
+curl -s -X POST http://localhost:8000/api/profile/analyze-linkedin \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"profile_url": "https://www.linkedin.com/in/janedoe"}' | jq .
+
+# Search for profiles
+curl -s -X POST http://localhost:8000/api/profile/search-linkedin \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"keywords": "senior python engineer", "limit": 5}' | jq .
+```
+
 ## Working with Results
 
 ### Generated Resumes

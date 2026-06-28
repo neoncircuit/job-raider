@@ -11,6 +11,7 @@ Date: 2026-05-04
 import json
 import random
 import time
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -351,6 +352,135 @@ class LinkedInSession:
         self._page.goto(url, timeout=self.config.timeout_ms)
         time.sleep(random.uniform(1, 2))
         return self._page
+
+    def navigate_to_url(self, url: str) -> Page:
+        """
+        Navigate to an arbitrary LinkedIn URL.
+
+        Args:
+            url: Fully qualified LinkedIn URL.
+
+        Returns:
+            The page after navigation.
+
+        Raises:
+            RuntimeError: If no active session.
+        """
+        if not self._page:
+            raise RuntimeError("No active session. Call start() first.")
+
+        self._page.goto(url, timeout=self.config.timeout_ms)
+        time.sleep(random.uniform(1, 2))
+        return self._page
+
+    def fetch_profile_text(self, profile_url: str) -> str:
+        """
+        Navigate to a LinkedIn profile and extract visible text content.
+
+        Args:
+            profile_url: LinkedIn profile URL.
+
+        Returns:
+            Extracted visible text from the profile page, or an empty string
+            if the content cannot be retrieved.
+        """
+        if not self._page:
+            raise RuntimeError("No active session. Call start() first.")
+
+        page = self.navigate_to_url(profile_url)
+        try:
+            page.wait_for_selector(
+                "main.scaffold-layout__main, section.artdeco-card",
+                timeout=10000,
+            )
+        except Exception:
+            pass
+        return page.inner_text("body") or ""
+
+    def search_people(
+        self,
+        keywords: Optional[str] = None,
+        name: Optional[str] = None,
+        title: Optional[str] = None,
+        company: Optional[str] = None,
+        location: Optional[str] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """
+        Search LinkedIn people and return result cards.
+
+        Args:
+            keywords: Free-form keywords.
+            name: Person name.
+            title: Job title.
+            company: Company name.
+            location: Location.
+            limit: Maximum number of results to return.
+
+        Returns:
+            List of result dictionaries with name, headline, profile_url,
+            and optional location.
+        """
+        if not self._page:
+            raise RuntimeError("No active session. Call start() first.")
+
+        terms = []
+        if keywords:
+            terms.append(keywords)
+        if name:
+            terms.append(name)
+        if title:
+            terms.append(title)
+        if company:
+            terms.append(company)
+        if location:
+            terms.append(location)
+
+        query = " ".join(terms)
+        encoded = urllib.parse.quote(query)
+        url = f"https://www.linkedin.com/search/results/people/?keywords={encoded}"
+        page = self.navigate_to_url(url)
+
+        # Wait for result cards to render.
+        try:
+            page.wait_for_selector(
+                ".search-result__info, .entity-result__content",
+                timeout=self.config.timeout_ms,
+            )
+        except Exception:
+            pass
+
+        cards = page.query_selector_all(".search-result__info, .entity-result__content")
+        results: List[Dict[str, Any]] = []
+        for card in cards[:limit]:
+            name_el = card.query_selector(
+                ".app-aware-link span, .entity-result__title-text a"
+            )
+            link_el = card.query_selector("a.app-aware-link")
+            headline_el = card.query_selector(
+                ".entity-result__primary-subtitle, .search-result__truncate"
+            )
+            location_el = card.query_selector(".entity-result__secondary-subtitle")
+
+            if not link_el:
+                continue
+
+            href = link_el.get_attribute("href") or ""
+            if "/in/" not in href:
+                continue
+
+            results.append(
+                {
+                    "name": name_el.inner_text().strip() if name_el else "Unknown",
+                    "headline": headline_el.inner_text().strip() if headline_el else "",
+                    "profile_url": href.split("?")[0],
+                    "location": (
+                        location_el.inner_text().strip() if location_el else None
+                    ),
+                }
+            )
+
+        return results
 
     def screenshot(self, name: str) -> Path:
         """

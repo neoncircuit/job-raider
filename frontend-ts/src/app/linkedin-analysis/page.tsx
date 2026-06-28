@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Download, Plus, Trash2 } from "lucide-react";
+import { Download, Plus, Search, Trash2 } from "lucide-react";
 import { profileApi } from "@/lib/api/profile";
 import type {
   LinkedInProfileAnalysis,
   LinkedInProfileInput,
   LinkedInExperienceEntry,
   LinkedInEducationEntry,
+  LinkedInPeopleSearchInput,
+  LinkedInPeopleSearchResult,
 } from "@/lib/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -257,6 +259,50 @@ const EMPTY_EDUCATION: LinkedInEducationEntry = {
 };
 
 /**
+ * Display LinkedIn people search results and allow selecting a profile.
+ *
+ * @param props - Component props.
+ * @param props.results - Search results to display.
+ * @param props.onSelect - Callback invoked with the selected profile URL.
+ * @returns The search results element.
+ */
+function SearchResults({
+  results,
+  onSelect,
+}: {
+  results: LinkedInPeopleSearchResult[];
+  onSelect: (profileUrl: string) => void;
+}) {
+  if (results.length === 0) {
+    return (
+      <p className="text-sm text-gray-500">No results found. Try adjusting your search terms.</p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-medium text-gray-700">Search results</p>
+      {results.map((result, index) => (
+        <Card key={index} className="hover:border-primary/50 transition-colors">
+          <CardContent className="p-3 space-y-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900 truncate">{result.name}</p>
+                <p className="text-xs text-gray-600 line-clamp-2">{result.headline}</p>
+                {result.location && <p className="text-xs text-gray-400">{result.location}</p>}
+              </div>
+              <Button size="sm" variant="outline" onClick={() => onSelect(result.profile_url)}>
+                Analyze
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Form for submitting a LinkedIn profile for analysis.
  *
  * @param props - Component props.
@@ -264,7 +310,8 @@ const EMPTY_EDUCATION: LinkedInEducationEntry = {
  * @returns The analysis form element.
  */
 function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => void }) {
-  const [activeTab, setActiveTab] = useState("paste");
+  const [activeTab, setActiveTab] = useState("url");
+  const [profileUrl, setProfileUrl] = useState("");
   const [rawText, setRawText] = useState("");
   const [headline, setHeadline] = useState("");
   const [summary, setSummary] = useState("");
@@ -278,6 +325,16 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
   const [industry, setIndustry] = useState("");
   const [careerGoals, setCareerGoals] = useState("");
   const [targetRoles, setTargetRoles] = useState("");
+
+  // Search tab state
+  const [searchInput, setSearchInput] = useState<LinkedInPeopleSearchInput>({
+    keywords: "",
+    name: "",
+    title: "",
+    company: "",
+    location: "",
+  });
+  const [searchResults, setSearchResults] = useState<LinkedInPeopleSearchResult[]>([]);
 
   const updateExperience = (index: number, field: keyof LinkedInExperienceEntry, value: string) => {
     setExperienceEntries((prev) =>
@@ -310,7 +367,10 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
   const analyze = useMutation({
     mutationFn: () => {
       let input: LinkedInProfileInput;
-      if (activeTab === "paste") {
+      if (activeTab === "url") {
+        if (!profileUrl.trim()) throw new Error("Please enter a LinkedIn profile URL");
+        input = { profile_url: profileUrl.trim() };
+      } else if (activeTab === "paste") {
         if (!rawText.trim()) throw new Error("Please paste your profile text");
         input = { raw_text: rawText.trim() };
       } else {
@@ -338,6 +398,28 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
     onError: (err: Error) => toast.error(err.message || "Analysis failed. Check that the backend is running."),
   });
 
+  const search = useMutation({
+    mutationFn: () => {
+      const hasSearchInput = Object.values(searchInput).some((v) => typeof v === "string" && v.trim());
+      if (!hasSearchInput) throw new Error("Please enter at least one search term");
+      const input: LinkedInPeopleSearchInput = {
+        keywords: searchInput.keywords?.trim() || null,
+        name: searchInput.name?.trim() || null,
+        title: searchInput.title?.trim() || null,
+        company: searchInput.company?.trim() || null,
+        location: searchInput.location?.trim() || null,
+      };
+      return profileApi.searchLinkedInPeople(input);
+    },
+    onSuccess: (data) => {
+      setSearchResults(data.results);
+      if (data.results.length === 0) {
+        toast.info("No profiles found. Try broadening your search.");
+      }
+    },
+    onError: (err: Error) => toast.error(err.message || "Search failed. Check that the backend is running."),
+  });
+
   const hasManualInput = Boolean(
     headline.trim() ||
       summary.trim() ||
@@ -353,15 +435,107 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
       )
   );
 
-  const canSubmit = activeTab === "paste" ? rawText.trim().length > 0 : hasManualInput;
+  const canSubmit =
+    activeTab === "url"
+      ? profileUrl.trim().length > 0
+      : activeTab === "paste"
+        ? rawText.trim().length > 0
+        : hasManualInput;
+
+  const handleSelectSearchResult = (url: string) => {
+    setProfileUrl(url);
+    setActiveTab("url");
+    setSearchResults([]);
+    toast.success("Profile URL selected. Click Analyze to continue.");
+  };
 
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="url">LinkedIn URL</TabsTrigger>
+          <TabsTrigger value="search">Search Profiles</TabsTrigger>
           <TabsTrigger value="paste">Paste Profile Text</TabsTrigger>
           <TabsTrigger value="manual">Fill Sections Manually</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="url" className="space-y-4">
+          <div className="space-y-1">
+            <Label htmlFor="profile-url">LinkedIn profile URL</Label>
+            <Input
+              id="profile-url"
+              placeholder="https://www.linkedin.com/in/username"
+              value={profileUrl}
+              onChange={(e) => setProfileUrl(e.target.value)}
+            />
+            <p className="text-xs text-gray-500">
+              Requires LinkedIn credentials configured on the backend. If unavailable, the URL itself
+              will be used as context.
+            </p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="search" className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="search-keywords">Keywords</Label>
+              <Input
+                id="search-keywords"
+                placeholder="e.g., React, TypeScript"
+                value={searchInput.keywords ?? ""}
+                onChange={(e) => setSearchInput((prev) => ({ ...prev, keywords: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="search-name">Name</Label>
+              <Input
+                id="search-name"
+                placeholder="Person name"
+                value={searchInput.name ?? ""}
+                onChange={(e) => setSearchInput((prev) => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="search-title">Title</Label>
+              <Input
+                id="search-title"
+                placeholder="Job title"
+                value={searchInput.title ?? ""}
+                onChange={(e) => setSearchInput((prev) => ({ ...prev, title: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="search-company">Company</Label>
+              <Input
+                id="search-company"
+                placeholder="Company name"
+                value={searchInput.company ?? ""}
+                onChange={(e) => setSearchInput((prev) => ({ ...prev, company: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <Label htmlFor="search-location">Location</Label>
+              <Input
+                id="search-location"
+                placeholder="City, country, or region"
+                value={searchInput.location ?? ""}
+                onChange={(e) => setSearchInput((prev) => ({ ...prev, location: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={() => search.mutate()}
+            disabled={search.isPending}
+            variant="secondary"
+            className="w-full"
+          >
+            <Search className="mr-1.5 h-4 w-4" />
+            {search.isPending ? "Searching..." : "Search LinkedIn Profiles"}
+          </Button>
+
+          <SearchResults results={searchResults} onSelect={handleSelectSearchResult} />
+        </TabsContent>
 
         <TabsContent value="paste" className="space-y-4">
           <div className="space-y-1">
@@ -547,13 +721,15 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
         </TabsContent>
       </Tabs>
 
-      <Button
-        onClick={() => analyze.mutate()}
-        disabled={!canSubmit || analyze.isPending}
-        className="w-full"
-      >
-        {analyze.isPending ? "Analyzing..." : "Analyze LinkedIn Profile"}
-      </Button>
+      {activeTab !== "search" && (
+        <Button
+          onClick={() => analyze.mutate()}
+          disabled={!canSubmit || analyze.isPending}
+          className="w-full"
+        >
+          {analyze.isPending ? "Analyzing..." : "Analyze LinkedIn Profile"}
+        </Button>
+      )}
     </div>
   );
 }

@@ -1696,3 +1696,52 @@ Both former-RED frontend gates are green locally (lint/type-check/unit also clea
 - The LinkedIn analysis endpoint is fully async and reuses a single `LLMRouter`/`LinkedInAnalyzer` pair across requests.
 - The Jobs page experience filter is restored and included in search requests.
 
+## Phase 45: LinkedIn Profile Analyzer Redesign - URL Fetch + People Search [COMPLETED]
+
+**Overview:** Extend the LinkedIn Profile Analyzer to accept a LinkedIn profile URL, fetch the profile content via an authenticated Playwright session, and analyze the fetched content. Add a LinkedIn people-search feature to discover profile URLs by name, title, company, and location. Keep the existing raw-text paste and structured-form inputs as fallbacks.
+
+### Backend
+- [x] Add `profile_url` field to `LinkedInProfileInput` in `backend-py/src/models/linkedin_analysis.py`.
+- [x] Update `validate_input_present` to accept `profile_url`, `raw_text`, or structured fields.
+- [x] Add `LinkedInPeopleSearchInput`, `LinkedInPeopleSearchResult`, and `LinkedInPeopleSearchResponse` models.
+- [x] Extend `LinkedInSession` in `backend-py/src/linkedin/session.py` with `navigate_to_url()`, `fetch_profile_text()`, and `search_people()`.
+- [x] Add `_get_linkedin_session()` helper to `backend-py/src/api/routes/profile.py`.
+- [x] Update `POST /profile/analyze-linkedin` to fetch and merge URL content before analysis.
+- [x] Add `POST /profile/search-linkedin` endpoint; return `503` when LinkedIn credentials/session are unavailable.
+- [x] Add unit tests for `LinkedInProfileInput` validation and URL-based analysis.
+- [x] Add route unit tests for analyze-linkedin URL fetch, fallback without session, and search-linkedin success/503 paths.
+
+### Frontend
+- [x] Update `LinkedInProfileInput` TypeScript type in `frontend-ts/src/lib/types/api.ts` to include `profile_url`.
+- [x] Add `LinkedInPeopleSearchInput`, `LinkedInPeopleSearchResult`, and `LinkedInPeopleSearchResponse` TypeScript types.
+- [x] Add `profileApi.searchLinkedInPeople()` method to `frontend-ts/src/lib/api/profile.ts`.
+- [x] Refactor `frontend-ts/src/app/linkedin-analysis/page.tsx` to four tabs: LinkedIn URL, Search Profiles, Paste Profile Text, Fill Sections Manually.
+- [x] Implement people-search results as selectable cards that copy the profile URL into the URL tab.
+- [x] Add "LinkedIn Analysis" item to `frontend-ts/src/components/layout/MobileNav.tsx`.
+- [x] Add frontend unit tests for the LinkedIn analysis page tabs and mutations.
+- [x] Add mock responses for `/profile/analyze-linkedin` and `/profile/search-linkedin` in `frontend-ts/tests/e2e/support/mock-api.ts`.
+
+### Documentation
+- [x] Update `docs/api.md` endpoint table and request/response examples for `profile_url` and `POST /api/profile/search-linkedin`.
+- [x] Add type-definition sections for `LinkedInPeopleSearchInput`, `LinkedInPeopleSearchResult`, and `LinkedInPeopleSearchResponse`.
+- [x] Update `docs/usage.md` with LinkedIn URL and people-search instructions.
+- [x] Update `docs/manual-verification-checklist.md` with new URL and search checkboxes.
+- [x] Update `tasks/todo.md` with this phase entry.
+- [x] Update LinkedIn credential comment in `backend-py/.env.example` to mention profile analysis and people search.
+
+### Verification
+- [x] Backend formatting and severe-error linting pass.
+- [x] Full backend pytest suite passes.
+- [x] Frontend `npm run type-check` passes.
+- [x] Frontend `npm run lint` passes.
+- [x] Frontend unit tests pass.
+
+### Review
+
+**Completed:** 2026-06-28
+
+- Backend checks: black and isort report no changes; severe-error flake8 (`--select=E9,F63,F7,F82`) passes on changed files; pylint `--errors-only` passes on new code (one pre-existing `FieldInfo.isoformat` false positive remains in profile.py); full pytest suite passes (418 passed, 2 skipped).
+- Frontend checks: `npm run type-check`, `npm run lint`, and `npm run test -- --run` all pass (32 unit tests across 7 files).
+- Also cleaned up unused imports in `backend-py/src/api/routes/profile.py` and `backend-py/tests/unit/test_linkedin_analyzer.py` that were reported by full flake8.
+
+

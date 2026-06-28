@@ -1,5 +1,12 @@
 import { request } from "./client";
-import type { UserProfile, ResumeAnalysis, LinkedInProfileInput, LinkedInProfileAnalysis } from "@/lib/types/api";
+import type {
+  UserProfile,
+  ResumeAnalysis,
+  LinkedInProfileInput,
+  LinkedInProfileAnalysis,
+  LinkedInPeopleSearchInput,
+  LinkedInPeopleSearchResponse,
+} from "@/lib/types/api";
 
 export const profileApi = {
   get: () =>
@@ -30,4 +37,7 @@ export const profileApi = {
 
   analyzeLinkedIn: (input: LinkedInProfileInput) =>
     request<LinkedInProfileAnalysis>("POST", "/profile/analyze-linkedin", { body: input }),
+
+  searchLinkedInPeople: (input: LinkedInPeopleSearchInput) =>
+    request<LinkedInPeopleSearchResponse>("POST", "/profile/search-linkedin", { body: input }),
 };

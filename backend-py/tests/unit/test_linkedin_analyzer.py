@@ -13,13 +13,12 @@ Date: 2026-06-25
 """
 
 import json
-from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src.generation.linkedin_analyzer import LinkedInAnalyzer
-from src.llm.base import LLMResponse, MessageType
+from src.llm.base import LLMResponse
 from src.llm.router import LLMRouter, TaskType
 from src.models.linkedin_analysis import (
     InboundAttractionInsight,
@@ -57,13 +56,34 @@ class TestLinkedInProfileInput:
 
     def test_invalid_empty_input(self) -> None:
         """Should reject empty input with no fields."""
-        with pytest.raises(ValueError, match="At least one of raw_text"):
+        with pytest.raises(ValueError, match="At least one of"):
             LinkedInProfileInput()
 
     def test_invalid_whitespace_only_raw_text(self) -> None:
         """Should reject whitespace-only raw_text."""
-        with pytest.raises(ValueError, match="At least one of raw_text"):
+        with pytest.raises(ValueError, match="At least one of"):
             LinkedInProfileInput(raw_text="   ")
+
+    def test_valid_with_profile_url(self) -> None:
+        """Should accept input with only a profile_url."""
+        input_data = LinkedInProfileInput(
+            profile_url="https://www.linkedin.com/in/testuser"
+        )
+        assert input_data.profile_url == "https://www.linkedin.com/in/testuser"
+
+    def test_valid_with_profile_url_and_raw_text(self) -> None:
+        """Should accept input with both profile_url and raw_text."""
+        input_data = LinkedInProfileInput(
+            profile_url="https://www.linkedin.com/in/testuser",
+            raw_text="Some profile text",
+        )
+        assert input_data.profile_url == "https://www.linkedin.com/in/testuser"
+        assert input_data.raw_text == "Some profile text"
+
+    def test_invalid_whitespace_only_profile_url(self) -> None:
+        """Should reject whitespace-only profile_url."""
+        with pytest.raises(ValueError, match="At least one of profile_url"):
+            LinkedInProfileInput(profile_url="   ")
 
 
 class TestLinkedInAnalyzerRuleBased:
@@ -118,7 +138,7 @@ class TestLinkedInAnalyzerRuleBased:
         assert any(i["priority"] == "high" for i in result["insights"])
 
     def test_rule_based_generates_headline_options(self) -> None:
-        """Should generate headline options when headline is missing and target_roles exist."""
+        """Generate headline options when headline is missing and target_roles exist."""
         llm_router = MagicMock(spec=LLMRouter)
         analyzer = LinkedInAnalyzer(llm_router)
 

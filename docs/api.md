@@ -88,6 +88,7 @@ Endpoints for resume upload, active profile management, resume analysis, and Lin
 | GET | `/api/profile/export` | Export the active profile as JSON |
 | POST | `/api/profile/analyze` | Analyze a resume (general or job-specific) |
 | POST | `/api/profile/analyze-linkedin` | Analyze a LinkedIn profile for inbound attraction |
+| POST | `/api/profile/search-linkedin` | Search LinkedIn people by keywords, name, title, company, or location |
 
 #### POST /api/profile/upload
 
@@ -154,12 +155,15 @@ curl -s -X POST http://localhost:8000/api/profile/analyze \
 
 #### POST /api/profile/analyze-linkedin
 
-Analyze a LinkedIn profile for inbound attraction. Accepts raw text, structured fields, or both.
+Analyze a LinkedIn profile for inbound attraction. Accepts a LinkedIn profile URL, raw text, structured fields, or any combination of the three. At least one of `profile_url`, `raw_text`, or a structured field must be provided.
+
+When `profile_url` is supplied and the backend has LinkedIn credentials (`LINKEDIN_EMAIL` and `LINKEDIN_PASSWORD`), the profile content is fetched automatically and merged into the raw text sent to the analyzer.
 
 ```bash
 curl -s -X POST http://localhost:8000/api/profile/analyze-linkedin \
   -H "Content-Type: application/json" \
   -d '{
+    "profile_url": "https://www.linkedin.com/in/janedoe",
     "raw_text": "Senior Software Engineer at Acme...",
     "headline": "Senior Software Engineer | Python | FastAPI",
     "summary": "I build scalable backend systems...",
@@ -210,9 +214,54 @@ curl -s -X POST http://localhost:8000/api/profile/analyze-linkedin \
 }
 ```
 
+#### POST /api/profile/search-linkedin
+
+Search LinkedIn people by keywords, name, title, company, or location. Requires `LINKEDIN_EMAIL` and `LINKEDIN_PASSWORD` to be configured. Returns an empty result set with HTTP 503 if LinkedIn credentials or the authenticated session are unavailable.
+
+```bash
+curl -s -X POST http://localhost:8000/api/profile/search-linkedin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keywords": "software engineer",
+    "name": "Jane",
+    "title": "Senior Engineer",
+    "company": "Acme",
+    "location": "San Francisco",
+    "limit": 10
+  }' | jq .
+```
+
+**Response:**
+```json
+{
+  "query": {
+    "keywords": "software engineer",
+    "name": "Jane",
+    "title": "Senior Engineer",
+    "company": "Acme",
+    "location": "San Francisco"
+  },
+  "total": 2,
+  "results": [
+    {
+      "name": "Jane Doe",
+      "headline": "Senior Software Engineer at Acme",
+      "profile_url": "https://www.linkedin.com/in/janedoe",
+      "location": "San Francisco, CA"
+    },
+    {
+      "name": "Jane Smith",
+      "headline": "Engineering Manager",
+      "profile_url": "https://www.linkedin.com/in/janesmith",
+      "location": null
+    }
+  ]
+}
+```
+
 ### Type Definitions
 
-See the [Type Definitions](#type-definitions) section below for `LinkedInProfileInput`, `LinkedInProfileAnalysis`, `ProfileSectionScore`, and `InboundAttractionInsight`.
+See the [Type Definitions](#type-definitions) section below for `LinkedInProfileInput`, `LinkedInProfileAnalysis`, `ProfileSectionScore`, `InboundAttractionInsight`, `LinkedInPeopleSearchInput`, `LinkedInPeopleSearchResult`, and `LinkedInPeopleSearchResponse`.
 
 ### Data Models
 
@@ -639,12 +688,13 @@ class SubmissionStatus(str, Enum):
 
 #### LinkedInProfileInput
 
-Input data for LinkedIn profile analysis. Accepts either raw pasted text or structured fields (or both). At least one of `raw_text` or a structured field must be provided.
+Input data for LinkedIn profile analysis. Accepts a LinkedIn profile URL, raw pasted text, structured fields, or any combination of the three. At least one of `profile_url`, `raw_text`, or a structured field must be provided.
 
 ```python
 from src.models.linkedin_analysis import LinkedInProfileInput
 
 input_data = LinkedInProfileInput(
+    profile_url="https://www.linkedin.com/in/janedoe",
     raw_text="Senior Software Engineer at Acme...",
     headline="Senior Software Engineer | Python | FastAPI",
     summary="I build scalable backend systems...",
@@ -659,6 +709,7 @@ input_data = LinkedInProfileInput(
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `profile_url` | `Optional[str]` | LinkedIn profile URL to fetch and analyze |
 | `raw_text` | `Optional[str]` | Raw pasted LinkedIn profile text |
 | `headline` | `Optional[str]` | Current LinkedIn headline |
 | `summary` | `Optional[str]` | LinkedIn About / summary section |
@@ -751,6 +802,74 @@ analysis = LinkedInProfileAnalysis(
 - `is_strong_profile` — `True` when `overall_score >= 70`
 - `high_priority_insights` — Insights with `priority == "high"`
 - `weighted_overall_score` — Weighted average of `section_scores`
+
+#### LinkedInPeopleSearchInput
+
+Input data for LinkedIn people search. Any combination of the optional fields may be provided; the backend builds a single keywords query from the non-empty values.
+
+```python
+from src.models.linkedin_analysis import LinkedInPeopleSearchInput
+
+input_data = LinkedInPeopleSearchInput(
+    keywords="software engineer",
+    name="Jane",
+    title="Senior Software Engineer",
+    company="Acme",
+    location="San Francisco",
+    limit=10,
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `keywords` | `Optional[str]` | General keywords to include in the search |
+| `name` | `Optional[str]` | Person's name (first, last, or full) |
+| `title` | `Optional[str]` | Job title to search for |
+| `company` | `Optional[str]` | Current or past company name |
+| `location` | `Optional[str]` | Geographic location |
+| `limit` | `int` | Maximum number of results to return (1–50, default 10) |
+
+#### LinkedInPeopleSearchResult
+
+A single result returned by LinkedIn people search.
+
+```python
+from src.models.linkedin_analysis import LinkedInPeopleSearchResult
+
+result = LinkedInPeopleSearchResult(
+    name="Jane Doe",
+    headline="Senior Software Engineer at Acme",
+    profile_url="https://www.linkedin.com/in/janedoe",
+    location="San Francisco, CA",
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `str` | Full name of the person |
+| `headline` | `str` | LinkedIn headline / current title |
+| `profile_url` | `str` | Direct URL to the LinkedIn profile |
+| `location` | `Optional[str]` | Location if visible on the result card |
+
+#### LinkedInPeopleSearchResponse
+
+Wrapper for a LinkedIn people search response.
+
+```python
+from src.models.linkedin_analysis import LinkedInPeopleSearchResponse
+
+response = LinkedInPeopleSearchResponse(
+    query={"keywords": "software engineer"},
+    total=1,
+    results=[result],
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `query` | `Dict[str, Any]` | Query parameters used for the search |
+| `total` | `int` | Number of results returned |
+| `results` | `List[LinkedInPeopleSearchResult]` | List of matching people |
 
 ### Data Classes
 

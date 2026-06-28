@@ -19,10 +19,14 @@ class LinkedInProfileInput(BaseModel):
     """
     Input data for LinkedIn profile analysis.
 
-    Accepts either raw pasted text or structured fields (or both).
-    At least one of raw_text or a structured field must be provided.
+    Accepts a LinkedIn profile URL, raw pasted text, structured fields,
+    or any combination of the above. At least one of profile_url, raw_text,
+    or a structured field must be provided.
     """
 
+    profile_url: Optional[str] = Field(
+        default=None, description="LinkedIn profile URL to fetch and analyze"
+    )
     raw_text: Optional[str] = Field(
         default=None, description="Raw pasted LinkedIn profile text"
     )
@@ -55,8 +59,9 @@ class LinkedInProfileInput(BaseModel):
 
     @model_validator(mode="after")
     def validate_input_present(self) -> "LinkedInProfileInput":
-        """Ensure at least raw_text or one structured field is provided."""
-        has_raw = self.raw_text is not None and self.raw_text.strip()
+        """Require profile_url, raw_text, or at least one structured field."""
+        has_url = self.profile_url is not None and (self.profile_url or "").strip()
+        has_raw = self.raw_text is not None and (self.raw_text or "").strip()
         has_structured = any(
             [
                 self.headline,
@@ -69,9 +74,10 @@ class LinkedInProfileInput(BaseModel):
                 self.target_roles,
             ]
         )
-        if not has_raw and not has_structured:
+        if not has_url and not has_raw and not has_structured:
             raise ValueError(
-                "At least one of raw_text or a structured field must be provided."
+                "At least one of profile_url, raw_text, or a structured "
+                "field must be provided."
             )
         return self
 
@@ -123,6 +129,49 @@ class InboundAttractionInsight(BaseModel):
     )
     priority: Literal["critical", "high", "medium", "low"] = Field(
         description="Priority level of this recommendation"
+    )
+
+
+class LinkedInPeopleSearchInput(BaseModel):
+    """
+    Input data for LinkedIn people search.
+
+    Search is performed by keywords and optional filters. At least one
+    of keywords, name, title, company, or location should be provided.
+    """
+
+    keywords: Optional[str] = Field(
+        default=None, description="Free-form keywords to search for"
+    )
+    name: Optional[str] = Field(default=None, description="Person name")
+    title: Optional[str] = Field(default=None, description="Job title")
+    company: Optional[str] = Field(default=None, description="Company name")
+    location: Optional[str] = Field(default=None, description="Location")
+    limit: int = Field(
+        default=10, ge=1, le=50, description="Maximum number of results to return"
+    )
+
+
+class LinkedInPeopleSearchResult(BaseModel):
+    """
+    Single result from a LinkedIn people search.
+    """
+
+    name: str = Field(description="Person's display name")
+    headline: str = Field(description="LinkedIn headline")
+    profile_url: str = Field(description="LinkedIn profile URL")
+    location: Optional[str] = Field(default=None, description="Location if available")
+
+
+class LinkedInPeopleSearchResponse(BaseModel):
+    """
+    Response from a LinkedIn people search.
+    """
+
+    query: Dict[str, Any] = Field(description="Query parameters used for search")
+    total: int = Field(description="Total number of results returned")
+    results: List[LinkedInPeopleSearchResult] = Field(
+        default_factory=list, description="List of matching people"
     )
 
 
