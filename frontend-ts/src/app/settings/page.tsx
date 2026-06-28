@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -257,12 +258,12 @@ export default function SettingsPage() {
   if (isError || !data) return <p className="text-sm text-red-500 p-4">Failed to load settings.</p>;
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant="form">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="mt-1 text-sm text-gray-500">Configure model routing, API keys, and cost limits.</p>
       </div>
       <SettingsForm initial={data} />
-    </div>
+    </PageContainer>
   );
 }

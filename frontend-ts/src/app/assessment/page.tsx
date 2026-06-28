@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils/cn";
 import { DISCAssessment } from "@/components/disc-assessment";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 // ── Difficulty colors ────────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ function SetupView({ onStart, onStartDISC }: { onStart: (mode: "job_targeted" | 
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <PageContainer variant="form">
       <div className="text-center">
         <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-4">
           <GraduationCap className="h-8 w-8 text-indigo-600" />
@@ -144,7 +145,7 @@ function SetupView({ onStart, onStartDISC }: { onStart: (mode: "job_targeted" | 
         <Play className="mr-2 h-4 w-4" />
         Start Assessment
       </Button>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -315,7 +316,7 @@ function SessionView({
 
 function ResultsView({ session, onNewSession }: { session: AssessmentSession; onNewSession: () => void }) {
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <PageContainer variant="form">
       <div className="text-center">
         <div className={cn(
           "inline-flex items-center justify-center h-20 w-20 rounded-full mb-4",
@@ -392,7 +393,7 @@ function ResultsView({ session, onNewSession }: { session: AssessmentSession; on
       <Button onClick={onNewSession} className="w-full" size="lg">
         <RotateCcw className="mr-2 h-4 w-4" />Start New Session
       </Button>
-    </div>
+    </PageContainer>
   );
 }
 

@@ -318,35 +318,17 @@ class TestComponentIntegration:
 
 
 @pytest.mark.integration
-@pytest.mark.llm
-class TestLLMIntegration:
-    """Integration tests with actual LLM calls (requires API keys)."""
+class TestResumeGenerationFlow:
+    """Integration test for the resume generation selector-to-writer flow."""
 
-    @pytest.mark.skipif(
-        "not config.getoption('--run-llm-tests')",
-        reason="LLM tests require --run-llm-tests flag",
-    )
-    def test_ollama_integration(self, sample_user_profile):
-        """Test Ollama integration."""
-        from src.llm.ollama_client import OllamaClient
+    def test_resume_generation_flow(self, sample_user_profile):
+        """Exercise selector and writer with a mocked LLM router."""
+        import json
+        from unittest.mock import MagicMock
 
-        client = OllamaClient(model="qwen2.5:3b")
-
-        response = client.generate(
-            messages=[{"role": "user", "content": "Say 'Hello, World!'"}]
-        )
-
-        assert response.content is not None
-        assert len(response.content) > 0
-
-    @pytest.mark.skipif(
-        "not config.getoption('--run-llm-tests')",
-        reason="LLM tests require --run-llm-tests flag",
-    )
-    def test_resume_generation_flow(self, sample_user_profile, temp_data_dir):
-        """Test resume generation with actual LLM."""
-        from src.generation.resume_writer import ResumeWriter
+        from src.generation.resume_writer import GeneratedResume, ResumeWriter
         from src.generation.selector import ResumeSelector
+        from src.llm.router import LLMRouter, TaskType
         from src.models.job_listing import JobListing, JobRequirement, JobSource
         from src.models.job_listing import Skill as JobSkill
 
@@ -354,22 +336,63 @@ class TestLLMIntegration:
             title="Python Engineer",
             company="Tech Corp",
             location="Remote",
-            description="We need a Python engineer...",
+            description="We need a Python engineer with Django experience.",
             requirements=[JobRequirement(text="Python"), JobRequirement(text="Django")],
             skills=[JobSkill(name="python"), JobSkill(name="django")],
             source=JobSource.MANUAL,
-            job_id="test_llm_job",
+            job_id="test_resume_flow_job",
         )
 
-        # Select content
-        selector = ResumeSelector()
-        selection = selector.select(
-            job_description=job.description,
-            user_profile=sample_user_profile,
+        selection_json = json.dumps(
+            {
+                "selected_projects": [
+                    {
+                        "name": "E-commerce Platform",
+                        "reason": "Uses Python and Django",
+                    }
+                ],
+                "keywords_to_emphasize": ["Python", "Django"],
+                "key_achievements": ["Handled 10,000+ daily active users"],
+                "summary_suggestion": "Strong Python engineer",
+            }
         )
+
+        resume_json = json.dumps(
+            {
+                "summary": "Experienced Python engineer",
+                "skills": ["Python", "Django"],
+                "experience": [],
+                "projects": [],
+                "education": [],
+            }
+        )
+
+        mock_router = MagicMock(spec=LLMRouter)
+
+        def _fake_generate(messages, task_type=None, **kwargs):
+            response = MagicMock()
+            if task_type == TaskType.SELECTION:
+                response.content = selection_json
+            elif task_type == TaskType.RESUME_WRITING:
+                response.content = resume_json
+            else:
+                response.content = "{}"
+            return response
+
+        mock_router.generate.side_effect = _fake_generate
+        mock_router.routes = {
+            TaskType.RESUME_WRITING: MagicMock(primary_model="mock-model")
+        }
+
+        selector = ResumeSelector(llm_router=mock_router)
+        selection = selector.select(job=job, profile=sample_user_profile)
 
         assert selection is not None
         assert len(selection.selected_projects) > 0
 
-        # Generate resume (this would use LLM)
-        # Skip in integration test to avoid API costs
+        writer = ResumeWriter(llm_router=mock_router)
+        resume = writer.write(job=job, profile=sample_user_profile, selection=selection)
+
+        assert isinstance(resume, GeneratedResume)
+        assert resume.raw_response is not None
+        assert resume.model_used == "mock-model"

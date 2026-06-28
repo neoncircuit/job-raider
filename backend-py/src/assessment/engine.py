@@ -33,6 +33,7 @@ from ..models.assessment import (
     Question,
     QuestionScore,
     QuestionType,
+    SessionStatus,
 )
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
@@ -275,7 +276,7 @@ class AssessmentEngine:
             session.overall_score = 0.0
             session.topic_breakdown = {}
             session.completed_at = datetime.now()
-            session.status = "completed"
+            session.status = SessionStatus.COMPLETED
             return
 
         session.overall_score = round(
@@ -298,7 +299,7 @@ class AssessmentEngine:
         }
 
         session.completed_at = datetime.now()
-        session.status = "completed"
+        session.status = SessionStatus.COMPLETED
 
     def _build_topic_taxonomy(
         self,

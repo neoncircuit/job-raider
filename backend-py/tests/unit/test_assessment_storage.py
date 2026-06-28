@@ -17,6 +17,7 @@ from src.models.assessment import (
     Question,
     QuestionScore,
     QuestionType,
+    SessionStatus,
 )
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -50,7 +51,7 @@ def _make_session(
         session.topic_breakdown = topic_breakdown
     if completed_at is not None:
         session.completed_at = completed_at
-        session.status = "completed"
+        session.status = SessionStatus.COMPLETED
     return session
 
 

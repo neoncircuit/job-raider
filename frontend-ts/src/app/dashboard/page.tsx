@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDatetime } from "@/lib/utils/format";
 import { STATUS_COLORS } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 function HealthIcon({ status }: { status: string }) {
   if (status === "healthy") return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
@@ -67,7 +68,7 @@ export default function DashboardPage() {
   const h = health.data;
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant="full-bleed">
       <div>
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">Overview of your job application pipeline.</p>
@@ -123,7 +124,7 @@ export default function DashboardPage() {
                   <HealthIcon status={c.status} />
                   <span className="text-sm font-medium text-foreground capitalize">{c.name.replace(/_/g, " ")}</span>
                 </div>
-                <span className="text-xs text-muted-foreground truncate max-w-[180px]">{c.message}</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[180px] md:max-w-[240px] lg:max-w-xs">{c.message}</span>
               </div>
             ))}
           </CardContent>
@@ -159,6 +160,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   );
 }

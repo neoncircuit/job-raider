@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from src.models.assessment import SessionStatus
+
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 
@@ -309,7 +311,7 @@ class TestCompleteSession:
         mock_storage.get_session.return_value = sample_session
 
         def mock_complete(session):
-            session.status = "completed"
+            session.status = SessionStatus.COMPLETED
             session.overall_score = 0.0
             session.completed_at = datetime.now()
 

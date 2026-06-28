@@ -197,7 +197,7 @@
 
 ## Summary
 
-**Completed Phases:** 1-44
+**Completed Phases:** 1-46
 
 **Project Status:** FULLY OPERATIONAL
 - Backend pipeline with FastAPI REST API (X-API-Key auth on all routes)
@@ -207,7 +207,7 @@
 - Configuration separated: .env for credentials, config/*.yaml for settings
 - Scam detector evaluation notebook ready for use
 - Resume analysis feature with CLI, API, and web UI
-- LinkedIn Profile Analyzer with `POST /api/profile/analyze-linkedin` and `/linkedin-analysis` dashboard page
+- LinkedIn Profile Analyzer with URL fetch, people search, paste-text, and structured-form inputs
 - Job application tracker with custom statuses and dashboard
 - Dynamic job sources from backend (LinkedIn + JSearch API)
 - JSearch API replaces broken Indeed/Glassdoor scrapers
@@ -221,7 +221,8 @@
 - 5 resume templates with ATS mode and section customization
 - Trust tier system with per-category scoring and LLM-enhanced analysis
 - Multi-agent system: AgentCoordinator + communication bus + CareerCoachAgent (9 `/api/agents/*` endpoints)
-- **All tests passing:** 409 backend passed / 2 skipped; 28 frontend Vitest unit tests + 20 Playwright E2E tests
+- Consistent frontend layout strategy using shared `PageContainer` width variants and sidebar-width token
+- **All tests passing:** 418 backend passed / 2 skipped; 32 frontend Vitest unit tests; 18 Playwright E2E tests passed / 2 skipped
 - **All containers healthy:** backend, frontend (Next.js), ollama
 
 ## Phase 15: Resume Analyzer Feature [COMPLETED]
@@ -1743,5 +1744,206 @@ Both former-RED frontend gates are green locally (lint/type-check/unit also clea
 - Backend checks: black and isort report no changes; severe-error flake8 (`--select=E9,F63,F7,F82`) passes on changed files; pylint `--errors-only` passes on new code (one pre-existing `FieldInfo.isoformat` false positive remains in profile.py); full pytest suite passes (418 passed, 2 skipped).
 - Frontend checks: `npm run type-check`, `npm run lint`, and `npm run test -- --run` all pass (32 unit tests across 7 files).
 - Also cleaned up unused imports in `backend-py/src/api/routes/profile.py` and `backend-py/tests/unit/test_linkedin_analyzer.py` that were reported by full flake8.
+
+
+## Phase 46: Frontend Proportion & Layout Improvements (2026-06-28)
+
+**Overview:** Improve how the Next.js frontend uses available horizontal and vertical space on every route. Introduce a shared `PageContainer` layout primitive with width variants and apply it consistently, while fixing specific data-density pain points on `/jobs`, `/metrics`, and `/pipeline`.
+
+### Layout Primitive
+- [x] Create `frontend-ts/src/components/layout/PageContainer.tsx` with four variants:
+  - `full-bleed` (default) — uses the entire main content area.
+  - `content` — `max-w-5xl mx-auto` for mixed text-and-card pages.
+  - `wide` — `max-w-7xl mx-auto` for dashboards and metrics.
+  - `form` — `max-w-3xl mx-auto` for long forms.
+- [x] Apply `space-y-6` vertical rhythm by default; pages with internal flex layouts override with `className="space-y-0"`.
+
+### Shell Consistency
+- [x] Add `--sidebar-width: 14rem` CSS custom property in `frontend-ts/src/app/globals.css`.
+- [x] Create `frontend-ts/src/components/layout/SidebarContent.tsx` to deduplicate desktop and mobile sidebar markup.
+- [x] Update `Sidebar.tsx` and `MobileNav.tsx` to render `SidebarContent` and reference the sidebar-width token.
+
+### Page-by-Page Changes
+- [x] `/assessment` — wrap setup and results views in `<PageContainer variant="form">`; keep active session view full-bleed.
+- [x] `/linkedin-analysis` — wrap the analysis form in `<PageContainer variant="form">`; wrap result display in `<PageContainer variant="wide">`.
+- [x] `/resume-analysis` — wrap upload form in `<PageContainer variant="form">`; wrap results in `<PageContainer variant="wide">`.
+- [x] `/jobs` — wrap page in `<PageContainer variant="full-bleed" className="h-full flex flex-col gap-4 space-y-0">`; widen keyword input to `min-w-[280px]`, location input to `w-56`, and left list panel to `w-96`.
+- [x] `/metrics` — wrap page in `<PageContainer variant="wide">`; increase funnel and distribution chart heights from `200` to `280`.
+- [x] `/dashboard` — wrap page in `<PageContainer variant="full-bleed">`; relax health-message truncation at larger breakpoints (`max-w-[180px] md:max-w-[240px] lg:max-w-xs`).
+- [x] `/pipeline` — wrap start-tab form in `<PageContainer variant="form">`; widen live monitor log to `lg:col-span-3` on a `lg:grid-cols-4` grid; wrap history panel in `<PageContainer variant="content">`.
+- [x] `/applications` — wrap page in `<PageContainer variant="full-bleed">`.
+- [x] `/profile` — wrap page in `<PageContainer variant="wide">`.
+- [x] `/settings` — wrap page in `<PageContainer variant="form">`.
+- [x] `/` — home route redirects to `/dashboard`, so no `PageContainer` is required.
+
+### Verification
+- [x] `npm run type-check` passes with no errors.
+- [x] `npm run lint` passes with no errors or warnings.
+- [x] `npm run test -- --run` passes (32 tests across 7 files).
+- [x] `npm run build` succeeds and generates 14 static pages.
+
+### Review
+
+**Completed:** 2026-06-28
+
+- All route pages now use a consistent `PageContainer` width strategy: forms are narrow and readable, dashboards/metrics use available width, and split-pane pages stretch to fill the viewport.
+- The `/jobs` split-pane layout has more usable space for search inputs and the job list panel.
+- `/metrics` charts are taller and easier to read.
+- `/pipeline` live monitor gives the event log the majority of the width while keeping status/stage indicators compact.
+- Type-check, lint, unit tests, and production build all pass.
+
+
+## Phase 47: CI/CD Quality Gate Verification (2026-06-28)
+
+**Overview:** Run the same lint, type-check, test, and build commands used by the GitHub Actions CI pipeline to confirm that the Phase 46 frontend changes are ready to push without breaking any gate.
+
+### Backend Checks
+
+Run the backend lint suite from `backend-py`:
+
+```bash
+# Formatting (Black)
+cd /mnt/d/GitHub/job-raider/backend-py
+.venv/bin/python -m black --check src/ tests/
+
+# Import ordering (isort)
+.venv/bin/python -m isort --check-only src/ tests/
+
+# flake8 (fatal/syntax errors only)
+.venv/bin/python -m flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+```
+
+Results:
+
+- [x] Black: `150 files would be left unchanged`.
+- [x] isort: no import-order violations.
+- [x] flake8: `0` errors.
+
+Run the backend test suite with coverage:
+
+```bash
+cd /mnt/d/GitHub/job-raider/backend-py
+PYTHONPATH=. .venv/bin/python -m pytest tests/ --cov=src --cov-report=term --verbose
+```
+
+Results:
+
+- [x] `418 passed, 2 skipped, 5 warnings` in 113.76s.
+- [x] Overall coverage: 48%.
+
+Run the backend type check (matches the CI `type-check` job; CI allows this job to fail):
+
+```bash
+cd /mnt/d/GitHub/job-raider/backend-py
+.venv/bin/python -m mypy src/ --ignore-missing-imports --no-error-summary
+```
+
+Results:
+
+- [ ] mypy reports pre-existing typing issues across the backend.
+- This is consistent with the CI workflow, where the `type-check` job has `continue-on-error: true`.
+- The Phase 46 frontend changes did not introduce any of these backend type errors.
+
+### Frontend Checks
+
+Run the frontend quality suite from `frontend-ts`:
+
+```bash
+cd /mnt/d/GitHub/job-raider/frontend-ts
+npm run lint
+npm run type-check
+npm run test -- --run
+npm run build
+```
+
+Results:
+
+- [x] ESLint: passes with no errors or warnings.
+- [x] TypeScript type check: passes with no errors.
+- [x] Vitest unit tests: `7 test files passed`, `32 tests passed`.
+- [x] Production build: succeeds and generates 14 static pages.
+
+### Review
+
+**Completed:** 2026-06-28
+
+- All CI-required backend lint checks pass.
+- Backend tests pass.
+- All frontend CI gates (lint, type-check, unit tests, production build) pass.
+- The mypy type-check job has pre-existing failures and is explicitly non-blocking in CI, so it does not affect the green status of the push.
+- The Phase 46 frontend layout refactor is CI-green and safe to push.
+
+
+## Phase 48: Fix Backend Test Skips and Pydantic Warnings (2026-06-28)
+
+**Overview:** Resolve the 2 skipped tests and 5 Pydantic serialization warnings surfaced by the Phase 47 CI-quality test run in `backend-py`.
+
+### Pydantic Warnings
+
+Root cause: `AssessmentSession.status` is typed as the `SessionStatus` enum, but several places assigned the plain string `"completed"`, causing Pydantic serialization warnings.
+
+**Files changed:**
+
+- `backend-py/src/assessment/engine.py`
+  - Imported `SessionStatus`.
+  - Set `session.status = SessionStatus.COMPLETED` in `calculate_session_results`.
+- `backend-py/tests/unit/test_assessment_storage.py`
+  - Imported `SessionStatus`.
+  - Set `session.status = SessionStatus.COMPLETED` in `_make_session`.
+- `backend-py/tests/unit/test_assessment_api.py`
+  - Imported `SessionStatus` at module scope.
+  - Set `session.status = SessionStatus.COMPLETED` in the `mock_complete` helper.
+
+### Skipped Tests
+
+**`tests/integration/test_pipeline.py`:**
+- Removed the broken opt-in `test_ollama_integration` and the always-skipped `test_resume_generation_flow` from the default integration suite.
+- Replaced `TestLLMIntegration` with `TestResumeGenerationFlow`, which exercises `ResumeSelector.select` and `ResumeWriter.write` using a mocked `LLMRouter` and deterministic JSON responses. The test now runs in CI without external services.
+
+**New file `backend-py/tests/manual/test_llm_manual.py`:**
+- Moved the Ollama integration test here.
+- Fixed the constructor call to `OllamaClient(config=LLMConfig(model="qwen2.5:3b"))`.
+- Fixed the message format to `Message(role=MessageType.USER, content=...)`.
+- Kept the `--run-llm-tests` gate so it only runs when explicitly requested.
+
+**`backend-py/pytest.ini`:**
+- Added `norecursedirs = tests/manual` so the manual directory is excluded from default/CI collection.
+
+### Verification
+
+Run the backend quality suite:
+
+```bash
+cd /mnt/d/GitHub/job-raider/backend-py
+.venv/bin/python -m black --check src/ tests/
+.venv/bin/python -m isort --check-only src/ tests/
+.venv/bin/python -m flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+PYTHONPATH=. .venv/bin/python -m pytest tests/ --cov=src --cov-report=term --verbose
+```
+
+Results:
+
+- [x] Black: `151 files would be left unchanged`.
+- [x] isort: no import-order violations.
+- [x] flake8: `0` errors.
+- [x] Pytest: `419 passed in 108.43s`, `0 skipped`, `0 warnings`.
+
+Confirm the manual Ollama test remains reachable:
+
+```bash
+cd /mnt/d/GitHub/job-raider/backend-py
+PYTHONPATH=. .venv/bin/python -m pytest tests/manual --run-llm-tests --collect-only
+```
+
+Result: `1 test collected`.
+
+### Review
+
+**Completed:** 2026-06-28
+
+- All 5 Pydantic serialization warnings are eliminated by using the `SessionStatus` enum consistently.
+- The resume-generation flow test now runs in CI as a true mock-based integration test.
+- The Ollama test is preserved for local manual runs but no longer contributes to default/CI skip counts.
+- Backend lint and test suites remain green.
 
 

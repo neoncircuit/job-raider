@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate } from "@/lib/utils/format";
 import { STATUS_COLORS } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 // ── Application card ──────────────────────────────────────────────────────────
 
@@ -185,7 +186,7 @@ export default function ApplicationsPage() {
   const summary = allQuery.data?.summary;
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant="full-bleed">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Applications</h1>
         <p className="mt-1 text-sm text-gray-500">Track and manage your job applications.</p>
@@ -265,6 +266,6 @@ export default function ApplicationsPage() {
             ))}
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }

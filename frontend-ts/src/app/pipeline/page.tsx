@@ -22,6 +22,7 @@ import { useAppState } from "@/app/providers";
 import { formatDatetime } from "@/lib/utils/format";
 import { PIPELINE_STAGES, STATUS_COLORS, DEFAULT_SOURCES } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 // ── WebSocket hook ─────────────────────────────────────────────────────────────
 
@@ -195,9 +196,9 @@ function LiveMonitor({ runId }: { runId: string }) {
   );
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
       {/* Left — status + progress + stages */}
-      <div className="space-y-4">
+      <div className="space-y-4 lg:col-span-1">
         {/* Status bar */}
         <div className="flex items-center justify-between rounded-lg border bg-white p-3">
           <div className="flex items-center gap-2">
@@ -249,7 +250,7 @@ function LiveMonitor({ runId }: { runId: string }) {
       </div>
 
       {/* Right — event log (wider) */}
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-3">
         <div
           ref={logRef}
           className="h-full min-h-[400px] overflow-y-auto rounded-lg border bg-gray-950 p-4 font-mono text-xs text-gray-300 space-y-0.5"
@@ -295,8 +296,9 @@ function HistoryPanel({ onResume }: { onResume: (id: string) => void }) {
   if (!data?.runs.length) return <p className="text-sm text-gray-400">No runs yet.</p>;
 
   return (
-    <div className="space-y-2">
-      {data.runs.map((r) => (
+    <PageContainer variant="content">
+      <div className="space-y-2">
+        {data.runs.map((r) => (
         <div key={r.run_id} className="flex items-center justify-between rounded-lg border bg-white p-3">
           <div>
             <p className="text-sm font-mono text-gray-700">{r.run_id.slice(0, 12)}…</p>
@@ -319,8 +321,9 @@ function HistoryPanel({ onResume }: { onResume: (id: string) => void }) {
             </Button>
           </div>
         </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </PageContainer>
   );
 }
 
@@ -379,14 +382,16 @@ export default function PipelinePage() {
         </TabsList>
 
         <TabsContent value="start" className="mt-5">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Configure Pipeline Run</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StartForm onStarted={handleStarted} />
-            </CardContent>
-          </Card>
+          <PageContainer variant="form" className="space-y-0">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Configure Pipeline Run</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StartForm onStarted={handleStarted} />
+              </CardContent>
+            </Card>
+          </PageContainer>
         </TabsContent>
 
         <TabsContent value="monitor" className="mt-5">

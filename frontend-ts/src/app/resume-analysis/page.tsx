@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils/cn";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 // ── Score ring ────────────────────────────────────────────────────────────────
 
@@ -266,11 +267,13 @@ export default function ResumeAnalysisPage() {
       </div>
 
       {result ? (
-        <AnalysisDisplay analysis={result} />
+        <PageContainer variant="wide">
+          <AnalysisDisplay analysis={result} />
+        </PageContainer>
       ) : (
-        <div className="max-w-2xl">
+        <PageContainer variant="form">
           <AnalysisForm onResult={setResult} />
-        </div>
+        </PageContainer>
       )}
     </div>
   );

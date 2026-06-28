@@ -70,6 +70,7 @@ frontend-ts/jest.setup.js
 .claude/settings.local.json
 .claude/commands/
 .claude/PRPs/
+.claude/worktrees/
 
 # Local cron schedule (hardcoded to a specific machine; keep your local copy)
 crontab.job_raider

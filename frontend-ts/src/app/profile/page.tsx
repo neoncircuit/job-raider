@@ -16,6 +16,7 @@ import { formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { ApplicationSettingsModal } from "@/components/application-settings-modal";
 import { SkillsRadar, ExperienceTimeline, StrengthAssessment } from "@/components/profile-visualizations";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -502,7 +503,7 @@ export default function ProfilePage() {
   if (isLoading) return <p className="text-sm text-gray-400 p-4">Loading profile…</p>;
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant="wide">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
@@ -547,6 +548,6 @@ export default function ProfilePage() {
           )}
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }

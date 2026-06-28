@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils/cn";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 /**
  * Render a circular score indicator for the LinkedIn profile analysis.
@@ -759,11 +760,13 @@ export default function LinkedInAnalysisPage() {
       </div>
 
       {result ? (
-        <AnalysisDisplay analysis={result} />
+        <PageContainer variant="wide">
+          <AnalysisDisplay analysis={result} />
+        </PageContainer>
       ) : (
-        <div className="max-w-2xl">
+        <PageContainer variant="form">
           <AnalysisForm onResult={setResult} />
-        </div>
+        </PageContainer>
       )}
     </div>
   );

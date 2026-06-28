@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { metricsApi } from "@/lib/api/metrics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { formatCurrency, formatPercentage, formatDatetime } from "@/lib/utils/format";
 
 const PIE_COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
@@ -55,7 +56,7 @@ export default function MetricsPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant="wide">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Metrics</h1>
         <p className="mt-1 text-sm text-gray-500">Cost tracking, outcome funnel, and system health.</p>
@@ -87,7 +88,7 @@ export default function MetricsPage() {
             <CardTitle className="text-base">Application Funnel</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart data={funnelData} layout="vertical">
                 <XAxis type="number" tick={{ fontSize: 12 }} />
                 <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
@@ -103,7 +104,7 @@ export default function MetricsPage() {
             <CardTitle className="text-base">LLM Call Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
                   data={costPieData}
@@ -180,6 +181,6 @@ export default function MetricsPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

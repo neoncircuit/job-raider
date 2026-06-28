@@ -23,6 +23,7 @@ const logger = createLogger("JobsPage");
 import { SOURCE_COLORS, DEFAULT_SOURCES, PAGE_SIZE } from "@/lib/utils/constants";
 import { JobClassificationDisplay } from "@/components/job-classification";
 import { TrustAnalysisDisplay, TrustTierBadge } from "@/components/trust-analysis";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 // ── Experience/Job Type selector dropdown ─────────────────────────────────────
 
@@ -304,11 +305,11 @@ function SearchBar({ onSearch, onGoogleSearch }: {
 
   return (
     <form onSubmit={handleSubmit_} className="flex flex-wrap gap-3 items-end">
-      <div className="flex-1 min-w-[200px] space-y-1">
+      <div className="flex-1 min-w-[280px] space-y-1">
         <Label>Keywords</Label>
         <Input placeholder="Python, FastAPI, remote…" {...register("keywords")} />
       </div>
-      <div className="w-40 space-y-1">
+      <div className="w-56 space-y-1">
         <Label>Location</Label>
         <Input placeholder="Singapore" {...register("location")} />
       </div>
@@ -921,7 +922,7 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <PageContainer variant="full-bleed" className="h-full flex flex-col gap-4 space-y-0">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Jobs</h1>
         <p className="mt-0.5 text-sm text-gray-500">Search and browse job listings.</p>
@@ -962,7 +963,7 @@ export default function JobsPage() {
       ) : (
         <div className="flex flex-1 gap-4 min-h-0 overflow-hidden">
           {/* Left panel — job list */}
-          <div className="flex w-80 shrink-0 flex-col gap-2 overflow-y-auto">
+          <div className="flex w-96 shrink-0 flex-col gap-2 overflow-y-auto">
             <p className="text-xs text-gray-400">
               {jobs.length} results · page {jobsPage + 1}/{totalPages || 1}
             </p>
@@ -1035,6 +1036,6 @@ export default function JobsPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
