@@ -2474,3 +2474,37 @@
 - After restoring a removed selector, submit the form and inspect the network payload.
 - Add a quick E2E or integration assertion that the restored value reaches the backend.
 - Search the codebase for every place the state variable is read to ensure it is plumbed through.
+
+### Phase 49: Cover Letter Proofread / Validation Integration (2026-06-28)
+
+#### Stale Docker Containers / Dev Servers Cause Misleading E2E Failures
+
+**Lesson:** A stale container or background dev server bound to the frontend port can serve an old build that hides recent UI changes, making E2E tests fail for the wrong reason.
+
+**Why:**
+- Playwright's `reuseExistingServer: !process.env.CI` reuses an existing server on port 3000 instead of starting a fresh `npm run dev` instance.
+- A leftover `job-raider-frontend` Docker container bound to port 3000 was serving a production build from before the cover-letter validation UI was added.
+- The test assertions targeted new text ("Proofread", "Ready to send", "Quality Breakdown") that existed in the working tree but not in the running container.
+- Network and API mocks were correct, so the failure looked like a missing UI element rather than a stale server.
+
+**How to apply:**
+- Before debugging E2E failures, verify the server is current: `docker ps`, `lsof -i :3000`, or check Playwright's dev-server output.
+- Stop and remove stale containers bound to the frontend port: `docker stop job-raider-frontend && docker rm job-raider-frontend`.
+- Clear the Next.js cache when switching between builds: `rm -rf frontend-ts/.next`.
+- In CI, set `reuseExistingServer: false` (or `CI=true`) so Playwright always starts a fresh server.
+- Log page console messages during E2E runs to confirm the right build is serving and the mocked API response is reaching the browser.
+
+#### Use the Correct Python Interpreter When the Venv Shebang Is Broken
+
+**Lesson:** When the `.venv/bin/pytest` shebang points to a non-existent interpreter, invoke pytest as a module with the correct Python executable instead of relying on the wrapper script.
+
+**Why:**
+- The backend venv's `pytest` wrapper had a shebang pointing to `/mnt/d/GitHub/job-raider/.venv/bin/python3`, which does not exist.
+- Running `pytest` directly failed with a "bad interpreter" error before any tests executed.
+- This is a common side effect of recreating or relocating virtual environments without regenerating entry-point scripts.
+
+**How to apply:**
+- Use the explicit interpreter and module form: `/mnt/d/GitHub/job-raider/backend-py/.venv/bin/python -m pytest`.
+- Recreate the venv or reinstall the package if the shebang issue persists across sessions.
+- Document the correct invocation in project runbooks so team members do not rely on the broken wrapper.
+

@@ -200,6 +200,44 @@ export const handlers = [
     return HttpResponse.json({ success: true, message: 'Application submitted' });
   }),
 
+  http.post(`${API_BASE}/api/jobs/:jobId/cover-letter`, ({ request }) => {
+    const url = new URL(request.url);
+    const deep = url.searchParams.get('deep') === 'true';
+    return HttpResponse.json({
+      success: true,
+      job_id: 'job-1',
+      cover_letter: {
+        content:
+          'I am excited about the Senior Software Engineer role at Tech Corp. ' +
+          'My background in React, TypeScript, and scalable systems makes me a strong fit. ' +
+          'I would welcome the opportunity to discuss how I can contribute to your team. ' +
+          'Thank you for considering my application.',
+        word_count: 56,
+        model_used: 'qwen2.5:7b',
+        highlighted_experiences: [{ name: 'Job Raider', reason: 'Relevant project' }],
+      },
+      validation: {
+        is_valid: true,
+        score: deep ? 92 : 85,
+        issues: [],
+        word_count: 56,
+        structure_score: 80,
+        content_score: 90,
+        tone_score: 85,
+        recommendation: 'approve',
+        details: {
+          paragraph_count: 1,
+          has_generic_opening: false,
+          has_call_to_action: true,
+          company_mentioned: true,
+          job_title_mentioned: true,
+          referenced_projects: ['Job Raider'],
+          llm_feedback: deep ? ['Strong personalization and clear value proposition.'] : [],
+        },
+      },
+    });
+  }),
+
   // Profile API endpoints
   http.get(`${API_BASE}/api/profile`, () => {
     return HttpResponse.json({ success: true, data: mockProfile });

@@ -23,6 +23,9 @@ export const test = base.extend({
   // tests/utils/test-setup.ts.
   page: async ({ page }, provide) => {
     await mockApi(page);
+    page.on("console", (msg) => {
+      console.log(`[PAGE] ${msg.type()}: ${msg.text()}`);
+    });
     await provide(page);
   },
 });

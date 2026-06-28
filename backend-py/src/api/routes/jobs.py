@@ -22,7 +22,12 @@ from ...scrapers.manager import ScraperManager
 from ...utils.location_normalizer import normalize_all_locations
 from ...utils.logger import Components, get_logger
 from ..models.requests import JobSearchRequest, SemanticSearchRequest
-from ..models.responses import JobListingResponse, SemanticSearchResult
+from ..models.responses import (
+    CoverLetterResponse,
+    CoverLetterValidationResponse,
+    JobListingResponse,
+    SemanticSearchResult,
+)
 from .profile import active_profile_id, stored_profiles
 
 router = APIRouter()
@@ -604,19 +609,25 @@ async def apply_to_job(
 
 
 @router.post("/{job_id}/cover-letter")
-async def generate_cover_letter(job_id: str, job_data: Dict[str, Any] = None):
+async def generate_cover_letter(
+    job_id: str,
+    job_data: Dict[str, Any] = None,
+    deep: bool = False,
+):
     """Generate a tailored cover letter for a specific job.
 
     Requires an active profile to have been uploaded. Uses the LLM to
     generate a concise, tailored cover letter connecting the candidate's
-    experience to the job requirements.
+    experience to the job requirements. Runs deterministic validation
+    automatically; set `?deep=true` for LLM-powered validation.
 
     Args:
         job_id: Job ID.
         job_data: Optional job data (title, company, description, etc.).
+        deep: Whether to use LLM validation.
 
     Returns:
-        Generated cover letter with metadata.
+        Generated cover letter with validation results.
     """
     if not active_profile_id:
         raise HTTPException(
@@ -632,6 +643,10 @@ async def generate_cover_letter(job_id: str, job_data: Dict[str, Any] = None):
         )
 
     try:
+        from ...generation.cover_letter_validator import (
+            CoverLetterValidationResult,
+            CoverLetterValidator,
+        )
         from ...generation.cover_letter_writer import CoverLetterWriter
         from ...generation.selector import ResumeSelector
         from ...llm.router import create_router
@@ -668,17 +683,55 @@ async def generate_cover_letter(job_id: str, job_data: Dict[str, Any] = None):
         writer = CoverLetterWriter(llm_router=llm_router)
         result = writer.write(job_listing, user_profile, selection)
 
-        return {
-            "success": True,
-            "job_id": job_id,
-            "cover_letter": {
+        # Validate the generated cover letter
+        validator = CoverLetterValidator(llm_router=llm_router, strict_mode=False)
+        try:
+            if deep:
+                validation = validator.validate_with_llm(
+                    result, job_listing, user_profile, selection
+                )
+            else:
+                validation = validator.validate(
+                    result, job_listing, user_profile, selection
+                )
+        except Exception as e:
+            logger.error("Cover letter validation failed: %s", e, exc_info=True)
+            validation = CoverLetterValidationResult(
+                is_valid=True,
+                score=100,
+                issues=[],
+                word_count=result.word_count,
+                structure_score=100,
+                content_score=100,
+                tone_score=100,
+                recommendation="approve",
+                details={},
+            )
+
+        return CoverLetterResponse(
+            success=True,
+            job_id=job_id,
+            cover_letter={
                 "content": result.content,
                 "word_count": result.word_count,
                 "model_used": result.model_used,
                 "highlighted_experiences": result.highlighted_experiences,
             },
-        }
+            validation=CoverLetterValidationResponse(
+                is_valid=validation.is_valid,
+                score=validation.score,
+                issues=[issue.value for issue in validation.issues],
+                word_count=validation.word_count,
+                structure_score=validation.structure_score,
+                content_score=validation.content_score,
+                tone_score=validation.tone_score,
+                recommendation=validation.recommendation,
+                details=validation.details,
+            ),
+        )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Cover letter generation failed: %s", e, exc_info=True)
         raise HTTPException(

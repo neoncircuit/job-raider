@@ -1,5 +1,6 @@
 import { request } from "./client";
 import type {
+  CoverLetterResponse,
   JobSearchResponse,
   SemanticSearchResponse,
   JobSimilarityResponse,
@@ -62,17 +63,13 @@ export const jobsApi = {
       params: { dry_run: dryRun },
     }),
 
-  generateCoverLetter: (jobId: string, jobData: { title: string; company: string; description?: string; location?: string; source?: string }) =>
-    request<{
-      success: boolean;
-      job_id: string;
-      cover_letter: {
-        content: string;
-        word_count: number;
-        model_used: string;
-        highlighted_experiences: Array<{ name: string; reason: string }>;
-      };
-    }>("POST", `/jobs/${jobId}/cover-letter`, {
+  generateCoverLetter: (
+    jobId: string,
+    jobData: { title: string; company: string; description?: string; location?: string; source?: string },
+    deep = false,
+  ) =>
+    request<CoverLetterResponse>("POST", `/jobs/${jobId}/cover-letter`, {
       body: jobData,
+      params: deep ? { deep: true } : undefined,
     }),
 };

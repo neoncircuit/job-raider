@@ -9,6 +9,8 @@ Date: 2026-04-21
 
 from .requests import JobSearchRequest, PipelineStartRequest, ProfileUpdateRequest
 from .responses import (
+    CoverLetterResponse,
+    CoverLetterValidationResponse,
     ErrorResponse,
     HealthCheckResponse,
     JobListingResponse,
@@ -25,4 +27,6 @@ __all__ = [
     "JobListingResponse",
     "HealthCheckResponse",
     "ErrorResponse",
+    "CoverLetterResponse",
+    "CoverLetterValidationResponse",
 ]

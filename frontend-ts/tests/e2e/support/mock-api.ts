@@ -12,7 +12,7 @@
 
 import type { Page, Route } from "@playwright/test";
 
-import { sampleJobs, sampleProfile } from "../../setup/fixtures";
+import { sampleJobs, sampleProfile, sampleCoverLetter, sampleCoverLetterValidation } from "../../setup/fixtures";
 
 /** Synthetic health payload (shape consumed by `src/app/dashboard/page.tsx`). */
 const mockHealth = {
@@ -53,6 +53,18 @@ export async function mockApi(page: Page): Promise<void> {
     // Strip the `/api/proxy` prefix so the switch reads clean backend paths.
     const path = new URL(request.url()).pathname.replace(/^\/api\/proxy/, "");
     const key = `${request.method()} ${path}`;
+
+    if (key.startsWith("POST /jobs/") && key.endsWith("/cover-letter")) {
+      return route.fulfill({
+        status: 200,
+        json: {
+          success: true,
+          job_id: path.split("/")[2] ?? "job-1",
+          cover_letter: sampleCoverLetter,
+          validation: sampleCoverLetterValidation,
+        },
+      });
+    }
 
     switch (key) {
       case "POST /jobs/search":

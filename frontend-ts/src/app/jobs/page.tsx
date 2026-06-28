@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Search, Bookmark, BookmarkCheck, ExternalLink, MapPin, Building2, Clock, ChevronDown, FileText, Copy } from "lucide-react";
 import { jobsApi } from "@/lib/api/jobs";
 import { applicationsApi } from "@/lib/api/applications";
-import type { JobListing, JobSearchResponse, ExperienceLevel } from "@/lib/types/api";
+import type { JobListing, JobSearchResponse, ExperienceLevel, CoverLetterValidation } from "@/lib/types/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ const logger = createLogger("JobsPage");
 import { SOURCE_COLORS, DEFAULT_SOURCES, PAGE_SIZE } from "@/lib/utils/constants";
 import { JobClassificationDisplay } from "@/components/job-classification";
 import { TrustAnalysisDisplay, TrustTierBadge } from "@/components/trust-analysis";
+import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 // ── Experience/Job Type selector dropdown ─────────────────────────────────────
@@ -366,10 +367,18 @@ function JobListItem({
   const sourceColor = SOURCE_COLORS[job.source.toLowerCase()] ?? "bg-gray-500 text-white";
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
-        "w-full rounded border p-3 text-left transition-all duration-150 font-mono text-sm",
+        "w-full cursor-pointer rounded border p-3 text-left transition-all duration-150 font-mono text-sm",
         isSelected
           ? "border-primary bg-primary/5 shadow-sm"
           : "border-border bg-card hover:border-primary/30 hover:shadow-sm"
@@ -425,13 +434,13 @@ function JobListItem({
           </Badge>
         )}
       </div>
-    </button>
+    </div>
   );
 }
 
 // ── Job detail panel ──────────────────────────────────────────────────────────
 
-function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkAppliedExternally, onClassify, isClassifying, onAnalyzeTrust, isAnalyzingTrust, coverLetter, isGeneratingCoverLetter, onGenerateCoverLetter }: {
+function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkAppliedExternally, onClassify, isClassifying, onAnalyzeTrust, isAnalyzingTrust, coverLetter, validation, deepCheck, onDeepCheckChange, isGeneratingCoverLetter, onGenerateCoverLetter }: {
   job: JobListing;
   isSaved: boolean;
   isAppliedExternally: boolean;
@@ -443,6 +452,9 @@ function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkA
   onAnalyzeTrust: () => void;
   isAnalyzingTrust: boolean;
   coverLetter: string | null;
+  validation: CoverLetterValidation | null;
+  deepCheck: boolean;
+  onDeepCheckChange: (value: boolean) => void;
   isGeneratingCoverLetter: boolean;
   onGenerateCoverLetter: () => void;
 }) {
@@ -705,7 +717,7 @@ function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkA
           </Button>
         )}
         {coverLetter ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Cover Letter</p>
               <Button
@@ -723,18 +735,38 @@ function JobDetail({ job, isSaved, isAppliedExternally, onSave, onApply, onMarkA
             <div className="rounded-md border bg-white p-3 text-sm text-gray-700 whitespace-pre-line max-h-60 overflow-y-auto">
               {coverLetter}
             </div>
+            {validation && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Proofread</p>
+                <CoverLetterValidationDisplay validation={validation} />
+              </div>
+            )}
           </div>
         ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onGenerateCoverLetter}
-            disabled={isGeneratingCoverLetter}
-            className="w-full"
-          >
-            <FileText className="mr-1.5 h-3.5 w-3.5" />
-            {isGeneratingCoverLetter ? "Generating..." : "Generate Cover Letter"}
-          </Button>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={`deep-check-${job.job_id}`}
+                  checked={deepCheck}
+                  onCheckedChange={onDeepCheckChange}
+                />
+                <Label htmlFor={`deep-check-${job.job_id}`} className="cursor-pointer text-xs text-gray-600">
+                  Deep check (LLM)
+                </Label>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onGenerateCoverLetter}
+              disabled={isGeneratingCoverLetter}
+              className="w-full"
+            >
+              <FileText className="mr-1.5 h-3.5 w-3.5" />
+              {isGeneratingCoverLetter ? "Generating..." : "Generate Cover Letter"}
+            </Button>
+          </div>
         )}
       </div>
     </div>
@@ -801,7 +833,8 @@ export default function JobsPage() {
 
   // Track externally applied jobs
   const [externallyAppliedJobIds, setExternallyAppliedJobIds] = useState<Set<string>>(new Set());
-  const [coverLetter, setCoverLetter] = useState<string | null>(null);
+  const [coverLetterData, setCoverLetterData] = useState<{ content: string; validation: CoverLetterValidation } | null>(null);
+  const [deepCheck, setDeepCheck] = useState(false);
 
   const markAppliedExternally = useMutation({
     mutationFn: (id: string) => applicationsApi.markAppliedExternally(id),
@@ -862,16 +895,16 @@ export default function JobsPage() {
   });
 
   const generateCoverLetter = useMutation({
-    mutationFn: ({ id, job }: { id: string; job: JobListing }) =>
+    mutationFn: ({ id, job, deep }: { id: string; job: JobListing; deep: boolean }) =>
       jobsApi.generateCoverLetter(id, {
         title: job.title,
         company: job.company,
         description: job.description ?? undefined,
         location: job.location ?? undefined,
         source: job.source,
-      }),
+      }, deep),
     onSuccess: (data) => {
-      setCoverLetter(data.cover_letter.content);
+      setCoverLetterData({ content: data.cover_letter.content, validation: data.validation });
       toast.success("Cover letter generated");
     },
     onError: () => toast.error("Failed to generate cover letter. Upload a resume first."),
@@ -911,7 +944,7 @@ export default function JobsPage() {
     setJobsPage(0);
     setSelectedJobId(null);
     setGoogleQuery(null);
-    setCoverLetter(null);
+    setCoverLetterData(null);
   };
 
   const handleGoogleSearch = (query: string) => {
@@ -919,6 +952,7 @@ export default function JobsPage() {
     setGoogleQuery(query);
     setSearchResults(null); // Clear backend results
     setSelectedJobId(null);
+    setCoverLetterData(null);
   };
 
   return (
@@ -1024,9 +1058,12 @@ export default function JobsPage() {
                 isClassifying={classify.isPending}
                 onAnalyzeTrust={() => analyzeTrust.mutate({ id: selectedJob.job_id, job: selectedJob })}
                 isAnalyzingTrust={analyzeTrust.isPending}
-                coverLetter={coverLetter}
+                coverLetter={coverLetterData?.content ?? null}
+                validation={coverLetterData?.validation ?? null}
+                deepCheck={deepCheck}
+                onDeepCheckChange={setDeepCheck}
                 isGeneratingCoverLetter={generateCoverLetter.isPending}
-                onGenerateCoverLetter={() => generateCoverLetter.mutate({ id: selectedJob.job_id, job: selectedJob })}
+                onGenerateCoverLetter={() => generateCoverLetter.mutate({ id: selectedJob.job_id, job: selectedJob, deep: deepCheck })}
               />
             ) : (
               <div className="flex h-full items-center justify-center rounded-lg border border-dashed text-sm text-gray-400">

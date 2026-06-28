@@ -1947,3 +1947,82 @@ Result: `1 test collected`.
 - Backend lint and test suites remain green.
 
 
+
+## Phase 49: Cover Letter Proofread / Validation Integration [COMPLETED]
+
+**Overview:** Wire the existing deterministic cover-letter validator into the generation endpoint, add an optional `?deep=true` LLM-powered validation path, expose the validation result in the API response, and render proofread feedback in the Jobs page.
+
+### Backend
+- [x] Add `CoverLetterValidationResponse` and `CoverLetterResponse` models in `backend-py/src/api/models/responses.py`.
+- [x] Import and instantiate `CoverLetterValidator` in `backend-py/src/api/routes/jobs.py` after a successful `writer.write(...)` call.
+- [x] Add `deep: bool = False` query parameter to `POST /{job_id}/cover-letter`; call `validate()` by default and `validate_with_llm()` when `deep=true`.
+- [x] Wrap validation in `try/except` and return a permissive fallback `CoverLetterValidationResult` on any validation failure so the cover letter is never lost.
+- [x] Add `backend-py/tests/unit/test_jobs_cover_letter.py` with mocked route tests for default validation, deep validation, issues, missing profile, and validation exception fallback.
+
+### Frontend
+- [x] Add `CoverLetterIssue`, `CoverLetterRecommendation`, `HighlightedExperience`, `CoverLetterValidation`, and `CoverLetterResponse` types to `frontend-ts/src/lib/types/api.ts`.
+- [x] Update `frontend-ts/src/lib/api/jobs.ts` `generateCoverLetter` signature to accept an optional `deep` flag and return `CoverLetterResponse`.
+- [x] Create `frontend-ts/src/components/cover-letter-validation.tsx` to display recommendation badge, overall score, structure/content/tone score bars, issues, detail chips, and LLM feedback.
+- [x] Update `frontend-ts/src/app/jobs/page.tsx` state to store the full `{ content, validation }` response, render the validation panel below the cover letter, and add a Deep Check option.
+- [x] Add `sampleCoverLetter` and `sampleCoverLetterValidation` fixtures to `frontend-ts/tests/setup/fixtures.ts`.
+- [x] Add MSW handler for `POST /jobs/:jobId/cover-letter` in `frontend-ts/tests/setup/mocks.ts`.
+- [x] Add Playwright route for `POST /jobs/*/cover-letter` in `frontend-ts/tests/e2e/support/mock-api.ts`.
+- [x] Add `frontend-ts/tests/components/cover-letter-validation.test.tsx` for approve / needs_revision / reject tiers, issue labels, score bars, LLM feedback, and no-issues state.
+- [x] Extend `frontend-ts/tests/e2e/jobs-page.spec.ts` to assert the proofread validation panel appears after generating a cover letter.
+
+### Verification
+
+Run the backend cover-letter route tests:
+
+```bash
+cd /mnt/d/GitHub/job-raider/backend-py
+.venv/bin/python -m pytest tests/unit/test_jobs_cover_letter.py -v
+```
+
+Run the full backend suite:
+
+```bash
+cd /mnt/d/GitHub/job-raider/backend-py
+.venv/bin/python -m pytest -q
+```
+
+Run the frontend type checker and linter:
+
+```bash
+cd /mnt/d/GitHub/job-raider/frontend-ts
+npm run type-check
+npm run lint
+```
+
+Run the frontend unit tests:
+
+```bash
+cd /mnt/d/GitHub/job-raider/frontend-ts
+npm run test -- --run
+```
+
+Run the E2E cover-letter flow:
+
+```bash
+cd /mnt/d/GitHub/job-raider/frontend-ts
+npx playwright test tests/e2e/jobs-page.spec.ts
+```
+
+### Results
+
+- [x] Backend route tests: `6 passed` in `tests/unit/test_jobs_cover_letter.py`.
+- [x] Full backend suite: `425 passed`.
+- [x] Frontend `npm run type-check`: no errors.
+- [x] Frontend `npm run lint`: no errors or warnings.
+- [x] Frontend unit tests: `32 passed`.
+- [x] E2E `tests/e2e/jobs-page.spec.ts`: `3 passed`.
+
+### Review
+
+**Completed:** 2026-06-28
+
+- The cover-letter endpoint now returns both the generated letter and a deterministic validation result by default.
+- Optional `?deep=true` enables LLM-powered proofreading with deterministic fallback on failure.
+- The Jobs page renders the proofread panel with recommendation, score breakdown, issues, and detail chips.
+- All backend and frontend quality gates pass; the feature is ready to push.
+

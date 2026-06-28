@@ -8,7 +8,7 @@
  * Date: 2026-06-08
  */
 
-import { JobListing, UserProfile, ApplicationDetail } from '@/lib/types/api';
+import { JobListing, UserProfile, ApplicationDetail, CoverLetter, CoverLetterValidation } from '@/lib/types/api';
 
 /**
  * Sample job fixture
@@ -150,6 +150,44 @@ export const sampleApplication: ApplicationDetail = {
   },
   timeline_notes: [],
   interviews: [],
+};
+
+/**
+ * Sample cover letter fixture
+ */
+export const sampleCoverLetter: CoverLetter = {
+  content:
+    "I am excited about the Senior Software Engineer role at Tech Innovations Inc. " +
+    "My experience building scalable React applications and leading cross-functional teams " +
+    "has prepared me to contribute from day one. I would welcome the opportunity to discuss " +
+    "how my background aligns with your goals. Thank you for considering my application.",
+  word_count: 58,
+  model_used: "qwen2.5:7b",
+  highlighted_experiences: [
+    { name: "Job Raider", reason: "Relevant full-stack project" },
+  ],
+};
+
+/**
+ * Sample cover letter validation fixture
+ */
+export const sampleCoverLetterValidation: CoverLetterValidation = {
+  is_valid: true,
+  score: 88,
+  issues: [],
+  word_count: 58,
+  structure_score: 85,
+  content_score: 90,
+  tone_score: 88,
+  recommendation: "approve",
+  details: {
+    paragraph_count: 1,
+    has_generic_opening: false,
+    has_call_to_action: true,
+    company_mentioned: true,
+    job_title_mentioned: true,
+    referenced_projects: ["Job Raider"],
+  },
 };
 
 /**

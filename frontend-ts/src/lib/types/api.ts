@@ -230,6 +230,54 @@ export interface JobSimilarityResponse {
   reasoning?: string | null;
 }
 
+export type CoverLetterIssue =
+  | "missing_company"
+  | "missing_job_title"
+  | "missing_contact_info"
+  | "too_short"
+  | "too_long"
+  | "generic_opening"
+  | "missing_call_to_action"
+  | "missing_experience_match"
+  | "tone_too_informal"
+  | "tone_too_formal"
+  | "grammar_errors"
+  | "spelling_errors"
+  | "poor_formatting";
+
+export type CoverLetterRecommendation = "approve" | "needs_revision" | "reject";
+
+export interface HighlightedExperience {
+  name: string;
+  reason: string;
+}
+
+export interface CoverLetterValidation {
+  is_valid: boolean;
+  score: number;
+  issues: CoverLetterIssue[];
+  word_count: number;
+  structure_score: number;
+  content_score: number;
+  tone_score: number;
+  recommendation: CoverLetterRecommendation;
+  details: Record<string, unknown>;
+}
+
+export interface CoverLetter {
+  content: string;
+  word_count: number;
+  model_used: string;
+  highlighted_experiences: HighlightedExperience[];
+}
+
+export interface CoverLetterResponse {
+  success: boolean;
+  job_id: string;
+  cover_letter: CoverLetter;
+  validation: CoverLetterValidation;
+}
+
 // ── Profile ───────────────────────────────────────────────────────────────────
 
 export interface ContactInfo {

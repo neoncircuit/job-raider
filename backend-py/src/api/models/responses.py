@@ -265,3 +265,26 @@ class JobSimilarityResponse(BaseModel):
     heuristic_breakdown: Optional[Dict[str, int]] = None
     recommendation: Optional[str] = None
     reasoning: Optional[str] = None
+
+
+class CoverLetterValidationResponse(BaseModel):
+    """Response with cover letter validation results."""
+
+    is_valid: bool
+    score: int  # 0-100
+    issues: List[str] = Field(default_factory=list)
+    word_count: int
+    structure_score: int  # 0-100
+    content_score: int  # 0-100
+    tone_score: int  # 0-100
+    recommendation: str  # "approve", "needs_revision", "reject"
+    details: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CoverLetterResponse(BaseModel):
+    """Response with generated cover letter and validation results."""
+
+    success: bool
+    job_id: str
+    cover_letter: Dict[str, Any]
+    validation: CoverLetterValidationResponse
