@@ -71,6 +71,22 @@ beforeAll(() => {
       return React.createElement('img', { src, alt, ...props });
     },
   }));
+
+  // Polyfill PointerEvent for components that rely on it (e.g. Base UI Switch).
+  // Extends MouseEvent so jsdom treats pointer clicks as activations.
+  if (typeof global.PointerEvent === 'undefined') {
+    global.PointerEvent = class PointerEvent extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      isPrimary: boolean;
+      constructor(type: string, init?: PointerEventInit) {
+        super(type, init);
+        this.pointerId = init?.pointerId ?? 0;
+        this.pointerType = init?.pointerType ?? 'mouse';
+        this.isPrimary = init?.isPrimary ?? true;
+      }
+    } as unknown as typeof PointerEvent;
+  }
 });
 
 // Cleanup after each test

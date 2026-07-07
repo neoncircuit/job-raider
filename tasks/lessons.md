@@ -2508,3 +2508,123 @@
 - Recreate the venv or reinstall the package if the shebang issue persists across sessions.
 - Document the correct invocation in project runbooks so team members do not rely on the broken wrapper.
 
+### Phase 50: Disable the Jobs-Page Experience Filter (2026-06-29)
+
+#### Do Not Expose a Filter That Cannot Be Fixed Quickly
+
+**Lesson:** When a UI filter is known to break search results and the correct fix is non-trivial, remove the control entirely rather than leaving it in a broken or confusing state.
+
+**Why:**
+- The `ExperienceSelector` on `/jobs` mixes experience levels and job types, and the backend's `experience_levels` filter can silently drop valid results.
+- A previous issue had already removed the selector, but it was later restored without fixing the underlying filtering logic or data-quality issues.
+- Users see an empty or near-empty result set and assume the whole search pipeline is broken, even though the filter is the real cause.
+
+**How to apply:**
+- Remove the filter UI and stop sending the parameter from the frontend until the backend filter is redesigned and tested.
+- Keep the backend field optional so re-enabling the feature later does not require an API change.
+- Add an E2E assertion that a basic keyword search returns results without requiring any experience-level selection.
+- Re-introduce the filter only after the backend supports reliable normalization, inclusive matching, and clear separation of experience level vs. job type.
+
+
+### Phase 51: Profile Page Dark-Mode Contrast Fix (2026-06-29)
+
+#### Preserve Light Mode When Adding Dark-Mode Overrides
+
+**Lesson:** When fixing dark-mode contrast, leave every original light Tailwind class untouched and append `dark:` variants. Never replace the light classes with theme tokens, or light mode will silently change.
+
+**Why:**
+- The user explicitly confirmed light mode looked fine; only dark mode was broken.
+- Replacing `text-gray-900` with `text-foreground` may look correct in dark mode but changes the rendered color in light mode if the token value differs from the original hex.
+- Appending `dark:` variants guarantees light-mode CSS remains byte-for-byte identical, eliminating regression risk.
+- Theme tokens in `dark:` variants are already designed to contrast against the dark background.
+
+**How to apply:**
+- Audit each hardcoded class group (e.g., `bg-indigo-100 text-indigo-800`) and produce a single replacement that keeps the light classes and adds the dark equivalents: `bg-indigo-100 dark:bg-primary/10 text-indigo-800 dark:text-primary`.
+- For generic per-token occurrences, use a regex that skips already-prefixed instances: replace `\btext-gray-600\b(?! dark:)` with `text-gray-600 dark:text-muted-foreground`.
+- Verify both modes side-by-side with screenshots; compare the light screenshot against a baseline or the previous production view.
+- Apply the same principle to SVG/chart colors by introducing light-only CSS variables that `.dark` overrides, rather than changing the default hex values.
+
+
+### Phase 52: Cover Letter Tab for Manual Job Descriptions (2026-06-29)
+
+#### Patch the Module-Under-Test, Not the Defining Module
+
+**Lesson:** When mocking dependencies in pytest, patch the name inside the module being tested, not the module where the dependency is originally defined.
+
+**Why:**
+- After extracting cover-letter generation into `src.generation.cover_letter_service.py`, tests that patched `src.generation.selector.ResumeSelector`, `src.generation.cover_letter_writer.CoverLetterWriter`, and `src.generation.cover_letter_validator.CoverLetterValidator` had no effect.
+- `cover_letter_service.py` imports those classes at module load, so its local names (`src.generation.cover_letter_service.ResumeSelector`, etc.) pointed to the real implementations.
+- The result was confusing assertion failures: validation scores returned real values instead of mocked values, `is_valid` differed from expectations, and deep-validation tests failed.
+
+**How to apply:**
+- Identify the module whose logic you are testing and patch names on that module.
+- For `cover_letter_service.py`, patch `src.generation.cover_letter_service.create_router`, `.ResumeSelector`, `.CoverLetterWriter`, and `.CoverLetterValidator`.
+- After a refactor that moves imports, update test patches immediately; do not assume mocks follow the class definition.
+
+#### Provide jsdom Polyfills for Browser APIs Used by UI Libraries
+
+**Lesson:** Base UI `Switch` and other low-level components may rely on `PointerEvent`, which jsdom does not implement. Add a minimal polyfill in the global test setup rather than avoiding the component in tests.
+
+**Why:**
+- Toggling the deep-validation switch in the cover-letter page test threw `ReferenceError: PointerEvent is not defined`.
+- The failure occurs at event dispatch inside the component, not in test code, so mocking the component itself hides real interaction coverage.
+
+**How to apply:**
+- Add a small `PointerEvent` stub in `frontend-ts/tests/setup/globals.ts` when running in jsdom.
+- Keep the polyfill minimal and unconditional in test setup; it should not affect production builds.
+- When a test fails on a missing browser API, prefer a global polyfill over component-level mocks so interaction tests stay realistic.
+
+#### Mock Clipboard Lazily to Record Writes
+
+**Lesson:** When testing copy-to-clipboard, assign `navigator.clipboard.writeText` after rendering the component, not in module-level setup, so the test spy captures the actual method the component calls.
+
+**Why:**
+- A module-level mock of `navigator.clipboard` was not recording calls in the cover-letter page test, even though the copy button appeared to work.
+- Rendering can initialize internal references; lazy assignment ensures the spy wraps the current method on the runtime object.
+
+**How to apply:**
+- In the test, define `const writeText = vi.fn(); Object.assign(navigator.clipboard, { writeText });` after `render(...)`.
+- Assert on the spy directly: `expect(writeText).toHaveBeenCalledWith(content)`.
+- Avoid relying on a globally mocked clipboard unless every test needs it.
+
+#### Use Raw `fetch` for Binary Export Responses
+
+**Lesson:** When an endpoint returns a binary file (DOCX/PDF), bypass the typed JSON API client and call `fetch` directly with `response.blob()` and an object URL.
+
+**Why:**
+- The JSON client wrapper tries to parse the response as JSON, which fails on binary data and loses the filename/content-type headers.
+- A raw `fetch` through the Next.js proxy preserves headers and lets the test/page handle the download with `URL.createObjectURL`.
+
+**How to apply:**
+- Create a small `downloadFile(response: Response, filename: string)` helper that reads `response.blob()`, creates an object URL, and triggers a click on a temporary anchor.
+- Keep JSON API calls in the typed client; keep binary calls in a separate helper.
+- In tests, mock `global.fetch` to return a `Blob` and assert that the helper constructs the download URL.
+
+#### Make Optional Export Libraries Fail with Explicit Messages
+
+**Lesson:** When a feature depends on libraries that may not be installed in every environment, detect availability at module import and surface a clear, human-readable error in the response instead of letting the underlying `ImportError` propagate ambiguously.
+
+**Why:**
+- `CoverLetterFormatter` supports DOCX via `python-docx` and PDF via `reportlab`. A unit test asserted that exporting to both formats produces two errors when libraries are missing, but the original code returned no errors because the formats were simply skipped.
+- Explicit messages make CI and user logs actionable: "DOCX generation unavailable: python-docx not installed".
+
+**How to apply:**
+- Use `try/except ImportError` around optional imports and set a module-level availability flag.
+- In the formatter, check the flag before attempting generation and append a descriptive error string when unavailable.
+- Keep the overall `success` flag false unless at least one requested format succeeds.
+
+#### Extract Shared Service Helpers to Keep Multiple Routes Consistent
+
+**Lesson:** When two API endpoints need the same orchestration logic, extract a thin service helper rather than duplicating the flow or leaving one endpoint with an outdated implementation.
+
+**Why:**
+- The existing `POST /api/jobs/{job_id}/cover-letter` and the new `POST /api/cover-letter/manual` both run selector, writer, and validator with `prefer_local=True`.
+- Duplicating the flow would risk drift in validation fallback behavior, profile handling, and local-model routing.
+- Extracting `generate_cover_letter_for_profile` in `cover_letter_service.py` made both routes one-line calls and centralized test patches.
+
+**How to apply:**
+- Identify the common orchestration steps and move them into a helper that accepts the minimal inputs (`JobListing`, `UserProfile`, optional flags).
+- Keep route modules responsible for HTTP-specific concerns: request validation, auth checks, and response serialization.
+- Update existing tests to patch the new shared helper's dependencies on the service module.
+
+

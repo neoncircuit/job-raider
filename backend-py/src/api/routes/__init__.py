@@ -7,4 +7,12 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-__all__ = ["pipeline", "profile", "jobs", "metrics", "settings", "applications"]
+__all__ = [
+    "pipeline",
+    "profile",
+    "jobs",
+    "metrics",
+    "settings",
+    "applications",
+    "cover_letter",
+]

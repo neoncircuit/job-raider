@@ -278,7 +278,6 @@ export const sampleSearchParams = {
   sources: ['linkedin', 'jsearch'],
   limit: 50,
   remote_only: false,
-  experience_levels: ['Mid Level', 'Senior'],
 };
 
 /**

@@ -10,8 +10,7 @@ Date: 2026-04-21
 import asyncio
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ...models.job_listing import JobListing, JobListingCollection
 from ...models.user_profile import UserProfile
@@ -22,12 +21,7 @@ from ...scrapers.manager import ScraperManager
 from ...utils.location_normalizer import normalize_all_locations
 from ...utils.logger import Components, get_logger
 from ..models.requests import JobSearchRequest, SemanticSearchRequest
-from ..models.responses import (
-    CoverLetterResponse,
-    CoverLetterValidationResponse,
-    JobListingResponse,
-    SemanticSearchResult,
-)
+from ..models.responses import JobListingResponse, SemanticSearchResult
 from .profile import active_profile_id, stored_profiles
 
 router = APIRouter()
@@ -91,7 +85,7 @@ async def search_jobs(
     )
 
     # Initialize scrapers
-    from ...models.job_listing import ExperienceLevel, JobSource
+    from ...models.job_listing import JobSource
     from ...scrapers.base import SearchParams
 
     manager = ScraperManager()
@@ -169,56 +163,6 @@ async def search_jobs(
                     filtered_listings.append(listing)
             all_listings = filtered_listings
             logger.info(f"After location filtering: {len(all_listings)} jobs")
-
-        # Filter by experience level if specified
-        if request.experience_levels:
-            # Normalize experience level names
-            requested_levels = [
-                level.lower().replace(" ", "_") for level in request.experience_levels
-            ]
-            # Map frontend names to backend enum values
-            level_map = {
-                "entry_level": "entry_level",
-                "entry level": "entry_level",
-                "mid_level": "mid_level",
-                "mid level": "mid_level",
-                "senior": "senior",
-                "lead": "lead",
-                "internship": "internship",
-                "not_specified": "not_specified",
-            }
-            target_levels = set()
-            for level in requested_levels:
-                normalized = level.replace(" ", "_")
-                if normalized in [e.value for e in ExperienceLevel]:
-                    target_levels.add(normalized)
-                elif level in level_map:
-                    target_levels.add(level_map[level])
-
-            # Filter listings - include jobs that match OR are Not Specified (inclusive filtering)
-            filtered_listings = []
-            for listing in all_listings:
-                listing_level = (
-                    listing.experience_level.value
-                    if hasattr(listing.experience_level, "value")
-                    else (
-                        str(listing.experience_level).lower().replace(" ", "_")
-                        if listing.experience_level
-                        else None
-                    )
-                )
-                logger.info(
-                    f"Filter check - requested: {target_levels}, listing level: {listing_level}, result: {listing_level in target_levels or listing_level == 'not_specified' or listing_level is None}"
-                )
-                # Include if: no filter, matches requested level, OR is Not Specified (inclusive filtering)
-                if (
-                    not target_levels
-                    or listing_level in target_levels
-                    or listing_level == "not_specified"
-                    or listing_level is None
-                ):
-                    filtered_listings.append(listing)
-            all_listings = filtered_listings
 
         logger.info(
             f"[JOBS_SEARCH] Total jobs after all filtering: {len(all_listings)}"
@@ -643,21 +587,13 @@ async def generate_cover_letter(
         )
 
     try:
-        from ...generation.cover_letter_validator import (
-            CoverLetterValidationResult,
-            CoverLetterValidator,
+        from ...generation.cover_letter_service import (
+            generate_cover_letter_for_profile,
         )
-        from ...generation.cover_letter_writer import CoverLetterWriter
-        from ...generation.selector import ResumeSelector
-        from ...llm.router import create_router
         from ...models.job_listing import JobListing, JobSource
 
-        llm_router = create_router(prefer_local=True)
-
-        # Reconstruct UserProfile from stored data
         user_profile = UserProfile(**profile["profile"])
 
-        # Build JobListing from request data
         if job_data:
             job_listing = JobListing(
                 title=job_data.get("title", "Unknown"),
@@ -675,59 +611,8 @@ async def generate_cover_letter(
                 source=JobSource.MANUAL,
             )
 
-        # Run selector first to get selection strategy
-        selector = ResumeSelector(llm_router=llm_router)
-        selection = selector.select(job_listing, user_profile)
-
-        # Generate cover letter using the selection strategy
-        writer = CoverLetterWriter(llm_router=llm_router)
-        result = writer.write(job_listing, user_profile, selection)
-
-        # Validate the generated cover letter
-        validator = CoverLetterValidator(llm_router=llm_router, strict_mode=False)
-        try:
-            if deep:
-                validation = validator.validate_with_llm(
-                    result, job_listing, user_profile, selection
-                )
-            else:
-                validation = validator.validate(
-                    result, job_listing, user_profile, selection
-                )
-        except Exception as e:
-            logger.error("Cover letter validation failed: %s", e, exc_info=True)
-            validation = CoverLetterValidationResult(
-                is_valid=True,
-                score=100,
-                issues=[],
-                word_count=result.word_count,
-                structure_score=100,
-                content_score=100,
-                tone_score=100,
-                recommendation="approve",
-                details={},
-            )
-
-        return CoverLetterResponse(
-            success=True,
-            job_id=job_id,
-            cover_letter={
-                "content": result.content,
-                "word_count": result.word_count,
-                "model_used": result.model_used,
-                "highlighted_experiences": result.highlighted_experiences,
-            },
-            validation=CoverLetterValidationResponse(
-                is_valid=validation.is_valid,
-                score=validation.score,
-                issues=[issue.value for issue in validation.issues],
-                word_count=validation.word_count,
-                structure_score=validation.structure_score,
-                content_score=validation.content_score,
-                tone_score=validation.tone_score,
-                recommendation=validation.recommendation,
-                details=validation.details,
-            ),
+        return await generate_cover_letter_for_profile(
+            job_listing, user_profile, deep=deep
         )
 
     except HTTPException:

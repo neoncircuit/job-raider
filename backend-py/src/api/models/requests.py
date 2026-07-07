@@ -100,10 +100,6 @@ class JobSearchRequest(BaseModel):
     )
     limit: int = Field(default=50, ge=1, le=200, description="Maximum results")
     remote_only: bool = Field(default=False, description="Remote positions only")
-    experience_levels: Optional[List[str]] = Field(
-        default=None,
-        description="Filter by experience level (Entry Level, Mid Level, Senior, etc.)",
-    )
     fresh_grad_mode: bool = Field(
         default=False,
         description="Enable fresh graduate scoring mode (prioritizes projects/education over experience)",
@@ -267,3 +263,50 @@ class SemanticSearchRequest(BaseModel):
         default=None,
         description="Optional metadata filters",
     )
+
+
+class ManualCoverLetterRequest(BaseModel):
+    """Request to generate a cover letter from a manually pasted job description."""
+
+    title: str = Field(..., min_length=1, description="Job title")
+    company: str = Field(..., min_length=1, description="Company name")
+    description: str = Field(
+        ...,
+        min_length=50,
+        description="Full job description",
+    )
+    location: Optional[str] = Field(default=None, description="Job location")
+
+    @field_validator("description")
+    @classmethod
+    def validate_description_not_empty(cls, v: str) -> str:
+        """Ensure the description is not only whitespace."""
+        if not v.strip():
+            raise ValueError("Description cannot be empty")
+        return v
+
+
+class CoverLetterExportRequest(BaseModel):
+    """Request to export a cover letter to DOCX or PDF."""
+
+    content: str = Field(..., min_length=1, description="Cover letter body")
+    format: str = Field(
+        ...,
+        description="Export format: docx or pdf",
+    )
+    company: str = Field(..., min_length=1, description="Company name")
+    title: str = Field(..., min_length=1, description="Job title")
+    sender_name: Optional[str] = Field(default=None, description="Applicant name")
+    sender_email: Optional[str] = Field(default=None, description="Applicant email")
+    sender_location: Optional[str] = Field(
+        default=None, description="Applicant location"
+    )
+
+    @field_validator("format")
+    @classmethod
+    def validate_format(cls, v: str) -> str:
+        """Normalize and validate export format."""
+        normalized = v.lower().strip()
+        if normalized not in {"docx", "pdf"}:
+            raise ValueError("format must be 'docx' or 'pdf'")
+        return normalized

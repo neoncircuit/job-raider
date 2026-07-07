@@ -25,6 +25,7 @@ from .routes import (
     agents,
     applications,
     assessment,
+    cover_letter,
     jobs,
     metrics,
     pipeline,
@@ -177,6 +178,12 @@ app.include_router(
     profile.router, prefix="/api/profile", tags=["Profile"], dependencies=_auth
 )
 app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"], dependencies=_auth)
+app.include_router(
+    cover_letter.router,
+    prefix="/api/cover-letter",
+    tags=["Cover Letter"],
+    dependencies=_auth,
+)
 app.include_router(
     applications.router,
     prefix="/api/applications",

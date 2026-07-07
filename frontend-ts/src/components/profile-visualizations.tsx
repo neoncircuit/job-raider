@@ -90,12 +90,12 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <BarChart3 className="h-4 w-4 text-gray-400" />
+            <BarChart3 className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
             Skills Breakdown
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500">No skills data available</p>
+          <p className="text-sm text-gray-500 dark:text-muted-foreground">No skills data available</p>
         </CardContent>
       </Card>
     );
@@ -105,14 +105,14 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <BarChart3 className="h-4 w-4 text-gray-400" />
+          <BarChart3 className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
           Skills Breakdown
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {/* Scoring explanation */}
-          <div className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-800">
+          <div className="rounded-md bg-blue-50 dark:bg-info/10 px-3 py-2 text-xs text-blue-800 dark:text-info">
             <p className="font-medium">How scores are calculated:</p>
             <ul className="mt-1 ml-4 list-disc space-y-0.5">
               <li>With proficiency: Expert=95%, Advanced=80%, Intermediate=60%, Beginner=40%</li>
@@ -123,7 +123,7 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
 
           {/* Note about proficiency levels */}
           {skillsWithProficiency === 0 && (
-            <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div className="rounded-md bg-amber-50 dark:bg-warning/10 px-3 py-2 text-xs text-amber-800 dark:text-warning">
               <span className="font-medium">Note:</span> Your resume doesn&apos;t include proficiency levels.
               Scores are based on years of experience. Add proficiency levels for more accurate results.
             </div>
@@ -133,16 +133,16 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
           <div className="flex justify-center">
             <ResponsiveContainer width="100%" height={220}>
               <RadarChart data={data.slice(0, 6)}>
-                <PolarGrid stroke="#e5e7eb" />
+                <PolarGrid stroke="var(--chart-grid)" />
                 <PolarAngleAxis
                   dataKey="category"
-                  tick={{ fontSize: 10, fill: "#6b7280" }}
+                  tick={{ fontSize: 10, fill: "var(--chart-axis)" }}
                 />
                 <Radar
                   name="Skill Level"
                   dataKey="score"
-                  stroke="#6366f1"
-                  fill="#6366f1"
+                  stroke="var(--chart-radar-stroke)"
+                  fill="var(--chart-radar-fill)"
                   fillOpacity={0.3}
                   strokeWidth={2}
                 />
@@ -154,10 +154,10 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
           <div className="grid grid-cols-2 gap-2">
             {data.map((item) => (
               <div key={item.category} className="flex items-center justify-between text-xs">
-                <span className="text-gray-600">{item.category}</span>
+                <span className="text-gray-600 dark:text-muted-foreground">{item.category}</span>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">{item.score}%</span>
-                  <span className="text-gray-400">({item.count})</span>
+                  <span className="font-medium text-gray-900 dark:text-foreground">{item.score}%</span>
+                  <span className="text-gray-400 dark:text-muted-foreground">({item.count})</span>
                 </div>
               </div>
             ))}
@@ -180,16 +180,16 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <TrendingUp className="h-4 w-4 text-gray-400" />
+            <TrendingUp className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
             Career Timeline
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-[180px] items-center justify-center text-center">
             <div>
-              <Sparkles className="mx-auto h-8 w-8 text-purple-400 mb-2" />
-              <p className="text-sm font-medium text-gray-700">Starting Your Journey</p>
-              <p className="text-xs text-gray-500 mt-1">Add experience to build your timeline</p>
+              <Sparkles className="mx-auto h-8 w-8 text-purple-400 dark:text-primary mb-2" />
+              <p className="text-sm font-medium text-gray-700 dark:text-muted-foreground">Starting Your Journey</p>
+              <p className="text-xs text-gray-500 dark:text-muted-foreground mt-1">Add experience to build your timeline</p>
             </div>
           </div>
         </CardContent>
@@ -233,7 +233,7 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <TrendingUp className="h-4 w-4 text-gray-400" />
+          <TrendingUp className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
           Career Timeline
         </CardTitle>
       </CardHeader>
@@ -241,24 +241,24 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={data} layout="vertical">
             <XAxis type="number" domain={[0, maxYears * 1.1]} hide />
-            <YAxis type="category" dataKey="year" tick={{ fontSize: 11 }} width={40} />
+            <YAxis type="category" dataKey="year" tick={{ fontSize: 11, fill: "var(--chart-axis)" }} width={40} />
             <Tooltip
-              cursor={{ fill: "rgba(99, 102, 241, 0.1)" }}
+              cursor={{ fill: "var(--chart-cursor)" }}
               content={({ active, payload }) => {
                 if (!active || !payload?.[0]) return null;
                 const data = payload[0].payload;
                 return (
-                  <div className="rounded-lg border bg-white p-2 shadow-lg">
+                  <div className="rounded-lg border bg-popover text-popover-foreground border-border p-2 shadow-lg">
                     <p className="text-sm font-medium">{data.year}</p>
-                    <p className="text-xs text-gray-500">{data.years} years experience</p>
+                    <p className="text-xs text-gray-500 dark:text-muted-foreground">{data.years} years experience</p>
                   </div>
                 );
               }}
             />
-            <Bar dataKey="years" fill="#6366f1" radius={[0, 4, 4, 0]} />
+            <Bar dataKey="years" fill="var(--chart-timeline-fill)" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
-        <p className="mt-2 text-center text-xs text-gray-500">
+        <p className="mt-2 text-center text-xs text-gray-500 dark:text-muted-foreground">
           Years of professional experience by year
         </p>
       </CardContent>
@@ -311,9 +311,9 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
 
   // Determine strength levels
   const getLevel = (score: number, thresholds: { weak: number; moderate: number; strong: number }) => {
-    if (score >= thresholds.strong) return { level: "Strong", color: "text-green-600 bg-green-50", icon: Zap };
-    if (score >= thresholds.moderate) return { level: "Moderate", color: "text-blue-600 bg-blue-50", icon: Shield };
-    return { level: "Developing", color: "text-amber-600 bg-amber-50", icon: Lightbulb };
+    if (score >= thresholds.strong) return { level: "Strong", color: "text-green-600 dark:text-success bg-green-50 dark:bg-success/10", icon: Zap };
+    if (score >= thresholds.moderate) return { level: "Moderate", color: "text-blue-600 dark:text-info bg-blue-50 dark:bg-info/10", icon: Shield };
+    return { level: "Developing", color: "text-amber-600 dark:text-warning bg-amber-50 dark:bg-warning/10", icon: Lightbulb };
   };
 
   const skillsLevel = getLevel(totalSkills, { weak: 3, moderate: 8, strong: 15 });
@@ -330,11 +330,11 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
     const projectScore = projectCount >= 3 ? "strong" : projectCount >= 1 ? "moderate" : "developing";
 
     if (hasInternships || projectScore === "strong") {
-      experienceLevel = { level: "Ready to Launch", color: "text-emerald-600 bg-emerald-50", icon: Rocket };
+      experienceLevel = { level: "Ready to Launch", color: "text-emerald-600 dark:text-success bg-emerald-50 dark:bg-success/10", icon: Rocket };
     } else if (projectScore === "moderate") {
-      experienceLevel = { level: "Building Portfolio", color: "text-blue-600 bg-blue-50", icon: Target };
+      experienceLevel = { level: "Building Portfolio", color: "text-blue-600 dark:text-info bg-blue-50 dark:bg-info/10", icon: Target };
     } else {
-      experienceLevel = { level: "Fresh Talent", color: "text-purple-600 bg-purple-50", icon: Sparkles };
+      experienceLevel = { level: "Fresh Talent", color: "text-purple-600 dark:text-primary bg-purple-50 dark:bg-primary/10", icon: Sparkles };
     }
   } else {
     experienceLevel = getLevel(totalExperience, { weak: 1, moderate: 3, strong: 5 });
@@ -404,18 +404,18 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <Award className="h-4 w-4 text-gray-400" />
+          <Award className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
           Strength Assessment
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Fresh Grad Banner */}
         {isFreshGrad && (
-          <div className="flex items-start gap-3 rounded-lg border border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50 p-3">
-            <Sparkles className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 rounded-lg border border-purple-200 dark:border-border bg-gradient-to-r from-purple-50 dark:from-muted to-indigo-50 dark:to-muted p-3">
+            <Sparkles className="h-5 w-5 text-purple-600 dark:text-primary flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-purple-900">Fresh Graduate Profile</p>
-              <p className="mt-1 text-xs text-purple-700">
+              <p className="text-sm font-semibold text-purple-900 dark:text-foreground">Fresh Graduate Profile</p>
+              <p className="mt-1 text-xs text-purple-700 dark:text-muted-foreground">
                 Everyone starts somewhere! Your potential matters more than years of experience.
                 Focus on your skills, projects, and eagerness to learn.
               </p>
@@ -430,11 +430,11 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
             return (
               <div key={item.label} className="rounded-lg border p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">{item.label}</span>
-                  <Icon className="h-3.5 w-3.5 text-gray-400" />
+                  <span className="text-xs text-gray-500 dark:text-muted-foreground">{item.label}</span>
+                  <Icon className="h-3.5 w-3.5 text-gray-400 dark:text-muted-foreground" />
                 </div>
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-lg font-semibold text-gray-900">{item.value}</span>
+                  <span className="text-lg font-semibold text-gray-900 dark:text-foreground">{item.value}</span>
                   <Badge className={cn("text-[10px]", item.level.color)}>
                     {item.level.level}
                   </Badge>
@@ -447,27 +447,27 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
         {/* DISC-style Profile */}
         <div className="rounded-lg border p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium text-gray-700">Working Style Profile</p>
+            <p className="text-xs font-medium text-gray-700 dark:text-muted-foreground">Working Style Profile</p>
             <span className={cn(
               "text-[10px]",
-              discResult ? "text-green-600 bg-green-50 px-2 py-0.5 rounded-full" : "text-gray-400"
+              discResult ? "text-green-600 dark:text-success bg-green-50 dark:bg-success/10 px-2 py-0.5 rounded-full" : "text-gray-400 dark:text-muted-foreground"
             )}>
               {discResult ? "From assessment" : "Estimated from resume"}
             </span>
           </div>
           <div className="space-y-2">
             {[
-              { label: "Dominance", value: discProfile.dominance, color: "bg-red-400", desc: "Direct, decisive" },
-              { label: "Influence", value: discProfile.influence, color: "bg-yellow-400", desc: "Social, enthusiastic" },
-              { label: "Steadiness", value: discProfile.steadiness, color: "bg-green-400", desc: "Patient, reliable" },
-              { label: "Conscientiousness", value: discProfile.conscientiousness, color: "bg-blue-400", desc: "Analytical, precise" },
+              { label: "Dominance", value: discProfile.dominance, color: "bg-red-400 dark:bg-destructive", desc: "Direct, decisive" },
+              { label: "Influence", value: discProfile.influence, color: "bg-yellow-400 dark:bg-warning", desc: "Social, enthusiastic" },
+              { label: "Steadiness", value: discProfile.steadiness, color: "bg-green-400 dark:bg-success", desc: "Patient, reliable" },
+              { label: "Conscientiousness", value: discProfile.conscientiousness, color: "bg-blue-400 dark:bg-info", desc: "Analytical, precise" },
             ].map((item) => (
               <div key={item.label}>
                 <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="font-medium text-gray-700">{item.label}</span>
-                  <span className="text-gray-500">{item.value}%</span>
+                  <span className="font-medium text-gray-700 dark:text-muted-foreground">{item.label}</span>
+                  <span className="text-gray-500 dark:text-muted-foreground">{item.value}%</span>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-gray-100">
+                <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-muted">
                   <div
                     className={cn("h-full rounded-full", item.color)}
                     style={{ width: `${item.value}%` }}
@@ -478,7 +478,7 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
           </div>
           <button
             onClick={() => setShowDISCAssessment(true)}
-            className="mt-3 w-full rounded-md bg-indigo-50 px-2 py-1.5 text-xs text-indigo-700 text-left hover:bg-indigo-100 transition-colors"
+            className="mt-3 w-full rounded-md bg-indigo-50 dark:bg-secondary px-2 py-1.5 text-xs text-indigo-700 dark:text-secondary-foreground text-left hover:bg-indigo-100 dark:hover:bg-muted transition-colors"
           >
             <span className="font-medium">{discResult ? "Retake" : "Take"}</span> DISC assessment for accurate results →
           </button>
@@ -487,10 +487,10 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
         {/* Core Strengths */}
         {coreSkillsCount > 0 && (
           <div className="rounded-lg border p-3">
-            <p className="mb-2 text-xs font-medium text-gray-700">Core Strengths</p>
+            <p className="mb-2 text-xs font-medium text-gray-700 dark:text-muted-foreground">Core Strengths</p>
             <div className="flex flex-wrap gap-1.5">
               {profile.core_skills!.slice(0, 6).map((skill) => (
-                <Badge key={skill} className="bg-indigo-100 text-indigo-800 text-xs">
+                <Badge key={skill} className="bg-indigo-100 dark:bg-primary/10 text-indigo-800 dark:text-primary text-xs">
                   {skill}
                 </Badge>
               ))}

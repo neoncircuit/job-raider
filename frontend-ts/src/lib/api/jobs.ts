@@ -14,7 +14,6 @@ export interface JobSearchRequest {
   sources?: string[];
   limit?: number;
   remote_only?: boolean;
-  experience_levels?: string[];
 }
 
 export interface SemanticSearchRequest {

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Search, Bookmark, BookmarkCheck, ExternalLink, MapPin, Building2, Clock, ChevronDown, FileText, Copy } from "lucide-react";
 import { jobsApi } from "@/lib/api/jobs";
 import { applicationsApi } from "@/lib/api/applications";
-import type { JobListing, JobSearchResponse, ExperienceLevel, CoverLetterValidation } from "@/lib/types/api";
+import type { JobListing, JobSearchResponse, CoverLetterValidation } from "@/lib/types/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,107 +25,6 @@ import { JobClassificationDisplay } from "@/components/job-classification";
 import { TrustAnalysisDisplay, TrustTierBadge } from "@/components/trust-analysis";
 import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
 import { PageContainer } from "@/components/layout/PageContainer";
-
-// ── Experience/Job Type selector dropdown ─────────────────────────────────────
-
-const EXPERIENCE_OPTIONS = [
-  { value: "Entry Level", label: "Entry Level" },
-  { value: "Mid Level", label: "Mid Level" },
-  { value: "Senior", label: "Senior" },
-  { value: "Lead", label: "Lead" },
-  { value: "Principal", label: "Principal" },
-  { value: "Executive", label: "Executive" },
-  { value: "Internship", label: "Internship" },
-  { value: "Full-time", label: "Full-time" },
-  { value: "Part-time", label: "Part-time" },
-  { value: "Contract", label: "Contract" },
-  { value: "Freelance", label: "Freelance" },
-  { value: "Temporary", label: "Temporary" },
-] as const;
-
-function ExperienceSelector({
-  selected,
-  onChange,
-}: {
-  selected: string[];
-  onChange: (s: string[]) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [open]);
-
-  const toggle = (val: string) =>
-    onChange(selected.includes(val) ? selected.filter((s) => s !== val) : [...selected, val]);
-
-  const label = selected.length === 0 ? "All levels" : `${selected.length} selected`;
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors",
-          selected.length === 0
-            ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-            : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-        )}
-      >
-        <ChevronDown className={cn("h-3.5 w-3.5 text-gray-400 transition-transform", open && "rotate-180")} />
-        {label}
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 min-w-[200px] rounded-lg border bg-white p-2 shadow-lg">
-          <div className="max-h-[300px] overflow-y-auto space-y-0.5">
-            {EXPERIENCE_OPTIONS.map((opt) => {
-              const checked = selected.includes(opt.value);
-              return (
-                <label
-                  key={opt.value}
-                  className="flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggle(opt.value)}
-                    className="h-3.5 w-3.5 accent-indigo-600"
-                  />
-                  <span className={cn("flex-1 text-sm", checked ? "font-medium text-gray-900" : "text-gray-500")}>
-                    {opt.label}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-          <div className="mt-1 flex gap-1 border-t pt-1">
-            <button
-              type="button"
-              onClick={() => { onChange(EXPERIENCE_OPTIONS.map((o) => o.value)); setOpen(false); }}
-              className="flex-1 rounded px-2 py-1 text-center text-xs text-indigo-600 hover:bg-indigo-50"
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => { onChange([]); setOpen(false); }}
-              className="flex-1 rounded px-2 py-1 text-center text-xs text-gray-500 hover:bg-gray-50"
-            >
-              None
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Source selector dropdown ──────────────────────────────────────────────────
 
@@ -247,7 +146,6 @@ function SearchBar({ onSearch, onGoogleSearch }: {
   const available = sourcesQuery.data?.sources ?? DEFAULT_SOURCES;
   const [manualSources, setManualSources] = useState<string[] | null>(null);
   const selectedSources = manualSources ?? available;
-  const [selectedExperience, setSelectedExperience] = useState<string[]>([]);
 
   const noSources = selectedSources.length === 0;
 
@@ -259,7 +157,6 @@ function SearchBar({ onSearch, onGoogleSearch }: {
         sources: selectedSources,
         limit: v.limit,
         remote_only: v.remoteOnly,
-        experience_levels: selectedExperience.length > 0 ? (selectedExperience as ExperienceLevel[]) : undefined,
       }),
     onSuccess: (data) => {
       logger.info(`Search successful: ${data.jobs.length} jobs found`);
@@ -317,10 +214,6 @@ function SearchBar({ onSearch, onGoogleSearch }: {
       <div className="space-y-1">
         <Label>Sources</Label>
         <SourceSelector available={available} selected={selectedSources} onChange={setManualSources} />
-      </div>
-      <div className="space-y-1">
-        <Label>Experience</Label>
-        <ExperienceSelector selected={selectedExperience} onChange={setSelectedExperience} />
       </div>
       <div className="flex items-center gap-2 pb-0.5">
         <Switch

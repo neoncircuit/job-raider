@@ -197,7 +197,7 @@
 
 ## Summary
 
-**Completed Phases:** 1-46
+**Completed Phases:** 1-51
 
 **Project Status:** FULLY OPERATIONAL
 - Backend pipeline with FastAPI REST API (X-API-Key auth on all routes)
@@ -222,6 +222,7 @@
 - Trust tier system with per-category scoring and LLM-enhanced analysis
 - Multi-agent system: AgentCoordinator + communication bus + CareerCoachAgent (9 `/api/agents/*` endpoints)
 - Consistent frontend layout strategy using shared `PageContainer` width variants and sidebar-width token
+- Profile page readable in dark mode while preserving exact light-mode appearance
 - **All tests passing:** 418 backend passed / 2 skipped; 32 frontend Vitest unit tests; 18 Playwright E2E tests passed / 2 skipped
 - **All containers healthy:** backend, frontend (Next.js), ollama
 
@@ -2026,3 +2027,88 @@ npx playwright test tests/e2e/jobs-page.spec.ts
 - The Jobs page renders the proofread panel with recommendation, score breakdown, issues, and detail chips.
 - All backend and frontend quality gates pass; the feature is ready to push.
 
+
+## Phase 51: Profile Page Dark-Mode Contrast Fix (2026-06-29)
+
+**Overview:** After uploading a resume, the parsed profile page (`/profile`) used hardcoded light-mode Tailwind classes (`text-gray-900`, `bg-gray-50`, `border-gray-200`, `text-blue-600`, etc.) that became unreadable in dark mode. The fix preserves the exact light-mode appearance and adds theme-aware `dark:` overrides, plus CSS variables for Recharts so charts remain visible in both themes.
+
+### Theme Tokens
+- [x] Add semantic `success`/`success-foreground`, `warning`/`warning-foreground`, and `info`/`info-foreground` tokens to `frontend-ts/src/app/globals.css` under `@theme inline`, `:root`, and `.dark`.
+- [x] Add chart-specific CSS variables (`--chart-grid`, `--chart-axis`, `--chart-radar-stroke`, `--chart-radar-fill`, `--chart-timeline-fill`, `--chart-cursor`) so light-mode chart hex colors stay intact while dark mode uses theme tokens.
+
+### Profile Page (`frontend-ts/src/app/profile/page.tsx`)
+- [x] Keep every original light Tailwind class exactly as-is and append `dark:` variants.
+- [x] `PROFICIENCY_COLORS` now maps each level to light background/text plus dark variants using `primary`, `info`, `muted`, and `muted-foreground`.
+- [x] Resume dropzone states toggle between light (`border-gray-200 bg-gray-50`) and dark (`border-border bg-muted`) with primary accents when active.
+- [x] Core-skills badges, section headings, body text, muted labels, links, bullets, and borders all flip to theme tokens in dark mode only.
+
+### Profile Visualizations (`frontend-ts/src/components/profile-visualizations.tsx`)
+- [x] Strength badges, info/warning boxes, DISC progress bars, and the fresh-grad banner preserve light classes with `dark:` overrides.
+- [x] Recharts `PolarGrid`, `PolarAngleAxis`, `Radar`, `YAxis`, `Tooltip` cursor, and `Bar` reference chart CSS variables instead of inline hex.
+- [x] Custom tooltip uses `bg-popover text-popover-foreground border-border`.
+
+### Verification
+- [x] `cd frontend-ts && npm run type-check` passes with no errors.
+- [x] `cd frontend-ts && npm run lint` passes with no errors or warnings.
+- [x] `cd frontend-ts && npm run build` succeeds and generates 14 static pages.
+- [x] Captured Playwright screenshots of a mocked populated `/profile` in both light and dark modes:
+  - `frontend-ts/screenshots/profile-light.png`
+  - `frontend-ts/screenshots/profile-dark.png`
+- [x] Light-mode screenshot matches the original palette; all text, borders, badges, and charts are readable.
+- [x] Dark-mode screenshot shows readable headings, body text, muted labels, skill chips, strength badges, links, and chart elements.
+
+### Files Changed
+- `frontend-ts/src/app/globals.css`
+- `frontend-ts/src/app/profile/page.tsx`
+- `frontend-ts/src/components/profile-visualizations.tsx`
+
+### Review
+
+**Completed:** 2026-06-29
+
+- Light mode is visually unchanged; the strategy of keeping original classes and appending `dark:` variants avoided regressions.
+- Dark mode is readable across name, headings, body text, skill proficiency badges, core-skills badges, strength assessment badges, DISC bars, career timeline, radar chart, links, and borders.
+- Recharts elements now follow theme CSS variables, so the radar grid/axis, bar fills, and tooltip adapt to the active theme.
+- All frontend quality gates (type-check, lint, build) pass.
+
+
+## Phase 52: Cover Letter Tab for Manual Job Descriptions [COMPLETED]
+
+**Overview:** Add a dedicated `/cover-letter` tab for the "other" category of jobs discovered outside the platform's scrapers. Users can paste a job description manually, generate a tailored cover letter with the local (Ollama) model stack, proofread/validate the result, and export it as DOCX or PDF.
+
+### Backend
+- [x] Add `ManualCoverLetterRequest` and `CoverLetterExportRequest` models in `backend-py/src/api/models/requests.py`.
+- [x] Extract a shared `generate_cover_letter_for_profile` helper into `backend-py/src/generation/cover_letter_service.py` so both `POST /api/jobs/{job_id}/cover-letter` and the new manual endpoint reuse the same selector, writer, and validator.
+- [x] Refactor `backend-py/src/api/routes/jobs.py` to delegate generation to the shared service helper.
+- [x] Create `backend-py/src/api/routes/cover_letter.py` with:
+  - `POST /api/cover-letter/manual` — generate from a pasted job description.
+  - `POST /api/cover-letter/export` — export to DOCX/PDF via `CoverLetterFormatter` and return `FileResponse`.
+- [x] Register the new router under `/api/cover-letter` in `backend-py/src/api/main.py` with existing auth dependencies.
+- [x] Create `backend-py/src/generation/cover_letter_formatter.py` with `CoverLetterFormatter`, supporting DOCX (`python-docx`) and PDF (`reportlab`) output, optional sender block, subject line, and graceful fallback messages when libraries are unavailable.
+- [x] Add unit tests for the manual route (`tests/unit/test_cover_letter_manual.py`) and formatter (`tests/unit/test_cover_letter_formatter.py`).
+- [x] Update `tests/unit/test_jobs_cover_letter.py` patches to target `src.generation.cover_letter_service` after the shared-service refactor.
+
+### Frontend
+- [x] Add `Mail` icon and `/cover-letter` nav item to `frontend-ts/src/components/layout/SidebarContent.tsx`.
+- [x] Create `frontend-ts/src/lib/api/coverLetter.ts` with TypeScript types and `coverLetterApi.generate` / `coverLetterApi.export` helpers.
+- [x] Create `frontend-ts/src/app/cover-letter/page.tsx` with a form for title/company/location/description, deep-validation toggle, generation mutation, validation panel, copy-to-clipboard, and DOCX/PDF export buttons.
+- [x] Add a `PointerEvent` polyfill in `frontend-ts/tests/setup/globals.ts` so Base UI `Switch` toggles work under jsdom.
+- [x] Add `frontend-ts/tests/app/cover-letter/page.test.tsx` covering generation, deep toggle, export, copy, and issue rendering.
+
+### Verification
+- [x] Backend cover-letter tests: `18 passed` across `test_cover_letter_manual.py`, `test_cover_letter_formatter.py`, and `test_jobs_cover_letter.py`.
+- [x] Full backend suite: `437 passed`.
+- [x] Backend lint: Black `157 files would be left unchanged`, isort clean, flake8 fatal-only `0` errors.
+- [x] Frontend `npm run type-check`: no errors.
+- [x] Frontend `npm run lint`: no errors or warnings.
+- [x] Frontend `npm run test -- --run`: `44 passed` across `9 test files`.
+- [x] Frontend `npm run build`: succeeds and generates 15 static pages, including `/cover-letter`.
+
+### Review
+
+**Completed:** 2026-06-29
+
+- The new `/cover-letter` page gives users a self-contained workflow for manual job descriptions, reusing the same local-model generation and validation pipeline as scraped jobs.
+- DOCX export is preferred and editable; PDF export is available as an alternative.
+- Extracting the generation flow into `cover_letter_service.py` keeps the existing jobs endpoint and the new manual endpoint DRY and consistent.
+- All backend and frontend quality gates pass.

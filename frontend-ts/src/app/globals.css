@@ -42,6 +42,12 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -96,6 +102,14 @@
   /* Destructive */
   --destructive: #dc2626;
 
+  /* Semantic states */
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+  --warning: #f59e0b;
+  --warning-foreground: #ffffff;
+  --info: #3b82f6;
+  --info-foreground: #ffffff;
+
   /* Borders & inputs */
   --border: #e0e0e0;
   --input: #f5f5f5;
@@ -107,6 +121,14 @@
   --chart-3: #6b7280;
   --chart-4: #9ca3af;
   --chart-5: #d1d5db;
+
+  /* Profile chart colors - preserve light-mode indigo accents */
+  --chart-grid: #e5e7eb;
+  --chart-axis: #6b7280;
+  --chart-radar-stroke: #6366f1;
+  --chart-radar-fill: #6366f1;
+  --chart-timeline-fill: #6366f1;
+  --chart-cursor: rgba(99, 102, 241, 0.1);
 
   --radius: 0.25rem;
 
@@ -160,6 +182,14 @@
   /* Destructive */
   --destructive: #ef4444;
 
+  /* Semantic states */
+  --success: #4ade80;
+  --success-foreground: #0f0f0f;
+  --warning: #fbbf24;
+  --warning-foreground: #0f0f0f;
+  --info: #60a5fa;
+  --info-foreground: #0f0f0f;
+
   /* Borders & inputs */
   --border: #333333;
   --input: #1f1f1f;
@@ -171,6 +201,14 @@
   --chart-3: #9ca3af;
   --chart-4: #6b7280;
   --chart-5: #4b5563;
+
+  /* Profile chart colors - theme-aware for dark mode */
+  --chart-grid: var(--border);
+  --chart-axis: var(--muted-foreground);
+  --chart-radar-stroke: var(--primary);
+  --chart-radar-fill: var(--primary);
+  --chart-timeline-fill: var(--primary);
+  --chart-cursor: var(--primary);
 
   /* Sidebar - deepest */
   --sidebar: #0a0a0a;
