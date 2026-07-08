@@ -2112,3 +2112,69 @@ npx playwright test tests/e2e/jobs-page.spec.ts
 - DOCX export is preferred and editable; PDF export is available as an alternative.
 - Extracting the generation flow into `cover_letter_service.py` keeps the existing jobs endpoint and the new manual endpoint DRY and consistent.
 - All backend and frontend quality gates pass.
+
+
+## Phase 53: Drafter-Reviewer Loop for Cover Letters [COMPLETED]
+
+**Overview:** Borrow the least-violent idea from Mads Lorentzen's `ai-job-search` repo: add a single-pass drafter-reviewer loop to the cover-letter pipeline. After the first draft, a reviewer agent critiques the letter; if the critique calls for a rewrite, the writer rewrites it once. The final letter is then validated as usual.
+
+### Backend
+- [x] Add `COVER_LETTER_REVIEW` task type and route config to `backend-py/src/llm/router.py`.
+- [x] Create `backend-py/src/generation/cover_letter_reviewer.py` with `CoverLetterReviewResult` and `CoverLetterReviewer`.
+- [x] Add `rewrite()` method to `backend-py/src/generation/cover_letter_writer.py`.
+- [x] Add `review: bool = False` parameter to `generate_cover_letter_for_profile` in `backend-py/src/generation/cover_letter_service.py` and orchestrate review/rewrite once.
+- [x] Add `review` query param to `POST /api/cover-letter/manual` in `backend-py/src/api/routes/cover_letter.py`.
+- [x] Add `review` query param to `POST /api/jobs/{job_id}/cover-letter` in `backend-py/src/api/routes/jobs.py`.
+- [x] Create `backend-py/tests/unit/test_cover_letter_reviewer.py` and `backend-py/tests/unit/test_cover_letter_service.py`.
+- [x] Update existing route tests in `backend-py/tests/unit/test_cover_letter_manual.py` and `backend-py/tests/unit/test_jobs_cover_letter.py`.
+
+### Frontend
+- [x] Add `CoverLetterReviewDetails` interface to `frontend-ts/src/lib/types/api.ts`.
+- [x] Update `frontend-ts/src/lib/api/coverLetter.ts` to accept the `review` flag.
+- [x] Add "Review & rewrite" toggle to `frontend-ts/src/app/cover-letter/page.tsx`.
+- [x] Render reviewer feedback in `frontend-ts/src/components/cover-letter-validation.tsx`.
+
+### Verification
+- [x] Backend cover-letter tests pass.
+- [x] Full backend suite passes.
+- [x] Frontend `npm run type-check` passes.
+- [x] Frontend `npm run lint` passes.
+- [x] Frontend unit tests pass.
+- [x] Frontend build succeeds.
+
+### Review
+
+**Completed:** 2026-07-08
+
+- Backend cover-letter tests: `31 passed` across `test_cover_letter_reviewer.py`, `test_cover_letter_service.py`, `test_cover_letter_manual.py`, and `test_jobs_cover_letter.py`.
+- Full backend suite: `454 passed` in 29.52s.
+- Backend lint: Black `160 files would be left unchanged`, isort clean, flake8 fatal-only `0` errors.
+- Frontend `npm run type-check`: no errors.
+- Frontend `npm run lint`: no errors or warnings.
+- Frontend unit tests: `44 passed` across `9 test files`.
+- Frontend build: succeeds and generates 15 static pages, including `/cover-letter`.
+- Updated `frontend-ts/tests/app/cover-letter/page.test.tsx` mock assertions to include the new `review` argument so the existing page tests reflect the actual API call signature.
+
+**Behavior:**
+- `review=false` by default, so existing behavior and latency are unchanged.
+- `review=true` adds one local LLM critique call and at most one rewrite call.
+- Review metadata is carried inside `validation.details.review` without changing response schemas.
+- The reviewer uses `TaskType.COVER_LETTER_REVIEW` with `qwen2.5:3b` primary / `gemma3:4b` fallback, temperature 0.3, and max_tokens 400.
+- Reviewer failures are graceful: the original draft is kept, validation proceeds, and `validation.details.review.error` records what happened.
+
+**Files changed:**
+- `backend-py/src/llm/router.py`
+- `backend-py/src/generation/cover_letter_reviewer.py` (new)
+- `backend-py/src/generation/cover_letter_writer.py`
+- `backend-py/src/generation/cover_letter_service.py`
+- `backend-py/src/api/routes/cover_letter.py`
+- `backend-py/src/api/routes/jobs.py`
+- `backend-py/tests/unit/test_cover_letter_reviewer.py` (new)
+- `backend-py/tests/unit/test_cover_letter_service.py` (new)
+- `backend-py/tests/unit/test_cover_letter_manual.py`
+- `backend-py/tests/unit/test_jobs_cover_letter.py`
+- `frontend-ts/src/lib/types/api.ts`
+- `frontend-ts/src/lib/api/coverLetter.ts`
+- `frontend-ts/src/app/cover-letter/page.tsx`
+- `frontend-ts/src/components/cover-letter-validation.tsx`
+- `frontend-ts/tests/app/cover-letter/page.test.tsx`

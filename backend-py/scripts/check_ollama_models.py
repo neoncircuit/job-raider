@@ -18,7 +18,6 @@ import subprocess
 import sys
 from typing import List, Dict
 
-
 # Recommended models for Job Raider (optimized for 16GB RAM + 8GB VRAM)
 RECOMMENDED_MODELS = [
     {
@@ -152,23 +151,27 @@ def print_gpu_status():
     """Print GPU status if available."""
     try:
         result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,memory.total,memory.free", "--format=csv,noheader"],
+            [
+                "nvidia-smi",
+                "--query-gpu=name,memory.total,memory.free",
+                "--format=csv,noheader",
+            ],
             capture_output=True,
             text=True,
             timeout=5,
         )
 
         if result.returncode == 0:
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("GPU Status:")
-            print("="*60)
+            print("=" * 60)
             for line in result.stdout.strip().split("\n"):
                 parts = [p.strip() for p in line.split(",")]
                 if len(parts) >= 3:
                     print(f"  {parts[0]}")
                     print(f"    Total Memory: {parts[1]}")
                     print(f"    Free Memory:  {parts[2]}")
-            print("="*60 + "\n")
+            print("=" * 60 + "\n")
 
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
@@ -180,21 +183,19 @@ def main():
         description="Check and manage Ollama models for Job Raider"
     )
     parser.add_argument(
-        "--pull",
-        action="store_true",
-        help="Pull missing recommended models"
+        "--pull", action="store_true", help="Pull missing recommended models"
     )
     parser.add_argument(
         "--pull-all",
         action="store_true",
-        help="Pull all recommended models (including optional ones)"
+        help="Pull all recommended models (including optional ones)",
     )
 
     args = parser.parse_args()
 
-    print("="*60)
+    print("=" * 60)
     print("Job Raider - Ollama Model Checker")
-    print("="*60)
+    print("=" * 60)
     print()
 
     # Check if Ollama is running
@@ -218,16 +219,18 @@ def main():
         print("Installed models:")
         for model in installed_models:
             size = get_model_size(model)
-            vram_str = f"{size['vram_mb']} MB VRAM" if size['vram_mb'] > 0 else "Unknown size"
+            vram_str = (
+                f"{size['vram_mb']} MB VRAM" if size["vram_mb"] > 0 else "Unknown size"
+            )
             print(f"  - {model} ({vram_str})")
     else:
         print("No models installed yet")
     print()
 
     # Check recommended models
-    print("="*60)
+    print("=" * 60)
     print("Recommended Models for Job Raider:")
-    print("="*60)
+    print("=" * 60)
     print()
 
     missing_required = []
@@ -256,9 +259,9 @@ def main():
         print()
 
     # Print recommendations
-    print("="*60)
+    print("=" * 60)
     print("Summary:")
-    print("="*60)
+    print("=" * 60)
     print()
 
     if missing_required:

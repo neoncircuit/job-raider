@@ -18,6 +18,7 @@ from ..llm.router import create_router
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
+from .cover_letter_reviewer import CoverLetterReviewer
 from .cover_letter_validator import CoverLetterValidationResult, CoverLetterValidator
 from .cover_letter_writer import CoverLetterWriter
 from .selector import ResumeSelector
@@ -77,6 +78,7 @@ async def generate_cover_letter_for_profile(
     job_listing: JobListing,
     user_profile: UserProfile,
     deep: bool = False,
+    review: bool = False,
 ) -> CoverLetterResponse:
     """
     Generate and validate a tailored cover letter for the given job/profile.
@@ -88,6 +90,8 @@ async def generate_cover_letter_for_profile(
         job_listing: Target job listing (scraped or manually pasted).
         user_profile: Parsed user profile.
         deep: If True, run LLM-powered validation instead of deterministic checks.
+        review: If True, run a single-pass drafter-reviewer loop. A reviewer
+            critiques the draft and the writer rewrites it once if needed.
 
     Returns:
         ``CoverLetterResponse`` containing the letter and validation results.
@@ -104,6 +108,30 @@ async def generate_cover_letter_for_profile(
     writer = CoverLetterWriter(llm_router=llm_router)
     result = writer.write(job_listing, user_profile, selection)
 
+    review_metadata: Dict[str, Any] = {}
+    if review:
+        reviewer = CoverLetterReviewer(llm_router=llm_router)
+        review_result = reviewer.review(result, job_listing, user_profile, selection)
+        rewrite_count = 0
+        if review_result.rewrite_needed:
+            result = writer.rewrite(
+                job_listing,
+                user_profile,
+                selection,
+                result,
+                review_result.critique,
+            )
+            rewrite_count = 1
+
+        review_metadata = {
+            "critique": review_result.critique,
+            "rewrite_needed": review_result.rewrite_needed,
+            "rewrite_count": rewrite_count,
+            "model_used": review_result.model_used,
+        }
+        if review_result.error:
+            review_metadata["error"] = review_result.error
+
     validator = CoverLetterValidator(llm_router=llm_router, strict_mode=False)
     try:
         if deep:
@@ -117,6 +145,9 @@ async def generate_cover_letter_for_profile(
     except Exception as exc:
         logger.error("Cover letter validation failed: %s", exc, exc_info=True)
         validation = _build_fallback_validation(result)
+
+    if review_metadata:
+        validation.details["review"] = review_metadata
 
     return CoverLetterResponse(
         success=True,

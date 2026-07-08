@@ -16,6 +16,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, List
 
+
 # Check for dependencies first
 def ensure_dependencies():
     """
@@ -127,6 +128,7 @@ def ensure_dependencies():
     # Install Playwright browsers if needed
     try:
         from playwright.sync_api import sync_playwright
+
         # Just check if we can import, browsers will be downloaded on first use
         pass
     except ImportError:
@@ -276,6 +278,7 @@ def run_pipeline(args) -> int:
             profile.target_job.locations.extend(args.target_locations)
         if args.target_experience:
             from ..models.user_profile import ExperienceLevel
+
             profile.target_job.experience_levels = [
                 ExperienceLevel(exp) for exp in args.target_experience
             ]
@@ -291,14 +294,18 @@ def run_pipeline(args) -> int:
 
         # Run pipeline
         result = orchestrator.run(
-            start_from=PipelineStage(args.start_from) if args.start_from else PipelineStage.SCRAPE,
+            start_from=(
+                PipelineStage(args.start_from)
+                if args.start_from
+                else PipelineStage.SCRAPE
+            ),
             stop_at=PipelineStage(args.stop_at) if args.stop_at else None,
         )
 
         # Print summary
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("PIPELINE SUMMARY")
-        print("="*60)
+        print("=" * 60)
         print(f"Status: {'SUCCESS' if result.success else 'FAILED'}")
         print(f"Duration: {result.duration_seconds:.1f} seconds")
         print(f"Jobs scraped: {result.jobs_scraped}")
@@ -313,7 +320,7 @@ def run_pipeline(args) -> int:
                     if key != "scam_reports":  # Skip verbose data
                         print(f"  {key}: {value}")
 
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
         return 0 if result.success else 1
 
@@ -331,9 +338,9 @@ def interactive_mode() -> int:
     """
     logger = get_logger(Components.SCRAPERS)
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Job Raider - Interactive Mode")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     try:
         # Get resume path
@@ -353,13 +360,22 @@ def interactive_mode() -> int:
         locations_input = input("Enter locations (comma-separated): ").strip()
         locations = [l.strip() for l in locations_input.split(",") if l.strip()]
 
-        sources_input = input("Enter sources to search (linkedin,jsearch or blank for all): ").strip()
-        sources = [s.strip().lower() for s in sources_input.split(",") if s.strip()] if sources_input else None
+        sources_input = input(
+            "Enter sources to search (linkedin,jsearch or blank for all): "
+        ).strip()
+        sources = (
+            [s.strip().lower() for s in sources_input.split(",") if s.strip()]
+            if sources_input
+            else None
+        )
 
         # Get options
         print("\n--- Options ---")
         dry_run = input("Dry run mode? (Y/n): ").strip().lower() != "n"
-        skip_submission = not dry_run and input("Skip actual submission? (Y/n): ").strip().lower() != "n"
+        skip_submission = (
+            not dry_run
+            and input("Skip actual submission? (Y/n): ").strip().lower() != "n"
+        )
 
         # Create config
         config = PipelineConfig(
@@ -379,12 +395,12 @@ def interactive_mode() -> int:
         result = orchestrator.run()
 
         # Print summary
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("PIPELINE COMPLETE")
-        print("="*60)
+        print("=" * 60)
         print(f"Status: {'SUCCESS' if result.success else 'FAILED'}")
         print(f"Duration: {result.duration_seconds:.1f} seconds")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
         return 0 if result.success else 1
 
@@ -446,7 +462,9 @@ def run_analyze_command(args) -> int:
                 skills=[Skill(name="skill")] if True else [],
             )
 
-            analysis = analyzer.analyze_job_specific(profile, job, resume_path=args.resume)
+            analysis = analyzer.analyze_job_specific(
+                profile, job, resume_path=args.resume
+            )
         else:
             # General analysis
             logger.info("Running general resume analysis")
@@ -543,7 +561,7 @@ Examples:
 
   # Run only specific stages
   python main.py pipeline --resume my_resume.pdf --keywords "python" --start-from generate_resumes --stop-at submit_applications
-        """
+        """,
     )
 
     # Analyze command
@@ -561,7 +579,7 @@ Examples:
 
   # Save analysis to file
   python main.py analyze --resume my_resume.pdf --output analysis.json
-        """
+        """,
     )
 
     # Interactive mode
@@ -578,8 +596,12 @@ Examples:
         type=str,
         help="Path to resume file (PDF or DOCX)",
     )
-    pipeline_parser.add_argument("--keywords", type=str, nargs="+", help="Job keywords to search for")
-    pipeline_parser.add_argument("--locations", type=str, nargs="+", help="Job locations to search in")
+    pipeline_parser.add_argument(
+        "--keywords", type=str, nargs="+", help="Job keywords to search for"
+    )
+    pipeline_parser.add_argument(
+        "--locations", type=str, nargs="+", help="Job locations to search in"
+    )
     pipeline_parser.add_argument(
         "--sources",
         type=str,
@@ -587,8 +609,18 @@ Examples:
         choices=["linkedin", "jsearch"],
         help="Job sources to search (default: all)",
     )
-    pipeline_parser.add_argument("--target-keywords", type=str, nargs="+", help="Additional target keywords for profile")
-    pipeline_parser.add_argument("--target-locations", type=str, nargs="+", help="Additional target locations for profile")
+    pipeline_parser.add_argument(
+        "--target-keywords",
+        type=str,
+        nargs="+",
+        help="Additional target keywords for profile",
+    )
+    pipeline_parser.add_argument(
+        "--target-locations",
+        type=str,
+        nargs="+",
+        help="Additional target locations for profile",
+    )
     pipeline_parser.add_argument(
         "--target-experience",
         type=str,
@@ -602,8 +634,15 @@ Examples:
         default=True,
         help="Run in dry-run mode (no actual submissions)",
     )
-    pipeline_parser.add_argument("--no-dry-run", action="store_false", dest="dry_run", help="Disable dry-run mode")
-    pipeline_parser.add_argument("--skip-submission", action="store_true", help="Skip submission stage entirely")
+    pipeline_parser.add_argument(
+        "--no-dry-run",
+        action="store_false",
+        dest="dry_run",
+        help="Disable dry-run mode",
+    )
+    pipeline_parser.add_argument(
+        "--skip-submission", action="store_true", help="Skip submission stage entirely"
+    )
     pipeline_parser.add_argument(
         "--start-from",
         type=str,
@@ -616,13 +655,33 @@ Examples:
         choices=[s.value for s in PipelineStage],
         help="Stop pipeline at this stage",
     )
-    pipeline_parser.add_argument("--min-score", type=int, default=60, help="Minimum relevance score (0-100)")
-    pipeline_parser.add_argument("--scam-threshold", type=float, default=0.7, help="Scam detection threshold (0-1)")
-    pipeline_parser.add_argument("--max-jobs", type=int, default=20, help="Maximum jobs to present")
-    pipeline_parser.add_argument("--submission-delay", type=float, default=2.0, help="Delay between submissions (seconds)")
-    pipeline_parser.add_argument("--max-submissions", type=int, default=30, help="Maximum submissions per hour")
-    pipeline_parser.add_argument("--data-dir", type=str, default="data", help="Directory for data storage")
-    pipeline_parser.add_argument("--results-dir", type=str, default="data/results", help="Directory for results")
+    pipeline_parser.add_argument(
+        "--min-score", type=int, default=60, help="Minimum relevance score (0-100)"
+    )
+    pipeline_parser.add_argument(
+        "--scam-threshold",
+        type=float,
+        default=0.7,
+        help="Scam detection threshold (0-1)",
+    )
+    pipeline_parser.add_argument(
+        "--max-jobs", type=int, default=20, help="Maximum jobs to present"
+    )
+    pipeline_parser.add_argument(
+        "--submission-delay",
+        type=float,
+        default=2.0,
+        help="Delay between submissions (seconds)",
+    )
+    pipeline_parser.add_argument(
+        "--max-submissions", type=int, default=30, help="Maximum submissions per hour"
+    )
+    pipeline_parser.add_argument(
+        "--data-dir", type=str, default="data", help="Directory for data storage"
+    )
+    pipeline_parser.add_argument(
+        "--results-dir", type=str, default="data/results", help="Directory for results"
+    )
     pipeline_parser.add_argument(
         "--log-level",
         type=str,
@@ -633,8 +692,12 @@ Examples:
     pipeline_parser.add_argument("--log-file", type=str, help="Log file path")
 
     # Analyze arguments
-    analyze_parser.add_argument("--resume", type=str, required=True, help="Path to resume file (PDF or DOCX)")
-    analyze_parser.add_argument("--job", type=str, help="Path to job description file (optional)")
+    analyze_parser.add_argument(
+        "--resume", type=str, required=True, help="Path to resume file (PDF or DOCX)"
+    )
+    analyze_parser.add_argument(
+        "--job", type=str, help="Path to job description file (optional)"
+    )
     analyze_parser.add_argument("--output", type=str, help="Save analysis to JSON file")
     analyze_parser.add_argument(
         "--log-level",
@@ -649,7 +712,8 @@ Examples:
 
     # Mode
     parser.add_argument(
-        "-i", "--interactive",
+        "-i",
+        "--interactive",
         action="store_true",
         help="Run in interactive mode",
     )

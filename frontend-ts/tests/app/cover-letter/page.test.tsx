@@ -105,6 +105,7 @@ describe('CoverLetterPage', () => {
         location: 'Remote',
       },
       false,
+      false,
     );
 
     expect(await screen.findByDisplayValue(sampleCoverLetter.content)).toBeInTheDocument();
@@ -136,7 +137,7 @@ describe('CoverLetterPage', () => {
     await waitFor(() => {
       expect(mockGenerate).toHaveBeenCalledTimes(1);
     });
-    expect(mockGenerate).toHaveBeenCalledWith(expect.any(Object), true);
+    expect(mockGenerate).toHaveBeenCalledWith(expect.any(Object), true, false);
   });
 
   it('exports the generated cover letter as DOCX', async () => {

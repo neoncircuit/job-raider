@@ -60,6 +60,7 @@ def _require_active_profile() -> Dict[str, Any]:
 async def generate_manual_cover_letter(
     request: ManualCoverLetterRequest,
     deep: bool = False,
+    review: bool = False,
 ):
     """
     Generate a tailored cover letter from a pasted job description.
@@ -71,6 +72,8 @@ async def generate_manual_cover_letter(
     Args:
         request: Manual job details including title, company, and description.
         deep: If True, run LLM-powered validation.
+        review: If True, run a single-pass drafter-reviewer loop before
+            validation.
 
     Returns:
         Generated cover letter and validation results.
@@ -89,7 +92,7 @@ async def generate_manual_cover_letter(
 
     try:
         return await generate_cover_letter_for_profile(
-            job_listing, user_profile, deep=deep
+            job_listing, user_profile, deep=deep, review=review
         )
     except HTTPException:
         raise

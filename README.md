@@ -389,6 +389,10 @@ Contributions welcome! Please:
 3. Add tests for new features
 4. Update documentation
 
+## Acknowledgments
+
+- The drafter-reviewer loop used in the cover-letter pipeline was inspired by Mads Lorentzen's [`ai-job-search`](https://github.com/MadsLorentzen/ai-job-search) project. The Job Raider implementation, prompts, code, and UI were written independently.
+
 ## License
 
 MIT License - See LICENSE file for details

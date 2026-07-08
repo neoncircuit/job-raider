@@ -136,6 +136,97 @@ class CoverLetterWriter:
             self.logger.error("Cover letter writing failed: %s", str(e))
             return self._fallback_cover_letter(job, profile, selection)
 
+    def rewrite(
+        self,
+        job: JobListing,
+        profile: UserProfile,
+        selection: SelectionOutput,
+        draft: GeneratedCoverLetter,
+        critique: str,
+    ) -> GeneratedCoverLetter:
+        """
+        Rewrite a cover letter draft using a reviewer critique.
+
+        Args:
+            job: Target job listing.
+            profile: Candidate profile.
+            selection: Selection output from selector stage.
+            draft: The original generated cover letter.
+            critique: Actionable feedback from the reviewer.
+
+        Returns:
+            ``GeneratedCoverLetter`` with the rewritten content and metadata.
+        """
+        job_context = self._prepare_job_context(job)
+        profile_context = self._prepare_profile_context(profile)
+        selection_context = self._prepare_selection_context(selection)
+
+        messages = [
+            Message(
+                role=MessageType.SYSTEM,
+                content=(
+                    "You are a professional cover letter writer. Rewrite the "
+                    "draft cover letter based on the editor's critique."
+                    "\n\n"
+                    "RULES:\n"
+                    "1. The letter MUST be between 200 and 300 words\n"
+                    "2. Connect 2-3 specific experiences from the candidate's "
+                    "background to the job requirements\n"
+                    "3. Mention the company and role by name\n"
+                    "4. Do NOT use generic phrases or templates\n"
+                    "5. Be direct and confident in tone\n"
+                    "6. Do NOT include headers, addresses, or date lines\n"
+                    "7. Start with a strong opening paragraph\n"
+                    "8. End with a brief call to action\n"
+                    "9. Return ONLY the letter body as plain text, no JSON"
+                ),
+            ),
+            Message(
+                role=MessageType.USER,
+                content=(
+                    f"Rewrite the following cover letter for the job application:\n\n"
+                    f"TARGET JOB:\n{job_context}\n\n"
+                    f"SELECTION STRATEGY:\n{selection_context}\n\n"
+                    f"CANDIDATE PROFILE:\n{profile_context}\n\n"
+                    f"ORIGINAL DRAFT:\n{draft.content}\n\n"
+                    f"EDITOR CRITIQUE:\n{critique}"
+                ),
+            ),
+        ]
+
+        try:
+            response = self.llm_router.generate(
+                messages=messages,
+                task_type=TaskType.COVER_LETTER_WRITING,
+                temperature=0.7,
+                max_tokens=600,
+            )
+
+            content = response.content.strip()
+            word_count = len(content.split())
+            model_used = self.llm_router.routes[
+                TaskType.COVER_LETTER_WRITING
+            ].primary_model
+
+            highlighted = self._extract_highlighted_experiences(content, selection)
+
+            self.logger.info(
+                "Cover letter rewritten: %d words, model=%s",
+                word_count,
+                model_used,
+            )
+
+            return GeneratedCoverLetter(
+                content=content,
+                highlighted_experiences=highlighted,
+                word_count=word_count,
+                model_used=model_used,
+            )
+
+        except Exception as e:
+            self.logger.error("Cover letter rewrite failed: %s", str(e))
+            return self._fallback_cover_letter(job, profile, selection)
+
     def _prepare_job_context(self, job: JobListing) -> str:
         """
         Prepare job context for the prompt.

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { CoverLetterValidation } from "@/lib/types/api";
+import type { CoverLetterReviewDetails, CoverLetterValidation } from "@/lib/types/api";
 import {
   CheckCircle,
   AlertCircle,
@@ -109,6 +109,8 @@ export function CoverLetterValidationDisplay({ validation }: CoverLetterValidati
   const llmFeedback = Array.isArray(details?.llm_feedback)
     ? (details.llm_feedback as string[])
     : [];
+
+  const reviewDetails = details?.review as CoverLetterReviewDetails | undefined;
 
   return (
     <div className="space-y-3">
@@ -248,8 +250,47 @@ export function CoverLetterValidationDisplay({ validation }: CoverLetterValidati
         </Card>
       )}
 
+      {/* Reviewer feedback */}
+      {reviewDetails && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-sm">
+                <PenTool className="h-4 w-4 text-indigo-500" />
+                Reviewer Feedback
+              </span>
+              {reviewDetails.rewrite_count > 0 ? (
+                <Badge variant="outline" className="text-xs text-indigo-600">
+                  Rewritten once
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs text-gray-600">
+                  Original draft
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-xs text-gray-700">{reviewDetails.critique}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {reviewDetails.rewrite_needed && (
+                <Badge variant="outline" className="text-xs text-amber-600">
+                  Rewrite requested
+                </Badge>
+              )}
+              {<span className="text-xs text-muted-foreground">
+                Model: {reviewDetails.model_used}
+              </span>}
+            </div>
+            {reviewDetails.error && (
+              <p className="text-xs text-red-600">{reviewDetails.error}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* No issues message */}
-      {validation.issues.length === 0 && llmFeedback.length === 0 && (
+      {validation.issues.length === 0 && llmFeedback.length === 0 && !reviewDetails && (
         <p className="text-xs text-gray-500">
           No issues detected. The cover letter looks good.
         </p>

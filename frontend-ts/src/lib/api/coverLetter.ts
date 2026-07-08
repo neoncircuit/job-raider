@@ -19,11 +19,15 @@ export const coverLetterApi = {
   /**
    * Generate a tailored cover letter from a manually pasted job description.
    */
-  generate: (req: ManualCoverLetterRequest, deep = false) =>
-    request<CoverLetterResponse>("POST", "/cover-letter/manual", {
+  generate: (req: ManualCoverLetterRequest, deep = false, review = false) => {
+    const params: Record<string, boolean> = {};
+    if (deep) params.deep = true;
+    if (review) params.review = true;
+    return request<CoverLetterResponse>("POST", "/cover-letter/manual", {
       body: req,
-      params: deep ? { deep: true } : undefined,
-    }),
+      params: Object.keys(params).length > 0 ? params : undefined,
+    });
+  },
 
   /**
    * Export an existing cover letter to DOCX or PDF.

@@ -2627,4 +2627,62 @@
 - Keep route modules responsible for HTTP-specific concerns: request validation, auth checks, and response serialization.
 - Update existing tests to patch the new shared helper's dependencies on the service module.
 
+### Phase 53: Drafter-Reviewer Loop (2026-07-08)
+
+#### Update Frontend Mock Assertions When API Client Signatures Change
+
+**Lesson:** Adding a new argument to a frontend API client method breaks every test that asserts the exact call signature. Update mock assertions in the same change.
+
+**Why:**
+- `coverLetterApi.generate(job, deep)` became `coverLetterApi.generate(job, deep, review)`.
+- Existing page tests asserted `toHaveBeenCalledWith(job, false)` and `toHaveBeenCalledWith(expect.any(Object), true)`.
+- These assertions failed after the signature change even though production behavior was correct.
+
+**How to apply:**
+- When changing an API client function signature, grep tests for `toHaveBeenCalledWith` against that function.
+- Update assertions to include the new argument with the expected default value.
+- Run the affected test file immediately after the client change, before moving on.
+
+#### Convert Async Test Methods to Synchronous Wrappers for Deterministic Fixtures
+
+**Lesson:** When pytest fixtures return synchronous mocks but the function under test is async, wrap the call in `asyncio.run(...)` inside a synchronous test method instead of making the test method async.
+
+**Why:**
+- pytest-asyncio was not configured in the test module.
+- Async test methods received coroutine return values that could not be awaited correctly with MagicMock fixtures.
+- Converting `async def test_*` to `def test_*` with `asyncio.run(generate_cover_letter_for_profile(...))` resolved the issue without adding new dependencies.
+
+**How to apply:**
+- Prefer `def` test methods plus `asyncio.run(...)` for simple async function-under-test cases when pytest-asyncio is not already in use.
+- If the project already uses pytest-asyncio consistently, add the marker and keep async test methods instead.
+- Import `datetime` and provide valid Pydantic `datetime` values for fixture models that require them.
+
+#### Opt-In Feature Flags Preserve Existing Behavior and Tests
+
+**Lesson:** New pipeline stages should be opt-in via query parameters that default to false, keeping existing routes and frontend behavior unchanged.
+
+**Why:**
+- Adding `review: bool = False` to cover-letter endpoints meant existing tests without the parameter still passed.
+- The frontend switch defaults to off, so users see no extra latency or cost unless they enable it.
+- Independent flags (`deep`, `review`) compose cleanly and can be tested separately or together.
+
+**How to apply:**
+- Add new boolean query parameters with `= False` defaults.
+- Mirror the parameter through the API client and page state.
+- Add route tests for the default case, the new flag alone, and the combined flag case.
+
+#### Credit External Inspiration Explicitly
+
+**Lesson:** When a feature is inspired by another project, add a clear attribution note even if no code was copied.
+
+**Why:**
+- The drafter-reviewer loop idea came from Mads Lorentzen's [`ai-job-search`](https://github.com/MadsLorentzen/ai-job-search) repository.
+- Although the Job Raider implementation, prompts, code, and UI were written independently, the high-level workflow pattern originated there.
+- Explicit attribution prevents any appearance of plagiarism and respects the original creator's work.
+
+**How to apply:**
+- Add an acknowledgments section in `README.md` linking to the original project.
+- Record the inspiration source in `tasks/lessons.md` alongside the implementation lessons.
+- Keep the attribution concise and factual: name the project, provide the link, and state what was independently implemented.
+
 

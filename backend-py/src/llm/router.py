@@ -39,6 +39,9 @@ class TaskType(str, Enum):
     COVER_LETTER_WRITING = (
         "cover_letter_writing"  # Cover letter generation (high quality)
     )
+    COVER_LETTER_REVIEW = (
+        "cover_letter_review"  # Cover letter critique and rewrite guidance
+    )
     ASSESSMENT_GENERATION = "assessment_generation"  # Generating assessment questions
     ASSESSMENT_EVALUATION = "assessment_evaluation"  # Evaluating assessment answers
     GENERAL = "general"  # General purpose tasks
@@ -163,6 +166,13 @@ class LLMRouter:
             primary_model="qwen2.5:7b",
             fallback_provider="anthropic",
             fallback_model="claude-sonnet-4-6",
+        ),
+        TaskType.COVER_LETTER_REVIEW: RouteConfig(
+            task_type=TaskType.COVER_LETTER_REVIEW,
+            primary_provider="ollama",
+            primary_model="qwen2.5:3b",
+            fallback_provider="ollama",
+            fallback_model="gemma3:4b",
         ),
         TaskType.ASSESSMENT_GENERATION: RouteConfig(
             task_type=TaskType.ASSESSMENT_GENERATION,

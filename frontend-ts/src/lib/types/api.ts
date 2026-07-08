@@ -252,6 +252,14 @@ export interface HighlightedExperience {
   reason: string;
 }
 
+export interface CoverLetterReviewDetails {
+  critique: string;
+  rewrite_needed: boolean;
+  rewrite_count: number;
+  model_used: string;
+  error?: string | null;
+}
+
 export interface CoverLetterValidation {
   is_valid: boolean;
   score: number;

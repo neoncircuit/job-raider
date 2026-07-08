@@ -557,6 +557,7 @@ async def generate_cover_letter(
     job_id: str,
     job_data: Dict[str, Any] = None,
     deep: bool = False,
+    review: bool = False,
 ):
     """Generate a tailored cover letter for a specific job.
 
@@ -569,6 +570,8 @@ async def generate_cover_letter(
         job_id: Job ID.
         job_data: Optional job data (title, company, description, etc.).
         deep: Whether to use LLM validation.
+        review: Whether to run a single-pass drafter-reviewer loop before
+            validation.
 
     Returns:
         Generated cover letter with validation results.
@@ -612,7 +615,7 @@ async def generate_cover_letter(
             )
 
         return await generate_cover_letter_for_profile(
-            job_listing, user_profile, deep=deep
+            job_listing, user_profile, deep=deep, review=review
         )
 
     except HTTPException:

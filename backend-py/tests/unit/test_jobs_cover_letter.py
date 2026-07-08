@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from src.generation.cover_letter_reviewer import CoverLetterReviewResult
 from src.generation.cover_letter_validator import (
     CoverLetterIssue,
     CoverLetterValidationResult,
@@ -122,10 +123,17 @@ def client(mock_writer, mock_selector, mock_validator):
         "src.generation.cover_letter_service.CoverLetterValidator",
         return_value=mock_validator,
     ), patch(
+        "src.generation.cover_letter_service.CoverLetterReviewer"
+    ) as mock_reviewer, patch(
         "src.api.routes.jobs.stored_profiles", {"profile-1": profile}, create=True
     ), patch(
         "src.api.routes.jobs.active_profile_id", "profile-1", create=True
     ):
+        mock_reviewer.return_value.review.return_value = CoverLetterReviewResult(
+            critique="Looks good.",
+            rewrite_needed=False,
+            model_used="qwen2.5:3b",
+        )
         from src.api.auth import verify_api_key
         from src.api.main import app
 
@@ -179,6 +187,43 @@ class TestGenerateCoverLetter:
         assert data["validation"]["details"]["llm_feedback"] == [
             "Strong personalization"
         ]
+
+    def test_generate_cover_letter_with_review_records_metadata(self, client):
+        """Should include review metadata when ?review=true is passed."""
+        resp = client.post(
+            "/api/jobs/job-123/cover-letter?review=true",
+            json={
+                "title": "Senior Engineer",
+                "company": "TechCorp",
+                "description": "Build scalable systems.",
+            },
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["validation"]["details"]["review"]["critique"] == "Looks good."
+        assert data["validation"]["details"]["review"]["rewrite_needed"] is False
+        assert data["validation"]["details"]["review"]["rewrite_count"] == 0
+        assert data["validation"]["details"]["review"]["model_used"] == "qwen2.5:3b"
+
+    def test_generate_cover_letter_with_review_and_deep(self, client):
+        """Should compose review and deep flags independently."""
+        resp = client.post(
+            "/api/jobs/job-123/cover-letter?review=true&deep=true",
+            json={
+                "title": "Senior Engineer",
+                "company": "TechCorp",
+                "description": "Build scalable systems.",
+            },
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["validation"]["score"] == 92
+        assert data["validation"]["details"]["llm_feedback"] == [
+            "Strong personalization"
+        ]
+        assert data["validation"]["details"]["review"]["model_used"] == "qwen2.5:3b"
 
     def test_generate_cover_letter_with_issues(self, client, mock_validator):
         """Should surface validation issues in the response."""

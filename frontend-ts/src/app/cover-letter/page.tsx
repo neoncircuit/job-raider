@@ -11,6 +11,7 @@ import {
   Copy,
   CheckCircle,
   Loader2,
+  PenTool,
 } from "lucide-react";
 import { coverLetterApi, downloadFile } from "@/lib/api/coverLetter";
 import type { CoverLetterResponse } from "@/lib/types/api";
@@ -32,6 +33,7 @@ interface FormState {
   location: string;
   description: string;
   deep: boolean;
+  review: boolean;
 }
 
 const initialForm: FormState = {
@@ -40,6 +42,7 @@ const initialForm: FormState = {
   location: "",
   description: "",
   deep: false,
+  review: false,
 };
 
 /**
@@ -62,6 +65,7 @@ export default function CoverLetterPage() {
           location: form.location || undefined,
         },
         form.deep,
+        form.review,
       ),
     onSuccess: (data) => {
       setResult(data);
@@ -194,6 +198,25 @@ export default function CoverLetterPage() {
                 checked={form.deep}
                 onCheckedChange={(checked) =>
                   setForm((f) => ({ ...f, deep: checked }))
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="review" className="text-sm font-medium flex items-center gap-2">
+                  <PenTool className="h-3.5 w-3.5 text-indigo-500" />
+                  Review & rewrite
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Ask a reviewer to critique the draft and rewrite it once if needed.
+                </p>
+              </div>
+              <Switch
+                id="review"
+                checked={form.review}
+                onCheckedChange={(checked) =>
+                  setForm((f) => ({ ...f, review: checked }))
                 }
               />
             </div>
