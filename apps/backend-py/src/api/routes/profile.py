@@ -169,7 +169,7 @@ active_profile_id: str = None
 
 # Upload directory - resolve relative to project root so it works
 # regardless of the working directory (local dev vs Docker container)
-_BASE_DIR = Path(__file__).resolve().parents[3]  # backend-py/
+_BASE_DIR = Path(__file__).resolve().parents[3]  # apps/backend-py/
 UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR", str(_BASE_DIR / "data" / "profiles")))
 try:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

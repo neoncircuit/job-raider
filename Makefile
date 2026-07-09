@@ -50,31 +50,31 @@ dev-frontend:
 
 install:
 	@echo "Installing Python dependencies..."
-	@cd backend-py && .venv/bin/pip install -r requirements.txt
+	@cd apps/backend-py && .venv/bin/pip install -r requirements.txt
 
 install-frontend:
 	@echo "Installing Node dependencies..."
-	@cd frontend-ts && npm ci
+	@cd apps/frontend-ts && npm ci
 
 # ── Quality ────────────────────────────────────────────────────────────────────
 
 test:
 	@echo "Running backend tests..."
-	@cd backend-py && PYTHONPATH=. .venv/bin/python -m pytest tests/ -v
+	@cd apps/backend-py && PYTHONPATH=. .venv/bin/python -m pytest tests/ -v
 
 lint:
 	@echo "Running Python linting..."
-	@cd backend-py && .venv/bin/python -m ruff check src/
-	@cd backend-py && .venv/bin/python -m mypy src/
+	@cd apps/backend-py && .venv/bin/python -m ruff check src/
+	@cd apps/backend-py && .venv/bin/python -m mypy src/
 
 format:
 	@echo "Formatting Python code..."
-	@cd backend-py && .venv/bin/python -m black src/
-	@cd backend-py && .venv/bin/python -m ruff check --fix src/
+	@cd apps/backend-py && .venv/bin/python -m black src/
+	@cd apps/backend-py && .venv/bin/python -m ruff check --fix src/
 
 type-check:
 	@echo "Running TypeScript type check..."
-	@cd frontend-ts && npm run type-check
+	@cd apps/frontend-ts && npm run type-check
 
 clean:
 	@echo "Cleaning build artefacts..."
@@ -82,7 +82,7 @@ clean:
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@find . -type f -name "*.pyo" -delete 2>/dev/null || true
 	@rm -rf .pytest_cache 2>/dev/null || true
-	@rm -rf frontend-ts/.next 2>/dev/null || true
+	@rm -rf apps/frontend-ts/.next 2>/dev/null || true
 	@rm -rf logs/*.log 2>/dev/null || true
 	@echo "Clean complete"
 

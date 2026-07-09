@@ -12,8 +12,8 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BACKEND_DIR="$PROJECT_ROOT/backend-py"
-FRONTEND_DIR="$PROJECT_ROOT/frontend-ts"
+BACKEND_DIR="$PROJECT_ROOT/apps/backend-py"
+FRONTEND_DIR="$PROJECT_ROOT/apps/frontend-ts"
 VENV_PYTHON="$BACKEND_DIR/.venv/bin/python3"
 
 # --- Helpers ----------------------------------------------------------------
@@ -42,7 +42,7 @@ ensure_backend() {
     if [ -f "$BACKEND_DIR/requirements.txt" ]; then
         "$BACKEND_DIR/.venv/bin/pip" install -q -r "$BACKEND_DIR/requirements.txt"
     else
-        echo "Error: backend-py/requirements.txt not found."
+        echo "Error: apps/backend-py/requirements.txt not found."
         exit 1
     fi
 
@@ -72,7 +72,7 @@ ensure_frontend() {
 # --- Data directories -------------------------------------------------------
 
 ensure_dirs() {
-    mkdir -p "$PROJECT_ROOT/data"/{listings,profiles,cache,results,applications,settings,metrics,experiments,logs,outputs}
+    mkdir -p "$BACKEND_DIR/data"/{listings,profiles,cache,results,applications,settings,metrics,experiments,logs,outputs}
 }
 
 # --- Service launchers -------------------------------------------------------

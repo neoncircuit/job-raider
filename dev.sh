@@ -30,18 +30,18 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # Check if venv exists
-if [ ! -d "backend-py/.venv" ]; then
-    echo -e "${RED}Error: backend-py/.venv not found${NC}"
+if [ ! -d "apps/backend-py/.venv" ]; then
+    echo -e "${RED}Error: apps/backend-py/.venv not found${NC}"
     echo "Run: ./setup.sh"
     exit 1
 fi
 
 # Activate venv
-source backend-py/.venv/bin/activate
+source apps/backend-py/.venv/bin/activate
 
 # Install/update dependencies
 echo -e "${GREEN}Ensuring dependencies are up to date...${NC}"
-cd backend-py
+cd apps/backend-py
 pip install -q -r requirements.txt 2>/dev/null || {
     echo -e "${YELLOW}Installing dependencies...${NC}"
     pip install -r requirements.txt
@@ -54,7 +54,7 @@ echo ""
 
 # Start API server in background
 echo -e "${BLUE}[1/2]${NC} Starting API server on http://localhost:8000"
-cd backend-py
+cd apps/backend-py
 PYTHONPATH=. python -m uvicorn src.api.main:app \
     --host 0.0.0.0 \
     --port 8000 \
@@ -77,12 +77,12 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}[2/2]${NC} CLI ready - use 'cd backend-py && python main.py' for pipeline operations"
+echo -e "${BLUE}[2/2]${NC} CLI ready - use 'cd apps/backend-py && python main.py' for pipeline operations"
 echo ""
 echo -e "${YELLOW}Services running:${NC}"
 echo -e "  • API:  http://localhost:8000"
 echo -e "  • Docs: http://localhost:8000/docs"
-echo -e "  • CLI:  cd backend-py && python main.py --help"
+echo -e "  • CLI:  cd apps/backend-py && python main.py --help"
 echo ""
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 echo -e "${BLUE}==================================${NC}"

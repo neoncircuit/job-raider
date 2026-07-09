@@ -4,6 +4,8 @@
 
 set -e
 
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,7 +38,7 @@ PIP_SIZE=$(get_size ~/.cache/pip)
 HF_SIZE=$(get_size ~/.cache/huggingface)
 OLLAMA_SIZE=$(get_size ~/.ollama)
 PLAYWRIGHT_SIZE=$(get_size ~/.cache/ms-playwright)
-PYCACHE_SIZE=$(du -sh /mnt/d/GitHub/job-raider 2>/dev/null | grep __pycache__ | awk '{sum+=$1} END {print "95M"}' || echo "95M")
+PYCACHE_SIZE=$(du -sh $PROJECT_ROOT 2>/dev/null | grep __pycache__ | awk '{sum+=$1} END {print "95M"}' || echo "95M")
 
 echo -e "  pip cache:        ${RED}${PIP_SIZE}${NC}"
 echo -e "  huggingface:      ${RED}${HF_SIZE}${NC}"
@@ -84,7 +86,7 @@ if confirm_cleanup "playwright cache" "$PLAYWRIGHT_SIZE"; then
     if [[ "$playwright_confirm" =~ ^[Yy]$ ]]; then
         echo -e "${GREEN}Cleaning playwright cache...${NC}"
         rm -rf ~/.cache/ms-playwright/*
-        echo -e "${GREEN}Done. Reinstall with: cd backend-py && playwright install chromium${NC}"
+        echo -e "${GREEN}Done. Reinstall with: cd apps/backend-py && playwright install chromium${NC}"
     fi
     echo ""
 fi
@@ -92,19 +94,21 @@ fi
 # Clean Python cache files
 if confirm_cleanup "__pycache__ directories" "$PYCACHE_SIZE"; then
     echo -e "${GREEN}Cleaning Python cache files...${NC}"
-    find /mnt/d/GitHub/job-raider -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-    find /mnt/d/GitHub/job-raider -type f -name "*.pyc" -delete 2>/dev/null || true
-    find /mnt/d/GitHub/job-raider -type f -name "*.pyo" -delete 2>/dev/null || true
-    rm -rf /mnt/d/GitHub/job-raider/.pytest_cache 2>/dev/null || true
+    find $PROJECT_ROOT -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+    find $PROJECT_ROOT -type f -name "*.pyc" -delete 2>/dev/null || true
+    find $PROJECT_ROOT -type f -name "*.pyo" -delete 2>/dev/null || true
+    rm -rf $PROJECT_ROOT/.pytest_cache 2>/dev/null || true
+    rm -rf $PROJECT_ROOT/apps/backend-py/.pytest_cache 2>/dev/null || true
     echo -e "${GREEN}Done.${NC}"
     echo ""
 fi
 
 # Clean pytest coverage
-if [ -d "/mnt/d/GitHub/job-raider/htmlcov" ]; then
+if [ -d "$PROJECT_ROOT/htmlcov" ] || [ -d "$PROJECT_ROOT/apps/backend-py/htmlcov" ]; then
     if confirm_cleanup "coverage reports (htmlcov)" "5.1M"; then
         echo -e "${GREEN}Removing coverage reports...${NC}"
-        rm -rf /mnt/d/GitHub/job-raider/htmlcov
+        rm -rf $PROJECT_ROOT/htmlcov
+        rm -rf $PROJECT_ROOT/apps/backend-py/htmlcov
         echo -e "${GREEN}Done.${NC}"
         echo ""
     fi

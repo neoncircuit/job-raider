@@ -1,0 +1,58 @@
+# Docker build context exclusions for the repository-root build.
+# The backend image builds from the repo root so it can COPY apps/backend-py/.
+
+# Git / local VCS
+.git
+.gitignore
+
+# Claude Code local settings
+.claude/settings.local.json
+.claude/commands/
+.claude/PRPs/
+.claude/worktrees/
+
+# Python virtual environments
+**/.venv/
+
+# Node / Next.js
+**/node_modules/
+**/.next/
+**/out/
+**/coverage/
+
+# Environment files (secrets)
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Runtime-generated data and logs
+apps/backend-py/data/
+data/
+logs/
+mlflow-data/
+linkedin_session/
+
+# Python caches and test artifacts
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+**/htmlcov/
+**/coverage.xml
+**/bandit-report.json
+
+# Frontend test outputs
+apps/frontend-ts/playwright-report/
+apps/frontend-ts/test-results/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Stale lockfile (project uses npm/package-lock.json)
+pnpm-lock.yaml

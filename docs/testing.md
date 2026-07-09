@@ -83,7 +83,7 @@ cd backend-py
 ### Frontend Tests
 
 ```
-frontend-ts/tests/
+apps/frontend-ts/tests/
 ├── basic.test.ts              # Smoke test for test infrastructure
 ├── setup/
 │   ├── globals.ts            # Global test setup (MSW, mocks)
@@ -103,7 +103,7 @@ frontend-ts/tests/
 ### Backend Tests
 
 ```
-backend-py/tests/
+apps/backend-py/tests/
 ├── conftest.py                         # Shared pytest fixtures
 ├── test_cover_letter_validator.py
 ├── test_cover_letter_writer.py

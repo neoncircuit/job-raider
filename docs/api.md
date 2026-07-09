@@ -103,7 +103,7 @@ curl -s -X POST http://localhost:8000/api/profile/upload \
 ```json
 {
   "profile_id": "profile_abc123",
-  "resume_path": "backend-py/data/profiles/profile_abc123.pdf",
+  "resume_path": "apps/backend-py/data/profiles/profile_abc123.pdf",
   "message": "Resume uploaded and parsed successfully"
 }
 ```

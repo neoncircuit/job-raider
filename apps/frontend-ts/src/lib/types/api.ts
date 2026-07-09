@@ -1,5 +1,5 @@
 // TypeScript interfaces mirroring backend Pydantic models.
-// Source of truth: backend-py/src/api/models/responses.py and backend-py/src/models/
+// Source of truth: apps/backend-py/src/api/models/responses.py and apps/backend-py/src/models/
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 

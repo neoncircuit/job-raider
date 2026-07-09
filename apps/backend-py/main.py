@@ -277,7 +277,7 @@ def run_pipeline(args) -> int:
         if args.target_locations:
             profile.target_job.locations.extend(args.target_locations)
         if args.target_experience:
-            from ..models.user_profile import ExperienceLevel
+            from src.models.user_profile import ExperienceLevel
 
             profile.target_job.experience_levels = [
                 ExperienceLevel(exp) for exp in args.target_experience

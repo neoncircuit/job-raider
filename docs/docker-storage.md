@@ -209,8 +209,8 @@ docker system df -v | grep -A 20 "Volumes"
 ### Check Project Data Usage
 ```bash
 # From project root
-du -sh data/ backend-py/.venv/
-du -sh backend-py/data/
+du -sh data/ apps/backend-py/.venv/
+du -sh apps/backend-py/data/
 ```
 
 ## Before Starting Development

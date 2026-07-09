@@ -115,7 +115,7 @@ WSL2 uses the Windows file system (DrvFs) for bind mounts, which has aggressive 
 
 **Symptoms:**
 ```bash
-source backend-py/.venv/bin/activate
+source apps/backend-py/.venv/bin/activate
 # Error: No such file or directory
 ```
 
@@ -124,9 +124,9 @@ source backend-py/.venv/bin/activate
 1. **Re-create virtual environment:**
    ```bash
    cd job-raider
-   rm -rf backend-py/.venv
-   python3 -m venv backend-py/.venv
-   source backend-py/.venv/bin/activate
+   rm -rf apps/backend-py/.venv
+   python3 -m venv apps/backend-py/.venv
+   source apps/backend-py/.venv/bin/activate
    ```
 
 2. **Check Python venv module:**
@@ -137,7 +137,7 @@ source backend-py/.venv/bin/activate
 
 3. **Run setup script:**
    ```bash
-   ./setup.sh  # Will create venv in backend-py/
+   ./setup.sh  # Will create venv in apps/backend-py/
    ```
 
 ### Issue: Dependencies fail to install
@@ -386,7 +386,7 @@ Scraping complete: 0 listings found
 
 2. **Check rate limiting:**
    ```bash
-   # Edit backend-py/config/scrapers_config.yaml
+   # Edit apps/backend-py/config/scrapers_config.yaml
    rate_limit_delay: 2.0  # Increase delay
    ```
 
@@ -411,7 +411,7 @@ Scraping stage failed: HTTP 429 Client Error: Too Many Requests
 
 2. **Increase rate limit:**
    ```bash
-   # Edit backend-py/config/scrapers_config.yaml
+   # Edit apps/backend-py/config/scrapers_config.yaml
    rate_limit_delay: 5.0  # Increase to 5 seconds
    requests_per_minute: 10  # Reduce to 10 per minute
    ```
@@ -469,7 +469,7 @@ Scoring complete: 0 listings above threshold
 
 2. **Adjust scoring weights:**
    ```yaml
-   # Edit backend-py/config/scoring_config.yaml
+   # Edit apps/backend-py/config/scoring_config.yaml
    weights:
      skills: 50  # Increase skills weight
      keywords: 20  # Decrease keyword weight
@@ -505,7 +505,7 @@ Resume generation stage failed: LLM error
 
 3. **Fallback to API:**
    ```bash
-   # Edit backend-py/config/model_config.yaml
+   # Edit apps/backend-py/config/model_config.yaml
    # Set Anthropic as primary for development
    ```
 
@@ -531,13 +531,13 @@ Validation failed: 3 issues
 
 2. **Adjust prompts:**
    ```yaml
-   # Edit backend-py/config/prompt_templates.yaml
+   # Edit apps/backend-py/config/prompt_templates.yaml
    # Make instructions more explicit
    ```
 
 3. **Lower validation threshold:**
    ```python
-   # In backend-py/src/generation/validator.py
+   # In apps/backend-py/src/generation/validator.py
    # Adjust validation logic
    ```
 
@@ -556,7 +556,7 @@ Validation failed: 3 issues
 
 2. **Try different template:**
    ```python
-   # In backend-py/src/generation/formatter.py
+   # In apps/backend-py/src/generation/formatter.py
    formatter = ResumeFormatter(template="minimal")
    ```
 
@@ -582,7 +582,7 @@ Submission complete: 0 successful, 5 failed
 
 2. **Check credentials:**
    ```bash
-   # Edit backend-py/.env
+   # Edit apps/backend-py/.env
    LINKEDIN_EMAIL=your_email
    LINKEDIN_PASSWORD=your_password
    ```
@@ -652,7 +652,7 @@ Rate limit reached: 35 submissions in last hour
 
 4. **Enable caching:**
    ```yaml
-   # Edit backend-py/config/llm_config.yaml
+   # Edit apps/backend-py/config/llm_config.yaml
    cache_enabled: true
    cache_ttl: 3600
    ```
@@ -673,7 +673,7 @@ Rate limit reached: 35 submissions in last hour
 
 2. **Use smaller models:**
    ```yaml
-   # Edit backend-py/config/model_config.yaml
+   # Edit apps/backend-py/config/model_config.yaml
    # Use qwen2.5:3b instead of qwen2.5:7b
    ```
 
@@ -805,14 +805,14 @@ ERROR: This version requires zstd for extraction.
 
 **Symptoms:**
 ```
-ERROR: failed to compute cache key: "/backend-py/README.md": not found
+ERROR: failed to compute cache key: "/apps/backend-py/README.md": not found
 ```
 
 **Solutions:**
 
 1. **Verify files exist before building:**
    ```bash
-   ls backend-py/setup.sh backend-py/README.md backend-py/CLAUDE.md
+   ls apps/backend-py/setup.sh apps/backend-py/README.md apps/backend-py/CLAUDE.md
    ```
 
 2. **Remove non-existent COPY lines from Dockerfile:**

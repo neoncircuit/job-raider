@@ -8,7 +8,7 @@
 #
 # Usage:
 #   docker build -t job-raider:latest .
-#   docker run -v ./data:/app/data --gpus all job-raider:latest
+#   docker run -v ./apps/backend-py/data:/app/backend-py/data --gpus all job-raider:latest
 #
 
 # Base image with CUDA support for GPU inference
@@ -49,18 +49,18 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
+# Set working directory to match the new monorepo layout
+WORKDIR /app/backend-py
 
-# Copy backend-py directory structure
-COPY backend-py/requirements.txt .
-COPY backend-py/config/ ./config/
-COPY backend-py/src/ ./src/
-COPY backend-py/main.py .
+# Copy backend-py directory structure from its new apps/ location
+COPY apps/backend-py/requirements.txt .
+COPY apps/backend-py/config/ ./config/
+COPY apps/backend-py/src/ ./src/
+COPY apps/backend-py/main.py .
 
-# Create virtual environment and install dependencies
+# Create virtual environment inside the backend directory and install dependencies
 RUN python3.10 -m venv .venv
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/backend-py/.venv/bin:$PATH"
 
 # Upgrade pip and install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -81,20 +81,20 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 USER jobraider
 
 # Create data directories (as jobraider user)
-RUN mkdir -p /app/data/listings \
-    /app/data/cache \
-    /app/data/results \
-    /app/data/applications \
-    /app/data/metrics \
-    /app/data/profiles \
-    /app/data/experiments \
-    /app/data/logs \
-    /app/data/outputs
+RUN mkdir -p /app/backend-py/data/listings \
+    /app/backend-py/data/cache \
+    /app/backend-py/data/results \
+    /app/backend-py/data/applications \
+    /app/backend-py/data/metrics \
+    /app/backend-py/data/profiles \
+    /app/backend-py/data/experiments \
+    /app/backend-py/data/logs \
+    /app/backend-py/data/outputs
 
 # Set environment variables for the application
-ENV PYTHONPATH=/app
-ENV DATA_DIR=/app/data
-ENV RESULTS_DIR=/app/data/results
+ENV PYTHONPATH=/app/backend-py
+ENV DATA_DIR=/app/backend-py/data
+ENV RESULTS_DIR=/app/backend-py/data/results
 
 # Expose API port
 EXPOSE 8000

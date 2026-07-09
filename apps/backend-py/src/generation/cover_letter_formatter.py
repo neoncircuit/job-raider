@@ -95,7 +95,7 @@ class CoverLetterFormatter:
         if output_dir:
             self.output_dir = Path(output_dir)
         else:
-            base_dir = Path(__file__).resolve().parents[3]  # backend-py/
+            base_dir = Path(__file__).resolve().parents[3]  # apps/backend-py/
             self.output_dir = base_dir / "data" / "outputs"
         self.output_dir.mkdir(parents=True, exist_ok=True)
 

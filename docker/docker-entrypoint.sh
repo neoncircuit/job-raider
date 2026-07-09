@@ -8,13 +8,13 @@ echo "Job Raider - Entrypoint"
 echo "Checking for common import issues..."
 
 # Fix 1: Remove invalid pydantic imports that may be cached
-if grep -q "field_serializer_validator" /app/src/models/user_profile.py 2>/dev/null; then
+if grep -q "field_serializer_validator" /app/backend-py/src/models/user_profile.py 2>/dev/null; then
     echo "Fixing invalid pydantic import in user_profile.py..."
-    sed -i 's/, field_serializer_validator//g' /app/src/models/user_profile.py
+    sed -i 's/, field_serializer_validator//g' /app/backend-py/src/models/user_profile.py
 fi
 
 # Fix 2: Remove other common invalid imports
-for file in /app/src/models/*.py; do
+for file in /app/backend-py/src/models/*.py; do
     if [ -f "$file" ]; then
         # Fix field_serializer_validator
         sed -i 's/, field_serializer_validator//g' "$file"

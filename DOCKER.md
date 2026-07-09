@@ -112,11 +112,11 @@ Job Raider uses a two-tier configuration system:
 
 ### Credentials (.env)
 
-API keys and secrets are configured in `backend-py/.env`:
+API keys and secrets are configured in `apps/backend-py/.env`:
 
 ```bash
-cp backend-py/.env.example backend-py/.env
-# Edit backend-py/.env with your credentials
+cp apps/backend-py/.env.example apps/backend-py/.env
+# Edit apps/backend-py/.env with your credentials
 ```
 
 Key variables:
@@ -197,7 +197,7 @@ docker exec -it job-raider-ollama ollama pull nomic-embed-text
 
 For production, consider:
 
-1. Using environment-specific `backend-py/.env` files
+1. Using environment-specific `apps/backend-py/.env` files
 2. Enabling Redis for task state management
 3. Setting up proper log rotation
 4. Using a reverse proxy (nginx/caddy)

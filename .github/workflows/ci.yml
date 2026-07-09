@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend-py
+        working-directory: apps/backend-py
     steps:
       - uses: actions/checkout@v4
 
@@ -31,7 +31,7 @@ jobs:
         with:
           python-version-file: '.python-version'
           cache: 'pip'
-          cache-dependency-path: backend-py/requirements.txt
+          cache-dependency-path: apps/backend-py/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend-py
+        working-directory: apps/backend-py
     steps:
       - uses: actions/checkout@v4
 
@@ -66,7 +66,7 @@ jobs:
         with:
           python-version-file: '.python-version'
           cache: 'pip'
-          cache-dependency-path: backend-py/requirements.txt
+          cache-dependency-path: apps/backend-py/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -84,7 +84,7 @@ jobs:
     timeout-minutes: 30
     defaults:
       run:
-        working-directory: backend-py
+        working-directory: apps/backend-py
 
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +94,7 @@ jobs:
         with:
           python-version-file: '.python-version'
           cache: 'pip'
-          cache-dependency-path: backend-py/requirements.txt
+          cache-dependency-path: apps/backend-py/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -109,7 +109,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          file: ./backend-py/coverage.xml
+          file: ./apps/backend-py/coverage.xml
           flags: unittests
           name: codecov-umbrella
         continue-on-error: true
@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend-ts
+        working-directory: apps/frontend-ts
 
     steps:
       - uses: actions/checkout@v4
@@ -156,7 +156,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend-ts/package-lock.json
+          cache-dependency-path: apps/frontend-ts/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -171,7 +171,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend-ts
+        working-directory: apps/frontend-ts
 
     steps:
       - uses: actions/checkout@v4
@@ -181,7 +181,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend-ts/package-lock.json
+          cache-dependency-path: apps/frontend-ts/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -196,7 +196,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend-ts
+        working-directory: apps/frontend-ts
 
     steps:
       - uses: actions/checkout@v4
@@ -206,7 +206,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend-ts/package-lock.json
+          cache-dependency-path: apps/frontend-ts/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -219,7 +219,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          file: ./frontend-ts/coverage/lcov.info
+          file: ./apps/frontend-ts/coverage/lcov.info
           flags: frontend-unit
           name: codecov-frontend-unit
         continue-on-error: true
@@ -229,7 +229,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend-ts
+        working-directory: apps/frontend-ts
 
     steps:
       - uses: actions/checkout@v4
@@ -239,7 +239,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend-ts/package-lock.json
+          cache-dependency-path: apps/frontend-ts/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -260,7 +260,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: frontend-ts/playwright-report/
+          path: apps/frontend-ts/playwright-report/
           retention-days: 7
         continue-on-error: true
 
@@ -269,7 +269,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-screenshots
-          path: frontend-ts/test-results/
+          path: apps/frontend-ts/test-results/
           retention-days: 7
         continue-on-error: true
 
@@ -278,7 +278,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend-py
+        working-directory: apps/backend-py
     steps:
       - uses: actions/checkout@v4
 

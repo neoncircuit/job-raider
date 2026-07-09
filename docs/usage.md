@@ -17,7 +17,7 @@
 git clone https://github.com/yourusername/job-raider.git
 cd job-raider
 
-# Run setup (creates backend-py/.venv, installs Python + Node deps)
+# Run setup (creates apps/backend-py/.venv, installs Python + Node deps)
 ./setup.sh
 
 # Pull Ollama models
@@ -25,12 +25,12 @@ ollama pull qwen2.5:3b
 ollama pull qwen2.5:7b
 
 # Configure backend credentials
-cp backend-py/.env.example backend-py/.env
-# Edit backend-py/.env — add ANTHROPIC_API_KEY, RAPIDAPI_KEY, API_KEY
+cp apps/backend-py/.env.example apps/backend-py/.env
+# Edit apps/backend-py/.env — add ANTHROPIC_API_KEY, RAPIDAPI_KEY, API_KEY
 
 # Configure frontend
-cp frontend-ts/.env.example frontend-ts/.env.local
-# Edit frontend-ts/.env.local — set BACKEND_API_URL and API_KEY (must match backend)
+cp apps/frontend-ts/.env.example apps/frontend-ts/.env.local
+# Edit apps/frontend-ts/.env.local — set BACKEND_API_URL and API_KEY (must match backend)
 ```
 
 ### Running Locally
@@ -308,14 +308,14 @@ The **LinkedIn Analysis** page evaluates your profile for inbound recruiter attr
 
 The page provides four tabs so you can provide a profile in the way that suits you:
 
-1. **LinkedIn URL** — paste a public LinkedIn profile URL and click **Analyze**. The backend attempts to fetch the page text using the credentials configured in `backend-py/.env` (`LINKEDIN_EMAIL` and `LINKEDIN_PASSWORD`). The fetched content is merged with anything else you supply before the LLM analyzes it.
+1. **LinkedIn URL** — paste a public LinkedIn profile URL and click **Analyze**. The backend attempts to fetch the page text using the credentials configured in `apps/backend-py/.env` (`LINKEDIN_EMAIL` and `LINKEDIN_PASSWORD`). The fetched content is merged with anything else you supply before the LLM analyzes it.
 2. **Search Profiles** — find LinkedIn profiles by keywords, name, title, company, or location. Results appear as selectable cards. Click **Use this profile** on a result to copy its URL into the LinkedIn URL tab and switch to it. Searching requires the same LinkedIn credentials as the URL tab.
 3. **Paste Profile Text** — paste the raw text of a LinkedIn profile (or any bio) directly. This works without LinkedIn credentials.
 4. **Fill Sections Manually** — enter structured fields such as headline, summary, experience, education, skills, and career goals. This also works without LinkedIn credentials.
 
 ### Requirements for URL fetch and people search
 
-URL-based analysis and people search rely on an authenticated LinkedIn session. Set these variables in `backend-py/.env`:
+URL-based analysis and people search rely on an authenticated LinkedIn session. Set these variables in `apps/backend-py/.env`:
 
 ```bash
 LINKEDIN_EMAIL=your-linkedin-email@example.com
@@ -699,7 +699,7 @@ python scripts/check_ollama_models.py
 
 ### Custom Configuration
 
-Edit `backend-py/config/scoring_config.yaml` to customize:
+Edit `apps/backend-py/config/scoring_config.yaml` to customize:
 
 ```yaml
 # Adjust scoring weights

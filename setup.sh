@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 # Project root
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$PROJECT_ROOT/backend-py"
+BACKEND_DIR="$PROJECT_ROOT/apps/backend-py"
 VENV_DIR="$BACKEND_DIR/.venv"
 REQUIREMENTS="$BACKEND_DIR/requirements.txt"
 
@@ -338,27 +338,27 @@ install_dependencies() {
 create_directories() {
     print_status "Creating project directories..."
 
-    # Shared data directory (bind-mounted into Docker at /app/data)
-    mkdir -p "$PROJECT_ROOT/data/listings"
-    mkdir -p "$PROJECT_ROOT/data/profiles"
-    mkdir -p "$PROJECT_ROOT/data/cache"
-    mkdir -p "$PROJECT_ROOT/data/results"
-    mkdir -p "$PROJECT_ROOT/data/results/resumes"
-    mkdir -p "$PROJECT_ROOT/data/results/applications"
-    mkdir -p "$PROJECT_ROOT/data/applications"
-    mkdir -p "$PROJECT_ROOT/data/applied_jobs"
-    mkdir -p "$PROJECT_ROOT/data/assessments"
-    mkdir -p "$PROJECT_ROOT/data/settings"
-    mkdir -p "$PROJECT_ROOT/data/metrics"
-    mkdir -p "$PROJECT_ROOT/data/experiments"
-    mkdir -p "$PROJECT_ROOT/data/logs"
-    mkdir -p "$PROJECT_ROOT/data/outputs"
-    mkdir -p "$PROJECT_ROOT/data/chroma"
-    mkdir -p "$PROJECT_ROOT/data/disc_results"
-    mkdir -p "$PROJECT_ROOT/data/screenshots"
-    mkdir -p "$PROJECT_ROOT/data/linkedin_session"
-    mkdir -p "$PROJECT_ROOT/data/alerts"
-    mkdir -p "$PROJECT_ROOT/data/reports"
+    # Backend data directory (self-contained under apps/backend-py/data, bind-mounted into Docker at /app/backend-py/data)
+    mkdir -p "$BACKEND_DIR/data/listings"
+    mkdir -p "$BACKEND_DIR/data/profiles"
+    mkdir -p "$BACKEND_DIR/data/cache"
+    mkdir -p "$BACKEND_DIR/data/results"
+    mkdir -p "$BACKEND_DIR/data/results/resumes"
+    mkdir -p "$BACKEND_DIR/data/results/applications"
+    mkdir -p "$BACKEND_DIR/data/applications"
+    mkdir -p "$BACKEND_DIR/data/applied_jobs"
+    mkdir -p "$BACKEND_DIR/data/assessments"
+    mkdir -p "$BACKEND_DIR/data/settings"
+    mkdir -p "$BACKEND_DIR/data/metrics"
+    mkdir -p "$BACKEND_DIR/data/experiments"
+    mkdir -p "$BACKEND_DIR/data/logs"
+    mkdir -p "$BACKEND_DIR/data/outputs"
+    mkdir -p "$BACKEND_DIR/data/chroma"
+    mkdir -p "$BACKEND_DIR/data/disc_results"
+    mkdir -p "$BACKEND_DIR/data/screenshots"
+    mkdir -p "$BACKEND_DIR/data/linkedin_session"
+    mkdir -p "$BACKEND_DIR/data/alerts"
+    mkdir -p "$BACKEND_DIR/data/reports"
 
     # Backend-specific directories (not Docker-mounted)
     mkdir -p "$BACKEND_DIR/notebooks"
@@ -372,7 +372,7 @@ setup_auto_activation() {
     print_status "Setting up auto-activation hook..."
 
     HOOK_FILE="$PROJECT_ROOT/.git/hooks/post-checkout"
-    HOOK_SCRIPT="#!/bin/bash\n# Auto-activate venv when entering project\ncd \"$(pwd)\"\nif [ -f backend-py/.venv/bin/activate ]; then\n    source backend-py/.venv/bin/activate\nfi"
+    HOOK_SCRIPT="#!/bin/bash\n# Auto-activate venv when entering project\ncd \"$(pwd)\"\nif [ -f apps/backend-py/.venv/bin/activate ]; then\n    source apps/backend-py/.venv/bin/activate\nfi"
 
     # Only create hook if .git directory exists
     if [ -d "$PROJECT_ROOT/.git" ]; then
@@ -391,11 +391,11 @@ check_env() {
 
     if [ ! -f "$ENV_FILE" ]; then
         if [ -f "$ENV_EXAMPLE" ]; then
-            print_warning "backend-py/.env not found. Creating from .env.example..."
+            print_warning "apps/backend-py/.env not found. Creating from .env.example..."
             cp "$ENV_EXAMPLE" "$ENV_FILE"
-            print_warning "Please edit backend-py/.env with your API keys."
+            print_warning "Please edit apps/backend-py/.env with your API keys."
         else
-            print_warning "backend-py/.env.example not found. Creating empty .env..."
+            print_warning "apps/backend-py/.env.example not found. Creating empty .env..."
             touch "$ENV_FILE"
         fi
     else
@@ -403,16 +403,16 @@ check_env() {
     fi
 
     # Frontend environment
-    FRONTEND_ENV_FILE="$PROJECT_ROOT/frontend-ts/.env.local"
-    FRONTEND_ENV_EXAMPLE="$PROJECT_ROOT/frontend-ts/.env.example"
+    FRONTEND_ENV_FILE="$PROJECT_ROOT/apps/frontend-ts/.env.local"
+    FRONTEND_ENV_EXAMPLE="$PROJECT_ROOT/apps/frontend-ts/.env.example"
 
     if [ ! -f "$FRONTEND_ENV_FILE" ]; then
         if [ -f "$FRONTEND_ENV_EXAMPLE" ]; then
-            print_warning "frontend-ts/.env.local not found. Creating from .env.example..."
+            print_warning "apps/frontend-ts/.env.local not found. Creating from .env.example..."
             cp "$FRONTEND_ENV_EXAMPLE" "$FRONTEND_ENV_FILE"
-            print_warning "Please edit frontend-ts/.env.local with your API_KEY and BACKEND_API_URL."
+            print_warning "Please edit apps/frontend-ts/.env.local with your API_KEY and BACKEND_API_URL."
         else
-            print_warning "frontend-ts/.env.example not found. Creating empty .env.local..."
+            print_warning "apps/frontend-ts/.env.example not found. Creating empty .env.local..."
             touch "$FRONTEND_ENV_FILE"
         fi
     else
@@ -422,7 +422,7 @@ check_env() {
 
 # Set up Next.js frontend (called after check_node)
 setup_frontend() {
-    FRONTEND_DIR="$PROJECT_ROOT/frontend-ts"
+    FRONTEND_DIR="$PROJECT_ROOT/apps/frontend-ts"
 
     # Skip if Node.js check failed
     if ! command -v node &> /dev/null; then
@@ -506,11 +506,11 @@ print_summary() {
     fi
 
     echo -e "To activate the virtual environment, run:"
-    echo -e "${BLUE}source backend-py/.venv/bin/activate${NC}"
+    echo -e "${BLUE}source apps/backend-py/.venv/bin/activate${NC}"
     echo ""
     echo -e "Next steps:"
-    echo "  1. Edit backend-py/.env with your API keys (ANTHROPIC_API_KEY, RAPIDAPI_KEY)"
-    echo "  2. Configure settings via web UI (Settings page) or backend-py/config/*.yaml"
+    echo "  1. Edit apps/backend-py/.env with your API keys (ANTHROPIC_API_KEY, RAPIDAPI_KEY)"
+    echo "  2. Configure settings via web UI (Settings page) or apps/backend-py/config/*.yaml"
     echo "  3. Run: make dev-api          (backend on :8000)"
     echo "  4. Run: make dev-frontend     (Next.js on :3000)"
     echo "  5. Or:  make dev              (both together)"
@@ -542,13 +542,13 @@ print_summary() {
     echo "  - Multi-Agent System: AgentCoordinator + communication bus + CareerCoachAgent"
     echo "  - 9 /api/agents/* endpoints (career analysis, gap analysis, roadmaps, goals)"
     echo "  - Non-fatal startup init; agent endpoints return 503 until the coordinator is ready"
-    echo "  - Config: backend-py/config/agent_config.yaml"
+    echo "  - Config: apps/backend-py/config/agent_config.yaml"
     echo ""
     echo -e "Phase 42 Features (2026-06-25):"
     echo "  - LinkedIn Profile Analyzer: POST /api/profile/analyze-linkedin"
     echo "  - Models: LinkedInProfileInput, LinkedInProfileAnalysis, ProfileSectionScore, InboundAttractionInsight"
     echo "  - Frontend page: /linkedin-analysis with raw-text and structured-form tabs"
-    echo "  - Unit tests: backend-py/tests/unit/test_linkedin_analyzer.py (24 tests)"
+    echo "  - Unit tests: apps/backend-py/tests/unit/test_linkedin_analyzer.py (24 tests)"
     echo ""
     echo -e "Phase 43 Features (2026-06-26):"
     echo "  - Frontend ESLint zero-warnings cleanup across all dashboard pages"

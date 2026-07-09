@@ -16,8 +16,8 @@ out/
 .env*.local
 
 # Data (runtime generated)
-data/**
-backend-py/data/
+apps/backend-py/data/
+data/              # legacy root data dir (optional, kept ignored)
 *.csv
 *.csv.zip
 
@@ -58,13 +58,16 @@ linkedin_session/
 docker/ollama/
 
 # Test outputs
-frontend-ts/playwright-report/
-frontend-ts/playwright-results/
-frontend-ts/test-results/
+apps/frontend-ts/playwright-report/
+apps/frontend-ts/playwright-results/
+apps/frontend-ts/test-results/
 
 # Legacy Jest (replaced by Vitest)
-frontend-ts/jest.config.js
-frontend-ts/jest.setup.js
+apps/frontend-ts/jest.config.js
+apps/frontend-ts/jest.setup.js
+
+# Stale lockfiles (project standardises on npm/package-lock.json)
+pnpm-lock.yaml
 
 # Claude Code - local/personal settings & helpers (not shared project config)
 .claude/settings.local.json

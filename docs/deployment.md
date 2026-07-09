@@ -93,7 +93,7 @@ docker exec job-raider-ollama ollama pull nomic-embed-text
 **Configuration:**
 
 ```bash
-# backend-py/.env
+# apps/backend-py/.env
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
 OLLAMA_HOST=ollama:11434  # Optional local Ollama
@@ -104,12 +104,12 @@ OLLAMA_HOST=ollama:11434  # Optional local Ollama
 **Anthropic Claude:**
 1. Visit https://console.anthropic.com/
 2. Create API key
-3. Add to `backend-py/.env`
+3. Add to `apps/backend-py/.env`
 
 **Google Gemini:**
 1. Visit https://makersuite.google.com/app/apikey
 2. Create API key
-3. Add to `backend-py/.env`
+3. Add to `apps/backend-py/.env`
 
 **Cost Estimation:**
 - Anthropic Claude Sonnet: ~$3-15 per 1M tokens
@@ -172,8 +172,8 @@ export OLLAMA_HOST=172.17.0.1:11434
 **Symptoms:** Warning about missing API keys
 
 **Solutions:**
-1. Add Anthropic API key to `backend-py/.env`
-2. Add Gemini API key to `backend-py/.env`
+1. Add Anthropic API key to `apps/backend-py/.env`
+2. Add Gemini API key to `apps/backend-py/.env`
 3. Or ignore if you only use local Ollama
 
 ---
@@ -202,7 +202,7 @@ ollama pull nomic-embed-text
 curl http://localhost:3000    # Access frontend
 
 # With cloud API fallback
-echo "ANTHROPIC_API_KEY=your_key" >> backend-py/.env
+echo "ANTHROPIC_API_KEY=your_key" >> apps/backend-py/.env
 docker compose up -d --force-recreate
 
 # Production deployment

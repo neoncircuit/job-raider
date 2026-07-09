@@ -91,7 +91,7 @@ This document establishes the logging strategy for the Job Raider multi-agent sy
 
 ## Configuration Updates
 
-Add to `backend-py/config/logging_config.yaml`:
+Add to `apps/backend-py/config/logging_config.yaml`:
 
 ```yaml
 loggers:

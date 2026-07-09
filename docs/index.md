@@ -64,7 +64,7 @@ This release rolls up the LinkedIn Profile Analyzer feature plus the frontend an
 - New `POST /api/profile/analyze-linkedin` endpoint backed by `LinkedInAnalyzer`.
 - Pydantic models: `LinkedInProfileInput`, `LinkedInProfileAnalysis`, `ProfileSectionScore`, `InboundAttractionInsight`.
 - Frontend page at `/linkedin-analysis` with raw-text paste and structured-form input tabs.
-- 24 unit tests in `backend-py/tests/unit/test_linkedin_analyzer.py`.
+- 24 unit tests in `apps/backend-py/tests/unit/test_linkedin_analyzer.py`.
 
 **Frontend ESLint Cleanup (Phase 43):**
 - Eliminated all remaining ESLint warnings across dashboard pages.
@@ -88,7 +88,7 @@ This release rolls up the LinkedIn Profile Analyzer feature plus the frontend an
 - **Architecture:** `AgentCoordinator` orchestrates specialized agents over an `AgentCommunicationBus`; `BaseAgent` defines the contract (Task, TaskResult, TaskType, AgentCapability). The first concrete agent is `CareerCoachAgent`.
 - **9 REST endpoints** under `/api/agents/*` (status, performance, health, shutdown, career-analysis, gap-analysis, upskilling-roadmap, career-goals, recommendations), rate-limited via `src/api/rate_limiter.py`.
 - **Startup:** initialized non-fatally in the app lifespan (`initialize_agent_system(LLMRouter())`); agent endpoints return 503 until the coordinator is ready, so the API always boots.
-- **Config:** `backend-py/config/agent_config.yaml` (coordinator, career-coach, communication settings).
+- **Config:** `apps/backend-py/config/agent_config.yaml` (coordinator, career-coach, communication settings).
 - **Verification:** `GET /api/agents/status` returns 200 (coordinator running, communication healthy, 1 registered agent). Backend suite: 376 passed, 2 skipped.
 - See [Architecture - Multi-Agent Layer](architecture.md#multi-agent-layer) and [Usage - Multi-Agent API](usage.md#multi-agent-api).
 
@@ -117,7 +117,7 @@ This release rolls up the LinkedIn Profile Analyzer feature plus the frontend an
   - Categories: Leadership, Communication, Work Style, Problem Solving
   - Backend engine with session generation, scoring, and job matching
   - Job profile matching (Software Engineer, Sales, PM, Data Analyst, Team Lead)
-  - Question bank: `backend-py/config/disc_questions.json`
+  - Question bank: `apps/backend-py/config/disc_questions.json`
   - Frontend component with two-column selection UI
 - **Jobs Location Filtering** - Post-filter to ensure API results match requested location
   - Fixes issue where Singapore searches returned USA listings
@@ -226,7 +226,7 @@ This release rolls up the LinkedIn Profile Analyzer feature plus the frontend an
 - Makefile rewritten with `make dev`, `make dev-frontend`, `make type-check`
 - `setup.sh` now installs Node dependencies via `npm ci`
 - TypeScript: 0 errors. Next.js production build clean.
-- `.python-version` file added to `backend-py/` (pins Python 3.11)
+- `.python-version` file added to `apps/backend-py/` (pins Python 3.11)
 
 ### Recent Updates (Phase 26 - 2026-04-27)
 
@@ -291,7 +291,7 @@ Components:
 - JSearch aggregates from Google for Jobs covering Indeed, Glassdoor, Jobstreet, and 50+ boards
 - Dynamic job sources fetched from backend (no more hard-coded source lists)
 - Frontend source checkboxes update automatically when new scrapers are registered
-- Requires `RAPIDAPI_KEY` in `backend-py/.env`
+- Requires `RAPIDAPI_KEY` in `apps/backend-py/.env`
 
 **Why the change:**
 - Indeed, Glassdoor, and Jobstreet block headless Chromium via Cloudflare bot detection
@@ -399,25 +399,25 @@ A comprehensive guide was added to address the critical Docker storage issue on 
 ### Environment Variables
 
 ```bash
-# backend-py/.env
+# apps/backend-py/.env
 ANTHROPIC_API_KEY=your_key_here          # Optional — Ollama is used by default
 RAPIDAPI_KEY=your_rapidapi_key_here      # Required for JSearch (50+ job boards)
 OLLAMA_HOST=http://localhost:11434       # Local Ollama; use http://ollama:11434 in Docker
 SENTRY_DSN=your_sentry_dsn_here         # Optional error tracking
 MLFLOW_TRACKING_URI=http://localhost:5000 # Optional experiment tracking
 
-# frontend-ts/.env.local
+# apps/frontend-ts/.env.local
 BACKEND_API_URL=http://localhost:8000   # FastAPI backend URL
-API_KEY=your_shared_secret_here         # Must match backend-py/.env API_KEY
+API_KEY=your_shared_secret_here         # Must match apps/backend-py/.env API_KEY
 NEXT_PUBLIC_WS_URL=ws://localhost:8000  # WebSocket for live pipeline progress
 ```
 
 ### Configuration Files
 
-- `backend-py/config/model_config.yaml` - Model endpoints and settings
-- `backend-py/config/prompt_templates.yaml` - LLM prompts
-- `backend-py/config/scoring_config.yaml` - Scoring weights and thresholds
-- `backend-py/config/logging_config.yaml` - Logging configuration
+- `apps/backend-py/config/model_config.yaml` - Model endpoints and settings
+- `apps/backend-py/config/prompt_templates.yaml` - LLM prompts
+- `apps/backend-py/config/scoring_config.yaml` - Scoring weights and thresholds
+- `apps/backend-py/config/logging_config.yaml` - Logging configuration
 
 ## Support
 
@@ -432,7 +432,7 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000  # WebSocket for live pipeline progress
 
 ```
 job-raider/                      # Project root (monorepo)
-├── backend-py/                  # Python backend
+├── apps/backend-py/                  # Python backend
 │   ├── .venv/                   # Python virtual environment
 │   ├── .python-version          # Pins Python 3.11 for pyenv / CI
 │   ├── config/                  # Configuration files (YAML)
@@ -459,7 +459,7 @@ job-raider/                      # Project root (monorepo)
 │   ├── notebooks/               # Jupyter notebooks
 │   ├── main.py                  # CLI entry point
 │   └── requirements.txt         # Python dependencies
-├── frontend-ts/                 # Next.js 16 + Tailwind CSS dashboard
+├── apps/frontend-ts/                 # Next.js 16 + Tailwind CSS dashboard
 │   ├── src/
 │   │   ├── app/                # Next.js App Router pages (10 pages)
 │   │   ├── components/         # Shared UI components + layout
@@ -482,7 +482,7 @@ Contributions welcome! Please:
 
 1. Read the architecture documentation
 2. Follow code style guidelines
-3. Add tests in `backend-py/tests/`
+3. Add tests in `apps/backend-py/tests/`
 4. Update documentation
 
 ## License

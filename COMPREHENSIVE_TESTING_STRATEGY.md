@@ -60,12 +60,12 @@ graph TB
 ### Deliverables
 
 #### 1.1 Fix Authentication Issues
-- **File**: `backend-py/src/api/auth.py`
+- **File**: `apps/backend-py/src/api/auth.py`
 - **Action**: Implement proper token validation and refresh logic
 - **Testing**: Add authentication unit tests
 
 #### 1.2 Fix Job Search Problems
-- **File**: `backend-py/src/services/jobs_service.py`
+- **File**: `apps/backend-py/src/services/jobs_service.py`
 - **Action**: 
   - Fix auth token handling in job search
   - Implement missing endpoints
@@ -73,7 +73,7 @@ graph TB
 - **Testing**: Add comprehensive job service tests
 
 #### 1.3 Fix Auto-Apply Functionality
-- **File**: `backend-py/src/services/application_service.py`
+- **File**: `apps/backend-py/src/services/application_service.py`
 - **Action**: Implement actual application submission vs dry-run
 - **Testing**: Add application service integration tests
 

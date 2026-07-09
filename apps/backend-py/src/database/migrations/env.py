@@ -47,7 +47,7 @@ def run_migrations_online() -> None:
     if not DATABASE_URL_DIRECT:
         raise RuntimeError(
             "DATABASE_URL_DIRECT is not set. "
-            "Add it to backend-py/.env (port 5432, psycopg2 driver)."
+            "Add it to apps/backend-py/.env (port 5432, psycopg2 driver)."
         )
 
     connectable = create_engine(DATABASE_URL_DIRECT, poolclass=pool.NullPool)

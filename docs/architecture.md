@@ -336,7 +336,7 @@ For entry-level candidates with limited work experience, Job Raider offers a fre
 
 **Configuration:**
 - Enable via `--fresh-grad` CLI flag or `fresh_grad_mode: true` in API requests
-- Weights configured in `backend-py/config/scoring_config.yaml`
+- Weights configured in `apps/backend-py/config/scoring_config.yaml`
 - Projects prioritized: academic capstone (20pts), personal (15pts), hackathon (10pts), research (15pts)
 - Quality boosters: GitHub stars/forks (+3), deployed application (+3), blog posts (+2)
 
@@ -543,7 +543,7 @@ graph LR
 
 ## Security Considerations
 
-1. **API Keys:** Backend key in `backend-py/.env`, frontend key in `frontend-ts/.env.local` — neither committed
+1. **API Keys:** Backend key in `apps/backend-py/.env`, frontend key in `apps/frontend-ts/.env.local` — neither committed
 2. **X-API-Key auth:** All FastAPI routes protected by `verify_api_key` dependency; bypassed only when `API_KEY` env var is unset (local dev)
 3. **Server-only proxy:** `BACKEND_API_URL` and `API_KEY` are server env vars — never bundled into client JS
 4. **Dry Run Mode:** Default for all submissions

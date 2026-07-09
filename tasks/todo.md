@@ -2178,3 +2178,115 @@ npx playwright test tests/e2e/jobs-page.spec.ts
 - `frontend-ts/src/app/cover-letter/page.tsx`
 - `frontend-ts/src/components/cover-letter-validation.tsx`
 - `frontend-ts/tests/app/cover-letter/page.test.tsx`
+
+## Task: Update stale monorepo paths in docs
+
+**Goal:** Replace all stale `backend-py/` and `frontend-ts/` literal paths in docs and root markdown files to reflect the new monorepo layout under `apps/`.
+
+**Files to update:**
+- /mnt/d/GitHub/job-raider/README.md
+- /mnt/d/GitHub/job-raider/CLAUDE.md
+- /mnt/d/GitHub/job-raider/DOCKER.md
+- /mnt/d/GitHub/job-raider/COMPREHENSIVE_TESTING_STRATEGY.md
+- /mnt/d/GitHub/job-raider/docs/index.md
+- /mnt/d/GitHub/job-raider/docs/usage.md
+- /mnt/d/GitHub/job-raider/docs/deployment.md
+- /mnt/d/GitHub/job-raider/docs/troubleshooting.md
+- /mnt/d/GitHub/job-raider/docs/docker-storage.md
+- /mnt/d/GitHub/job-raider/docs/testing.md
+- /mnt/d/GitHub/job-raider/docs/api.md
+- /mnt/d/GitHub/job-raider/docs/architecture.md
+- /mnt/d/GitHub/job-raider/apps/backend-py/docs/agent-logging-strategy.md
+
+**Rules:**
+1. Replace `backend-py/` with `apps/backend-py/`.
+2. Replace `frontend-ts/` with `apps/frontend-ts/`.
+3. Avoid double `apps/apps/...` or other malformed paths.
+4. Only change path references; preserve prose, comments, and code syntax.
+5. Do not touch `frontend-py/` references.
+6. Do not break shell command examples.
+7. After each file, verify no stale `backend-py/` or `frontend-ts/` literals remain.
+
+**Checklist:**
+- [x] Write plan
+- [x] Read and update each file
+- [x] Verify each file with grep
+- [x] Run git diff --stat for docs subset
+- [x] Report changed and unchanged files
+
+**Results:**
+- All 13 files were updated.
+- Zero stale `backend-py/` or `frontend-ts/` references remain in the updated files.
+- No double `apps/apps/...` or malformed paths were introduced.
+- `frontend-py/` references were left untouched.
+- Git diff stat: 13 files changed, 70 insertions(+), 70 deletions(-).
+
+## Phase 54: Monorepo Restructure into `apps/` [COMPLETED]
+
+**Overview:** Move the active applications `backend-py/` and `frontend-ts/` under a new `apps/` directory while leaving the legacy `frontend-py/` dashboard at the repository root. Update every runtime, Docker, CI, script, and documentation path to match the new layout. Make backend data self-contained under `apps/backend-py/data` and align the Docker volume mount accordingly.
+
+### Directory Layout
+
+```text
+job-raider/
+├── apps/
+│   ├── backend-py/       # FastAPI backend (active)
+│   └── frontend-ts/      # Next.js dashboard (active)
+├── frontend-py/          # Legacy Streamlit dashboard (untouched)
+├── docker/
+├── .github/workflows/
+├── docker-compose.yml
+├── Makefile
+├── setup.sh
+└── docs/
+```
+
+### Checklist
+
+- [x] Move `backend-py/` and `frontend-ts/` into `apps/` with `git mv`.
+- [x] Migrate untracked local state (`.env`, `.venv`, `data`, `node_modules`, `.next`) manually.
+- [x] Fix backend import and path calculations that broke under the new depth.
+- [x] Mirror the backend inside the Docker image at `/app/backend-py`.
+- [x] Update `docker-compose.yml` volume mounts, `env_file` paths, and build context.
+- [x] Update `docker/docker-entrypoint.sh` source paths.
+- [x] Update `Makefile`, `setup.sh`, `dev.sh`, `scripts/dev.sh`, and `scripts/cleanup.sh`.
+- [x] Update `.github/workflows/ci.yml` `working-directory`, cache paths, and artifact paths.
+- [x] Update `.gitignore` and add root `.dockerignore`.
+- [x] Remove stale `apps/frontend-ts/pnpm-lock.yaml` and add `pnpm-lock.yaml` to `.gitignore`.
+- [x] Update documentation paths in `README.md`, `CLAUDE.md`, `DOCKER.md`, `COMPREHENSIVE_TESTING_STRATEGY.md`, and `docs/**/*.md`.
+- [x] Verify all quality gates and Docker health checks.
+
+### Verification Results
+
+**Completed:** 2026-07-09
+
+- `git status` shows `backend-py/` and `frontend-ts/` as tracked renames into `apps/`, not delete/add pairs.
+- Backend test suite: `454 passed` in `43.16s` using `PYTHONPATH=. .venv/bin/python -m pytest tests/ -q --tb=short`.
+- Backend lint: `black` and `isort` clean (no changes); flake8 fatal-only `0` errors.
+- Frontend `npm run lint`: passed with no errors or warnings.
+- Frontend `npm run type-check`: passed (`tsc --noEmit`).
+- Frontend unit tests: `44 passed` across `9 test files`.
+- Frontend production build: succeeded and generated 15 static pages.
+- Docker Compose:
+  - `docker compose config`: valid.
+  - `docker compose build --no-cache backend`: `job-raider-backend` built successfully.
+  - `docker compose build --no-cache frontend`: `job-raider-frontend` built successfully after one transient Docker credential/WSL retry.
+  - `docker compose up -d`: both services reached `healthy` status.
+  - `GET /` returned backend metadata; `GET /api/health` returned `"status":"healthy"`.
+  - `GET http://localhost:3000` returned HTTP 200.
+  - `docker compose down` stopped and removed both containers cleanly.
+- Stale-path grep: no remaining runtime references to root-level `backend-py/` or `frontend-ts/` outside historical tracking docs (`tasks/todo.md`, `tasks/lessons.md`) and the intentionally unchanged `frontend-py/` directory.
+
+### Legacy `frontend-py` Status
+
+- `frontend-py/` is the original Streamlit dashboard and is **not used in the active application stack**.
+- It is superseded by `apps/frontend-ts/` (Next.js + Tailwind CSS).
+- It still has a dedicated CI test job in `.github/workflows/ci.yml` and its own `README.md`/`Dockerfile`, but it is not part of `docker-compose.yml`, the root dev scripts, or the production runtime.
+- No production traffic or active development has touched it since the move to Next.js.
+
+### Notes
+
+- Backend data now lives entirely under `apps/backend-py/data/`. The old root `./data/` directory is obsolete; migrate any important local files with `mv data apps/backend-py/data` before deleting it.
+- The frontend continues to use npm and `package-lock.json`; pnpm is no longer used.
+- No root `package.json` or npm workspaces were introduced; `apps/frontend-ts/` remains self-contained.
+

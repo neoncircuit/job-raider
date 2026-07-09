@@ -2685,4 +2685,49 @@
 - Record the inspiration source in `tasks/lessons.md` alongside the implementation lessons.
 - Keep the attribution concise and factual: name the project, provide the link, and state what was independently implemented.
 
+### Phase 54: Monorepo Restructure into `apps/` (2026-07-09)
 
+#### Mirror the Local Directory Layout Inside the Container
+
+**Lesson:** When moving an app into a monorepo `apps/` folder, keep the in-container path identical to the host path (e.g., `/app/backend-py` and `apps/backend-py/data` on host).
+
+**Why:**
+- Prevents mismatches between `DATA_DIR`, volume mounts, and `PYTHONPATH`.
+- The old layout mounted `./data:/app/backend-py/data` while the backend was copied flat into `/app`, causing data to land in the wrong place.
+- Aligning the container layout with the host layout means the same relative `data/` tree works locally and in Docker.
+
+**How to apply:**
+- Set `WORKDIR /app/backend-py` and `COPY apps/backend-py/ /app/backend-py/` in the Dockerfile.
+- Pre-create `/app/backend-py/data/...` and set `DATA_DIR=/app/backend-py/data`.
+- Mount `./apps/backend-py/data:/app/backend-py/data` in `docker-compose.yml`.
+- Set `PYTHONPATH=/app/backend-py` so `src` imports resolve the same way locally and in the container.
+
+#### Run Verification in Layers
+
+**Lesson:** After a large path migration, verify from the inside out: static analysis, unit tests, Docker image build, container health, then a stale-path grep.
+
+**Why:**
+- Each layer catches different classes of mistakes: imports, config paths, Dockerfile COPY targets, compose env_file/volume paths, and documentation drift.
+- Finding a Dockerfile COPY error after pushing is expensive; building locally first avoids that.
+- A final grep for old literal paths (excluding historical tracking docs) confirms no runtime references were missed.
+
+**How to apply:**
+1. Run backend tests inside the moved directory: `PYTHONPATH=. .venv/bin/python -m pytest tests/ -q`.
+2. Run frontend lint/type-check/tests and a production build.
+3. Build both Docker images with `--no-cache` to exercise every COPY step.
+4. Start the stack with `docker compose up -d` and confirm `docker compose ps` shows `healthy`.
+5. Hit the health endpoints and a frontend page.
+6. Grep for root-level `backend-py/` and `frontend-ts/` literals, ignoring `.git`, docs, and historical tracking files.
+
+#### Use `git mv` Before Editing
+
+**Lesson:** Move directories with `git mv` first, then make path edits. This preserves rename history and keeps diffs readable.
+
+**Why:**
+- Editing files before moving them can make Git treat the move as a delete/add pair, losing history and producing huge diffs.
+- `git status` should show `R` (renamed) entries, not large numbers of untracked files.
+
+**How to apply:**
+- `git mv backend-py apps/backend-py` and `git mv frontend-ts apps/frontend-ts` before any content changes.
+- Migrate `.env`, `.venv`, `data`, `node_modules`, `.next`, and other gitignored state by hand afterward.
+- Verify with `git status` that the renames are tracked before committing.

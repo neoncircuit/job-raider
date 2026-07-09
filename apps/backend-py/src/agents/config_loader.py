@@ -59,10 +59,13 @@ class AgentConfig:
         if config_path.exists():
             return str(config_path)
 
-        # Fallback to default location
-        default_path = Path("backend-py/config/agent_config.yaml")
-        if default_path.exists():
-            return str(default_path)
+        # Fallback to default locations (cwd may be the backend root or repo root)
+        for fallback in (
+            Path("config/agent_config.yaml"),
+            Path("apps/backend-py/config/agent_config.yaml"),
+        ):
+            if fallback.exists():
+                return str(fallback)
 
         raise FileNotFoundError(f"Agent configuration file not found at {config_path}")
 

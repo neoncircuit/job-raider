@@ -1,5 +1,5 @@
 // Discriminated union of all WebSocket message types broadcast by the backend.
-// Source of truth: backend-py/src/api/websocket/progress.py
+// Source of truth: apps/backend-py/src/api/websocket/progress.py
 
 export type WSMessage =
   | { type: "connected"; run_id: string; timestamp: string }

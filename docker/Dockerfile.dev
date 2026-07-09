@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Set working directory
-WORKDIR /app
+WORKDIR /app/backend-py
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY apps/backend-py/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -31,14 +31,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install Playwright browsers
 RUN playwright install --with-deps chromium
 
-# Copy application code (the contents of backend-py directly into /app)
-COPY backend-py/ /app/
+# Copy application code into /app/backend-py to mirror the monorepo layout
+COPY apps/backend-py/ /app/backend-py/
 
 # Create data directories
 RUN mkdir -p data/{listings,cache,results,applications,metrics,experiments,logs,profiles,outputs}
 
-# Set PYTHONPATH (already in /app)
-ENV PYTHONPATH=/app
+# Set PYTHONPATH to the backend package root
+ENV PYTHONPATH=/app/backend-py
 
 # Expose API port
 EXPOSE 8000

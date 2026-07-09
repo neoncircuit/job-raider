@@ -67,8 +67,8 @@ ollama pull qwen2.5:7b
 ollama pull nomic-embed-text
 
 # Configure environment
-cp backend-py/.env.example backend-py/.env
-# Edit backend-py/.env with your API keys
+cp apps/backend-py/.env.example apps/backend-py/.env
+# Edit apps/backend-py/.env with your API keys
 ```
 
 ### Usage
@@ -143,7 +143,7 @@ python main.py \
 
 ```
 job-raider/                      # Project root (monorepo)
-├── backend-py/                  # Python backend
+├── apps/backend-py/                  # Python backend
 │   ├── .venv/                   # Python virtual environment
 │   ├── config/                  # Configuration files
 │   │   ├── agent_config.yaml
@@ -181,7 +181,7 @@ job-raider/                      # Project root (monorepo)
 │   ├── notebooks/               # Jupyter notebooks
 │   ├── main.py                  # CLI entry point
 │   └── requirements.txt         # Python dependencies
-├── frontend-ts/                 # Next.js + Tailwind dashboard (active frontend)
+├── apps/frontend-ts/                 # Next.js + Tailwind dashboard (active frontend)
 │   ├── src/
 │   │   ├── app/                 # Next.js App Router pages (10 pages)
 │   │   ├── components/          # Shared UI components + layout
@@ -254,7 +254,7 @@ Job Raider uses a two-tier configuration system:
 
 ### Credentials (.env)
 
-API keys and secrets live in `backend-py/.env` (copy from `backend-py/.env.example`).
+API keys and secrets live in `apps/backend-py/.env` (copy from `apps/backend-py/.env.example`).
 
 ```bash
 # Required for API fallback
@@ -280,7 +280,7 @@ MLFLOW_TRACKING_URI=http://localhost:5000
 
 ### Application Settings (config/*.yaml)
 
-All non-sensitive configuration lives in YAML files under `backend-py/config/`:
+All non-sensitive configuration lives in YAML files under `apps/backend-py/config/`:
 
 | Config File | Purpose |
 |-------------|---------|
@@ -294,7 +294,7 @@ All non-sensitive configuration lives in YAML files under `backend-py/config/`:
 | `logging_config.yaml` | Logging levels and output configuration |
 | `prompt_templates.yaml` | LLM prompt templates |
 
-Example: Edit `backend-py/config/search_config.yaml` to change default search keywords:
+Example: Edit `apps/backend-py/config/search_config.yaml` to change default search keywords:
 
 ```yaml
 keywords:
@@ -323,7 +323,7 @@ keywords:
 
 ### Web Dashboard (Next.js)
 
-The web dashboard (`frontend-ts/`) is a Next.js + Tailwind CSS application that provides a visual interface for the full pipeline. It is the active frontend; the legacy Streamlit dashboard in `frontend-py/` is retained but superseded.
+The web dashboard (`apps/frontend-ts/`) is a Next.js + Tailwind CSS application that provides a visual interface for the full pipeline. It is the active frontend; the legacy Streamlit dashboard in `frontend-py/` is retained but superseded.
 
 ```bash
 # Start backend API first (http://localhost:8000)

@@ -23,7 +23,7 @@ class ConfigLoader:
         Initialize config loader.
 
         Args:
-            config_dir: Directory containing config files (default: backend-py/config/)
+            config_dir: Directory containing config files (default: apps/backend-py/config/)
         """
         if config_dir is None:
             config_dir = Path(__file__).parent.parent.parent / "config"
