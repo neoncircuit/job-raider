@@ -17,9 +17,12 @@ out/
 
 # Data (runtime generated)
 apps/backend-py/data/
-data/              # legacy root data dir (optional, kept ignored)
+data/
 *.csv
 *.csv.zip
+
+# Claude Code codebase-memory index (local, auto-generated)
+.codebase-memory/
 
 # Logs
 logs/
