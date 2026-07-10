@@ -71,7 +71,9 @@ test.describe("Primary navigation", () => {
 
   test("opens the Profile page", async ({ page }) => {
     await navigateTo(page, "Profile");
-    await expect(page).toHaveURL(/\/profile/);
+    // Profile is compiled on demand in dev; give the dev server extra time
+    // to bundle and hydrate the page before asserting the route.
+    await expect(page).toHaveURL(/\/profile/, { timeout: 15_000 });
     await expect(page.locator("h1")).toContainText("Profile");
   });
 });

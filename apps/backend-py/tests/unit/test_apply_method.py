@@ -2,7 +2,6 @@
 Unit tests for the _compute_apply_method heuristic in the jobs API route.
 """
 
-
 from src.api.routes.jobs import _compute_apply_method
 
 

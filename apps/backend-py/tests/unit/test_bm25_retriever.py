@@ -2,7 +2,6 @@
 Unit tests for BM25Retriever.
 """
 
-
 from src.rag.bm25_retriever import BM25Result, BM25Retriever
 
 

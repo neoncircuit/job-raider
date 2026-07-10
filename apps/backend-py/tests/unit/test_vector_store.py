@@ -1,6 +1,5 @@
 """Unit tests for the ChromaStore vector store."""
 
-
 import pytest
 
 from src.rag.chunker import TextChunk

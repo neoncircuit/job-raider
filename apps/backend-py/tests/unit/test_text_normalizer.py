@@ -2,7 +2,6 @@
 Unit tests for text_normalizer.normalize_job_description.
 """
 
-
 from src.utils.text_normalizer import normalize_job_description
 
 

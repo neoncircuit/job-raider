@@ -76,18 +76,21 @@ export default function DashboardPage() {
     queryFn: healthApi.getHealth,
     staleTime: 15_000,
     refetchInterval: 30_000,
+    enabled: typeof window !== "undefined",
   });
 
   const metrics = useQuery({
     queryKey: ["metrics-summary"],
     queryFn: metricsApi.getSummary,
     staleTime: 30_000,
+    enabled: typeof window !== "undefined",
   });
 
   const history = useQuery({
     queryKey: ["pipeline-history"],
     queryFn: () => pipelineApi.getHistory(5),
     staleTime: 30_000,
+    enabled: typeof window !== "undefined",
   });
 
   const m = metrics.data;
@@ -154,7 +157,7 @@ export default function DashboardPage() {
             {health.isError && (
               <p className="text-sm text-red-500">Backend unreachable</p>
             )}
-            {h?.checks.map((c) => (
+            {h?.checks?.map((c) => (
               <div
                 key={c.name}
                 className="flex items-center justify-between py-1 border-b border-border/50 last:border-0"

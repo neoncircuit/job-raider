@@ -2384,6 +2384,69 @@ job-raider/
 - The frontend continues to use npm and `package-lock.json`; pnpm is no longer used.
 - No root `package.json` or npm workspaces were introduced; `apps/frontend-ts/` remains self-contained.
 
+## CI Failure Remediation (2026-07-10) [COMPLETED]
+
+Resolved the two failing CI checks reported on `main`.
+
+### Lint Code — Black formatting
+
+`black --check .` reported 10 files in `apps/backend-py` that needed reformatting. The failures were purely whitespace/formatting drift in recently modified files.
+
+- Ran `black .` inside `apps/backend-py`.
+- Verified with `black --check .` (0 files would be reformatted).
+
+### Test Frontend (ESE Tests) — Playwright E2E
+
+The E2E suite had three failure modes:
+
+1. **Job-row click intercepted by full-row overlay button**
+   - The jobs list wraps each row in a button with an accessible name like `View Senior Software Engineer`.
+   - Updated `apps/frontend-ts/tests/e2e/jobs-page.spec.ts` to click that button instead of the plain text node.
+
+2. **"Cover Letter" heading assertion matched hidden mobile sidebar label**
+   - `getByText("Cover Letter").first()` resolved to the hidden mobile sidebar `<span>` on Mobile Chrome.
+   - Replaced the heading check with an assertion on generated cover-letter content (`"I am excited about"`).
+
+3. **Dashboard crash + hydration issues**
+   - `apps/frontend-ts/src/app/dashboard/page.tsx` called `h?.checks.map` and crashed when health data was still loading.
+   - Fixed with optional chaining: `h?.checks?.map`.
+   - Defered the dashboard's TanStack Query calls to the client with `enabled: typeof window !== "undefined"` to avoid SSR/client hydration mismatches.
+   - Added `suppressHydrationWarning` to `<html>` in `apps/frontend-ts/src/app/layout.tsx` for the `next-themes` class difference between server and client.
+   - Made the jobs page layout responsive (`flex-col lg:flex-row`, `w-full lg:w-96`) so the two-column view does not break on mobile.
+
+4. **Profile navigation timeout**
+   - The Profile page is compiled on demand by the dev server, so the first navigation occasionally exceeded Playwright's default 5 s expect timeout.
+   - Raised the URL assertion timeout to 15 s in `apps/frontend-ts/tests/e2e/smoke.spec.ts`.
+
+### Verification Results
+
+- Backend formatting: `apps/backend-py/.venv/bin/python3 -m black --check .` passed.
+- Backend tests: `apps/backend-py/.venv/bin/python3 -m pytest tests --tb=short` passed (`493 passed`).
+- Frontend formatting: `npm run format:check` passed.
+- Frontend lint: `npm run lint` passed.
+- Frontend type check: `npm run type-check` passed.
+- Frontend unit tests: `npm run test -- --run` passed (`51 passed`).
+- Frontend production build: `npm run build` succeeded.
+- Playwright E2E: `npm run test:e2e` passed (`22 passed`).
+
+### Files Changed
+
+- `apps/backend-py/src/api/main.py`
+- `apps/backend-py/src/utils/logging_helpers.py`
+- `apps/backend-py/tests/unit/test_application_tracker.py`
+- `apps/backend-py/tests/unit/test_apply_method.py`
+- `apps/backend-py/tests/unit/test_bm25_retriever.py`
+- `apps/backend-py/tests/unit/test_chunker.py`
+- `apps/backend-py/tests/unit/test_rag_ranker.py`
+- `apps/backend-py/tests/unit/test_rrf_fusion.py`
+- `apps/backend-py/tests/unit/test_text_normalizer.py`
+- `apps/backend-py/tests/unit/test_vector_store.py`
+- `apps/frontend-ts/src/app/dashboard/page.tsx`
+- `apps/frontend-ts/src/app/jobs/page.tsx`
+- `apps/frontend-ts/src/app/layout.tsx`
+- `apps/frontend-ts/tests/e2e/jobs-page.spec.ts`
+- `apps/frontend-ts/tests/e2e/smoke.spec.ts`
+
 ## Branch Consolidation (2026-07-10) [COMPLETED]
 
 Because this project currently has a single contributor, we are moving from a feature-branch workflow to a single `main` branch to reduce overhead.

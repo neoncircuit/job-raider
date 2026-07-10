@@ -1,7 +1,5 @@
 """Unit tests for the TextChunker."""
 
-
-
 from src.models.job_listing import JobListing, JobSource
 from src.rag.chunker import TextChunker
 from src.rag.config import ChunkingConfig

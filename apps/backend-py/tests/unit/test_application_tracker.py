@@ -2,7 +2,6 @@
 Unit tests for application tracker feature.
 """
 
-
 import pytest
 
 from src.metrics.outcome_tracker import (

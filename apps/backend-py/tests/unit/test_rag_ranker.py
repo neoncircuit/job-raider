@@ -1,6 +1,5 @@
 """Unit tests for the RAGRanker."""
 
-
 import numpy as np
 import pytest
 

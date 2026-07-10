@@ -129,9 +129,9 @@ export default function JobsPage() {
           Run a search to see results.
         </p>
       ) : (
-        <div className="flex flex-1 gap-4 min-h-0 overflow-hidden">
+        <div className="flex flex-1 flex-col gap-4 min-h-0 overflow-hidden lg:flex-row">
           {/* Left panel — job list */}
-          <div className="flex w-96 shrink-0 flex-col gap-2 overflow-y-auto">
+          <div className="flex w-full shrink-0 flex-col gap-2 overflow-y-auto lg:w-96">
             <p className="text-xs text-muted-foreground">
               {jobs.length} results · page {jobsPage + 1}/{totalPages || 1}
             </p>

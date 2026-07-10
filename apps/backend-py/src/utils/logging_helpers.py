@@ -10,7 +10,6 @@ import json
 import re
 from typing import Any, Dict
 
-
 # Keys that commonly hold sensitive values. Matching values are redacted.
 _SENSITIVE_KEYS = {
     "password",

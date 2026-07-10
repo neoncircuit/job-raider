@@ -13,7 +13,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List
 
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -204,7 +211,9 @@ async def validation_exception_handler(
     error = ErrorResponse(
         error="Validation failed",
         message="The request body or parameters are invalid.",
-        details={"errors": jsonable_encoder(exc.errors(), custom_encoder={Exception: str})},
+        details={
+            "errors": jsonable_encoder(exc.errors(), custom_encoder={Exception: str})
+        },
     )
     return JSONResponse(
         status_code=422,
