@@ -195,9 +195,103 @@
 - [x] All 55 backend tests passing
 - [x] All 55 frontend tests passing
 
+## Phase 54: Monorepo Restructure & Best-Practices Hardening [COMPLETED]
+
+- [x] Move `backend-py/` and `frontend-ts/` under `apps/`
+- [x] Update Docker/compose paths and `PYTHONPATH` for monorepo layout
+- [x] Sub-phase 1: Frontend Jobs-page best-practices hardening
+  - [x] Accessibility: `JobListItem`, `SearchBar`, `SourceSelector`, external-link labels
+  - [x] Theme-token consistency in badges and salary text
+  - [x] Code quality: `providers.tsx`, `use-jobs.ts`, `constants.ts`, `job-detail.tsx`
+  - [x] Verification: `npm run type-check`, `npm run lint`, `npm run test`, `npm run build` pass
+- [x] Sub-phase 2: Backend agent result store & retrieval
+  - [x] Create `TaskStore` / `TaskRecord` in `apps/backend-py/src/agents/task_store.py` (bounded size, TTL eviction, thread-safe)
+  - [x] Wire `AgentCoordinator` to save pending, completed, and failed task records
+  - [x] Forward failure results from `BaseAgent` to the coordinator callback
+  - [x] Add `GET /api/agents/tasks/{task_id}` returning `200`/`202`/`404`
+  - [x] Add normalized global exception handlers in `src/api/main.py` using `ErrorResponse`
+  - [x] Remove orphaned `/api/agents/skill-development-plan` rate-limit entry and unused request model
+  - [x] Add unit tests: `tests/unit/agents/test_task_store.py`, `tests/unit/agents/test_agent_routes.py`
+  - [x] Update existing route tests to the new normalized error JSON shape (`message`/`details`)
+  - [x] Verification: `pytest tests/unit` **414 passed**, `pytest tests` **479 passed**, ruff and targeted mypy clean
+- [x] Sub-phase 3: Backend security hardening
+  - [x] CORS: env-driven `CORS_ALLOWED_ORIGINS` with safe local defaults; keep `allow_credentials=True`; reject `*` unless explicitly set
+  - [x] API key auth: fail-closed when `API_KEY` is empty/unset and `ENVIRONMENT` is not `development`; dev mode logs a one-time warning
+  - [x] PII/content handling: sanitize/summarize free-form dict payloads before any agent/coordinator logging; never log raw profile/job data
+  - [x] Add `ENVIRONMENT` and `CORS_ALLOWED_ORIGINS` to `apps/backend-py/.env.example`
+  - [x] Add unit tests for auth behavior (`tests/unit/test_auth.py`) and logging helpers (`tests/unit/test_logging_helpers.py`)
+  - [x] Verification: `pytest tests` **493 passed**, ruff clean, targeted mypy clean on changed files
+
+### Sub-phase 3 review
+
+**Completed:** 2026-07-10
+
+- CORS now reads `CORS_ALLOWED_ORIGINS` from the environment, defaulting to the local Next.js dev server in development and defaulting to an empty allow-list in production.
+- API-key authentication is fail-closed in production/staging while remaining friction-free in local development with a single warning.
+- Free-form payloads are sanitized before logging; the coordinator and performance monitor use `sanitize_for_log`/`summarize_payload` so emails, keys, and tokens never leak into logs.
+- A small type-annotation fix in `coordinator.py:get_performance_metrics` removed the only mypy error in the changed files.
+
+- [x] Sub-phase 4: Tooling & CI hygiene
+- [x] Sub-phase 5: Phase 41 frontend UI (Career Coach)
+
+### Sub-phase 4 review
+
+**Completed:** 2026-07-10
+
+- Verified `.github/workflows/ci.yml` already contains `format-check-frontend` and `build-frontend` jobs with correct `working-directory: apps/frontend-ts`, Node 20, and `npm ci` setup.
+- Confirmed the stale legacy `test-frontend` job has been removed from CI.
+- Prettier config files (`apps/frontend-ts/.prettierrc.json` and `apps/frontend-ts/.prettierignore`) are tracked and deterministic.
+- Local frontend quality gates pass:
+  - `npm run format:check` — all matched files use Prettier code style.
+  - `npm run lint` — 0 errors, 0 warnings.
+  - `npm run type-check` — `tsc --noEmit` passes.
+  - `npm run test -- --run` — 51 passed across 10 test files.
+  - `npx next build` — succeeds and generates 16 static pages, including `/career-coach`.
+
+### Sub-phase 5 review
+
+**Completed:** 2026-07-10
+
+- Added Career Coach TypeScript types to `apps/frontend-ts/src/lib/types/api.ts`:
+  - `CareerAnalysisRequest` / `CareerAnalysisResult`
+  - `GapAnalysisRequest` / `GapAnalysisResult`
+  - `UpskillingRoadmapRequest` / `UpskillingRoadmapResult`
+  - `CareerGoalsRequest` / `CareerGoalsResult`
+  - `TaskRecord` / `TaskSubmissionResponse` polling envelope
+- Created `apps/frontend-ts/src/lib/api/agents.ts` with typed helpers for `careerAnalysis`, `gapAnalysis`, `upskillingRoadmap`, `careerGoals`, and `getTask`.
+- Created `apps/frontend-ts/src/lib/api/agents.test.ts` with 7 Vitest cases covering submissions, polling, abort signals, and `ApiError` handling.
+- Created `apps/frontend-ts/src/app/career-coach/page.tsx` with a tabbed UI for the four analyses, shared `useAgentTask<T>` polling hook, form validation via react-hook-form + zod, and result display using existing `Card`, `Badge`, `Tabs`, and `PageContainer` patterns.
+- Added a "Career Coach" sidebar entry using the `Compass` icon in `apps/frontend-ts/src/components/layout/SidebarContent.tsx`.
+- Addressed TypeScript reviewer findings:
+  - Added JSDoc docstrings (description, args, returns) to all helpers, result views, tab components, the page component, and the `mockResponse` test helper.
+  - Replaced the unsafe `as unknown as GapAnalysisResult` cast in the Upskilling Roadmap tab with a runtime `gapAnalysisResultSchema` parsed by zod.
+- Final verification:
+  - `npm run format:check` — all matched files use Prettier code style.
+  - `npm run lint` — 0 errors, 0 warnings.
+  - `npm run type-check` — `tsc --noEmit` passes.
+  - `npm run test -- --run` — 51 passed across 10 test files.
+  - `npx next build` — succeeds and generates 16 static pages, including `/career-coach`.
+  - Backend regression check: `apps/backend-py/.venv/bin/python -m pytest tests --tb=short` passes with **493 passed** in 38.78s.
+
+### Sanity check
+
+**Completed:** 2026-07-10
+
+Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
+
+- **Docstrings & type hints:** All new public functions/components in `apps/frontend-ts/src/app/career-coach/page.tsx` and `apps/frontend-ts/src/lib/api/agents.test.ts` now have JSDoc descriptions with `@param`/`@returns`. Existing API helpers in `agents.ts` already had docstrings.
+- **Type safety:** Removed the unsafe `unknown` cast; gap-analysis JSON is now validated by a zod runtime schema before being sent to the roadmap endpoint.
+- **Formatting & linting:** Prettier, ESLint, and `tsc --noEmit` all pass.
+- **Tests:** Frontend Vitest suite passes (51/51); backend pytest suite passes (493/493).
+- **Production build:** `npx next build` completes and prerenders `/career-coach`.
+- **No `.env` exposure:** Only `.env.example` files were referenced; no secrets were viewed or committed.
+- **Copy-pasteable commands:** Verification commands are documented above and in the sub-phase reviews.
+
 ## Summary
 
-**Completed Phases:** 1-51
+**Completed Phases:** 1-51, 54.1, 54.2, 54.3, 54.4, 54.5
+
+**In Progress:** none
 
 **Project Status:** FULLY OPERATIONAL
 - Backend pipeline with FastAPI REST API (X-API-Key auth on all routes)

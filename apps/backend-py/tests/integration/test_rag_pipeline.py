@@ -1,14 +1,12 @@
 """Integration tests for the RAG pipeline stage."""
 
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.models.job_listing import JobListing, JobSource
-from src.models.user_profile import ContactInfo, TargetJob, UserProfile
 from src.pipeline.orchestrator import PipelineStage
-from src.pipeline.stages import PipelineContext, PipelineStages, StageResult
+from src.pipeline.stages import PipelineContext, PipelineStages
 from src.scoring.matcher import MatchScore
 
 

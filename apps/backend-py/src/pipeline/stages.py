@@ -8,22 +8,20 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..generation.cover_letter_validator import (
-    CoverLetterValidationResult,
     CoverLetterValidator,
 )
-from ..generation.cover_letter_writer import CoverLetterWriter, GeneratedCoverLetter
+from ..generation.cover_letter_writer import CoverLetterWriter
 from ..generation.formatter import ResumeFormatter
-from ..generation.resume_writer import GeneratedResume, ResumeWriter
-from ..generation.selector import ResumeSelector, SelectionOutput
-from ..generation.validator import ResumeValidator, ValidationResult
-from ..llm.embedding_client import EmbeddingClient, EmbeddingError
+from ..generation.resume_writer import ResumeWriter
+from ..generation.selector import ResumeSelector
+from ..generation.validator import ResumeValidator
+from ..llm.embedding_client import EmbeddingClient
 from ..llm.router import LLMRouter
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile

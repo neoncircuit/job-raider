@@ -8,30 +8,33 @@
  * Date: 2026-06-08
  */
 
-import { test as base, type Page } from '@playwright/test';
+import { test as base, type Page } from "@playwright/test";
 
 // Define custom fixtures
 export const test = base.extend<{
   authenticatedPage: Page;
 }>({
-  authenticatedPage: async ({ page }: { page: Page }, provide: (page: Page) => Promise<void>) => {
+  authenticatedPage: async (
+    { page }: { page: Page },
+    provide: (page: Page) => Promise<void>,
+  ) => {
     // Setup authentication if needed
     // For now, just use the page as-is
     await provide(page);
   },
 });
 
-export { expect } from '@playwright/test';
+export { expect } from "@playwright/test";
 
 // Common test data
 export const testUserData = {
-  email: 'test@example.com',
-  password: 'testpass123',
-  name: 'Test User',
+  email: "test@example.com",
+  password: "testpass123",
+  name: "Test User",
 };
 
 export const testJobData = {
-  keywords: 'Software Engineer',
-  location: 'San Francisco, CA',
-  experience_level: 'Mid Level',
+  keywords: "Software Engineer",
+  location: "San Francisco, CA",
+  experience_level: "Mid Level",
 };

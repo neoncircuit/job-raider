@@ -7,13 +7,12 @@ general analysis and job-specific analysis modes.
 
 import json
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from src.generation.resume_analyzer import ResumeAnalyzer
-from src.llm.base import LLMResponse, Message
+from src.llm.base import LLMResponse
 from src.models.job_listing import (
     JobListing,
     JobRequirement,

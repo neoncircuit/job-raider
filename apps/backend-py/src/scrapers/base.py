@@ -12,12 +12,11 @@ import random
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
-from ..extractors.jd_extractor import ExtractionResult, JDExtractor
+from ..extractors.jd_extractor import JDExtractor
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
 from ..utils.text_normalizer import normalize_job_description
 
@@ -163,7 +162,7 @@ class BaseScraper(ABC):
                 try:
                     detailed = self.get_job_details(listing.job_id)
                     enriched_listings.append(detailed or listing)
-                except Exception as e:
+                except Exception:
                     # Use basic listing if detail fetch fails
                     enriched_listings.append(listing)
 
@@ -198,7 +197,6 @@ class BaseScraper(ABC):
 
         for attempt in range(self.max_retries):
             try:
-                import requests
                 from playwright.sync_api import sync_playwright
 
                 # Use Playwright for JavaScript-heavy sites

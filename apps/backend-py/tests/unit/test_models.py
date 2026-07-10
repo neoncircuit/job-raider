@@ -2,10 +2,8 @@
 # Author: Job Raider
 # Date: 2026-04-21
 
-from datetime import datetime
 
 import pytest
-from pydantic import ValidationError
 
 from src.models.job_listing import (
     ExperienceLevel,
@@ -28,7 +26,6 @@ from src.models.user_profile import (
     Skill,
     SkillCategory,
     TargetJob,
-    UserProfile,
 )
 
 

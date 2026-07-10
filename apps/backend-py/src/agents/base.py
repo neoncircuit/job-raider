@@ -388,6 +388,10 @@ class BaseAgent(ABC):
             )
             self.performance.update_execution(result, execution_time)
 
+            # Notify coordinator of the failure so it can persist and broadcast it.
+            if self.communication_callback:
+                await self.communication_callback(self.agent_id, result)
+
         finally:
             # Clean up
             self.performance.remove_current_task(task.task_id)

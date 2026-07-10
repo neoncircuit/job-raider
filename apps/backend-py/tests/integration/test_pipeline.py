@@ -2,20 +2,9 @@
 # Author: Job Raider
 # Date: 2026-04-21
 
-from datetime import datetime
-from pathlib import Path
 
 import pytest
 
-from src.models.user_profile import (
-    ContactInfo,
-    ExperienceLevel,
-    ProficiencyLevel,
-    Skill,
-    SkillCategory,
-    TargetJob,
-    UserProfile,
-)
 from src.pipeline.orchestrator import (
     PipelineConfig,
     PipelineOrchestrator,
@@ -193,7 +182,6 @@ class TestEndToEndWorkflow:
         """Test simulated full workflow without actual scraping."""
         import json
 
-        from src.generation.selector import ResumeSelector
         from src.models.job_listing import (
             JobListing,
             JobRequirement,

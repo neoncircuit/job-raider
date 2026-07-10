@@ -40,27 +40,68 @@ interface ApplicationSettingsFormValues {
 
 // ── Visa status options ───────────────────────────────────────────────────────────
 
-const VISA_STATUS_OPTIONS: { value: VisaStatus; label: string; description: string }[] = [
-  { value: "citizen", label: "Citizen", description: "I am a citizen and don't need sponsorship" },
-  { value: "permanent_resident", label: "Permanent Resident", description: "I have permanent residency / Green Card" },
+const VISA_STATUS_OPTIONS: {
+  value: VisaStatus;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "citizen",
+    label: "Citizen",
+    description: "I am a citizen and don't need sponsorship",
+  },
+  {
+    value: "permanent_resident",
+    label: "Permanent Resident",
+    description: "I have permanent residency / Green Card",
+  },
   { value: "h1b", label: "H1B Visa", description: "I have an H1B visa" },
-  { value: "other_visa", label: "Other Work Visa", description: "I have another type of work visa" },
-  { value: "need_sponsorship", label: "Need Sponsorship", description: "I will need visa sponsorship" },
-  { value: "student_visa", label: "Student Visa", description: "I am on a student visa (F1, etc.)" },
-  { value: "not_specified", label: "Prefer not to say", description: "I prefer not to disclose this information" },
+  {
+    value: "other_visa",
+    label: "Other Work Visa",
+    description: "I have another type of work visa",
+  },
+  {
+    value: "need_sponsorship",
+    label: "Need Sponsorship",
+    description: "I will need visa sponsorship",
+  },
+  {
+    value: "student_visa",
+    label: "Student Visa",
+    description: "I am on a student visa (F1, etc.)",
+  },
+  {
+    value: "not_specified",
+    label: "Prefer not to say",
+    description: "I prefer not to disclose this information",
+  },
 ];
 
-export function ApplicationSettingsModal({ profile, open, onClose }: ApplicationSettingsModalProps) {
-  const { register, handleSubmit, control, setValue, formState: { isDirty } } = useForm({
+export function ApplicationSettingsModal({
+  profile,
+  open,
+  onClose,
+}: ApplicationSettingsModalProps) {
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    formState: { isDirty },
+  } = useForm({
     defaultValues: {
       visa_status: profile.visa_status ?? undefined,
-      visa_expiration_date: profile.visa_expiration_date ? profile.visa_expiration_date.split('T')[0] : "",
+      visa_expiration_date: profile.visa_expiration_date
+        ? profile.visa_expiration_date.split("T")[0]
+        : "",
       salary_expectation_min: profile.salary_expectation_min ?? "",
       salary_expectation_max: profile.salary_expectation_max ?? "",
       salary_currency: profile.salary_currency ?? "USD",
       notice_period_weeks: profile.notice_period_weeks ?? "",
       willing_to_relocate: profile.willing_to_relocate ?? false,
-      preferred_work_locations: profile.preferred_work_locations?.join(", ") ?? "",
+      preferred_work_locations:
+        profile.preferred_work_locations?.join(", ") ?? "",
     },
   });
 
@@ -69,13 +110,22 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
       const updates: Partial<UserProfile> = {
         visa_status: values.visa_status || undefined,
         visa_expiration_date: values.visa_expiration_date || undefined,
-        salary_expectation_min: values.salary_expectation_min ? Number(values.salary_expectation_min) : undefined,
-        salary_expectation_max: values.salary_expectation_max ? Number(values.salary_expectation_max) : undefined,
+        salary_expectation_min: values.salary_expectation_min
+          ? Number(values.salary_expectation_min)
+          : undefined,
+        salary_expectation_max: values.salary_expectation_max
+          ? Number(values.salary_expectation_max)
+          : undefined,
         salary_currency: values.salary_currency,
-        notice_period_weeks: values.notice_period_weeks ? Number(values.notice_period_weeks) : undefined,
+        notice_period_weeks: values.notice_period_weeks
+          ? Number(values.notice_period_weeks)
+          : undefined,
         willing_to_relocate: values.willing_to_relocate,
         preferred_work_locations: values.preferred_work_locations
-          ? values.preferred_work_locations.split(',').map((s: string) => s.trim()).filter(Boolean)
+          ? values.preferred_work_locations
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean)
           : undefined,
       };
       return profileApi.update(updates);
@@ -100,7 +150,8 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
         <DialogHeader>
           <DialogTitle>Application Settings</DialogTitle>
           <DialogDescription>
-            These settings help us auto-answer application questions and improve your application success rate.
+            These settings help us auto-answer application questions and improve
+            your application success rate.
           </DialogDescription>
         </DialogHeader>
 
@@ -109,7 +160,9 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Briefcase className="h-4 w-4 text-gray-400" />
-              <Label className="text-base font-semibold">Work Authorization</Label>
+              <Label className="text-base font-semibold">
+                Work Authorization
+              </Label>
             </div>
             <p className="text-sm text-gray-500">
               This helps us answer visa/sponsorship questions correctly.
@@ -123,7 +176,7 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
                     "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
                     selectedVisaStatus === option.value
                       ? "border-indigo-500 bg-indigo-50"
-                      : "border-gray-200 hover:bg-gray-50"
+                      : "border-gray-200 hover:bg-gray-50",
                   )}
                 >
                   <input
@@ -133,14 +186,19 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
                     className="mt-1 h-4 w-4 accent-indigo-600"
                   />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{option.label}</p>
-                    <p className="text-xs text-gray-500">{option.description}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {option.label}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {option.description}
+                    </p>
                   </div>
                 </label>
               ))}
             </div>
 
-            {(selectedVisaStatus === "h1b" || selectedVisaStatus === "other_visa") && (
+            {(selectedVisaStatus === "h1b" ||
+              selectedVisaStatus === "other_visa") && (
               <div className="space-y-1">
                 <Label htmlFor="visa_expiration">Visa Expiration Date</Label>
                 <Input
@@ -149,7 +207,9 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
                   {...register("visa_expiration_date")}
                   className="w-full"
                 />
-                <p className="text-xs text-gray-400">When does your visa expire?</p>
+                <p className="text-xs text-gray-400">
+                  When does your visa expire?
+                </p>
               </div>
             )}
           </div>
@@ -158,10 +218,13 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-gray-400" />
-              <Label className="text-base font-semibold">Salary Expectations</Label>
+              <Label className="text-base font-semibold">
+                Salary Expectations
+              </Label>
             </div>
             <p className="text-sm text-gray-500">
-              Helps us answer salary requirement questions. Leave blank if you prefer not to specify.
+              Helps us answer salary requirement questions. Leave blank if you
+              prefer not to specify.
             </p>
 
             <div className="grid grid-cols-2 gap-4">
@@ -221,7 +284,9 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
                 placeholder="2"
                 {...register("notice_period_weeks")}
               />
-              <p className="text-xs text-gray-400">Weeks (0 means immediately available)</p>
+              <p className="text-xs text-gray-400">
+                Weeks (0 means immediately available)
+              </p>
             </div>
           </div>
 
@@ -229,7 +294,9 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-gray-400" />
-              <Label className="text-base font-semibold">Location Preferences</Label>
+              <Label className="text-base font-semibold">
+                Location Preferences
+              </Label>
             </div>
 
             <div className="flex items-center gap-3">
@@ -244,24 +311,36 @@ export function ApplicationSettingsModal({ profile, open, onClose }: Application
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="preferred_locations">Preferred Work Locations</Label>
+              <Label htmlFor="preferred_locations">
+                Preferred Work Locations
+              </Label>
               <Input
                 id="preferred_locations"
                 placeholder="San Francisco, New York, London, Remote..."
                 {...register("preferred_work_locations")}
               />
               <p className="text-xs text-gray-400">
-                Comma-separated list of locations you&apos;d consider (beyond your target job locations)
+                Comma-separated list of locations you&apos;d consider (beyond
+                your target job locations)
               </p>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t">
-            <Button type="submit" disabled={save.isPending || !isDirty} className="flex-1">
+            <Button
+              type="submit"
+              disabled={save.isPending || !isDirty}
+              className="flex-1"
+            >
               {save.isPending ? "Saving..." : "Save Settings"}
             </Button>
-            <Button type="button" variant="outline" onClick={onClose} className="w-32">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="w-32"
+            >
               Cancel
             </Button>
           </div>

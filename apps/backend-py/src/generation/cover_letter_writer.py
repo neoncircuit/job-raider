@@ -13,7 +13,7 @@ Date: 2026-05-13
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType

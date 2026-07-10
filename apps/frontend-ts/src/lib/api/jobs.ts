@@ -23,28 +23,61 @@ export interface SemanticSearchRequest {
 }
 
 export const jobsApi = {
-  getSources: () =>
-    request<{ sources: string[] }>("GET", "/jobs/sources"),
+  getSources: () => request<{ sources: string[] }>("GET", "/jobs/sources"),
 
   search: (req: JobSearchRequest, signal?: AbortSignal) =>
     request<JobSearchResponse>("POST", "/jobs/search", { body: req, signal }),
 
   semanticSearch: (req: SemanticSearchRequest, signal?: AbortSignal) =>
-    request<SemanticSearchResponse>("POST", "/jobs/search/semantic", { body: req, signal }),
+    request<SemanticSearchResponse>("POST", "/jobs/search/semantic", {
+      body: req,
+      signal,
+    }),
 
   getSimilarity: (jobId: string) =>
     request<JobSimilarityResponse>("GET", `/jobs/${jobId}/similarity`),
 
   score: (jobId: string) =>
-    request<{ total_score: number; details?: Record<string, unknown> }>("POST", `/jobs/${jobId}/score`),
+    request<{ total_score: number; details?: Record<string, unknown> }>(
+      "POST",
+      `/jobs/${jobId}/score`,
+    ),
 
-  classify: (jobId: string, jobData: { title: string; company: string; description?: string; location?: string; source?: string }) =>
-    request<{ success: boolean; job_id: string; classification: JobClassification; warnings?: string[] }>("POST", `/jobs/${jobId}/classify`, {
+  classify: (
+    jobId: string,
+    jobData: {
+      title: string;
+      company: string;
+      description?: string;
+      location?: string;
+      source?: string;
+    },
+  ) =>
+    request<{
+      success: boolean;
+      job_id: string;
+      classification: JobClassification;
+      warnings?: string[];
+    }>("POST", `/jobs/${jobId}/classify`, {
       body: jobData,
     }),
 
-  trustAnalysis: (jobId: string, jobData: { title: string; company: string; description?: string; location?: string; source?: string }, deep = false) =>
-    request<{ success: boolean; job_id: string; trust_analysis: TrustAnalysis }>("POST", `/jobs/${jobId}/trust-analysis`, {
+  trustAnalysis: (
+    jobId: string,
+    jobData: {
+      title: string;
+      company: string;
+      description?: string;
+      location?: string;
+      source?: string;
+    },
+    deep = false,
+  ) =>
+    request<{
+      success: boolean;
+      job_id: string;
+      trust_analysis: TrustAnalysis;
+    }>("POST", `/jobs/${jobId}/trust-analysis`, {
       body: jobData,
       params: deep ? { deep: true } : undefined,
     }),
@@ -64,7 +97,13 @@ export const jobsApi = {
 
   generateCoverLetter: (
     jobId: string,
-    jobData: { title: string; company: string; description?: string; location?: string; source?: string },
+    jobData: {
+      title: string;
+      company: string;
+      description?: string;
+      location?: string;
+      source?: string;
+    },
     deep = false,
   ) =>
     request<CoverLetterResponse>("POST", `/jobs/${jobId}/cover-letter`, {

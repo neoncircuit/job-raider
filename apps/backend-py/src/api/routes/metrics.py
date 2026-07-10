@@ -9,11 +9,11 @@ Date: 2026-04-21
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from ...health.health_check import check_health
 from ...metrics.cost_tracker import CostTracker
-from ...metrics.outcome_tracker import ApplicationStatus, InterviewStage, OutcomeTracker
+from ...metrics.outcome_tracker import OutcomeTracker
 from ...utils.logger import Components, get_logger
 from ..models.responses import HealthCheckResponse, MetricsResponse
 

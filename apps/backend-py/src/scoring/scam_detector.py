@@ -11,9 +11,9 @@ Date: 2026-04-20
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Dict, List
 
-from ..models.job_listing import JobListing, JobSource
+from ..models.job_listing import JobListing
 from ..utils.logger import Components, get_logger
 
 
@@ -508,7 +508,7 @@ class JobScamDetector:
         lines = text.split("\n")
         for line in lines:
             line = line.strip()
-            if line and not line[-1] in ".!?":
+            if line and line[-1] not in ".!?":
                 # Might be a bullet point or heading, but count it
                 if len(line.split()) > 5:  # Only check actual sentences
                     issues += 1

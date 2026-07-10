@@ -48,7 +48,7 @@ async def perform_job_action(request: JobActionRequest) -> JobActionResponse:
         )
         source_url = request.metadata.get("source_url") if request.metadata else None
 
-        outcome = outcome_tracker.save_job(
+        outcome_tracker.save_job(
             job_id=request.job_id,
             job_title=title,
             company=company,
@@ -203,7 +203,7 @@ async def set_custom_status(request: SetCustomStatusRequest) -> Dict[str, Any]:
     )
 
     if success:
-        outcome = outcome_tracker.get_application(request.job_id)
+        outcome_tracker.get_application(request.job_id)
         return {
             "success": True,
             "job_id": request.job_id,

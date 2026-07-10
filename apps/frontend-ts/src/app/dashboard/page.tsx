@@ -1,7 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, AlertTriangle, XCircle, Activity, Send, DollarSign, TrendingUp, Briefcase } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Activity,
+  Send,
+  DollarSign,
+  TrendingUp,
+  Briefcase,
+} from "lucide-react";
 import { healthApi } from "@/lib/api/health";
 import { metricsApi } from "@/lib/api/metrics";
 import { pipelineApi } from "@/lib/api/pipeline";
@@ -13,9 +22,12 @@ import { cn } from "@/lib/utils/cn";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 function HealthIcon({ status }: { status: string }) {
-  if (status === "healthy") return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
-  if (status === "degraded") return <AlertTriangle className="h-4 w-4 text-amber-500" />;
-  if (status === "unhealthy") return <XCircle className="h-4 w-4 text-red-500" />;
+  if (status === "healthy")
+    return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+  if (status === "degraded")
+    return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+  if (status === "unhealthy")
+    return <XCircle className="h-4 w-4 text-red-500" />;
   return <Activity className="h-4 w-4 text-slate-400" />;
 }
 
@@ -29,14 +41,28 @@ interface StatCardProps {
 
 function StatCard({ title, value, sub, icon, iconBg }: StatCardProps) {
   return (
-    <div className={cn("relative overflow-hidden rounded border p-5 text-foreground shadow-sm transition-all duration-150 font-mono", "bg-card hover:shadow-md hover:border-primary/30")}>
+    <div
+      className={cn(
+        "relative overflow-hidden rounded border p-5 text-foreground shadow-sm transition-all duration-150 font-mono",
+        "bg-card hover:shadow-md hover:border-primary/30",
+      )}
+    >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{value}</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            {title}
+          </p>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+            {value}
+          </p>
           {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
         </div>
-        <div className={cn("flex h-8 w-8 items-center justify-center rounded border bg-card shadow-sm", iconBg)}>
+        <div
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded border bg-card shadow-sm",
+            iconBg,
+          )}
+        >
           {icon}
         </div>
       </div>
@@ -70,8 +96,12 @@ export default function DashboardPage() {
   return (
     <PageContainer variant="full-bleed">
       <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Overview of your job application pipeline.</p>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">
+          Dashboard
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Overview of your job application pipeline.
+        </p>
       </div>
 
       {/* Stat cards */}
@@ -86,7 +116,9 @@ export default function DashboardPage() {
         <StatCard
           title="API Cost"
           value={m ? formatCurrency(m.cost.total_usd) : "—"}
-          sub={m ? `${formatCurrency(m.cost.per_application)} / app` : undefined}
+          sub={
+            m ? `${formatCurrency(m.cost.per_application)} / app` : undefined
+          }
           icon={<DollarSign className="h-5 w-5 text-white" />}
           iconBg="bg-white/15"
         />
@@ -116,15 +148,26 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2.5">
-            {health.isLoading && <p className="text-sm text-muted-foreground">Checking…</p>}
-            {health.isError && <p className="text-sm text-red-500">Backend unreachable</p>}
+            {health.isLoading && (
+              <p className="text-sm text-muted-foreground">Checking…</p>
+            )}
+            {health.isError && (
+              <p className="text-sm text-red-500">Backend unreachable</p>
+            )}
             {h?.checks.map((c) => (
-              <div key={c.name} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
+              <div
+                key={c.name}
+                className="flex items-center justify-between py-1 border-b border-border/50 last:border-0"
+              >
                 <div className="flex items-center gap-2">
                   <HealthIcon status={c.status} />
-                  <span className="text-sm font-medium text-foreground capitalize">{c.name.replace(/_/g, " ")}</span>
+                  <span className="text-sm font-medium text-foreground capitalize">
+                    {c.name.replace(/_/g, " ")}
+                  </span>
                 </div>
-                <span className="text-xs text-muted-foreground truncate max-w-[180px] md:max-w-[240px] lg:max-w-xs">{c.message}</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[180px] md:max-w-[240px] lg:max-w-xs">
+                  {c.message}
+                </span>
               </div>
             ))}
           </CardContent>
@@ -139,20 +182,37 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {history.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-            {history.isError && <p className="text-sm text-red-500">Could not load history</p>}
+            {history.isLoading && (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            )}
+            {history.isError && (
+              <p className="text-sm text-red-500">Could not load history</p>
+            )}
             {history.data?.runs.length === 0 && (
-              <p className="text-sm text-muted-foreground">No runs yet. Start a pipeline to begin.</p>
+              <p className="text-sm text-muted-foreground">
+                No runs yet. Start a pipeline to begin.
+              </p>
             )}
             {history.data?.runs.map((r) => (
-              <div key={r.run_id} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
+              <div
+                key={r.run_id}
+                className="flex items-center justify-between py-1 border-b border-border/50 last:border-0"
+              >
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0} applied
+                    {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0}{" "}
+                    applied
                   </p>
-                  <p className="text-xs text-muted-foreground">{formatDatetime(r.created_at)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDatetime(r.created_at)}
+                  </p>
                 </div>
-                <Badge className={cn("text-xs font-medium", STATUS_COLORS[r.status] ?? "bg-muted text-muted-foreground")}>
+                <Badge
+                  className={cn(
+                    "text-xs font-medium",
+                    STATUS_COLORS[r.status] ?? "bg-muted text-muted-foreground",
+                  )}
+                >
                   {r.status}
                 </Badge>
               </div>

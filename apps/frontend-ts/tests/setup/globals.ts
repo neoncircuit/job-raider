@@ -8,12 +8,12 @@
  * Date: 2026-06-08
  */
 
-import { beforeAll, afterEach, afterAll, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import { setupServer } from 'msw/node';
-import { handlers } from './mocks';
-import React from 'react';
+import { beforeAll, afterEach, afterAll, vi } from "vitest";
+import { cleanup } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { setupServer } from "msw/node";
+import { handlers } from "./mocks";
+import React from "react";
 
 // Setup MSW server for API mocking
 export const server = setupServer(...handlers);
@@ -25,18 +25,18 @@ class MockIntersectionObserver implements IntersectionObserver {
   unobserve = vi.fn();
   takeRecords = vi.fn().mockReturnValue([]);
   root = null;
-  rootMargin = '';
+  rootMargin = "";
   thresholds = [];
 }
 
 beforeAll(() => {
   // Start MSW server before all tests
-  server.listen({ onUnhandledRequest: 'error' });
+  server.listen({ onUnhandledRequest: "error" });
   // Mock IntersectionObserver
   global.IntersectionObserver = MockIntersectionObserver;
 
   // Mock window.matchMedia
-  Object.defineProperty(window, 'matchMedia', {
+  Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: vi.fn().mockImplementation((query) => ({
       matches: false,
@@ -51,30 +51,30 @@ beforeAll(() => {
   });
 
   // Mock Next.js router
-  vi.mock('next/navigation', () => ({
+  vi.mock("next/navigation", () => ({
     useRouter: () => ({
       push: vi.fn(),
       replace: vi.fn(),
       prefetch: vi.fn(),
       back: vi.fn(),
-      pathname: '/',
+      pathname: "/",
       query: {},
     }),
     useSearchParams: () => new URLSearchParams(),
-    usePathname: () => '/',
+    usePathname: () => "/",
   }));
 
   // Mock Next.js image optimization
-  vi.mock('next/image', () => ({
-    default: ({ src, alt, ...props }: React.ComponentProps<'img'>) => {
+  vi.mock("next/image", () => ({
+    default: ({ src, alt, ...props }: React.ComponentProps<"img">) => {
       // Use createElement instead of JSX in .ts file
-      return React.createElement('img', { src, alt, ...props });
+      return React.createElement("img", { src, alt, ...props });
     },
   }));
 
   // Polyfill PointerEvent for components that rely on it (e.g. Base UI Switch).
   // Extends MouseEvent so jsdom treats pointer clicks as activations.
-  if (typeof global.PointerEvent === 'undefined') {
+  if (typeof global.PointerEvent === "undefined") {
     global.PointerEvent = class PointerEvent extends MouseEvent {
       pointerId: number;
       pointerType: string;
@@ -82,7 +82,7 @@ beforeAll(() => {
       constructor(type: string, init?: PointerEventInit) {
         super(type, init);
         this.pointerId = init?.pointerId ?? 0;
-        this.pointerType = init?.pointerType ?? 'mouse';
+        this.pointerType = init?.pointerType ?? "mouse";
         this.isPrimary = init?.isPrimary ?? true;
       }
     } as unknown as typeof PointerEvent;

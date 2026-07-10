@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from ..api.settings import ModelRouting, Provider, UserSettings
+from ..api.settings import UserSettings
 
 
 class ConfigLoader:

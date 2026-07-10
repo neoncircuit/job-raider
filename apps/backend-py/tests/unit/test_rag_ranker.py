@@ -1,11 +1,9 @@
 """Unit tests for the RAGRanker."""
 
-from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
-from src.llm.embedding_client import EmbeddingClient
 from src.models.job_listing import JobListing, JobSource
 from src.rag.chunker import TextChunker
 from src.rag.config import (

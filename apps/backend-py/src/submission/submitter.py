@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from ..models.job_listing import JobListing
 from ..utils.logger import Components, get_logger
-from .detector import ApplyMethod, SubmissionInfo
+from .detector import SubmissionInfo
 
 
 class SubmissionStatus(str, Enum):

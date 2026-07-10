@@ -9,8 +9,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -162,7 +161,6 @@ def sample_user_profile():
 @pytest.fixture
 def sample_submission_info():
     """Sample submission info for testing."""
-    from src.models.job_listing import JobSource
     from src.submission.detector import ApplyMethod, SubmissionInfo
 
     job = Mock()

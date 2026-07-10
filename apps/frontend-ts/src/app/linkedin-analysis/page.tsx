@@ -31,7 +31,12 @@ import { PageContainer } from "@/components/layout/PageContainer";
  * @returns A score ring element.
  */
 function ScoreRing({ score }: { score: number }) {
-  const color = score >= 80 ? "text-green-500" : score >= 60 ? "text-yellow-500" : "text-red-500";
+  const color =
+    score >= 80
+      ? "text-green-500"
+      : score >= 60
+        ? "text-yellow-500"
+        : "text-red-500";
   return (
     <div className="flex flex-col items-center gap-1">
       <div className={cn("text-5xl font-bold", color)}>{score}</div>
@@ -47,7 +52,11 @@ function ScoreRing({ score }: { score: number }) {
  * @param props.priority - Priority level (critical, high, medium, low).
  * @returns A styled badge element.
  */
-function PriorityBadge({ priority }: { priority: "critical" | "high" | "medium" | "low" }) {
+function PriorityBadge({
+  priority,
+}: {
+  priority: "critical" | "high" | "medium" | "low";
+}) {
   const variants: Record<string, string> = {
     critical: "bg-red-100 text-red-700 border-red-200",
     high: "bg-orange-100 text-orange-700 border-orange-200",
@@ -55,7 +64,10 @@ function PriorityBadge({ priority }: { priority: "critical" | "high" | "medium" 
     low: "bg-blue-100 text-blue-700 border-blue-200",
   };
   return (
-    <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", variants[priority])}>
+    <Badge
+      variant="outline"
+      className={cn("text-[10px] uppercase tracking-wide", variants[priority])}
+    >
       {priority}
     </Badge>
   );
@@ -70,7 +82,9 @@ function PriorityBadge({ priority }: { priority: "critical" | "high" | "medium" 
  */
 function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
   const downloadJson = () => {
-    const blob = new Blob([JSON.stringify(analysis, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(analysis, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -90,15 +104,25 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
         <CardContent className="flex items-center gap-8 pt-6 pb-5">
           <ScoreRing score={analysis.overall_score} />
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-700">LinkedIn Profile Analysis</p>
-            <p className="mt-1 text-sm text-gray-600 leading-relaxed">{analysis.summary}</p>
+            <p className="text-sm font-medium text-gray-700">
+              LinkedIn Profile Analysis
+            </p>
+            <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+              {analysis.summary}
+            </p>
             {analysis.competitive_edge && (
               <p className="mt-2 text-sm text-gray-700">
-                <span className="font-semibold">Competitive edge:</span> {analysis.competitive_edge}
+                <span className="font-semibold">Competitive edge:</span>{" "}
+                {analysis.competitive_edge}
               </p>
             )}
           </div>
-          <Button size="sm" variant="outline" onClick={downloadJson} className="shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={downloadJson}
+            className="shrink-0"
+          >
             <Download className="mr-1.5 h-3.5 w-3.5" />
             Export
           </Button>
@@ -117,18 +141,28 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
                 {(analysis.section_scores ?? []).map((s, i) => (
                   <div key={i} className="rounded-lg border p-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">{s.section_name}</span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {s.section_name}
+                      </span>
                       <span
                         className={cn(
                           "text-sm font-bold",
-                          s.score >= 80 ? "text-green-600" : s.score >= 60 ? "text-yellow-600" : "text-red-600"
+                          s.score >= 80
+                            ? "text-green-600"
+                            : s.score >= 60
+                              ? "text-yellow-600"
+                              : "text-red-600",
                         )}
                       >
                         {s.score}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-gray-400">Weight: {s.weight}</div>
-                    <p className="mt-1.5 text-xs text-gray-600 leading-relaxed">{s.feedback}</p>
+                    <div className="mt-1 text-xs text-gray-400">
+                      Weight: {s.weight}
+                    </div>
+                    <p className="mt-1.5 text-xs text-gray-600 leading-relaxed">
+                      {s.feedback}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -153,10 +187,12 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
                       </span>
                     </div>
                     <p className="mt-1.5 text-sm text-gray-700">
-                      <span className="font-semibold">Observation:</span> {insight.observation}
+                      <span className="font-semibold">Observation:</span>{" "}
+                      {insight.observation}
                     </p>
                     <p className="mt-1 text-sm text-gray-600">
-                      <span className="font-semibold">Recommendation:</span> {insight.recommendation}
+                      <span className="font-semibold">Recommendation:</span>{" "}
+                      {insight.recommendation}
                     </p>
                   </div>
                 ))}
@@ -169,12 +205,18 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
         {(analysis.keyword_recommendations?.length ?? 0) > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-blue-700">Keyword Recommendations</CardTitle>
+              <CardTitle className="text-sm text-blue-700">
+                Keyword Recommendations
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {(analysis.keyword_recommendations ?? []).map((k) => (
-                  <Badge key={k} variant="outline" className="border-blue-200 text-blue-600 text-xs">
+                  <Badge
+                    key={k}
+                    variant="outline"
+                    className="border-blue-200 text-blue-600 text-xs"
+                  >
                     {k}
                   </Badge>
                 ))}
@@ -187,7 +229,9 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
         {(analysis.generated_headline_options?.length ?? 0) > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-purple-700">Headline Options</CardTitle>
+              <CardTitle className="text-sm text-purple-700">
+                Headline Options
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-1.5">
@@ -205,13 +249,17 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
         {(analysis.summary_rewrite_suggestions?.length ?? 0) > 0 && (
           <Card className="lg:col-span-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Summary Rewrite Suggestions</CardTitle>
+              <CardTitle className="text-base">
+                Summary Rewrite Suggestions
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <ol className="space-y-2">
                 {(analysis.summary_rewrite_suggestions ?? []).map((s, i) => (
                   <li key={i} className="flex gap-2 text-sm text-gray-700">
-                    <span className="shrink-0 font-semibold text-blue-600">{i + 1}.</span>
+                    <span className="shrink-0 font-semibold text-blue-600">
+                      {i + 1}.
+                    </span>
                     {s}
                   </li>
                 ))}
@@ -230,7 +278,9 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
               <ol className="space-y-2">
                 {(analysis.action_plan ?? []).map((step, i) => (
                   <li key={i} className="flex gap-2 text-sm text-gray-700">
-                    <span className="shrink-0 font-semibold text-green-600">{i + 1}.</span>
+                    <span className="shrink-0 font-semibold text-green-600">
+                      {i + 1}.
+                    </span>
                     {step}
                   </li>
                 ))}
@@ -276,7 +326,9 @@ function SearchResults({
 }) {
   if (results.length === 0) {
     return (
-      <p className="text-sm text-gray-500">No results found. Try adjusting your search terms.</p>
+      <p className="text-sm text-gray-500">
+        No results found. Try adjusting your search terms.
+      </p>
     );
   }
 
@@ -288,11 +340,21 @@ function SearchResults({
           <CardContent className="p-3 space-y-1">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900 truncate">{result.name}</p>
-                <p className="text-xs text-gray-600 line-clamp-2">{result.headline}</p>
-                {result.location && <p className="text-xs text-gray-400">{result.location}</p>}
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {result.name}
+                </p>
+                <p className="text-xs text-gray-600 line-clamp-2">
+                  {result.headline}
+                </p>
+                {result.location && (
+                  <p className="text-xs text-gray-400">{result.location}</p>
+                )}
               </div>
-              <Button size="sm" variant="outline" onClick={() => onSelect(result.profile_url)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onSelect(result.profile_url)}
+              >
                 Analyze
               </Button>
             </div>
@@ -310,18 +372,22 @@ function SearchResults({
  * @param props.onResult - Callback invoked with the analysis result on success.
  * @returns The analysis form element.
  */
-function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => void }) {
+function AnalysisForm({
+  onResult,
+}: {
+  onResult: (r: LinkedInProfileAnalysis) => void;
+}) {
   const [activeTab, setActiveTab] = useState("url");
   const [profileUrl, setProfileUrl] = useState("");
   const [rawText, setRawText] = useState("");
   const [headline, setHeadline] = useState("");
   const [summary, setSummary] = useState("");
-  const [experienceEntries, setExperienceEntries] = useState<LinkedInExperienceEntry[]>([
-    { ...EMPTY_EXPERIENCE },
-  ]);
-  const [educationEntries, setEducationEntries] = useState<LinkedInEducationEntry[]>([
-    { ...EMPTY_EDUCATION },
-  ]);
+  const [experienceEntries, setExperienceEntries] = useState<
+    LinkedInExperienceEntry[]
+  >([{ ...EMPTY_EXPERIENCE }]);
+  const [educationEntries, setEducationEntries] = useState<
+    LinkedInEducationEntry[]
+  >([{ ...EMPTY_EDUCATION }]);
   const [skills, setSkills] = useState("");
   const [industry, setIndustry] = useState("");
   const [careerGoals, setCareerGoals] = useState("");
@@ -335,11 +401,19 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
     company: "",
     location: "",
   });
-  const [searchResults, setSearchResults] = useState<LinkedInPeopleSearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<
+    LinkedInPeopleSearchResult[]
+  >([]);
 
-  const updateExperience = (index: number, field: keyof LinkedInExperienceEntry, value: string) => {
+  const updateExperience = (
+    index: number,
+    field: keyof LinkedInExperienceEntry,
+    value: string,
+  ) => {
     setExperienceEntries((prev) =>
-      prev.map((entry, i) => (i === index ? { ...entry, [field]: value } : entry))
+      prev.map((entry, i) =>
+        i === index ? { ...entry, [field]: value } : entry,
+      ),
     );
   };
 
@@ -351,9 +425,15 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
     setExperienceEntries((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateEducation = (index: number, field: keyof LinkedInEducationEntry, value: string) => {
+  const updateEducation = (
+    index: number,
+    field: keyof LinkedInEducationEntry,
+    value: string,
+  ) => {
     setEducationEntries((prev) =>
-      prev.map((entry, i) => (i === index ? { ...entry, [field]: value } : entry))
+      prev.map((entry, i) =>
+        i === index ? { ...entry, [field]: value } : entry,
+      ),
     );
   };
 
@@ -369,17 +449,22 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
     mutationFn: () => {
       let input: LinkedInProfileInput;
       if (activeTab === "url") {
-        if (!profileUrl.trim()) throw new Error("Please enter a LinkedIn profile URL");
+        if (!profileUrl.trim())
+          throw new Error("Please enter a LinkedIn profile URL");
         input = { profile_url: profileUrl.trim() };
       } else if (activeTab === "paste") {
         if (!rawText.trim()) throw new Error("Please paste your profile text");
         input = { raw_text: rawText.trim() };
       } else {
         const experience = experienceEntries.filter(
-          (entry) => entry.title?.trim() || entry.company?.trim() || entry.description?.trim()
+          (entry) =>
+            entry.title?.trim() ||
+            entry.company?.trim() ||
+            entry.description?.trim(),
         );
         const education = educationEntries.filter(
-          (entry) => entry.school?.trim() || entry.degree?.trim() || entry.field?.trim()
+          (entry) =>
+            entry.school?.trim() || entry.degree?.trim() || entry.field?.trim(),
         );
 
         input = {
@@ -387,22 +472,38 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
           summary: summary.trim() || null,
           experience_entries: experience,
           education_entries: education,
-          skills: skills.trim() ? skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
+          skills: skills.trim()
+            ? skills
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [],
           industry: industry.trim() || null,
           career_goals: careerGoals.trim() || null,
-          target_roles: targetRoles.trim() ? targetRoles.split(",").map((s) => s.trim()).filter(Boolean) : [],
+          target_roles: targetRoles.trim()
+            ? targetRoles
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [],
         };
       }
       return profileApi.analyzeLinkedIn(input);
     },
     onSuccess: onResult,
-    onError: (err: Error) => toast.error(err.message || "Analysis failed. Check that the backend is running."),
+    onError: (err: Error) =>
+      toast.error(
+        err.message || "Analysis failed. Check that the backend is running.",
+      ),
   });
 
   const search = useMutation({
     mutationFn: () => {
-      const hasSearchInput = Object.values(searchInput).some((v) => typeof v === "string" && v.trim());
-      if (!hasSearchInput) throw new Error("Please enter at least one search term");
+      const hasSearchInput = Object.values(searchInput).some(
+        (v) => typeof v === "string" && v.trim(),
+      );
+      if (!hasSearchInput)
+        throw new Error("Please enter at least one search term");
       const input: LinkedInPeopleSearchInput = {
         keywords: searchInput.keywords?.trim() || null,
         name: searchInput.name?.trim() || null,
@@ -418,22 +519,29 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
         toast.info("No profiles found. Try broadening your search.");
       }
     },
-    onError: (err: Error) => toast.error(err.message || "Search failed. Check that the backend is running."),
+    onError: (err: Error) =>
+      toast.error(
+        err.message || "Search failed. Check that the backend is running.",
+      ),
   });
 
   const hasManualInput = Boolean(
     headline.trim() ||
-      summary.trim() ||
-      industry.trim() ||
-      careerGoals.trim() ||
-      skills.trim() ||
-      targetRoles.trim() ||
-      experienceEntries.some(
-        (entry) => entry.title?.trim() || entry.company?.trim() || entry.description?.trim()
-      ) ||
-      educationEntries.some(
-        (entry) => entry.school?.trim() || entry.degree?.trim() || entry.field?.trim()
-      )
+    summary.trim() ||
+    industry.trim() ||
+    careerGoals.trim() ||
+    skills.trim() ||
+    targetRoles.trim() ||
+    experienceEntries.some(
+      (entry) =>
+        entry.title?.trim() ||
+        entry.company?.trim() ||
+        entry.description?.trim(),
+    ) ||
+    educationEntries.some(
+      (entry) =>
+        entry.school?.trim() || entry.degree?.trim() || entry.field?.trim(),
+    ),
   );
 
   const canSubmit =
@@ -470,8 +578,8 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
               onChange={(e) => setProfileUrl(e.target.value)}
             />
             <p className="text-xs text-gray-500">
-              Requires LinkedIn credentials configured on the backend. If unavailable, the URL itself
-              will be used as context.
+              Requires LinkedIn credentials configured on the backend. If
+              unavailable, the URL itself will be used as context.
             </p>
           </div>
         </TabsContent>
@@ -484,7 +592,12 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
                 id="search-keywords"
                 placeholder="e.g., React, TypeScript"
                 value={searchInput.keywords ?? ""}
-                onChange={(e) => setSearchInput((prev) => ({ ...prev, keywords: e.target.value }))}
+                onChange={(e) =>
+                  setSearchInput((prev) => ({
+                    ...prev,
+                    keywords: e.target.value,
+                  }))
+                }
               />
             </div>
             <div className="space-y-1">
@@ -493,7 +606,9 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
                 id="search-name"
                 placeholder="Person name"
                 value={searchInput.name ?? ""}
-                onChange={(e) => setSearchInput((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setSearchInput((prev) => ({ ...prev, name: e.target.value }))
+                }
               />
             </div>
             <div className="space-y-1">
@@ -502,7 +617,9 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
                 id="search-title"
                 placeholder="Job title"
                 value={searchInput.title ?? ""}
-                onChange={(e) => setSearchInput((prev) => ({ ...prev, title: e.target.value }))}
+                onChange={(e) =>
+                  setSearchInput((prev) => ({ ...prev, title: e.target.value }))
+                }
               />
             </div>
             <div className="space-y-1">
@@ -511,7 +628,12 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
                 id="search-company"
                 placeholder="Company name"
                 value={searchInput.company ?? ""}
-                onChange={(e) => setSearchInput((prev) => ({ ...prev, company: e.target.value }))}
+                onChange={(e) =>
+                  setSearchInput((prev) => ({
+                    ...prev,
+                    company: e.target.value,
+                  }))
+                }
               />
             </div>
             <div className="space-y-1 md:col-span-2">
@@ -520,7 +642,12 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
                 id="search-location"
                 placeholder="City, country, or region"
                 value={searchInput.location ?? ""}
-                onChange={(e) => setSearchInput((prev) => ({ ...prev, location: e.target.value }))}
+                onChange={(e) =>
+                  setSearchInput((prev) => ({
+                    ...prev,
+                    location: e.target.value,
+                  }))
+                }
               />
             </div>
           </div>
@@ -535,7 +662,10 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
             {search.isPending ? "Searching..." : "Search LinkedIn Profiles"}
           </Button>
 
-          <SearchResults results={searchResults} onSelect={handleSelectSearchResult} />
+          <SearchResults
+            results={searchResults}
+            onSelect={handleSelectSearchResult}
+          />
         </TabsContent>
 
         <TabsContent value="paste" className="space-y-4">
@@ -588,7 +718,12 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>Experience</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addExperience}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addExperience}
+              >
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 Add experience
               </Button>
@@ -599,19 +734,25 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
                   <Input
                     placeholder="Title"
                     value={entry.title}
-                    onChange={(e) => updateExperience(index, "title", e.target.value)}
+                    onChange={(e) =>
+                      updateExperience(index, "title", e.target.value)
+                    }
                   />
                   <Input
                     placeholder="Company"
                     value={entry.company}
-                    onChange={(e) => updateExperience(index, "company", e.target.value)}
+                    onChange={(e) =>
+                      updateExperience(index, "company", e.target.value)
+                    }
                   />
                 </div>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <Input
                     placeholder="Dates, e.g., 2020-Present"
                     value={entry.dates}
-                    onChange={(e) => updateExperience(index, "dates", e.target.value)}
+                    onChange={(e) =>
+                      updateExperience(index, "dates", e.target.value)
+                    }
                   />
                   {experienceEntries.length > 1 && (
                     <Button
@@ -630,7 +771,9 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
                   placeholder="Description"
                   rows={2}
                   value={entry.description}
-                  onChange={(e) => updateExperience(index, "description", e.target.value)}
+                  onChange={(e) =>
+                    updateExperience(index, "description", e.target.value)
+                  }
                 />
               </div>
             ))}
@@ -640,7 +783,12 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>Education</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addEducation}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addEducation}
+              >
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 Add education
               </Button>
@@ -651,25 +799,33 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
                   <Input
                     placeholder="School"
                     value={entry.school}
-                    onChange={(e) => updateEducation(index, "school", e.target.value)}
+                    onChange={(e) =>
+                      updateEducation(index, "school", e.target.value)
+                    }
                   />
                   <Input
                     placeholder="Degree"
                     value={entry.degree}
-                    onChange={(e) => updateEducation(index, "degree", e.target.value)}
+                    onChange={(e) =>
+                      updateEducation(index, "degree", e.target.value)
+                    }
                   />
                 </div>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <Input
                     placeholder="Field of study"
                     value={entry.field}
-                    onChange={(e) => updateEducation(index, "field", e.target.value)}
+                    onChange={(e) =>
+                      updateEducation(index, "field", e.target.value)
+                    }
                   />
                   <div className="flex items-center gap-2">
                     <Input
                       placeholder="Dates, e.g., 2015-2019"
                       value={entry.dates}
-                      onChange={(e) => updateEducation(index, "dates", e.target.value)}
+                      onChange={(e) =>
+                        updateEducation(index, "dates", e.target.value)
+                      }
                     />
                     {educationEntries.length > 1 && (
                       <Button
@@ -699,7 +855,9 @@ function AnalysisForm({ onResult }: { onResult: (r: LinkedInProfileAnalysis) => 
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="target-roles">Target Roles (comma-separated)</Label>
+              <Label htmlFor="target-roles">
+                Target Roles (comma-separated)
+              </Label>
               <Input
                 id="target-roles"
                 placeholder="Senior Engineer, Tech Lead..."
@@ -747,9 +905,12 @@ export default function LinkedInAnalysisPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">LinkedIn Analysis</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            LinkedIn Analysis
+          </h1>
           <p className="mt-1 text-sm text-gray-500">
-            AI-powered feedback on your LinkedIn profile to attract inbound opportunities.
+            AI-powered feedback on your LinkedIn profile to attract inbound
+            opportunities.
           </p>
         </div>
         {result && (

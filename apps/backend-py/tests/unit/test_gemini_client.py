@@ -16,9 +16,8 @@ from src.llm.base import (
     Message,
     MessageType,
     ModelNotFoundError,
-    TokenUsage,
 )
-from src.llm.gemini_client import MODEL_PRICING, GeminiClient
+from src.llm.gemini_client import GeminiClient
 
 
 @pytest.fixture

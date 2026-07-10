@@ -221,17 +221,6 @@ class TokenUsageLogger:
         self._total_tokens += total_tokens
         self._total_cost += cost
 
-        log_data = {
-            "provider": provider,
-            "model": model,
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "total_tokens": total_tokens,
-            "cost": cost,
-            "latency_ms": latency_ms,
-            "cached": cached,
-        }
-
         self.logger.info(
             f"{provider} | {model} | "
             f"tokens: {prompt_tokens}+{completion_tokens}={total_tokens} | "

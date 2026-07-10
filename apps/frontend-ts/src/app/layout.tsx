@@ -11,7 +11,11 @@ export const metadata: Metadata = {
   description: "Automated job application pipeline",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={`${geist.variable} h-full antialiased`}>
       <body className="h-full">

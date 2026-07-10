@@ -2,14 +2,33 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import type { UserProfile, DISCResult } from "@/lib/types/api";
-import { BarChart3, TrendingUp, Award, Target, Zap, Shield, Lightbulb, Briefcase, Rocket, Sparkles } from "lucide-react";
-import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import {
+  BarChart3,
+  TrendingUp,
+  Award,
+  Target,
+  Zap,
+  Shield,
+  Lightbulb,
+  Briefcase,
+  Rocket,
+  Sparkles,
+} from "lucide-react";
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 import { cn } from "@/lib/utils/cn";
 import { DISCAssessment } from "./disc-assessment";
 
@@ -36,10 +55,12 @@ interface SkillsRadarProps {
 
 export function SkillsRadar({ skills }: SkillsRadarProps) {
   // Check how many skills have proficiency data
-  const skillsWithProficiency = skills.filter(s => s.proficiency).length;
+  const skillsWithProficiency = skills.filter((s) => s.proficiency).length;
 
   // Calculate scores by category using available data
-  const categoryScores = skills.reduce<Record<string, { total: number; count: number; hasExp: boolean }>>((acc, skill) => {
+  const categoryScores = skills.reduce<
+    Record<string, { total: number; count: number; hasExp: boolean }>
+  >((acc, skill) => {
     const cat = skill.category ?? "other";
     if (!acc[cat]) acc[cat] = { total: 0, count: 0, hasExp: false };
 
@@ -48,11 +69,20 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
     // If we have proficiency data, use it
     if (skill.proficiency) {
       switch (skill.proficiency) {
-        case "Expert": score = 95; break;
-        case "Advanced": score = 80; break;
-        case "Intermediate": score = 60; break;
-        case "Beginner": score = 40; break;
-        default: score = 50;
+        case "Expert":
+          score = 95;
+          break;
+        case "Advanced":
+          score = 80;
+          break;
+        case "Intermediate":
+          score = 60;
+          break;
+        case "Beginner":
+          score = 40;
+          break;
+        default:
+          score = 50;
       }
       // Boost by years of experience
       score += Math.min((skill.years_of_experience || 0) * 5, 20);
@@ -75,15 +105,19 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
     return acc;
   }, {});
 
-  const data: SkillScore[] = Object.entries(categoryScores).map(([cat, { total, count }]) => {
-    const avgScore = Math.min(100, Math.round(total / count));
-    const label = cat.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-    return {
-      category: label,
-      score: avgScore,
-      count,
-    };
-  }).sort((a, b) => b.score - a.score);
+  const data: SkillScore[] = Object.entries(categoryScores)
+    .map(([cat, { total, count }]) => {
+      const avgScore = Math.min(100, Math.round(total / count));
+      const label = cat
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+      return {
+        category: label,
+        score: avgScore,
+        count,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
 
   if (data.length === 0) {
     return (
@@ -95,7 +129,9 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500 dark:text-muted-foreground">No skills data available</p>
+          <p className="text-sm text-gray-500 dark:text-muted-foreground">
+            No skills data available
+          </p>
         </CardContent>
       </Card>
     );
@@ -115,7 +151,10 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
           <div className="rounded-md bg-blue-50 dark:bg-info/10 px-3 py-2 text-xs text-blue-800 dark:text-info">
             <p className="font-medium">How scores are calculated:</p>
             <ul className="mt-1 ml-4 list-disc space-y-0.5">
-              <li>With proficiency: Expert=95%, Advanced=80%, Intermediate=60%, Beginner=40%</li>
+              <li>
+                With proficiency: Expert=95%, Advanced=80%, Intermediate=60%,
+                Beginner=40%
+              </li>
               <li>Without proficiency: Based on years of experience</li>
               <li>5+ yrs=85%, 3+ yrs=70%, 1+ yrs=55%, 0 yrs=45%</li>
             </ul>
@@ -124,8 +163,9 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
           {/* Note about proficiency levels */}
           {skillsWithProficiency === 0 && (
             <div className="rounded-md bg-amber-50 dark:bg-warning/10 px-3 py-2 text-xs text-amber-800 dark:text-warning">
-              <span className="font-medium">Note:</span> Your resume doesn&apos;t include proficiency levels.
-              Scores are based on years of experience. Add proficiency levels for more accurate results.
+              <span className="font-medium">Note:</span> Your resume
+              doesn&apos;t include proficiency levels. Scores are based on years
+              of experience. Add proficiency levels for more accurate results.
             </div>
           )}
 
@@ -153,11 +193,20 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
           {/* Legend */}
           <div className="grid grid-cols-2 gap-2">
             {data.map((item) => (
-              <div key={item.category} className="flex items-center justify-between text-xs">
-                <span className="text-gray-600 dark:text-muted-foreground">{item.category}</span>
+              <div
+                key={item.category}
+                className="flex items-center justify-between text-xs"
+              >
+                <span className="text-gray-600 dark:text-muted-foreground">
+                  {item.category}
+                </span>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900 dark:text-foreground">{item.score}%</span>
-                  <span className="text-gray-400 dark:text-muted-foreground">({item.count})</span>
+                  <span className="font-medium text-gray-900 dark:text-foreground">
+                    {item.score}%
+                  </span>
+                  <span className="text-gray-400 dark:text-muted-foreground">
+                    ({item.count})
+                  </span>
                 </div>
               </div>
             ))}
@@ -188,8 +237,12 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
           <div className="flex h-[180px] items-center justify-center text-center">
             <div>
               <Sparkles className="mx-auto h-8 w-8 text-purple-400 dark:text-primary mb-2" />
-              <p className="text-sm font-medium text-gray-700 dark:text-muted-foreground">Starting Your Journey</p>
-              <p className="text-xs text-gray-500 dark:text-muted-foreground mt-1">Add experience to build your timeline</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-muted-foreground">
+                Starting Your Journey
+              </p>
+              <p className="text-xs text-gray-500 dark:text-muted-foreground mt-1">
+                Add experience to build your timeline
+              </p>
             </div>
           </div>
         </CardContent>
@@ -206,13 +259,14 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
     const endYear = end.getFullYear();
 
     for (let year = startYear; year <= endYear; year++) {
-      const monthsInYear = year === startYear && year === endYear
-        ? ((end.getMonth() - startDate.getMonth()) + 1)
-        : year === startYear
-        ? (12 - startDate.getMonth())
-        : year === endYear
-        ? (end.getMonth() + 1)
-        : 12;
+      const monthsInYear =
+        year === startYear && year === endYear
+          ? end.getMonth() - startDate.getMonth() + 1
+          : year === startYear
+            ? 12 - startDate.getMonth()
+            : year === endYear
+              ? end.getMonth() + 1
+              : 12;
 
       acc[year] = (acc[year] || 0) + monthsInYear;
     }
@@ -227,7 +281,7 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
     }))
     .sort((a, b) => a.year - b.year);
 
-  const maxYears = Math.max(...data.map(d => d.years));
+  const maxYears = Math.max(...data.map((d) => d.years));
 
   return (
     <Card>
@@ -241,7 +295,12 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={data} layout="vertical">
             <XAxis type="number" domain={[0, maxYears * 1.1]} hide />
-            <YAxis type="category" dataKey="year" tick={{ fontSize: 11, fill: "var(--chart-axis)" }} width={40} />
+            <YAxis
+              type="category"
+              dataKey="year"
+              tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+              width={40}
+            />
             <Tooltip
               cursor={{ fill: "var(--chart-cursor)" }}
               content={({ active, payload }) => {
@@ -250,12 +309,18 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
                 return (
                   <div className="rounded-lg border bg-popover text-popover-foreground border-border p-2 shadow-lg">
                     <p className="text-sm font-medium">{data.year}</p>
-                    <p className="text-xs text-gray-500 dark:text-muted-foreground">{data.years} years experience</p>
+                    <p className="text-xs text-gray-500 dark:text-muted-foreground">
+                      {data.years} years experience
+                    </p>
                   </div>
                 );
               }}
             />
-            <Bar dataKey="years" fill="var(--chart-timeline-fill)" radius={[0, 4, 4, 0]} />
+            <Bar
+              dataKey="years"
+              fill="var(--chart-timeline-fill)"
+              radius={[0, 4, 4, 0]}
+            />
           </BarChart>
         </ResponsiveContainer>
         <p className="mt-2 text-center text-xs text-gray-500 dark:text-muted-foreground">
@@ -274,7 +339,12 @@ interface StrengthAssessmentProps {
 
 export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
   // DISC assessment state
-  const [discResult, setDiscResult] = useState<{ dominance: number; influence: number; steadiness: number; conscientiousness: number } | null>(null);
+  const [discResult, setDiscResult] = useState<{
+    dominance: number;
+    influence: number;
+    steadiness: number;
+    conscientiousness: number;
+  } | null>(null);
   const [showDISCAssessment, setShowDISCAssessment] = useState(false);
 
   // Load DISC result from localStorage on mount
@@ -284,13 +354,13 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
       try {
         const parsed = JSON.parse(saved);
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setDiscResult(prev =>
+        setDiscResult((prev) =>
           prev?.dominance !== parsed.dominance ||
           prev?.influence !== parsed.influence ||
           prev?.steadiness !== parsed.steadiness ||
           prev?.conscientiousness !== parsed.conscientiousness
             ? parsed
-            : prev
+            : prev,
         );
       } catch (e) {
         console.error("Failed to parse DISC result", e);
@@ -310,59 +380,140 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
   const isFreshGrad = totalExperience <= 1;
 
   // Determine strength levels
-  const getLevel = (score: number, thresholds: { weak: number; moderate: number; strong: number }) => {
-    if (score >= thresholds.strong) return { level: "Strong", color: "text-green-600 dark:text-success bg-green-50 dark:bg-success/10", icon: Zap };
-    if (score >= thresholds.moderate) return { level: "Moderate", color: "text-blue-600 dark:text-info bg-blue-50 dark:bg-info/10", icon: Shield };
-    return { level: "Developing", color: "text-amber-600 dark:text-warning bg-amber-50 dark:bg-warning/10", icon: Lightbulb };
+  const getLevel = (
+    score: number,
+    thresholds: { weak: number; moderate: number; strong: number },
+  ) => {
+    if (score >= thresholds.strong)
+      return {
+        level: "Strong",
+        color:
+          "text-green-600 dark:text-success bg-green-50 dark:bg-success/10",
+        icon: Zap,
+      };
+    if (score >= thresholds.moderate)
+      return {
+        level: "Moderate",
+        color: "text-blue-600 dark:text-info bg-blue-50 dark:bg-info/10",
+        icon: Shield,
+      };
+    return {
+      level: "Developing",
+      color: "text-amber-600 dark:text-warning bg-amber-50 dark:bg-warning/10",
+      icon: Lightbulb,
+    };
   };
 
-  const skillsLevel = getLevel(totalSkills, { weak: 3, moderate: 8, strong: 15 });
+  const skillsLevel = getLevel(totalSkills, {
+    weak: 3,
+    moderate: 8,
+    strong: 15,
+  });
 
   // Experience level - different criteria for fresh grads vs experienced
   let experienceLevel;
   if (isFreshGrad) {
     // For fresh grads, check if they have internships or relevant projects instead
-    const hasInternships = profile.work_experience.some(e =>
-      e.title.toLowerCase().includes("intern") ||
-      e.title.toLowerCase().includes("trainee") ||
-      e.title.toLowerCase().includes("junior")
+    const hasInternships = profile.work_experience.some(
+      (e) =>
+        e.title.toLowerCase().includes("intern") ||
+        e.title.toLowerCase().includes("trainee") ||
+        e.title.toLowerCase().includes("junior"),
     );
-    const projectScore = projectCount >= 3 ? "strong" : projectCount >= 1 ? "moderate" : "developing";
+    const projectScore =
+      projectCount >= 3
+        ? "strong"
+        : projectCount >= 1
+          ? "moderate"
+          : "developing";
 
     if (hasInternships || projectScore === "strong") {
-      experienceLevel = { level: "Ready to Launch", color: "text-emerald-600 dark:text-success bg-emerald-50 dark:bg-success/10", icon: Rocket };
+      experienceLevel = {
+        level: "Ready to Launch",
+        color:
+          "text-emerald-600 dark:text-success bg-emerald-50 dark:bg-success/10",
+        icon: Rocket,
+      };
     } else if (projectScore === "moderate") {
-      experienceLevel = { level: "Building Portfolio", color: "text-blue-600 dark:text-info bg-blue-50 dark:bg-info/10", icon: Target };
+      experienceLevel = {
+        level: "Building Portfolio",
+        color: "text-blue-600 dark:text-info bg-blue-50 dark:bg-info/10",
+        icon: Target,
+      };
     } else {
-      experienceLevel = { level: "Fresh Talent", color: "text-purple-600 dark:text-primary bg-purple-50 dark:bg-primary/10", icon: Sparkles };
+      experienceLevel = {
+        level: "Fresh Talent",
+        color:
+          "text-purple-600 dark:text-primary bg-purple-50 dark:bg-primary/10",
+        icon: Sparkles,
+      };
     }
   } else {
-    experienceLevel = getLevel(totalExperience, { weak: 1, moderate: 3, strong: 5 });
+    experienceLevel = getLevel(totalExperience, {
+      weak: 1,
+      moderate: 3,
+      strong: 5,
+    });
   }
 
-  const projectsLevel = getLevel(projectCount, { weak: 1, moderate: 3, strong: 5 });
-  const credentialsLevel = getLevel(educationCount + certificationCount, { weak: 1, moderate: 2, strong: 4 });
+  const projectsLevel = getLevel(projectCount, {
+    weak: 1,
+    moderate: 3,
+    strong: 5,
+  });
+  const credentialsLevel = getLevel(educationCount + certificationCount, {
+    weak: 1,
+    moderate: 2,
+    strong: 4,
+  });
 
   // Estimate DISC-style profile based on resume patterns
   const estimateDISC = (): DISCProfile => {
-    let dominance = 30, influence = 30, conscientiousness = 30;
+    let dominance = 30,
+      influence = 30,
+      conscientiousness = 30;
     const steadiness = 30;
 
-    const leadershipKeywords = ["lead", "manager", "senior", "principal", "director", "head", "chief"];
-    const technicalKeywords = ["engineer", "developer", "architect", "technical"];
+    const leadershipKeywords = [
+      "lead",
+      "manager",
+      "senior",
+      "principal",
+      "director",
+      "head",
+      "chief",
+    ];
+    const technicalKeywords = [
+      "engineer",
+      "developer",
+      "architect",
+      "technical",
+    ];
     const creativeKeywords = ["design", "creative", "product", "ux", "ui"];
-    const analyticalKeywords = ["data", "analyst", "science", "research", "analytics"];
+    const analyticalKeywords = [
+      "data",
+      "analyst",
+      "science",
+      "research",
+      "analytics",
+    ];
 
     const allText = [
-      ...profile.work_experience.map(e => `${e.title} ${e.description || ""}`),
-      ...profile.projects.map(p => `${p.name} ${p.description || ""}`),
+      ...profile.work_experience.map(
+        (e) => `${e.title} ${e.description || ""}`,
+      ),
+      ...profile.projects.map((p) => `${p.name} ${p.description || ""}`),
       profile.summary || "",
-    ].join(" ").toLowerCase();
+    ]
+      .join(" ")
+      .toLowerCase();
 
-    if (leadershipKeywords.some(k => allText.includes(k))) dominance += 20;
-    if (creativeKeywords.some(k => allText.includes(k))) influence += 15;
-    if (technicalKeywords.some(k => allText.includes(k))) conscientiousness += 15;
-    if (analyticalKeywords.some(k => allText.includes(k))) conscientiousness += 10;
+    if (leadershipKeywords.some((k) => allText.includes(k))) dominance += 20;
+    if (creativeKeywords.some((k) => allText.includes(k))) influence += 15;
+    if (technicalKeywords.some((k) => allText.includes(k)))
+      conscientiousness += 15;
+    if (analyticalKeywords.some((k) => allText.includes(k)))
+      conscientiousness += 10;
 
     const total = dominance + influence + steadiness + conscientiousness;
     return {
@@ -389,15 +540,30 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
   };
 
   const assessments = [
-    { label: "Technical Skills", value: totalSkills, level: skillsLevel, icon: Award },
+    {
+      label: "Technical Skills",
+      value: totalSkills,
+      level: skillsLevel,
+      icon: Award,
+    },
     {
       label: "Experience",
       value: isFreshGrad ? "Entry Level" : `${totalExperience} yrs`,
       level: experienceLevel,
-      icon: Briefcase
+      icon: Briefcase,
     },
-    { label: "Projects", value: projectCount, level: projectsLevel, icon: Target },
-    { label: "Credentials", value: educationCount + certificationCount, level: credentialsLevel, icon: Award },
+    {
+      label: "Projects",
+      value: projectCount,
+      level: projectsLevel,
+      icon: Target,
+    },
+    {
+      label: "Credentials",
+      value: educationCount + certificationCount,
+      level: credentialsLevel,
+      icon: Award,
+    },
   ];
 
   return (
@@ -414,10 +580,13 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
           <div className="flex items-start gap-3 rounded-lg border border-purple-200 dark:border-border bg-gradient-to-r from-purple-50 dark:from-muted to-indigo-50 dark:to-muted p-3">
             <Sparkles className="h-5 w-5 text-purple-600 dark:text-primary flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-purple-900 dark:text-foreground">Fresh Graduate Profile</p>
+              <p className="text-sm font-semibold text-purple-900 dark:text-foreground">
+                Fresh Graduate Profile
+              </p>
               <p className="mt-1 text-xs text-purple-700 dark:text-muted-foreground">
-                Everyone starts somewhere! Your potential matters more than years of experience.
-                Focus on your skills, projects, and eagerness to learn.
+                Everyone starts somewhere! Your potential matters more than
+                years of experience. Focus on your skills, projects, and
+                eagerness to learn.
               </p>
             </div>
           </div>
@@ -430,11 +599,15 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
             return (
               <div key={item.label} className="rounded-lg border p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 dark:text-muted-foreground">{item.label}</span>
+                  <span className="text-xs text-gray-500 dark:text-muted-foreground">
+                    {item.label}
+                  </span>
                   <Icon className="h-3.5 w-3.5 text-gray-400 dark:text-muted-foreground" />
                 </div>
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-lg font-semibold text-gray-900 dark:text-foreground">{item.value}</span>
+                  <span className="text-lg font-semibold text-gray-900 dark:text-foreground">
+                    {item.value}
+                  </span>
                   <Badge className={cn("text-[10px]", item.level.color)}>
                     {item.level.level}
                   </Badge>
@@ -447,25 +620,55 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
         {/* DISC-style Profile */}
         <div className="rounded-lg border p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium text-gray-700 dark:text-muted-foreground">Working Style Profile</p>
-            <span className={cn(
-              "text-[10px]",
-              discResult ? "text-green-600 dark:text-success bg-green-50 dark:bg-success/10 px-2 py-0.5 rounded-full" : "text-gray-400 dark:text-muted-foreground"
-            )}>
+            <p className="text-xs font-medium text-gray-700 dark:text-muted-foreground">
+              Working Style Profile
+            </p>
+            <span
+              className={cn(
+                "text-[10px]",
+                discResult
+                  ? "text-green-600 dark:text-success bg-green-50 dark:bg-success/10 px-2 py-0.5 rounded-full"
+                  : "text-gray-400 dark:text-muted-foreground",
+              )}
+            >
               {discResult ? "From assessment" : "Estimated from resume"}
             </span>
           </div>
           <div className="space-y-2">
             {[
-              { label: "Dominance", value: discProfile.dominance, color: "bg-red-400 dark:bg-destructive", desc: "Direct, decisive" },
-              { label: "Influence", value: discProfile.influence, color: "bg-yellow-400 dark:bg-warning", desc: "Social, enthusiastic" },
-              { label: "Steadiness", value: discProfile.steadiness, color: "bg-green-400 dark:bg-success", desc: "Patient, reliable" },
-              { label: "Conscientiousness", value: discProfile.conscientiousness, color: "bg-blue-400 dark:bg-info", desc: "Analytical, precise" },
+              {
+                label: "Dominance",
+                value: discProfile.dominance,
+                color: "bg-red-400 dark:bg-destructive",
+                desc: "Direct, decisive",
+              },
+              {
+                label: "Influence",
+                value: discProfile.influence,
+                color: "bg-yellow-400 dark:bg-warning",
+                desc: "Social, enthusiastic",
+              },
+              {
+                label: "Steadiness",
+                value: discProfile.steadiness,
+                color: "bg-green-400 dark:bg-success",
+                desc: "Patient, reliable",
+              },
+              {
+                label: "Conscientiousness",
+                value: discProfile.conscientiousness,
+                color: "bg-blue-400 dark:bg-info",
+                desc: "Analytical, precise",
+              },
             ].map((item) => (
               <div key={item.label}>
                 <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="font-medium text-gray-700 dark:text-muted-foreground">{item.label}</span>
-                  <span className="text-gray-500 dark:text-muted-foreground">{item.value}%</span>
+                  <span className="font-medium text-gray-700 dark:text-muted-foreground">
+                    {item.label}
+                  </span>
+                  <span className="text-gray-500 dark:text-muted-foreground">
+                    {item.value}%
+                  </span>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-muted">
                   <div
@@ -480,17 +683,25 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
             onClick={() => setShowDISCAssessment(true)}
             className="mt-3 w-full rounded-md bg-indigo-50 dark:bg-secondary px-2 py-1.5 text-xs text-indigo-700 dark:text-secondary-foreground text-left hover:bg-indigo-100 dark:hover:bg-muted transition-colors"
           >
-            <span className="font-medium">{discResult ? "Retake" : "Take"}</span> DISC assessment for accurate results →
+            <span className="font-medium">
+              {discResult ? "Retake" : "Take"}
+            </span>{" "}
+            DISC assessment for accurate results →
           </button>
         </div>
 
         {/* Core Strengths */}
         {coreSkillsCount > 0 && (
           <div className="rounded-lg border p-3">
-            <p className="mb-2 text-xs font-medium text-gray-700 dark:text-muted-foreground">Core Strengths</p>
+            <p className="mb-2 text-xs font-medium text-gray-700 dark:text-muted-foreground">
+              Core Strengths
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {profile.core_skills!.slice(0, 6).map((skill) => (
-                <Badge key={skill} className="bg-indigo-100 dark:bg-primary/10 text-indigo-800 dark:text-primary text-xs">
+                <Badge
+                  key={skill}
+                  className="bg-indigo-100 dark:bg-primary/10 text-indigo-800 dark:text-primary text-xs"
+                >
                   {skill}
                 </Badge>
               ))}
@@ -507,9 +718,7 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
       {/* DISC Assessment Dialog */}
       <Dialog open={showDISCAssessment} onOpenChange={setShowDISCAssessment}>
         <DialogContent className="max-w-md">
-          <DISCAssessment
-            onComplete={handleDISCComplete}
-          />
+          <DISCAssessment onComplete={handleDISCComplete} />
         </DialogContent>
       </Dialog>
     </Card>

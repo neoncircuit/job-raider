@@ -6,12 +6,10 @@ message validation, and history tracking.
 """
 
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, Mock
+from datetime import datetime
 
 import pytest
 
-from src.agents.base import TaskType
 from src.agents.communication import (
     AgentCommunicationBus,
     AgentMessage,
@@ -314,7 +312,7 @@ class TestMessageHandler:
             type=MessageType.DIRECT_MESSAGE, sender="agent_1", receiver="test_agent"
         )
 
-        result = await handler.handle(message)
+        await handler.handle(message)
 
         assert handler_result["called"] is True
         assert handler_called.is_set()

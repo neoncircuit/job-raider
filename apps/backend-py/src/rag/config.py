@@ -6,7 +6,7 @@ Dataclasses for RAG pipeline configuration loaded from rag_config.yaml.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Dict
 
 import yaml
 

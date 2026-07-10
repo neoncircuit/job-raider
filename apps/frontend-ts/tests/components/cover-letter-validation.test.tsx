@@ -95,7 +95,7 @@ describe("CoverLetterValidationDisplay", () => {
   it("shows a no-issues message when there are no issues or feedback", () => {
     render(<CoverLetterValidationDisplay validation={baseValidation} />);
     expect(
-      screen.getByText("No issues detected. The cover letter looks good.")
+      screen.getByText("No issues detected. The cover letter looks good."),
     ).toBeInTheDocument();
   });
 });

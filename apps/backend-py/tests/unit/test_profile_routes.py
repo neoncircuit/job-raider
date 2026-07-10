@@ -210,4 +210,4 @@ class TestSearchLinkedInNoSession:
         )
 
         assert resp.status_code == 503
-        assert "LinkedIn search is unavailable" in resp.json()["detail"]
+        assert "LinkedIn search is unavailable" in resp.json()["message"]

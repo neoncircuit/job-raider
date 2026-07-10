@@ -20,7 +20,11 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppState } from "@/app/providers";
 import { formatDatetime } from "@/lib/utils/format";
-import { PIPELINE_STAGES, STATUS_COLORS, DEFAULT_SOURCES } from "@/lib/utils/constants";
+import {
+  PIPELINE_STAGES,
+  STATUS_COLORS,
+  DEFAULT_SOURCES,
+} from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
 import { PageContainer } from "@/components/layout/PageContainer";
 
@@ -30,15 +34,17 @@ const WS_BASE = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000";
 
 function usePipelineWS(runId: string | null) {
   const [messages, setMessages] = useState<WSMessage[]>([]);
-  const [wsStatus, setWsStatus] = useState<"idle" | "connected" | "error" | "closed">("idle");
+  const [wsStatus, setWsStatus] = useState<
+    "idle" | "connected" | "error" | "closed"
+  >("idle");
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     if (!runId) return;
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMessages(prev => prev.length > 0 ? [] : prev);
-    setWsStatus(prev => prev !== "idle" ? "idle" : prev);
+    setMessages((prev) => (prev.length > 0 ? [] : prev));
+    setWsStatus((prev) => (prev !== "idle" ? "idle" : prev));
     const ws = new WebSocket(`${WS_BASE}/api/pipeline/${runId}/progress`);
     wsRef.current = ws;
 
@@ -47,7 +53,9 @@ function usePipelineWS(runId: string | null) {
       try {
         const msg = JSON.parse(e.data) as WSMessage;
         setMessages((prev) => [...prev.slice(-200), msg]);
-      } catch { /* ignore malformed */ }
+      } catch {
+        /* ignore malformed */
+      }
     };
     ws.onerror = () => setWsStatus("error");
     ws.onclose = () => setWsStatus("closed");
@@ -84,19 +92,24 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
     staleTime: Infinity,
   });
 
-  const { register, handleSubmit, control, setValue, formState: { errors } } =
-    useForm<FormValues>({
-      resolver: zodResolver(schema),
-      defaultValues: {
-        keywords: "",
-        locations: "",
-        minScore: 60,
-        maxJobs: 50,
-        scamThreshold: 0.7,
-        dryRun: true,
-        skipSubmission: false,
-      },
-    });
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      keywords: "",
+      locations: "",
+      minScore: 60,
+      maxJobs: 50,
+      scamThreshold: 0.7,
+      dryRun: true,
+      skipSubmission: false,
+    },
+  });
 
   const start = useMutation({
     mutationFn: (v: FormValues) =>
@@ -111,7 +124,8 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
         skip_submission: v.skipSubmission,
       }),
     onSuccess: (data) => onStarted(data.run_id),
-    onError: () => toast.error("Failed to start pipeline. Is the backend running?"),
+    onError: () =>
+      toast.error("Failed to start pipeline. Is the backend running?"),
   });
 
   const dryRun = useWatch({ control, name: "dryRun" });
@@ -121,8 +135,13 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <Label>Keywords *</Label>
-          <Input placeholder="Python, FastAPI, machine learning…" {...register("keywords")} />
-          {errors.keywords && <p className="text-xs text-red-500">{errors.keywords.message}</p>}
+          <Input
+            placeholder="Python, FastAPI, machine learning…"
+            {...register("keywords")}
+          />
+          {errors.keywords && (
+            <p className="text-xs text-red-500">{errors.keywords.message}</p>
+          )}
         </div>
         <div className="space-y-1">
           <Label>Locations</Label>
@@ -130,16 +149,34 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
         </div>
         <div className="space-y-1">
           <Label>Min Score (0–100)</Label>
-          <Input type="number" min={0} max={100} {...register("minScore", { valueAsNumber: true })} />
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            {...register("minScore", { valueAsNumber: true })}
+          />
         </div>
         <div className="space-y-1">
           <Label>Max Jobs</Label>
-          <Input type="number" min={1} max={500} {...register("maxJobs", { valueAsNumber: true })} />
+          <Input
+            type="number"
+            min={1}
+            max={500}
+            {...register("maxJobs", { valueAsNumber: true })}
+          />
         </div>
         <div className="space-y-1">
           <Label>Scam Threshold (0–1)</Label>
-          <Input type="number" step="0.1" min={0} max={1} {...register("scamThreshold", { valueAsNumber: true })} />
-          <p className="text-xs text-gray-400">Jobs above this score are filtered out.</p>
+          <Input
+            type="number"
+            step="0.1"
+            min={0}
+            max={1}
+            {...register("scamThreshold", { valueAsNumber: true })}
+          />
+          <p className="text-xs text-gray-400">
+            Jobs above this score are filtered out.
+          </p>
         </div>
       </div>
 
@@ -168,7 +205,11 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
         </p>
       )}
 
-      <Button type="submit" disabled={start.isPending} className="w-full sm:w-auto">
+      <Button
+        type="submit"
+        disabled={start.isPending}
+        className="w-full sm:w-auto"
+      >
         <Play className="mr-1.5 h-4 w-4" />
         {start.isPending ? "Starting…" : "Start Pipeline"}
       </Button>
@@ -188,11 +229,14 @@ function LiveMonitor({ runId }: { runId: string }) {
     }
   }, [messages]);
 
-  const lastProgress = [...messages].reverse().find((m) => m.type === "stage_progress");
-  const progressPct = lastProgress?.type === "stage_progress" ? lastProgress.progress : 0;
+  const lastProgress = [...messages]
+    .reverse()
+    .find((m) => m.type === "stage_progress");
+  const progressPct =
+    lastProgress?.type === "stage_progress" ? lastProgress.progress : 0;
 
   const isComplete = messages.some(
-    (m) => m.type === "pipeline_complete" || m.type === "pipeline_failed"
+    (m) => m.type === "pipeline_complete" || m.type === "pipeline_failed",
   );
 
   return (
@@ -205,41 +249,71 @@ function LiveMonitor({ runId }: { runId: string }) {
             {wsStatus === "connected" && !isComplete ? (
               <Wifi className="h-4 w-4 text-green-500 animate-pulse" />
             ) : (
-              <WifiOff className={cn("h-4 w-4", wsStatus === "error" ? "text-red-500" : "text-gray-400")} />
+              <WifiOff
+                className={cn(
+                  "h-4 w-4",
+                  wsStatus === "error" ? "text-red-500" : "text-gray-400",
+                )}
+              />
             )}
             <span className="text-sm font-medium text-gray-700">
               <code className="font-mono text-xs">{runId.slice(0, 12)}…</code>
             </span>
           </div>
-          <Badge className={cn("text-xs", isComplete ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800")}>
+          <Badge
+            className={cn(
+              "text-xs",
+              isComplete
+                ? "bg-green-100 text-green-800"
+                : "bg-blue-100 text-blue-800",
+            )}
+          >
             {isComplete ? "Complete" : wsStatus}
           </Badge>
         </div>
 
         {/* Progress bar */}
-        <Progress value={isComplete ? 100 : progressPct * 100} className="h-2" />
+        <Progress
+          value={isComplete ? 100 : progressPct * 100}
+          className="h-2"
+        />
 
         {/* Stage indicators */}
         <div className="rounded-lg border bg-white p-3 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Stages</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+            Stages
+          </p>
           <div className="flex flex-col gap-1.5">
             {PIPELINE_STAGES.map((s) => {
               const completed = messages.some(
-                (m) => m.type === "stage_completed" && m.stage === s.key
+                (m) => m.type === "stage_completed" && m.stage === s.key,
               );
-              const active = messages.some(
-                (m) => m.type === "stage_started" && m.stage === s.key
-              ) && !completed;
+              const active =
+                messages.some(
+                  (m) => m.type === "stage_started" && m.stage === s.key,
+                ) && !completed;
               return (
                 <div key={s.key} className="flex items-center gap-2">
-                  <div className={cn(
-                    "h-2 w-2 rounded-full shrink-0",
-                    completed ? "bg-green-500" : active ? "bg-blue-500 animate-pulse" : "bg-gray-200"
-                  )} />
-                  <span className={cn(
-                    "text-sm",
-                    completed ? "text-green-700 font-medium" : active ? "text-blue-700 font-medium" : "text-gray-400"
-                  )}>
+                  <div
+                    className={cn(
+                      "h-2 w-2 rounded-full shrink-0",
+                      completed
+                        ? "bg-green-500"
+                        : active
+                          ? "bg-blue-500 animate-pulse"
+                          : "bg-gray-200",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "text-sm",
+                      completed
+                        ? "text-green-700 font-medium"
+                        : active
+                          ? "text-blue-700 font-medium"
+                          : "text-gray-400",
+                    )}
+                  >
                     {s.label}
                   </span>
                 </div>
@@ -258,18 +332,24 @@ function LiveMonitor({ runId }: { runId: string }) {
           {messages.map((m, i) => (
             <div key={i} className="flex gap-2">
               <span className="shrink-0 text-gray-600">
-                {"timestamp" in m ? new Date(m.timestamp).toLocaleTimeString() : ""}
+                {"timestamp" in m
+                  ? new Date(m.timestamp).toLocaleTimeString()
+                  : ""}
               </span>
-              <span className={cn(
-                m.type === "pipeline_failed" && "text-red-400",
-                m.type === "pipeline_complete" && "text-green-400",
-                m.type === "stage_completed" && "text-blue-300",
-                m.type === "stage_started" && "text-indigo-300",
-              )}>
+              <span
+                className={cn(
+                  m.type === "pipeline_failed" && "text-red-400",
+                  m.type === "pipeline_complete" && "text-green-400",
+                  m.type === "stage_completed" && "text-blue-300",
+                  m.type === "stage_started" && "text-indigo-300",
+                )}
+              >
                 <span className="text-gray-500">[{m.type}]</span>{" "}
                 {"stage" in m && m.stage ? `${m.stage} ` : ""}
                 {"count" in m ? `count=${m.count} ` : ""}
-                {"progress" in m ? `${((m as { progress: number }).progress * 100).toFixed(0)}% ` : ""}
+                {"progress" in m
+                  ? `${((m as { progress: number }).progress * 100).toFixed(0)}% `
+                  : ""}
                 {"error" in m ? (m as { error: string }).error : ""}
               </span>
             </div>
@@ -293,34 +373,47 @@ function HistoryPanel({ onResume }: { onResume: (id: string) => void }) {
   });
 
   if (isLoading) return <p className="text-sm text-gray-400">Loading…</p>;
-  if (!data?.runs.length) return <p className="text-sm text-gray-400">No runs yet.</p>;
+  if (!data?.runs.length)
+    return <p className="text-sm text-gray-400">No runs yet.</p>;
 
   return (
     <PageContainer variant="content">
       <div className="space-y-2">
         {data.runs.map((r) => (
-        <div key={r.run_id} className="flex items-center justify-between rounded-lg border bg-white p-3">
-          <div>
-            <p className="text-sm font-mono text-gray-700">{r.run_id.slice(0, 12)}…</p>
-            <p className="text-xs text-gray-400">{formatDatetime(r.created_at)}</p>
-            <p className="text-xs text-gray-500">
-              {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0} applied
-            </p>
+          <div
+            key={r.run_id}
+            className="flex items-center justify-between rounded-lg border bg-white p-3"
+          >
+            <div>
+              <p className="text-sm font-mono text-gray-700">
+                {r.run_id.slice(0, 12)}…
+              </p>
+              <p className="text-xs text-gray-400">
+                {formatDatetime(r.created_at)}
+              </p>
+              <p className="text-xs text-gray-500">
+                {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0} applied
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge
+                className={cn(
+                  "text-xs",
+                  STATUS_COLORS[r.status] ?? "bg-gray-100 text-gray-700",
+                )}
+              >
+                {r.status}
+              </Badge>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs"
+                onClick={() => onResume(r.run_id)}
+              >
+                View
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={cn("text-xs", STATUS_COLORS[r.status] ?? "bg-gray-100 text-gray-700")}>
-              {r.status}
-            </Badge>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs"
-              onClick={() => onResume(r.run_id)}
-            >
-              View
-            </Button>
-          </div>
-        </div>
         ))}
       </div>
     </PageContainer>
@@ -357,7 +450,9 @@ export default function PipelinePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pipeline</h1>
-          <p className="mt-1 text-sm text-gray-500">Start, monitor, and review pipeline runs.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Start, monitor, and review pipeline runs.
+          </p>
         </div>
         {activeRunId && tab === "monitor" && (
           <Button
@@ -376,7 +471,10 @@ export default function PipelinePage() {
         <TabsList>
           <TabsTrigger value="start">Start</TabsTrigger>
           <TabsTrigger value="monitor" disabled={!activeRunId}>
-            Live Monitor {activeRunId && <span className="ml-1.5 h-2 w-2 rounded-full bg-green-500 inline-block animate-pulse" />}
+            Live Monitor{" "}
+            {activeRunId && (
+              <span className="ml-1.5 h-2 w-2 rounded-full bg-green-500 inline-block animate-pulse" />
+            )}
           </TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
@@ -385,7 +483,9 @@ export default function PipelinePage() {
           <PageContainer variant="form" className="space-y-0">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Configure Pipeline Run</CardTitle>
+                <CardTitle className="text-base">
+                  Configure Pipeline Run
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <StartForm onStarted={handleStarted} />
@@ -398,12 +498,19 @@ export default function PipelinePage() {
           {activeRunId ? (
             <LiveMonitor runId={activeRunId} />
           ) : (
-            <p className="text-sm text-gray-400">No active run. Start a pipeline first.</p>
+            <p className="text-sm text-gray-400">
+              No active run. Start a pipeline first.
+            </p>
           )}
         </TabsContent>
 
         <TabsContent value="history" className="mt-5">
-          <HistoryPanel onResume={(id) => { setActiveRunId(id); setTab("monitor"); }} />
+          <HistoryPanel
+            onResume={(id) => {
+              setActiveRunId(id);
+              setTab("monitor");
+            }}
+          />
         </TabsContent>
       </Tabs>
     </div>

@@ -428,9 +428,6 @@ class SubmissionAnalyzer:
         )
 
         # Manual jobs need sequential processing (with some parallelization)
-        manual_groups = len(manual_jobs) // concurrent_limit + (
-            1 if len(manual_jobs) % concurrent_limit else 0
-        )
         manual_time = sum(s.estimated_time_minutes for s in manual_jobs)
 
         total_time = auto_time + manual_time

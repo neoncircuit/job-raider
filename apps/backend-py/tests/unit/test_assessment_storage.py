@@ -4,19 +4,14 @@
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
 from src.assessment.storage import AssessmentStorage
 from src.models.assessment import (
-    AnswerFormat,
     AssessmentMode,
     AssessmentSession,
     DifficultyLevel,
-    Question,
-    QuestionScore,
-    QuestionType,
     SessionStatus,
 )
 

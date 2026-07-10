@@ -12,15 +12,13 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from docx import Document
 from pypdf import PdfReader
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
-
-logger = logging.getLogger(__name__)
 from ..models.job_listing import ExperienceLevel
 from ..models.user_profile import (
     ApprenticeshipContract,
@@ -34,6 +32,8 @@ from ..models.user_profile import (
     UserProfile,
     WorkExperience,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ResumeParser:

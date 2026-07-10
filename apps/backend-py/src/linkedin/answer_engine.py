@@ -8,20 +8,15 @@ Author: Job Raider
 Date: 2026-05-04
 """
 
-import re
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 from pydantic import BaseModel, Field
 
 from ..models.user_profile import (
-    Education,
-    Skill,
     UserProfile,
     VisaStatus,
-    WorkExperience,
 )
 from ..utils.logger import Components, get_logger
 from .form_models import (
@@ -29,7 +24,6 @@ from .form_models import (
     FormQuestion,
     ParsedForm,
     QuestionAnswer,
-    QuestionType,
 )
 
 
@@ -432,7 +426,6 @@ class QuestionAnswerEngine:
         Returns:
             List of RuleMatcher instances.
         """
-        profile = self.profile
         rules: List[RuleMatcher] = []
 
         # Visa / work authorization

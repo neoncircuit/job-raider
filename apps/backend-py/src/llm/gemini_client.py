@@ -20,7 +20,6 @@ from .base import (
     AuthenticationError,
     BaseLLMClient,
     CostEstimate,
-    InvalidRequestError,
     LLMClientError,
     LLMConfig,
     LLMResponse,

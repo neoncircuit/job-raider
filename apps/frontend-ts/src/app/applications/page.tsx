@@ -28,15 +28,21 @@ function AppCard({
   onUnsave?: () => void;
   onUnhide?: () => void;
 }) {
-  const statusColor = STATUS_COLORS[app.current_status.toLowerCase()] ?? "bg-gray-100 text-gray-700";
+  const statusColor =
+    STATUS_COLORS[app.current_status.toLowerCase()] ??
+    "bg-gray-100 text-gray-700";
 
   return (
     <Card>
       <CardContent className="flex items-center justify-between gap-4 pt-4 pb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-medium text-gray-900 truncate">{app.job_title}</p>
-            {app.is_bookmarked && <Bookmark className="h-3.5 w-3.5 shrink-0 text-blue-500" />}
+            <p className="font-medium text-gray-900 truncate">
+              {app.job_title}
+            </p>
+            {app.is_bookmarked && (
+              <Bookmark className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+            )}
           </div>
           <p className="text-sm text-gray-500">{app.company}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -44,26 +50,45 @@ function AppCard({
               {app.current_status.replace(/_/g, " ")}
             </Badge>
             {app.applied_date && (
-              <span className="text-xs text-gray-400">{formatDate(app.applied_date)}</span>
+              <span className="text-xs text-gray-400">
+                {formatDate(app.applied_date)}
+              </span>
             )}
             {app.days_since_application != null && (
-              <span className="text-xs text-gray-400">{app.days_since_application}d ago</span>
+              <span className="text-xs text-gray-400">
+                {app.days_since_application}d ago
+              </span>
             )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {app.source_url && (
-            <a href={app.source_url} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-blue-600">
+            <a
+              href={app.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-gray-400 hover:text-blue-600"
+            >
               <ExternalLink className="h-4 w-4" />
             </a>
           )}
           {onUnsave && (
-            <Button size="sm" variant="ghost" onClick={onUnsave} className="text-xs text-gray-500">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onUnsave}
+              className="text-xs text-gray-500"
+            >
               Unsave
             </Button>
           )}
           {onUnhide && (
-            <Button size="sm" variant="ghost" onClick={onUnhide} className="text-xs text-gray-500">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onUnhide}
+              className="text-xs text-gray-500"
+            >
               Unhide
             </Button>
           )}
@@ -116,16 +141,28 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label>Job Title *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Software Engineer" />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Software Engineer"
+            />
           </div>
           <div className="space-y-1">
             <Label>Company *</Label>
-            <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Corp" />
+            <Input
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder="Acme Corp"
+            />
           </div>
         </div>
         <div className="space-y-1">
           <Label>How did you apply?</Label>
-          <Input value={method} onChange={(e) => setMethod(e.target.value)} placeholder="Company website, referral…" />
+          <Input
+            value={method}
+            onChange={(e) => setMethod(e.target.value)}
+            placeholder="Company website, referral…"
+          />
         </div>
         <div className="flex gap-2">
           <Button
@@ -189,7 +226,9 @@ export default function ApplicationsPage() {
     <PageContainer variant="full-bleed">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Applications</h1>
-        <p className="mt-1 text-sm text-gray-500">Track and manage your job applications.</p>
+        <p className="mt-1 text-sm text-gray-500">
+          Track and manage your job applications.
+        </p>
       </div>
 
       {/* Summary tiles */}
@@ -201,7 +240,10 @@ export default function ApplicationsPage() {
             { label: "Hidden", value: summary.hidden },
             { label: "External", value: summary.external },
           ].map(({ label, value }) => (
-            <div key={label} className="rounded-lg border bg-white p-4 text-center">
+            <div
+              key={label}
+              className="rounded-lg border bg-white p-4 text-center"
+            >
               <p className="text-2xl font-bold text-gray-900">{value}</p>
               <p className="text-xs text-gray-500">{label}</p>
             </div>
@@ -209,7 +251,9 @@ export default function ApplicationsPage() {
         </div>
       )}
 
-      <TrackExternalForm onSuccess={() => qc.invalidateQueries({ queryKey: ["applications"] })} />
+      <TrackExternalForm
+        onSuccess={() => qc.invalidateQueries({ queryKey: ["applications"] })}
+      />
 
       <Tabs defaultValue="all">
         <TabsList>
@@ -225,20 +269,29 @@ export default function ApplicationsPage() {
         </TabsList>
 
         <TabsContent value="all" className="mt-4 space-y-2">
-          {allQuery.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
-          {(allQuery.data?.applications ?? []).length === 0 && !allQuery.isLoading && (
-            <p className="text-sm text-gray-400">No applications tracked yet.</p>
+          {allQuery.isLoading && (
+            <p className="text-sm text-gray-400">Loading…</p>
           )}
+          {(allQuery.data?.applications ?? []).length === 0 &&
+            !allQuery.isLoading && (
+              <p className="text-sm text-gray-400">
+                No applications tracked yet.
+              </p>
+            )}
           {(allQuery.data?.applications ?? []).map((app) => (
             <AppCard key={app.application_id} app={app} />
           ))}
         </TabsContent>
 
         <TabsContent value="saved" className="mt-4 space-y-2">
-          {savedQuery.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
-          {(savedQuery.data?.applications ?? []).filter((a) => a.is_bookmarked).length === 0 && !savedQuery.isLoading && (
-            <p className="text-sm text-gray-400">No saved jobs yet.</p>
+          {savedQuery.isLoading && (
+            <p className="text-sm text-gray-400">Loading…</p>
           )}
+          {(savedQuery.data?.applications ?? []).filter((a) => a.is_bookmarked)
+            .length === 0 &&
+            !savedQuery.isLoading && (
+              <p className="text-sm text-gray-400">No saved jobs yet.</p>
+            )}
           {(savedQuery.data?.applications ?? [])
             .filter((a) => a.is_bookmarked)
             .map((app) => (
@@ -251,10 +304,14 @@ export default function ApplicationsPage() {
         </TabsContent>
 
         <TabsContent value="hidden" className="mt-4 space-y-2">
-          {hiddenQuery.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
-          {(hiddenQuery.data?.applications ?? []).filter((a) => a.is_hidden).length === 0 && !hiddenQuery.isLoading && (
-            <p className="text-sm text-gray-400">No hidden jobs.</p>
+          {hiddenQuery.isLoading && (
+            <p className="text-sm text-gray-400">Loading…</p>
           )}
+          {(hiddenQuery.data?.applications ?? []).filter((a) => a.is_hidden)
+            .length === 0 &&
+            !hiddenQuery.isLoading && (
+              <p className="text-sm text-gray-400">No hidden jobs.</p>
+            )}
           {(hiddenQuery.data?.applications ?? [])
             .filter((a) => a.is_hidden)
             .map((app) => (

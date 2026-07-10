@@ -4,7 +4,7 @@
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
-    public readonly detail: string
+    public readonly detail: string,
   ) {
     super(`API ${status}: ${detail}`);
     this.name = "ApiError";
@@ -50,7 +50,10 @@ function log(level: string, message: string, ...args: unknown[]) {
  */
 export function validateAuthConfig(): { enabled: boolean; message: string } {
   if (authValidated) {
-    return { enabled: authEnabled, message: authEnabled ? "Auth enabled" : "Auth disabled (local dev mode)" };
+    return {
+      enabled: authEnabled,
+      message: authEnabled ? "Auth enabled" : "Auth disabled (local dev mode)",
+    };
   }
 
   // In browser environment, we can't directly check server env vars
@@ -76,12 +79,21 @@ export function updateAuthState(isAuthenticated: boolean) {
 }
 
 function logRequest(method: string, path: string, body?: unknown) {
-  log("INFO", `API Request: ${method} ${path}`, body ? JSON.stringify(body) : "");
+  log(
+    "INFO",
+    `API Request: ${method} ${path}`,
+    body ? JSON.stringify(body) : "",
+  );
 }
 
 function logResponse(status: number, path: string, data?: unknown) {
-  const statusColor = status >= 200 && status < 300 ? "✅" : status >= 400 ? "❌" : "⚠️";
-  log("INFO", `API Response: ${statusColor} ${status} ${path}`, data ? JSON.stringify(data).substring(0, 200) : "");
+  const statusColor =
+    status >= 200 && status < 300 ? "✅" : status >= 400 ? "❌" : "⚠️";
+  log(
+    "INFO",
+    `API Response: ${statusColor} ${status} ${path}`,
+    data ? JSON.stringify(data).substring(0, 200) : "",
+  );
 }
 
 const PROXY_BASE = "/api/proxy";
@@ -95,7 +107,7 @@ const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
  * Sleep for specified milliseconds
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -126,7 +138,7 @@ interface RequestOptions {
 export async function request<T>(
   method: string,
   path: string,
-  opts: RequestOptions = {}
+  opts: RequestOptions = {},
 ): Promise<T> {
   const { body, formData, params, signal, retries = 0 } = opts;
 
@@ -166,7 +178,10 @@ export async function request<T>(
     // Check if we should retry
     if (retries < MAX_RETRIES && shouldRetry(0, fetchError)) {
       const delay = RETRY_DELAY_MS * Math.pow(2, retries); // Exponential backoff
-      log("WARN", `Retrying request (${retries + 1}/${MAX_RETRIES}) after ${delay}ms...`);
+      log(
+        "WARN",
+        `Retrying request (${retries + 1}/${MAX_RETRIES}) after ${delay}ms...`,
+      );
       await sleep(delay);
       return request<T>(method, path, { ...opts, retries: retries + 1 });
     }
@@ -208,7 +223,10 @@ export async function request<T>(
     const apiError = new ApiError(res.status, detail);
     if (retries < MAX_RETRIES && shouldRetry(res.status, apiError)) {
       const delay = RETRY_DELAY_MS * Math.pow(2, retries); // Exponential backoff
-      log("WARN", `Retrying request (${retries + 1}/${MAX_RETRIES}) after ${delay}ms...`);
+      log(
+        "WARN",
+        `Retrying request (${retries + 1}/${MAX_RETRIES}) after ${delay}ms...`,
+      );
       await sleep(delay);
       return request<T>(method, path, { ...opts, retries: retries + 1 });
     }

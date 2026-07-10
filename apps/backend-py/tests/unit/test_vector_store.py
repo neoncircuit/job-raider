@@ -1,6 +1,5 @@
 """Unit tests for the ChromaStore vector store."""
 
-from unittest.mock import MagicMock, patch
 
 import pytest
 

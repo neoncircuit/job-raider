@@ -8,7 +8,7 @@ Author: Job Raider
 Date: 2026-05-04
 """
 
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from playwright.sync_api import ElementHandle, Page
 

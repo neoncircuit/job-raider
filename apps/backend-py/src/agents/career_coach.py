@@ -5,16 +5,13 @@ Provides intelligent career guidance, gap analysis, upskilling roadmaps,
 and personalized career recommendations.
 """
 
-import asyncio
-import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Any, Dict, List
 
 from ..llm.router import LLMRouter
-from .base import AgentCapability, AgentState, BaseAgent, Task, TaskResult, TaskType
+from .base import AgentCapability, BaseAgent, Task, TaskResult, TaskType
 
 logger = logging.getLogger(__name__)
 
@@ -305,7 +302,7 @@ class CareerCoachAgent(BaseAgent):
 
     async def validate_task(self, task: Task) -> bool:
         """Validate career coach task."""
-        if not task.type in self.capabilities.task_types:
+        if task.type not in self.capabilities.task_types:
             return False
 
         # Check for required data based on task type
@@ -847,8 +844,8 @@ class CareerCoachAgent(BaseAgent):
         return [
             {"week": 2, "milestone": f"Learn {skill_name} basics"},
             {"week": 4, "milestone": f"Build first {skill_name} project"},
-            {"week": 6, "milestone": f"Master intermediate concepts"},
-            {"week": 8, "milestone": f"Complete advanced project"},
+            {"week": 6, "milestone": "Master intermediate concepts"},
+            {"week": 8, "milestone": "Complete advanced project"},
         ]
 
     def _recommend_practice_projects(self, skill_name: str) -> List[str]:

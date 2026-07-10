@@ -25,16 +25,22 @@ test.describe("Jobs page", () => {
 
     // The mocked POST /jobs/search returns sampleJobs; the first result's
     // title renders in the left-hand results list.
-    await expect(page.getByText("Senior Software Engineer").first()).toBeVisible({
+    await expect(
+      page.getByText("Senior Software Engineer").first(),
+    ).toBeVisible({
       timeout: 10000,
     });
   });
 
-  test("generates a cover letter and displays proofread validation", async ({ page }) => {
+  test("generates a cover letter and displays proofread validation", async ({
+    page,
+  }) => {
     await page.locator('input[name="keywords"]').fill("Software Engineer");
     await page.locator('button[type="submit"]').click();
 
-    await expect(page.getByText("Senior Software Engineer").first()).toBeVisible({
+    await expect(
+      page.getByText("Senior Software Engineer").first(),
+    ).toBeVisible({
       timeout: 10000,
     });
 
@@ -45,7 +51,9 @@ test.describe("Jobs page", () => {
     await page.getByRole("button", { name: "Generate Cover Letter" }).click();
 
     // The letter and proofread result should appear
-    await expect(page.getByText("Cover Letter").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Cover Letter").first()).toBeVisible({
+      timeout: 10000,
+    });
     await expect(page.getByText("I am excited about")).toBeVisible();
     await expect(page.getByText("Proofread").first()).toBeVisible();
     await expect(page.getByText("Ready to send")).toBeVisible();

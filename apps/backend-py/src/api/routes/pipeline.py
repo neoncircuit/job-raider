@@ -7,23 +7,17 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-import asyncio
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from ...extractors.resume_parser import ResumeParser
-from ...models.job_listing import JobListing
 from ...models.user_profile import UserProfile
-from ...pipeline.orchestrator import PipelineConfig, PipelineOrchestrator, PipelineStage
+from ...pipeline.orchestrator import PipelineConfig, PipelineOrchestrator
 from ...utils.logger import Components, get_logger
 from ..models.requests import PipelineStartRequest
 from ..models.responses import (
-    ErrorResponse,
-    PipelineResultResponse,
     PipelineStatusResponse,
 )
 from ..websocket.progress import manager

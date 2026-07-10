@@ -5,37 +5,37 @@
  * props, so the hook is mocked rather than props being passed through.
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { useTheme } from 'next-themes';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { useTheme } from "next-themes";
 
-vi.mock('next-themes', () => ({
+vi.mock("next-themes", () => ({
   useTheme: vi.fn(),
 }));
 
 type UseThemeReturn = ReturnType<typeof useTheme>;
 
-describe('ThemeToggle', () => {
-  it('renders the toggle button', () => {
+describe("ThemeToggle", () => {
+  it("renders the toggle button", () => {
     vi.mocked(useTheme).mockReturnValue({
-      theme: 'light',
+      theme: "light",
       setTheme: vi.fn(),
     } as unknown as UseThemeReturn);
     render(<ThemeToggle />);
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByRole("button")).toBeInTheDocument();
   });
 
-  it('switches to light mode when clicked in dark mode', async () => {
+  it("switches to light mode when clicked in dark mode", async () => {
     const setTheme = vi.fn();
     vi.mocked(useTheme).mockReturnValue({
-      theme: 'dark',
+      theme: "dark",
       setTheme,
     } as unknown as UseThemeReturn);
     render(<ThemeToggle />);
     // In dark mode the button is labelled "Light Mode" (the action it performs)
-    await userEvent.click(screen.getByRole('button', { name: /light mode/i }));
-    expect(setTheme).toHaveBeenCalledWith('light');
+    await userEvent.click(screen.getByRole("button", { name: /light mode/i }));
+    expect(setTheme).toHaveBeenCalledWith("light");
   });
 });

@@ -10,7 +10,7 @@ Date: 2026-04-20
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import List, Optional, Set
 
 from ..models.job_listing import JobListing, JobListingCollection
 from ..models.user_profile import UserProfile

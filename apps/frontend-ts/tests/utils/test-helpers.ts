@@ -8,10 +8,10 @@
  * Date: 2026-06-08
  */
 
-import { render, RenderOptions } from '@testing-library/react';
-import { ReactElement } from 'react';
-import userEvent from '@testing-library/user-event';
-import { vi, expect } from 'vitest';
+import { render, RenderOptions } from "@testing-library/react";
+import { ReactElement } from "react";
+import userEvent from "@testing-library/user-event";
+import { vi, expect } from "vitest";
 
 /**
  * Custom render function that includes global providers
@@ -59,7 +59,7 @@ export function createMockFile(
   mimeType: string,
 ): File {
   const file = new File([content], filename, { type: mimeType });
-  Object.defineProperty(file, 'name', {
+  Object.defineProperty(file, "name", {
     value: filename,
     configurable: true,
   });
@@ -71,7 +71,7 @@ export function createMockFile(
  *
  * @param href - Location href to set
  */
-export function mockLocation(href: string = 'http://localhost:3000') {
+export function mockLocation(href: string = "http://localhost:3000") {
   // window.location is readonly; cast to a mutable shape for the test mock.
   const mockWindow = window as unknown as { location?: Location };
   delete mockWindow.location;
@@ -100,7 +100,9 @@ export async function selectOption(element: HTMLElement, optionText: string) {
   const user = userEvent.setup();
   await user.click(element);
 
-  const option = document.querySelector(`option[value="${optionText}"]`) as HTMLElement;
+  const option = document.querySelector(
+    `option[value="${optionText}"]`,
+  ) as HTMLElement;
   if (option) {
     await user.click(option);
   }
@@ -111,8 +113,10 @@ export async function selectOption(element: HTMLElement, optionText: string) {
  *
  * @param selector - Selector for loading element
  */
-export async function waitForLoadingComplete(selector: string = '[data-loading="true"]') {
-  const { waitFor } = await import('@testing-library/react');
+export async function waitForLoadingComplete(
+  selector: string = '[data-loading="true"]',
+) {
+  const { waitFor } = await import("@testing-library/react");
   await waitFor(
     () => {
       const loadingElements = document.querySelectorAll(selector);
@@ -194,7 +198,7 @@ export class MockLocalStorage {
  */
 export function setupMockLocalStorage() {
   const mockStorage = new MockLocalStorage();
-  vi.stubGlobal('localStorage', mockStorage);
+  vi.stubGlobal("localStorage", mockStorage);
   return mockStorage;
 }
 
@@ -202,12 +206,12 @@ export function setupMockLocalStorage() {
  * Helper to test responsive breakpoints
  */
 export const breakpoints = {
-  xs: '375px',
-  sm: '640px',
-  md: '768px',
-  lg: '1024px',
-  xl: '1280px',
-  '2xl': '1536px',
+  xs: "375px",
+  sm: "640px",
+  md: "768px",
+  lg: "1024px",
+  xl: "1280px",
+  "2xl": "1536px",
 };
 
 /**
@@ -216,8 +220,8 @@ export const breakpoints = {
  * @param width - Viewport width
  * @param height - Viewport height
  */
-export function setViewport(width: string, height: string = '800px') {
+export function setViewport(width: string, height: string = "800px") {
   window.innerWidth = parseInt(width);
   window.innerHeight = parseInt(height);
-  window.dispatchEvent(new Event('resize'));
+  window.dispatchEvent(new Event("resize"));
 }

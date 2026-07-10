@@ -51,7 +51,6 @@ COUNTRY_CODE_MAP = {
     "pe": "Peru",
     "za": "South Africa",
     "nz": "New Zealand",
-    "sg": "Singapore",
 }
 
 # City to country mapping for common tech hubs
@@ -113,7 +112,6 @@ def normalize_location(location: Optional[str]) -> str:
     # Has comma but no country code - try to add one
     if ", " in location:
         parts = location.split(", ")
-        city_part = parts[0]
         # Check if the last part might be a country name
         last_part = parts[-1].lower()
         for code, country in COUNTRY_CODE_MAP.items():

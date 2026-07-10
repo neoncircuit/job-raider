@@ -7,21 +7,17 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from ...models.job_listing import JobListing, JobListingCollection
 from ...models.user_profile import UserProfile
 from ...scoring.matcher import JobMatcher
-from ...scrapers.jsearch_scraper import JSearchScraper
-from ...scrapers.linkedin_scraper import LinkedInScraper
 from ...scrapers.manager import ScraperManager
 from ...utils.location_normalizer import normalize_all_locations
 from ...utils.logger import Components, get_logger
 from ..models.requests import JobSearchRequest, SemanticSearchRequest
-from ..models.responses import JobListingResponse, SemanticSearchResult
+from ..models.responses import SemanticSearchResult
 from .profile import active_profile_id, stored_profiles
 
 router = APIRouter()
@@ -725,14 +721,10 @@ async def get_job_similarity(job_id: str):
     try:
         import numpy as np
 
-        from ...llm.embedding_client import EmbeddingClient, EmbeddingError
-        from ...rag.chunker import TextChunker
         from ...rag.config import RAGConfig
-        from ...rag.ranker import RAGRanker
         from ...rag.vector_store import ChromaStore
 
         rag_config = RAGConfig.from_yaml("config/rag_config.yaml")
-        embedding_client = EmbeddingClient(model=rag_config.embedding.model)
         vector_store = ChromaStore(rag_config.vector_store)
         vector_store.initialize()
 

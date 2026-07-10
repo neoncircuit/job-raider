@@ -11,8 +11,8 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException
 
-from ...api.settings import SettingsStorage, UserSettings, get_storage
-from ...config.loader import ConfigLoader, get_config_loader
+from ...api.settings import UserSettings, get_storage
+from ...config.loader import get_config_loader
 from ...utils.logger import Components, get_logger
 
 router = APIRouter()

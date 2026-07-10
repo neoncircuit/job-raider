@@ -44,7 +44,10 @@ export const coverLetterApi = {
 /**
  * Trigger a browser download from a fetch Response.
  */
-export async function downloadFile(res: Response, fallbackName: string): Promise<void> {
+export async function downloadFile(
+  res: Response,
+  fallbackName: string,
+): Promise<void> {
   if (!res.ok) {
     let detail = res.statusText;
     try {

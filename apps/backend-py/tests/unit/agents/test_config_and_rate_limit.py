@@ -5,11 +5,8 @@ Tests configuration management, environment-specific overrides,
 and API rate limiting functionality.
 """
 
-import os
 import time
-from datetime import timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 

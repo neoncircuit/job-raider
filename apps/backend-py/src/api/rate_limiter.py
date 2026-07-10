@@ -8,7 +8,7 @@ import logging
 import time
 from collections import defaultdict
 from functools import wraps
-from typing import Any, Callable, Dict, Optional
+from typing import Callable, Dict, Optional
 
 from fastapi import HTTPException, Request
 
@@ -244,10 +244,6 @@ def setup_agent_rate_limits(app):
             "requests_per_hour": 100,
         },
         "/api/agents/career-goals": {
-            "requests_per_minute": 10,
-            "requests_per_hour": 100,
-        },
-        "/api/agents/skill-development-plan": {
             "requests_per_minute": 10,
             "requests_per_hour": 100,
         },

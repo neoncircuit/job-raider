@@ -18,7 +18,12 @@ import { PageContainer } from "@/components/layout/PageContainer";
 // ── Score ring ────────────────────────────────────────────────────────────────
 
 function ScoreRing({ score }: { score: number }) {
-  const color = score >= 80 ? "text-green-500" : score >= 60 ? "text-yellow-500" : "text-red-500";
+  const color =
+    score >= 80
+      ? "text-green-500"
+      : score >= 60
+        ? "text-yellow-500"
+        : "text-red-500";
   return (
     <div className="flex flex-col items-center gap-1">
       <div className={cn("text-5xl font-bold", color)}>{score}</div>
@@ -31,7 +36,9 @@ function ScoreRing({ score }: { score: number }) {
 
 function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
   const downloadJson = () => {
-    const blob = new Blob([JSON.stringify(analysis, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(analysis, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -48,17 +55,28 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
           <ScoreRing score={analysis.overall_score} />
           <div className="flex-1">
             <p className="text-sm font-medium text-gray-700">
-              {analysis.analysis_type === "job_specific" ? "Job-Specific Analysis" : "General Analysis"}
+              {analysis.analysis_type === "job_specific"
+                ? "Job-Specific Analysis"
+                : "General Analysis"}
             </p>
-            <p className="mt-1 text-sm text-gray-600 leading-relaxed">{analysis.summary}</p>
+            <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+              {analysis.summary}
+            </p>
             {analysis.target_alignment_score != null && (
               <p className="mt-2 text-sm">
                 Target alignment:{" "}
-                <span className="font-semibold">{analysis.target_alignment_score}/100</span>
+                <span className="font-semibold">
+                  {analysis.target_alignment_score}/100
+                </span>
               </p>
             )}
           </div>
-          <Button size="sm" variant="outline" onClick={downloadJson} className="shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={downloadJson}
+            className="shrink-0"
+          >
             <Download className="mr-1.5 h-3.5 w-3.5" />
             Export
           </Button>
@@ -76,7 +94,8 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
             <ul className="space-y-1.5">
               {(analysis.key_strengths ?? []).map((s, i) => (
                 <li key={i} className="flex gap-2 text-sm text-gray-700">
-                  <span className="shrink-0 text-green-500">✓</span>{s}
+                  <span className="shrink-0 text-green-500">✓</span>
+                  {s}
                 </li>
               ))}
             </ul>
@@ -86,13 +105,16 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
         {/* Improvements */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-amber-700">Areas to Improve</CardTitle>
+            <CardTitle className="text-sm text-amber-700">
+              Areas to Improve
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-1.5">
               {(analysis.key_improvements ?? []).map((s, i) => (
                 <li key={i} className="flex gap-2 text-sm text-gray-700">
-                  <span className="shrink-0 text-amber-500">→</span>{s}
+                  <span className="shrink-0 text-amber-500">→</span>
+                  {s}
                 </li>
               ))}
             </ul>
@@ -118,13 +140,24 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
                 <tbody className="divide-y">
                   {(analysis.skills_assessment ?? []).map((s, i) => (
                     <tr key={i} className="hover:bg-gray-50">
-                      <td className="py-2 pr-4 font-medium text-gray-800">{s.skill_name}</td>
-                      <td className="py-2 pr-4 text-gray-500">{s.proficiency_level}</td>
+                      <td className="py-2 pr-4 font-medium text-gray-800">
+                        {s.skill_name}
+                      </td>
                       <td className="py-2 pr-4 text-gray-500">
-                        {s.years_experience != null ? `${s.years_experience}y` : "—"}
+                        {s.proficiency_level}
+                      </td>
+                      <td className="py-2 pr-4 text-gray-500">
+                        {s.years_experience != null
+                          ? `${s.years_experience}y`
+                          : "—"}
                       </td>
                       <td className="py-2">
-                        <Badge variant={s.is_industry_relevant ? "default" : "secondary"} className="text-xs">
+                        <Badge
+                          variant={
+                            s.is_industry_relevant ? "default" : "secondary"
+                          }
+                          className="text-xs"
+                        >
                           {s.is_industry_relevant ? "Yes" : "No"}
                         </Badge>
                       </td>
@@ -140,12 +173,18 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
         {(analysis.skill_gaps?.length ?? 0) > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-red-700">Skill Gaps</CardTitle>
+              <CardTitle className="text-base text-red-700">
+                Skill Gaps
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {(analysis.skill_gaps ?? []).map((g) => (
-                  <Badge key={g} variant="outline" className="border-red-200 text-red-600 text-xs">
+                  <Badge
+                    key={g}
+                    variant="outline"
+                    className="border-red-200 text-red-600 text-xs"
+                  >
                     {g}
                   </Badge>
                 ))}
@@ -156,7 +195,11 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
 
         {/* Recommendations */}
         {(analysis.resume_improvements?.length ?? 0) > 0 && (
-          <Card className={(analysis.skill_gaps?.length ?? 0) > 0 ? "" : "lg:col-span-2"}>
+          <Card
+            className={
+              (analysis.skill_gaps?.length ?? 0) > 0 ? "" : "lg:col-span-2"
+            }
+          >
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Recommendations</CardTitle>
             </CardHeader>
@@ -164,7 +207,9 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
               <ol className="space-y-2">
                 {(analysis.resume_improvements ?? []).map((r, i) => (
                   <li key={i} className="flex gap-2 text-sm text-gray-700">
-                    <span className="shrink-0 font-semibold text-blue-600">{i + 1}.</span>
+                    <span className="shrink-0 font-semibold text-blue-600">
+                      {i + 1}.
+                    </span>
                     {r}
                   </li>
                 ))}
@@ -189,7 +234,8 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
       return profileApi.analyze(file, jobDescription || undefined);
     },
     onSuccess: onResult,
-    onError: () => toast.error("Analysis failed. Check that the backend is running."),
+    onError: () =>
+      toast.error("Analysis failed. Check that the backend is running."),
   });
 
   const onDrop = useCallback((accepted: File[]) => {
@@ -198,7 +244,11 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { "application/pdf": [".pdf"], "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] },
+    accept: {
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
+    },
     maxFiles: 1,
   });
 
@@ -208,7 +258,9 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
         {...getRootProps()}
         className={cn(
           "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors",
-          isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-gray-50 hover:border-gray-400"
+          isDragActive
+            ? "border-blue-500 bg-blue-50"
+            : "border-gray-200 bg-gray-50 hover:border-gray-400",
         )}
       >
         <input {...getInputProps()} />
@@ -217,7 +269,9 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
           <p className="text-sm font-medium text-blue-600">{file.name}</p>
         ) : (
           <>
-            <p className="text-sm font-medium text-gray-700">Drop your resume here, or click to browse</p>
+            <p className="text-sm font-medium text-gray-700">
+              Drop your resume here, or click to browse
+            </p>
             <p className="mt-1 text-xs text-gray-400">PDF or DOCX</p>
           </>
         )}
@@ -256,7 +310,8 @@ export default function ResumeAnalysisPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Resume Analysis</h1>
           <p className="mt-1 text-sm text-gray-500">
-            AI-powered feedback on your resume with optional job-specific gap analysis.
+            AI-powered feedback on your resume with optional job-specific gap
+            analysis.
           </p>
         </div>
         {result && (

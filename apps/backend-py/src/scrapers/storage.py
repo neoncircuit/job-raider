@@ -205,8 +205,8 @@ class JobListingStorage:
                     ):
                         seen_ids[listing.job_id] = listing
                         # Replace in list
-                        for i, l in enumerate(unique_listings):
-                            if l.job_id == listing.job_id:
+                        for i, existing in enumerate(unique_listings):
+                            if existing.job_id == listing.job_id:
                                 unique_listings[i] = listing
                                 break
 

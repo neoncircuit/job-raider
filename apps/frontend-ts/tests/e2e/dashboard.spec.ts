@@ -11,7 +11,9 @@
 import { test, expect } from "./support/test";
 
 test.describe("Dashboard page", () => {
-  test("renders stat cards and pipeline sections from mocked data", async ({ page }) => {
+  test("renders stat cards and pipeline sections from mocked data", async ({
+    page,
+  }) => {
     await page.goto("/dashboard");
     await expect(page.locator("h1")).toContainText("Dashboard");
 

@@ -18,7 +18,7 @@ from urllib.parse import urlencode, urljoin, urlparse
 from bs4 import BeautifulSoup
 
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
-from .base import BaseScraper, ScraperError, ScrapingException, SearchParams
+from .base import BaseScraper, SearchParams
 
 
 class LinkedInScraper(BaseScraper):
@@ -101,7 +101,6 @@ class LinkedInScraper(BaseScraper):
         # Limit results
         if params.limit:
             # LinkedIn shows 25 per page, calculate pages needed
-            pages_needed = min((params.limit + 24) // 25, 40)  # Max 40 pages
             # Start at page 0
             query_params["start"] = 0
 

@@ -8,7 +8,6 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-import re
 import subprocess
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple

@@ -241,7 +241,7 @@ class TextChunker:
             skill_parts = []
             for cat, names in by_category.items():
                 skill_parts.append(f"{cat}: {', '.join(names)}")
-            skill_text = f"Skills:\n" + "\n".join(skill_parts)
+            skill_text = "Skills:\n" + "\n".join(skill_parts)
             chunks.append(
                 TextChunk(
                     content=skill_text,

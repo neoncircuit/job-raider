@@ -1,0 +1,11 @@
+.pytest_cache
+node_modules
+.next
+out
+build
+coverage
+playwright-report
+test-results
+__tests__
+*.min.*
+package-lock.json

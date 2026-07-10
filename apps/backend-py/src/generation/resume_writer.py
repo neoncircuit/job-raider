@@ -9,15 +9,13 @@ Date: 2026-04-20
 """
 
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from pydantic import BaseModel
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
-from ..models.user_profile import Project, UserProfile, WorkExperience
+from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
 from .selector import SelectionOutput
 

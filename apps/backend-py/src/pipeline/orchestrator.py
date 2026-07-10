@@ -21,7 +21,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from ..llm.router import LLMRouter
-from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..scrapers.storage import JobListingStorage
 from ..utils.logger import Components, get_logger, setup_logging
@@ -29,7 +28,6 @@ from .stages import PipelineContext, PipelineStages, StageResult
 
 # Multi-agent imports
 try:
-    from ..agents.base import Task, TaskType
     from ..agents.career_coach import CareerCoachAgent
     from ..agents.coordinator import AgentCoordinator
 

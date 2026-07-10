@@ -2,16 +2,11 @@
 Unit tests for application tracker feature.
 """
 
-import shutil
-import tempfile
-from datetime import datetime, timedelta
-from pathlib import Path
 
 import pytest
 
 from src.metrics.outcome_tracker import (
     ApplicationStatus,
-    CustomApplicationStatus,
     OutcomeTracker,
 )
 

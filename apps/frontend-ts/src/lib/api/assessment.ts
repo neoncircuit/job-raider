@@ -40,32 +40,36 @@ export const assessmentApi = {
   start: (req: StartAssessmentRequest) =>
     request<AssessmentSession>("POST", "/assessment/", { body: req }),
 
-  list: () =>
-    request<AssessmentSession[]>("GET", "/assessment/"),
+  list: () => request<AssessmentSession[]>("GET", "/assessment/"),
 
-  get: (id: string) =>
-    request<AssessmentSession>("GET", `/assessment/${id}`),
+  get: (id: string) => request<AssessmentSession>("GET", `/assessment/${id}`),
 
   nextQuestions: (id: string) =>
     request<AssessmentSession>("POST", `/assessment/${id}/next`),
 
   submitAnswer: (id: string, answer: SubmitAnswerRequest) =>
-    request<AnswerResponse>("POST", `/assessment/${id}/answer`, { body: answer }),
+    request<AnswerResponse>("POST", `/assessment/${id}/answer`, {
+      body: answer,
+    }),
 
   complete: (id: string) =>
     request<AssessmentSession>("POST", `/assessment/${id}/complete`),
 
   delete: (id: string) =>
-    request<{ success: boolean; message: string }>("DELETE", `/assessment/${id}`),
+    request<{ success: boolean; message: string }>(
+      "DELETE",
+      `/assessment/${id}`,
+    ),
 
-  progress: () =>
-    request<ProgressStats>("GET", "/assessment/progress"),
+  progress: () => request<ProgressStats>("GET", "/assessment/progress"),
 
   availableSkills: () =>
     request<{ skills: string[] }>("GET", "/assessment/skills"),
 
   availableJobs: () =>
-    request<{ jobs: Array<{ job_id: string; title: string; company: string }> }>("GET", "/assessment/jobs"),
+    request<{
+      jobs: Array<{ job_id: string; title: string; company: string }>;
+    }>("GET", "/assessment/jobs"),
 };
 
 export interface DISCSubmitRequest {
@@ -74,12 +78,10 @@ export interface DISCSubmitRequest {
 }
 
 export const discApi = {
-  start: () =>
-    request<DISCSession>("POST", "/assessment/disc/start"),
+  start: () => request<DISCSession>("POST", "/assessment/disc/start"),
 
   submit: (req: DISCSubmitRequest) =>
     request<DISCResult>("POST", "/assessment/disc/submit", { body: req }),
 
-  getProfile: () =>
-    request<DISCResult>("GET", "/assessment/disc/profile"),
+  getProfile: () => request<DISCResult>("GET", "/assessment/disc/profile"),
 };

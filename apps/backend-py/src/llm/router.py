@@ -9,10 +9,9 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from .base import BaseLLMClient, LLMConfig, LLMResponse, Message
 from .claude_client import ClaudeClient

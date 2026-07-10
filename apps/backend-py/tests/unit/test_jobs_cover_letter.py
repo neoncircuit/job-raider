@@ -11,7 +11,6 @@ Author: Job Raider
 Date: 2026-06-29
 """
 
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -276,7 +275,7 @@ class TestGenerateCoverLetter:
             )
 
         assert resp.status_code == 400
-        assert "No active profile found" in resp.json()["detail"]
+        assert "No active profile found" in resp.json()["message"]
 
     def test_generate_cover_letter_profile_not_found(self, client):
         """Should return 404 when the active profile ID is missing from storage."""
@@ -289,4 +288,4 @@ class TestGenerateCoverLetter:
             )
 
         assert resp.status_code == 404
-        assert "Profile missing not found" in resp.json()["detail"]
+        assert "Profile missing not found" in resp.json()["message"]

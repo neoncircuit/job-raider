@@ -26,7 +26,13 @@ interface TrustAnalysisDisplayProps {
 
 const TIER_CONFIG: Record<
   TrustTier,
-  { label: string; color: string; bg: string; border: string; icon: typeof Shield }
+  {
+    label: string;
+    color: string;
+    bg: string;
+    border: string;
+    icon: typeof Shield;
+  }
 > = {
   legitimate: {
     label: "Legitimate",
@@ -93,7 +99,10 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
   const [showLlmSummary, setShowLlmSummary] = useState(false);
   const config = TIER_CONFIG[analysis.tier];
   const TierIcon = config.icon;
-  const maxCategoryScore = Math.max(...Object.values(analysis.category_scores), 1);
+  const maxCategoryScore = Math.max(
+    ...Object.values(analysis.category_scores),
+    1,
+  );
 
   return (
     <div className="space-y-3">
@@ -105,7 +114,13 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
               <TierIcon className={cn("h-5 w-5", config.color)} />
               Trust Rating
             </span>
-            <Badge className={cn(config.bg, config.color, "border-0 text-sm font-semibold")}>
+            <Badge
+              className={cn(
+                config.bg,
+                config.color,
+                "border-0 text-sm font-semibold",
+              )}
+            >
               {config.label}
             </Badge>
           </CardTitle>
@@ -115,14 +130,21 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
             {/* Confidence bar */}
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>Risk Confidence</span>
-              <span className={cn("font-medium", scoreColor(analysis.risk_score))}>
+              <span
+                className={cn("font-medium", scoreColor(analysis.risk_score))}
+              >
                 {Math.round(analysis.confidence * 100)}%
               </span>
             </div>
             <div className="h-2 w-full rounded-full bg-gray-100">
               <div
-                className={cn("h-2 rounded-full transition-all", scoreBarColor(analysis.risk_score))}
-                style={{ width: `${Math.min(analysis.confidence * 100, 100)}%` }}
+                className={cn(
+                  "h-2 rounded-full transition-all",
+                  scoreBarColor(analysis.risk_score),
+                )}
+                style={{
+                  width: `${Math.min(analysis.confidence * 100, 100)}%`,
+                }}
               />
             </div>
           </div>
@@ -148,14 +170,22 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
                   <div className="flex-1">
                     <div className="h-1.5 w-full rounded-full bg-gray-100">
                       <div
-                        className={cn("h-1.5 rounded-full", scoreBarColor(score))}
+                        className={cn(
+                          "h-1.5 rounded-full",
+                          scoreBarColor(score),
+                        )}
                         style={{
                           width: `${maxCategoryScore > 0 ? (score / maxCategoryScore) * 100 : 0}%`,
                         }}
                       />
                     </div>
                   </div>
-                  <span className={cn("w-8 text-right text-xs font-medium", scoreColor(score))}>
+                  <span
+                    className={cn(
+                      "w-8 text-right text-xs font-medium",
+                      scoreColor(score),
+                    )}
+                  >
                     {score}
                   </span>
                 </div>
@@ -177,7 +207,10 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
           <CardContent>
             <ul className="space-y-1.5">
               {analysis.reasons.map((reason, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-gray-700">
+                <li
+                  key={i}
+                  className="flex items-start gap-2 text-xs text-gray-700"
+                >
                   <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
                   {reason}
                 </li>
@@ -211,15 +244,20 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
               <p className="text-xs leading-relaxed text-gray-700">
                 {analysis.llm_summary}
               </p>
-              {analysis.llm_indicators && analysis.llm_indicators.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {analysis.llm_indicators.map((ind, i) => (
-                    <Badge key={i} variant="outline" className="text-xs text-orange-600">
-                      {ind}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+              {analysis.llm_indicators &&
+                analysis.llm_indicators.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {analysis.llm_indicators.map((ind, i) => (
+                      <Badge
+                        key={i}
+                        variant="outline"
+                        className="text-xs text-orange-600"
+                      >
+                        {ind}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
             </CardContent>
           )}
         </Card>
@@ -243,7 +281,11 @@ export function TrustTierBadge({ tier }: { tier: TrustTier }) {
   const TierIcon = config.icon;
   return (
     <Badge
-      className={cn("gap-1 border-0 text-xs font-medium", config.bg, config.color)}
+      className={cn(
+        "gap-1 border-0 text-xs font-medium",
+        config.bg,
+        config.color,
+      )}
     >
       <TierIcon className="h-3 w-3" />
       {config.label}

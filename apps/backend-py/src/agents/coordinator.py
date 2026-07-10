@@ -9,13 +9,15 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
+from ..utils.logging_helpers import sanitize_for_log
 from .base import AgentCapability, AgentState, BaseAgent, Task, TaskResult, TaskType
-from .communication import AgentCommunicationBus, AgentMessage, MessageType
+from .communication import AgentCommunicationBus, MessageType
 from .config_loader import get_agent_config
+from .task_store import TaskStore
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +106,9 @@ class AgentCoordinator:
         self._running = False
         self._scheduler_task: Optional[asyncio.Task] = None
         self._performance_monitor_task: Optional[asyncio.Task] = None
+
+        # Bounded in-memory store for task results.
+        self.task_store = TaskStore()
 
         # Load configuration from external config file
         self.config = get_agent_config()
@@ -260,8 +265,13 @@ class AgentCoordinator:
         Returns:
             Dictionary of agent statuses
         """
-        return {
+        statuses = {
             agent_id: self.get_agent_status(agent_id) for agent_id in self.agents.keys()
+        }
+        return {
+            agent_id: status
+            for agent_id, status in statuses.items()
+            if status is not None
         }
 
     async def submit_task(self, task: Task, agent_id: Optional[str] = None) -> str:
@@ -289,6 +299,12 @@ class AgentCoordinator:
             agent_info = self.agents[agent_id]
             if agent_info.agent:
                 await agent_info.agent.submit_task(task)
+                self.task_store.save(
+                    task.task_id,
+                    status="pending",
+                    agent=agent_id,
+                    task_type=task.type.value,
+                )
                 logger.info(f"Task {task.task_id} submitted to agent {agent_id}")
                 return task.task_id
 
@@ -316,8 +332,8 @@ class AgentCoordinator:
 
         try:
             # Execute stages
-            stage_results = {}
-            agent_performance = {}
+            stage_results: Dict[str, Any] = {}
+            agent_performance: Dict[str, Any] = {}
 
             for stage_config in request.stages:
                 stage_name = stage_config.get("name", "unknown")
@@ -444,7 +460,10 @@ class AgentCoordinator:
 
                 # Log performance summary
                 if performance_data:
-                    logger.debug(f"Agent performance: {performance_data}")
+                    logger.debug(
+                        "Agent performance: %s",
+                        sanitize_for_log(performance_data),
+                    )
 
                 # Broadcast performance updates
                 await self.communication_bus.broadcast_message(
@@ -462,11 +481,29 @@ class AgentCoordinator:
         """
         Handle messages from agents.
 
+        Stores the task result so clients can poll for it, then broadcasts a
+        completion or failure message on the communication bus.
+
         Args:
             agent_id: Agent that sent the message
             result: Task execution result
         """
-        logger.debug(f"Received message from agent {agent_id}: task {result.task_id}")
+        logger.debug(
+            "Received message from agent %s: task %s (success=%s)",
+            agent_id,
+            result.task_id,
+            result.success,
+        )
+
+        # Persist the task outcome for asynchronous retrieval.
+        status = "completed" if result.success else "failed"
+        self.task_store.save(
+            result.task_id,
+            status=status,
+            agent=agent_id,
+            result=result.data if result.success else None,
+            error=result.error if not result.success else None,
+        )
 
         # Broadcast task completion
         await self.communication_bus.broadcast_message(
@@ -483,6 +520,21 @@ class AgentCoordinator:
                 "metrics": result.metrics,
             },
         )
+
+    def get_task_result(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a stored task result by ID.
+
+        Args:
+            task_id: Task identifier returned by :meth:`submit_task`.
+
+        Returns:
+            Serialized task record if found, otherwise ``None``.
+        """
+        record = self.task_store.get(task_id)
+        if record is None:
+            return None
+        return record.to_dict()
 
     def get_system_status(self) -> Dict[str, Any]:
         """
@@ -510,7 +562,7 @@ class AgentCoordinator:
         Returns:
             Performance metrics dictionary
         """
-        metrics = {
+        metrics: Dict[str, Any] = {
             "total_tasks_completed": 0,
             "total_tasks_failed": 0,
             "average_success_rate": 0.0,
@@ -534,14 +586,14 @@ class AgentCoordinator:
             total_success_rate = sum(
                 self.agents[aid].agent.performance.success_rate
                 for aid in self.agents
-                if self.agents[aid].agent
+                if self.agents[aid].agent is not None
             )
             metrics["average_success_rate"] = total_success_rate / agent_count
 
             total_exec_time = sum(
                 self.agents[aid].agent.performance.total_execution_time
                 for aid in self.agents
-                if self.agents[aid].agent
+                if self.agents[aid].agent is not None
             )
             metrics["average_execution_time"] = total_exec_time / agent_count
 

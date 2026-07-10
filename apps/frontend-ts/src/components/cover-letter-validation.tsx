@@ -2,7 +2,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { CoverLetterReviewDetails, CoverLetterValidation } from "@/lib/types/api";
+import type {
+  CoverLetterReviewDetails,
+  CoverLetterValidation,
+} from "@/lib/types/api";
 import {
   CheckCircle,
   AlertCircle,
@@ -74,7 +77,15 @@ function issueLabel(issue: string): string {
     .join(" ");
 }
 
-function ScoreBar({ label, score, icon: Icon }: { label: string; score: number; icon: typeof LayoutTemplate }) {
+function ScoreBar({
+  label,
+  score,
+  icon: Icon,
+}: {
+  label: string;
+  score: number;
+  icon: typeof LayoutTemplate;
+}) {
   return (
     <div className="flex items-center gap-3">
       <Icon className="h-3.5 w-3.5 text-gray-400" />
@@ -82,27 +93,46 @@ function ScoreBar({ label, score, icon: Icon }: { label: string; score: number; 
       <div className="flex-1">
         <div className="h-1.5 w-full rounded-full bg-gray-100">
           <div
-            className={cn("h-1.5 rounded-full transition-all", scoreBarColor(score))}
+            className={cn(
+              "h-1.5 rounded-full transition-all",
+              scoreBarColor(score),
+            )}
             style={{ width: `${Math.min(Math.max(score, 0), 100)}%` }}
           />
         </div>
       </div>
-      <span className={cn("w-8 text-right text-xs font-medium", scoreColor(score))}>
+      <span
+        className={cn("w-8 text-right text-xs font-medium", scoreColor(score))}
+      >
         {score}
       </span>
     </div>
   );
 }
 
-export function CoverLetterValidationDisplay({ validation }: CoverLetterValidationDisplayProps) {
+export function CoverLetterValidationDisplay({
+  validation,
+}: CoverLetterValidationDisplayProps) {
   const config = RECOMMENDATION_CONFIG[validation.recommendation];
   const RecIcon = config.icon;
 
   const details = validation.details as Record<string, unknown> | undefined;
-  const paragraphCount = typeof details?.paragraph_count === "number" ? details.paragraph_count : null;
-  const companyMentioned = typeof details?.company_mentioned === "boolean" ? details.company_mentioned : null;
-  const jobTitleMentioned = typeof details?.job_title_mentioned === "boolean" ? details.job_title_mentioned : null;
-  const hasCallToAction = typeof details?.has_call_to_action === "boolean" ? details.has_call_to_action : null;
+  const paragraphCount =
+    typeof details?.paragraph_count === "number"
+      ? details.paragraph_count
+      : null;
+  const companyMentioned =
+    typeof details?.company_mentioned === "boolean"
+      ? details.company_mentioned
+      : null;
+  const jobTitleMentioned =
+    typeof details?.job_title_mentioned === "boolean"
+      ? details.job_title_mentioned
+      : null;
+  const hasCallToAction =
+    typeof details?.has_call_to_action === "boolean"
+      ? details.has_call_to_action
+      : null;
   const referencedProjects = Array.isArray(details?.referenced_projects)
     ? (details.referenced_projects as string[])
     : [];
@@ -122,7 +152,13 @@ export function CoverLetterValidationDisplay({ validation }: CoverLetterValidati
               <FileText className="h-4 w-4 text-gray-500" />
               Proofread Result
             </span>
-            <Badge className={cn(config.bg, config.color, "border-0 text-sm font-semibold")}>
+            <Badge
+              className={cn(
+                config.bg,
+                config.color,
+                "border-0 text-sm font-semibold",
+              )}
+            >
               <RecIcon className="mr-1 h-3 w-3" />
               {config.label}
             </Badge>
@@ -138,13 +174,20 @@ export function CoverLetterValidationDisplay({ validation }: CoverLetterValidati
             </div>
             <div className="h-2 w-full rounded-full bg-gray-100">
               <div
-                className={cn("h-2 rounded-full transition-all", scoreBarColor(validation.score))}
-                style={{ width: `${Math.min(Math.max(validation.score, 0), 100)}%` }}
+                className={cn(
+                  "h-2 rounded-full transition-all",
+                  scoreBarColor(validation.score),
+                )}
+                style={{
+                  width: `${Math.min(Math.max(validation.score, 0), 100)}%`,
+                }}
               />
             </div>
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <span>{validation.word_count} words</span>
-              {paragraphCount != null && <span>{paragraphCount} paragraphs</span>}
+              {paragraphCount != null && (
+                <span>{paragraphCount} paragraphs</span>
+              )}
             </div>
           </div>
         </CardContent>
@@ -160,9 +203,21 @@ export function CoverLetterValidationDisplay({ validation }: CoverLetterValidati
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <ScoreBar label="Structure" score={validation.structure_score} icon={LayoutTemplate} />
-            <ScoreBar label="Content" score={validation.content_score} icon={MessageSquare} />
-            <ScoreBar label="Tone" score={validation.tone_score} icon={PenTool} />
+            <ScoreBar
+              label="Structure"
+              score={validation.structure_score}
+              icon={LayoutTemplate}
+            />
+            <ScoreBar
+              label="Content"
+              score={validation.content_score}
+              icon={MessageSquare}
+            />
+            <ScoreBar
+              label="Tone"
+              score={validation.tone_score}
+              icon={PenTool}
+            />
           </div>
         </CardContent>
       </Card>
@@ -179,7 +234,10 @@ export function CoverLetterValidationDisplay({ validation }: CoverLetterValidati
           <CardContent>
             <ul className="space-y-1.5">
               {validation.issues.map((issue, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-gray-700">
+                <li
+                  key={i}
+                  className="flex items-start gap-2 text-xs text-gray-700"
+                >
                   <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
                   {issueLabel(issue)}
                 </li>
@@ -240,7 +298,10 @@ export function CoverLetterValidationDisplay({ validation }: CoverLetterValidati
           <CardContent>
             <ul className="space-y-1.5">
               {llmFeedback.map((feedback, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-gray-700">
+                <li
+                  key={i}
+                  className="flex items-start gap-2 text-xs text-gray-700"
+                >
                   <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
                   {feedback}
                 </li>
@@ -278,9 +339,11 @@ export function CoverLetterValidationDisplay({ validation }: CoverLetterValidati
                   Rewrite requested
                 </Badge>
               )}
-              {<span className="text-xs text-muted-foreground">
-                Model: {reviewDetails.model_used}
-              </span>}
+              {
+                <span className="text-xs text-muted-foreground">
+                  Model: {reviewDetails.model_used}
+                </span>
+              }
             </div>
             {reviewDetails.error && (
               <p className="text-xs text-red-600">{reviewDetails.error}</p>
@@ -290,11 +353,13 @@ export function CoverLetterValidationDisplay({ validation }: CoverLetterValidati
       )}
 
       {/* No issues message */}
-      {validation.issues.length === 0 && llmFeedback.length === 0 && !reviewDetails && (
-        <p className="text-xs text-gray-500">
-          No issues detected. The cover letter looks good.
-        </p>
-      )}
+      {validation.issues.length === 0 &&
+        llmFeedback.length === 0 &&
+        !reviewDetails && (
+          <p className="text-xs text-gray-500">
+            No issues detected. The cover letter looks good.
+          </p>
+        )}
     </div>
   );
 }
@@ -310,7 +375,13 @@ export function CoverLetterRecommendationBadge({
   const config = RECOMMENDATION_CONFIG[recommendation];
   const RecIcon = config.icon;
   return (
-    <Badge className={cn("gap-1 border-0 text-xs font-medium", config.bg, config.color)}>
+    <Badge
+      className={cn(
+        "gap-1 border-0 text-xs font-medium",
+        config.bg,
+        config.color,
+      )}
+    >
       <RecIcon className="h-3 w-3" />
       {config.label}
     </Badge>

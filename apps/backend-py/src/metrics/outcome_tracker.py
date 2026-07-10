@@ -511,7 +511,7 @@ class OutcomeTracker:
                         try:
                             offer_date = datetime.fromisoformat(note["timestamp"])
                             time_to_offer.append((offer_date - o.applied_date).days)
-                        except:
+                        except (ValueError, TypeError):
                             pass
                         break
 
@@ -523,7 +523,7 @@ class OutcomeTracker:
                             o.timeline_notes[-1]["timestamp"]
                         )
                         time_to_reject.append((last_date - o.applied_date).days)
-                    except:
+                    except (ValueError, TypeError):
                         pass
 
         return ConversionMetrics(

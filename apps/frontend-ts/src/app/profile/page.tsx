@@ -5,8 +5,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import {
-  Upload, Briefcase, GraduationCap, FolderOpen, Wrench,
-  Award, Globe, Target, ExternalLink, Link, MapPin, Mail, Phone, Settings,
+  Upload,
+  Briefcase,
+  GraduationCap,
+  FolderOpen,
+  Wrench,
+  Award,
+  Globe,
+  Target,
+  ExternalLink,
+  Link,
+  MapPin,
+  Mail,
+  Phone,
+  Settings,
 } from "lucide-react";
 import { profileApi } from "@/lib/api/profile";
 import type { UserProfile } from "@/lib/types/api";
@@ -15,28 +27,33 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { ApplicationSettingsModal } from "@/components/application-settings-modal";
-import { SkillsRadar, ExperienceTimeline, StrengthAssessment } from "@/components/profile-visualizations";
+import {
+  SkillsRadar,
+  ExperienceTimeline,
+  StrengthAssessment,
+} from "@/components/profile-visualizations";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const PROFICIENCY_COLORS: Record<string, string> = {
-  Expert:       "bg-indigo-100 dark:bg-primary/10 text-indigo-800 dark:text-primary",
-  Advanced:     "bg-blue-100 dark:bg-info/10 text-blue-800 dark:text-info",
+  Expert: "bg-indigo-100 dark:bg-primary/10 text-indigo-800 dark:text-primary",
+  Advanced: "bg-blue-100 dark:bg-info/10 text-blue-800 dark:text-info",
   Intermediate: "bg-sky-100 dark:bg-info/10 text-sky-800 dark:text-info",
-  Beginner:     "bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground",
+  Beginner:
+    "bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
   programming_language: "Languages",
-  framework:            "Frameworks",
-  tool:                 "Tools",
-  cloud:                "Cloud",
-  database:             "Databases",
-  language:             "Spoken Languages",
-  soft_skill:           "Soft Skills",
-  domain:               "Domain",
-  other:                "Other",
+  framework: "Frameworks",
+  tool: "Tools",
+  cloud: "Cloud",
+  database: "Databases",
+  language: "Spoken Languages",
+  soft_skill: "Soft Skills",
+  domain: "Domain",
+  other: "Other",
 };
 
 // ── Upload dropzone ───────────────────────────────────────────────────────────
@@ -55,15 +72,18 @@ function ResumeDropzone({ onUploaded }: { onUploaded: () => void }) {
   });
 
   const onDrop = useCallback(
-    (accepted: File[]) => { if (accepted[0]) upload.mutate(accepted[0]); },
-    [upload]
+    (accepted: File[]) => {
+      if (accepted[0]) upload.mutate(accepted[0]);
+    },
+    [upload],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       "application/pdf": [".pdf"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
     },
     maxFiles: 1,
     disabled: upload.isPending,
@@ -74,17 +94,25 @@ function ResumeDropzone({ onUploaded }: { onUploaded: () => void }) {
       {...getRootProps()}
       className={cn(
         "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors",
-        isDragActive ? "border-blue-500 dark:border-primary bg-blue-50 dark:bg-primary/10" : "border-gray-200 dark:border-border bg-gray-50 dark:bg-muted hover:border-gray-400 dark:hover:border-muted-foreground/50"
+        isDragActive
+          ? "border-blue-500 dark:border-primary bg-blue-50 dark:bg-primary/10"
+          : "border-gray-200 dark:border-border bg-gray-50 dark:bg-muted hover:border-gray-400 dark:hover:border-muted-foreground/50",
       )}
     >
       <input {...getInputProps()} />
       <Upload className="mb-3 h-8 w-8 text-gray-400 dark:text-muted-foreground" />
       {upload.isPending ? (
-        <p className="text-sm text-blue-600 dark:text-primary">Parsing resume… this may take 30–60 s</p>
+        <p className="text-sm text-blue-600 dark:text-primary">
+          Parsing resume… this may take 30–60 s
+        </p>
       ) : (
         <>
-          <p className="text-sm font-medium text-gray-700 dark:text-muted-foreground">Drop your resume here, or click to browse</p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">PDF or DOCX, max 10 MB</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-muted-foreground">
+            Drop your resume here, or click to browse
+          </p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">
+            PDF or DOCX, max 10 MB
+          </p>
         </>
       )}
     </div>
@@ -95,65 +123,99 @@ function ResumeDropzone({ onUploaded }: { onUploaded: () => void }) {
 
 function ProfileDisplay({ profile }: { profile: UserProfile }) {
   const {
-    contact_info: c, summary, core_skills, skills,
-    work_experience, education, projects, certifications,
-    languages, target_job, years_of_experience,
+    contact_info: c,
+    summary,
+    core_skills,
+    skills,
+    work_experience,
+    education,
+    projects,
+    certifications,
+    languages,
+    target_job,
+    years_of_experience,
   } = profile;
 
   // Group skills by category
-  const skillsByCategory = skills.reduce<Record<string, typeof skills>>((acc, s) => {
-    const cat = s.category ?? "other";
-    (acc[cat] ??= []).push(s);
-    return acc;
-  }, {});
+  const skillsByCategory = skills.reduce<Record<string, typeof skills>>(
+    (acc, s) => {
+      const cat = s.category ?? "other";
+      (acc[cat] ??= []).push(s);
+      return acc;
+    },
+    {},
+  );
 
   return (
     <div className="space-y-3">
-
       {/* ── Hero header ── */}
       <Card>
         <CardContent className="pt-4 pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             {/* Name + meta */}
             <div className="space-y-1">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground">{c.name || "—"}</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground">
+                {c.name || "—"}
+              </h2>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-muted-foreground">
                 {c.location && (
                   <span className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" />{c.location}
+                    <MapPin className="h-3.5 w-3.5" />
+                    {c.location}
                   </span>
                 )}
                 {years_of_experience != null && years_of_experience > 0 && (
                   <span className="flex items-center gap-1">
-                    <Briefcase className="h-3.5 w-3.5" />{years_of_experience} yrs exp
+                    <Briefcase className="h-3.5 w-3.5" />
+                    {years_of_experience} yrs exp
                   </span>
                 )}
                 {c.email && (
                   <span className="flex items-center gap-1">
-                    <Mail className="h-3.5 w-3.5" />{c.email}
+                    <Mail className="h-3.5 w-3.5" />
+                    {c.email}
                   </span>
                 )}
                 {c.phone && (
                   <span className="flex items-center gap-1">
-                    <Phone className="h-3.5 w-3.5" />{c.phone}
+                    <Phone className="h-3.5 w-3.5" />
+                    {c.phone}
                   </span>
                 )}
               </div>
               {/* External links */}
-              {(c.linkedin_url || c.github_url || c.portfolio_url || c.website_url) && (
+              {(c.linkedin_url ||
+                c.github_url ||
+                c.portfolio_url ||
+                c.website_url) && (
                 <div className="flex flex-wrap gap-3 pt-1">
                   {c.linkedin_url && (
-                    <a href={c.linkedin_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-blue-600 dark:text-primary hover:underline">
+                    <a
+                      href={c.linkedin_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 text-xs text-blue-600 dark:text-primary hover:underline"
+                    >
                       <Link className="h-3 w-3" /> LinkedIn
                     </a>
                   )}
                   {c.github_url && (
-                    <a href={c.github_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-gray-600 dark:text-muted-foreground hover:underline">
+                    <a
+                      href={c.github_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 text-xs text-gray-600 dark:text-muted-foreground hover:underline"
+                    >
                       <Link className="h-3 w-3" /> GitHub
                     </a>
                   )}
                   {(c.portfolio_url || c.website_url) && (
-                    <a href={c.portfolio_url ?? c.website_url ?? "#"} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-gray-600 dark:text-muted-foreground hover:underline">
+                    <a
+                      href={c.portfolio_url ?? c.website_url ?? "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 text-xs text-gray-600 dark:text-muted-foreground hover:underline"
+                    >
                       <Globe className="h-3 w-3" /> Portfolio
                     </a>
                   )}
@@ -186,10 +248,8 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
 
       {/* ── Two-column grid ── */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-
         {/* ── Left column (narrow) — skills, targets, certifications, languages ── */}
         <div className="space-y-3">
-
           {/* Skills */}
           {skills.length > 0 && (
             <Card>
@@ -202,10 +262,17 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
               <CardContent className="space-y-3">
                 {(core_skills?.length ?? 0) > 0 && (
                   <div>
-                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-muted-foreground">Core</p>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-muted-foreground">
+                      Core
+                    </p>
                     <div className="flex flex-wrap gap-1.5">
                       {core_skills!.map((s) => (
-                        <Badge key={s} className="bg-indigo-600 dark:bg-primary text-white dark:text-primary-foreground text-xs">{s}</Badge>
+                        <Badge
+                          key={s}
+                          className="bg-indigo-600 dark:bg-primary text-white dark:text-primary-foreground text-xs"
+                        >
+                          {s}
+                        </Badge>
                       ))}
                     </div>
                   </div>
@@ -222,14 +289,17 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                           className={cn(
                             "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
                             s.proficiency
-                              ? (PROFICIENCY_COLORS[s.proficiency] ?? "bg-gray-100 dark:bg-muted text-gray-700 dark:text-muted-foreground")
-                              : "bg-gray-100 dark:bg-muted text-gray-700 dark:text-muted-foreground"
+                              ? (PROFICIENCY_COLORS[s.proficiency] ??
+                                  "bg-gray-100 dark:bg-muted text-gray-700 dark:text-muted-foreground")
+                              : "bg-gray-100 dark:bg-muted text-gray-700 dark:text-muted-foreground",
                           )}
                         >
                           {s.name}
-                          {s.years_of_experience
-                            ? <span className="opacity-60">· {s.years_of_experience}y</span>
-                            : null}
+                          {s.years_of_experience ? (
+                            <span className="opacity-60">
+                              · {s.years_of_experience}y
+                            </span>
+                          ) : null}
                         </span>
                       ))}
                     </div>
@@ -251,7 +321,9 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
               <CardContent>
                 <div className="flex flex-wrap gap-1.5">
                   {languages!.map((l) => (
-                    <Badge key={l} variant="secondary" className="text-xs">{l}</Badge>
+                    <Badge key={l} variant="secondary" className="text-xs">
+                      {l}
+                    </Badge>
                   ))}
                 </div>
               </CardContent>
@@ -259,41 +331,53 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
           )}
 
           {/* Target Job */}
-          {target_job && (target_job.keywords?.length > 0 || target_job.locations?.length > 0) && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Target className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
-                  Job Targets
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {target_job.keywords?.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-xs font-medium text-gray-400 dark:text-muted-foreground">Keywords</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {target_job.keywords.map((k) => (
-                        <Badge key={k} variant="outline" className="text-xs">{k}</Badge>
-                      ))}
+          {target_job &&
+            (target_job.keywords?.length > 0 ||
+              target_job.locations?.length > 0) && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Target className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+                    Job Targets
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {target_job.keywords?.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-gray-400 dark:text-muted-foreground">
+                        Keywords
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {target_job.keywords.map((k) => (
+                          <Badge key={k} variant="outline" className="text-xs">
+                            {k}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {target_job.locations?.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-xs font-medium text-gray-400 dark:text-muted-foreground">Locations</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {target_job.locations.map((l) => (
-                        <Badge key={l} variant="outline" className="text-xs">{l}</Badge>
-                      ))}
+                  )}
+                  {target_job.locations?.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-gray-400 dark:text-muted-foreground">
+                        Locations
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {target_job.locations.map((l) => (
+                          <Badge key={l} variant="outline" className="text-xs">
+                            {l}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {target_job.remote_preference && (
-                  <p className="text-xs text-indigo-600 dark:text-primary font-medium">Open to remote</p>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                  )}
+                  {target_job.remote_preference && (
+                    <p className="text-xs text-indigo-600 dark:text-primary font-medium">
+                      Open to remote
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
           {/* Certifications */}
           {(certifications?.length ?? 0) > 0 && (
@@ -307,14 +391,24 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
               <CardContent className="space-y-3">
                 {certifications!.map((cert, i) => (
                   <div key={i}>
-                    <p className="text-sm font-medium text-gray-900 dark:text-foreground">{cert.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-muted-foreground">{cert.issuer}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-foreground">
+                      {cert.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-muted-foreground">
+                      {cert.issuer}
+                    </p>
                     <div className="mt-0.5 flex gap-2 text-xs text-gray-400 dark:text-muted-foreground">
-                      {cert.issue_date && <span>Issued {formatDate(cert.issue_date)}</span>}
-                      {cert.expiration_date && <span>· Exp {formatDate(cert.expiration_date)}</span>}
+                      {cert.issue_date && (
+                        <span>Issued {formatDate(cert.issue_date)}</span>
+                      )}
+                      {cert.expiration_date && (
+                        <span>· Exp {formatDate(cert.expiration_date)}</span>
+                      )}
                     </div>
                     {cert.credential_id && (
-                      <p className="mt-0.5 text-xs text-gray-400 dark:text-muted-foreground">ID: {cert.credential_id}</p>
+                      <p className="mt-0.5 text-xs text-gray-400 dark:text-muted-foreground">
+                        ID: {cert.credential_id}
+                      </p>
                     )}
                   </div>
                 ))}
@@ -336,27 +430,41 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                   <div key={i} className={cn(i > 0 && "border-t pt-3")}>
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-foreground">{e.degree}</p>
+                        <p className="font-semibold text-gray-900 dark:text-foreground">
+                          {e.degree}
+                        </p>
                         {e.field_of_study && (
-                          <p className="text-sm text-gray-600 dark:text-muted-foreground">{e.field_of_study}</p>
+                          <p className="text-sm text-gray-600 dark:text-muted-foreground">
+                            {e.field_of_study}
+                          </p>
                         )}
-                        <p className="text-sm text-gray-600 dark:text-muted-foreground">{e.institution}</p>
+                        <p className="text-sm text-gray-600 dark:text-muted-foreground">
+                          {e.institution}
+                        </p>
                       </div>
                       <div className="shrink-0 text-right text-xs text-gray-400 dark:text-muted-foreground">
-                        {e.graduation_date && <p>Graduated {formatDate(e.graduation_date)}</p>}
+                        {e.graduation_date && (
+                          <p>Graduated {formatDate(e.graduation_date)}</p>
+                        )}
                         {e.gpa != null && <p>GPA {e.gpa.toFixed(2)}</p>}
                       </div>
                     </div>
                     {(e.honors?.length ?? 0) > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1">
                         {e.honors.map((h) => (
-                          <Badge key={h} className="bg-amber-100 dark:bg-warning/10 text-amber-800 dark:text-warning text-xs">{h}</Badge>
+                          <Badge
+                            key={h}
+                            className="bg-amber-100 dark:bg-warning/10 text-amber-800 dark:text-warning text-xs"
+                          >
+                            {h}
+                          </Badge>
                         ))}
                       </div>
                     )}
                     {(e.coursework?.length ?? 0) > 0 && (
                       <p className="mt-1.5 text-xs text-gray-500 dark:text-muted-foreground">
-                        <span className="font-medium">Coursework:</span> {e.coursework!.join(", ")}
+                        <span className="font-medium">Coursework:</span>{" "}
+                        {e.coursework!.join(", ")}
                       </p>
                     )}
                   </div>
@@ -368,7 +476,6 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
 
         {/* ── Right column (wide) — experience, projects, education ── */}
         <div className="space-y-3 lg:col-span-2">
-
           {/* Experience */}
           {work_experience.length > 0 && (
             <Card>
@@ -384,23 +491,35 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                     <div className="border-l-2 border-blue-300 dark:border-primary pl-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="font-semibold text-gray-900 dark:text-foreground">{e.title}</p>
+                          <p className="font-semibold text-gray-900 dark:text-foreground">
+                            {e.title}
+                          </p>
                           <p className="text-sm text-gray-600 dark:text-muted-foreground">
-                            {e.company}{e.location ? ` · ${e.location}` : ""}
+                            {e.company}
+                            {e.location ? ` · ${e.location}` : ""}
                           </p>
                         </div>
                         <p className="shrink-0 text-xs text-gray-400 dark:text-muted-foreground">
                           {e.start_date ? formatDate(e.start_date) : "?"} —{" "}
-                          {e.current ? "Present" : (e.end_date ? formatDate(e.end_date) : "?")}
+                          {e.current
+                            ? "Present"
+                            : e.end_date
+                              ? formatDate(e.end_date)
+                              : "?"}
                         </p>
                       </div>
                       {e.description && (
-                        <p className="mt-2 text-sm text-gray-600 dark:text-muted-foreground leading-relaxed">{e.description}</p>
+                        <p className="mt-2 text-sm text-gray-600 dark:text-muted-foreground leading-relaxed">
+                          {e.description}
+                        </p>
                       )}
                       {(e.highlights?.length ?? 0) > 0 && (
                         <ul className="mt-2 space-y-1">
                           {e.highlights.map((h, j) => (
-                            <li key={j} className="flex gap-2 text-sm text-gray-700 dark:text-muted-foreground">
+                            <li
+                              key={j}
+                              className="flex gap-2 text-sm text-gray-700 dark:text-muted-foreground"
+                            >
                               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400 dark:bg-primary" />
                               {h}
                             </li>
@@ -410,7 +529,13 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                       {(e.technologies?.length ?? 0) > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {e.technologies.map((t) => (
-                            <Badge key={t} variant="outline" className="text-xs text-gray-500 dark:text-muted-foreground">{t}</Badge>
+                            <Badge
+                              key={t}
+                              variant="outline"
+                              className="text-xs text-gray-500 dark:text-muted-foreground"
+                            >
+                              {t}
+                            </Badge>
                           ))}
                         </div>
                       )}
@@ -436,30 +561,48 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                     <div className="border-l-2 border-violet-300 dark:border-primary pl-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="font-semibold text-gray-900 dark:text-foreground">{p.name}</p>
-                          {p.role && <p className="text-xs text-gray-500 dark:text-muted-foreground">{p.role}</p>}
+                          <p className="font-semibold text-gray-900 dark:text-foreground">
+                            {p.name}
+                          </p>
+                          {p.role && (
+                            <p className="text-xs text-gray-500 dark:text-muted-foreground">
+                              {p.role}
+                            </p>
+                          )}
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           {(p.start_date || p.end_date) && (
                             <span className="text-xs text-gray-400 dark:text-muted-foreground">
                               {p.start_date ? formatDate(p.start_date) : ""}
-                              {p.end_date ? ` — ${formatDate(p.end_date)}` : " — Present"}
+                              {p.end_date
+                                ? ` — ${formatDate(p.end_date)}`
+                                : " — Present"}
                             </span>
                           )}
                           {p.url && (
-                            <a href={p.url} target="_blank" rel="noreferrer" className="text-gray-400 dark:text-muted-foreground hover:text-blue-600 dark:hover:text-primary">
+                            <a
+                              href={p.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-gray-400 dark:text-muted-foreground hover:text-blue-600 dark:hover:text-primary"
+                            >
                               <ExternalLink className="h-4 w-4" />
                             </a>
                           )}
                         </div>
                       </div>
                       {p.description && (
-                        <p className="mt-1.5 text-sm text-gray-600 dark:text-muted-foreground leading-relaxed">{p.description}</p>
+                        <p className="mt-1.5 text-sm text-gray-600 dark:text-muted-foreground leading-relaxed">
+                          {p.description}
+                        </p>
                       )}
                       {(p.highlights?.length ?? 0) > 0 && (
                         <ul className="mt-2 space-y-1">
                           {p.highlights.map((h, j) => (
-                            <li key={j} className="flex gap-2 text-sm text-gray-700 dark:text-muted-foreground">
+                            <li
+                              key={j}
+                              className="flex gap-2 text-sm text-gray-700 dark:text-muted-foreground"
+                            >
                               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400 dark:bg-primary" />
                               {h}
                             </li>
@@ -469,7 +612,13 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                       {(p.technologies?.length ?? 0) > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {p.technologies.map((t) => (
-                            <Badge key={t} variant="outline" className="text-xs text-gray-500 dark:text-muted-foreground">{t}</Badge>
+                            <Badge
+                              key={t}
+                              variant="outline"
+                              className="text-xs text-gray-500 dark:text-muted-foreground"
+                            >
+                              {t}
+                            </Badge>
                           ))}
                         </div>
                       )}
@@ -500,14 +649,23 @@ export default function ProfilePage() {
 
   const hasProfile = !!data?.contact_info?.name;
 
-  if (isLoading) return <p className="text-sm text-gray-400 dark:text-muted-foreground p-4">Loading profile…</p>;
+  if (isLoading)
+    return (
+      <p className="text-sm text-gray-400 dark:text-muted-foreground p-4">
+        Loading profile…
+      </p>
+    );
 
   return (
     <PageContainer variant="wide">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground">Profile</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">Your parsed resume and target preferences.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground">
+            Profile
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
+            Your parsed resume and target preferences.
+          </p>
         </div>
         <div className="flex gap-2">
           {hasProfile && (
@@ -523,7 +681,11 @@ export default function ProfilePage() {
             onClick={() => setShowUpload((v) => !v)}
             className="rounded-md border border-gray-200 dark:border-border px-3 py-1.5 text-sm text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-muted"
           >
-            {showUpload ? "Cancel" : hasProfile ? "Re-upload Resume" : "Upload Resume"}
+            {showUpload
+              ? "Cancel"
+              : hasProfile
+                ? "Re-upload Resume"
+                : "Upload Resume"}
           </button>
         </div>
       </div>
@@ -533,7 +695,9 @@ export default function ProfilePage() {
       )}
 
       {isError && !hasProfile && (
-        <p className="text-sm text-gray-400 dark:text-muted-foreground">No profile yet. Upload your resume to get started.</p>
+        <p className="text-sm text-gray-400 dark:text-muted-foreground">
+          No profile yet. Upload your resume to get started.
+        </p>
       )}
 
       {data && hasProfile && (

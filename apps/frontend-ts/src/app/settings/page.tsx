@@ -41,18 +41,23 @@ type FormValues = z.infer<typeof schema>;
 function SettingsForm({ initial }: { initial: AppSettings }) {
   const qc = useQueryClient();
 
-  const { register, handleSubmit, control, setValue, formState: { errors, isDirty } } =
-    useForm<FormValues>({
-      resolver: zodResolver(schema),
-      defaultValues: {
-        api_config: {
-          anthropic_api_key: initial.api_config.anthropic_api_key ?? "",
-          ollama_host: initial.api_config.ollama_host,
-        },
-        model_params: initial.model_params,
-        cost_limits: initial.cost_limits,
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    formState: { errors, isDirty },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      api_config: {
+        anthropic_api_key: initial.api_config.anthropic_api_key ?? "",
+        ollama_host: initial.api_config.ollama_host,
       },
-    });
+      model_params: initial.model_params,
+      cost_limits: initial.cost_limits,
+    },
+  });
 
   const save = useMutation({
     mutationFn: (values: FormValues) =>
@@ -107,7 +112,9 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   {...register("api_config.ollama_host")}
                 />
                 {errors.api_config?.ollama_host && (
-                  <p className="text-xs text-red-500">{errors.api_config.ollama_host.message}</p>
+                  <p className="text-xs text-red-500">
+                    {errors.api_config.ollama_host.message}
+                  </p>
                 )}
               </div>
               <div className="space-y-1">
@@ -118,7 +125,9 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   placeholder="sk-ant-…"
                   {...register("api_config.anthropic_api_key")}
                 />
-                <p className="text-xs text-gray-400">Leave blank to use Ollama only.</p>
+                <p className="text-xs text-gray-400">
+                  Leave blank to use Ollama only.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -135,14 +144,20 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   type="number"
                   step="0.01"
                   min={0}
-                  {...register("cost_limits.max_api_cost_per_run", { valueAsNumber: true })}
+                  {...register("cost_limits.max_api_cost_per_run", {
+                    valueAsNumber: true,
+                  })}
                 />
               </div>
               <div className="flex items-center gap-3">
                 <Switch
                   id="enable_cache"
                   checked={cacheEnabled}
-                  onCheckedChange={(v) => setValue("cost_limits.enable_cache", v, { shouldDirty: true })}
+                  onCheckedChange={(v) =>
+                    setValue("cost_limits.enable_cache", v, {
+                      shouldDirty: true,
+                    })
+                  }
                 />
                 <Label htmlFor="enable_cache">Enable Response Cache</Label>
               </div>
@@ -153,7 +168,9 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                     id="cache_ttl"
                     type="number"
                     min={0}
-                    {...register("cost_limits.cache_ttl", { valueAsNumber: true })}
+                    {...register("cost_limits.cache_ttl", {
+                      valueAsNumber: true,
+                    })}
                   />
                 </div>
               )}
@@ -170,7 +187,9 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Temperature</Label>
-                <span className="text-sm font-mono text-gray-700">{temperature.toFixed(2)}</span>
+                <span className="text-sm font-mono text-gray-700">
+                  {temperature.toFixed(2)}
+                </span>
               </div>
               <Slider
                 min={0}
@@ -179,16 +198,22 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 value={[temperature]}
                 onValueChange={(v) => {
                   const val = Array.isArray(v) ? v[0] : (v as number);
-                  setValue("model_params.temperature", val, { shouldDirty: true });
+                  setValue("model_params.temperature", val, {
+                    shouldDirty: true,
+                  });
                 }}
               />
-              <p className="text-xs text-gray-400">Lower = more focused. Higher = more creative.</p>
+              <p className="text-xs text-gray-400">
+                Lower = more focused. Higher = more creative.
+              </p>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Top P</Label>
-                <span className="text-sm font-mono text-gray-700">{topP.toFixed(2)}</span>
+                <span className="text-sm font-mono text-gray-700">
+                  {topP.toFixed(2)}
+                </span>
               </div>
               <Slider
                 min={0}
@@ -200,7 +225,9 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   setValue("model_params.top_p", val, { shouldDirty: true });
                 }}
               />
-              <p className="text-xs text-gray-400">Nucleus sampling cutoff. 0.9 is a good default.</p>
+              <p className="text-xs text-gray-400">
+                Nucleus sampling cutoff. 0.9 is a good default.
+              </p>
             </div>
 
             <div className="space-y-1">
@@ -210,9 +237,13 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 type="number"
                 min={1}
                 max={32000}
-                {...register("model_params.max_tokens", { valueAsNumber: true })}
+                {...register("model_params.max_tokens", {
+                  valueAsNumber: true,
+                })}
               />
-              <p className="text-xs text-gray-400">Maximum response length. 4096 covers most tasks.</p>
+              <p className="text-xs text-gray-400">
+                Maximum response length. 4096 covers most tasks.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -254,14 +285,18 @@ export default function SettingsPage() {
     staleTime: 60_000,
   });
 
-  if (isLoading) return <p className="text-sm text-gray-400 p-4">Loading settings…</p>;
-  if (isError || !data) return <p className="text-sm text-red-500 p-4">Failed to load settings.</p>;
+  if (isLoading)
+    return <p className="text-sm text-gray-400 p-4">Loading settings…</p>;
+  if (isError || !data)
+    return <p className="text-sm text-red-500 p-4">Failed to load settings.</p>;
 
   return (
     <PageContainer variant="form">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">Configure model routing, API keys, and cost limits.</p>
+        <p className="mt-1 text-sm text-gray-500">
+          Configure model routing, API keys, and cost limits.
+        </p>
       </div>
       <SettingsForm initial={data} />
     </PageContainer>

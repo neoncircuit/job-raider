@@ -10,8 +10,7 @@ Date: 2026-04-21
 
 import os
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from ..utils.logger import Components, get_logger
 
@@ -20,7 +19,6 @@ try:
     import mlflow
     import mlflow.pytorch
     import mlflow.sklearn
-    from mlflow.entities import Metric as MLflowMetric
 
     MLFLOW_AVAILABLE = True
 except ImportError:
@@ -528,7 +526,7 @@ class MLflowRunContext:
         self.run_name = run_name
 
     def __enter__(self):
-        run_id = self.tracker.start_run(self.run_name)
+        self.tracker.start_run(self.run_name)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

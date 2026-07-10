@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-from .base import Task, TaskType
 from .config_loader import get_agent_config
 
 logger = logging.getLogger(__name__)

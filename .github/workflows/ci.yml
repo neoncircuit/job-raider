@@ -114,33 +114,6 @@ jobs:
           name: codecov-umbrella
         continue-on-error: true
 
-  test-frontend:
-    name: Test Frontend
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend-py
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version-file: '.python-version'
-          cache: 'pip'
-          cache-dependency-path: frontend-py/requirements.txt
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest pytest-mock
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: Run frontend tests
-        run: |
-          PYTHONPATH=. pytest tests/ -v
-
   lint-frontend:
     name: Lint Next.js Frontend
     runs-on: ubuntu-latest
@@ -224,6 +197,56 @@ jobs:
           name: codecov-frontend-unit
         continue-on-error: true
 
+  format-check-frontend:
+    name: Check Next.js Frontend Formatting
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend-ts
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/frontend-ts/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Check Prettier formatting
+        run: |
+          npm run format:check
+
+  build-frontend:
+    name: Build Next.js Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend-ts
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/frontend-ts/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Build Next.js application
+        run: |
+          npm run build
+
   test-frontend-e2e:
     name: Test Frontend (E2E Tests)
     runs-on: ubuntu-latest
@@ -303,7 +326,7 @@ jobs:
   build:
     name: Build Docker Image
     runs-on: ubuntu-latest
-    needs: [lint, type-check, test-backend, lint-frontend, type-check-frontend, test-frontend-unit]
+    needs: [lint, type-check, test-backend, lint-frontend, type-check-frontend, format-check-frontend, build-frontend, test-frontend-unit]
     # Publish only on deliberate triggers, not on every main push: building the
     # CUDA image is heavy, `:latest` should not move per-commit, and the job
     # needs Docker Hub secrets that aren't always configured. Cut a `v*` tag to

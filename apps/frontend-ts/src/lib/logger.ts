@@ -59,15 +59,22 @@ export class Logger {
    * Log API request
    */
   logRequest(method: string, path: string, body?: unknown) {
-    this.info(`API Request: ${method} ${path}`, body ? JSON.stringify(body) : "");
+    this.info(
+      `API Request: ${method} ${path}`,
+      body ? JSON.stringify(body) : "",
+    );
   }
 
   /**
    * Log API response
    */
   logResponse(status: number, path: string, data?: unknown) {
-    const statusColor = status >= 200 && status < 300 ? "✅" : status >= 400 ? "❌" : "⚠️";
-    this.info(`API Response: ${statusColor} ${status} ${path}`, data ? JSON.stringify(data).substring(0, 200) : "");
+    const statusColor =
+      status >= 200 && status < 300 ? "✅" : status >= 400 ? "❌" : "⚠️";
+    this.info(
+      `API Response: ${statusColor} ${status} ${path}`,
+      data ? JSON.stringify(data).substring(0, 200) : "",
+    );
   }
 
   /**

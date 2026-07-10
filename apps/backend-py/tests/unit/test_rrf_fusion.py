@@ -2,7 +2,6 @@
 Unit tests for Reciprocal Rank Fusion (RRF).
 """
 
-import pytest
 
 from src.rag.rrf_fusion import RRFResult, reciprocal_rank_fusion
 

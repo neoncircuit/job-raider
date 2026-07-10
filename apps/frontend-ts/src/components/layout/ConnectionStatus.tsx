@@ -19,7 +19,7 @@ export function ConnectionStatus() {
     status === "healthy" && "bg-emerald-400 animate-pulse",
     status === "degraded" && "bg-amber-400",
     (status === "unhealthy" || status === "unreachable") && "bg-red-400",
-    status === "unknown" && "bg-slate-500"
+    status === "unknown" && "bg-slate-500",
   );
 
   const textClass = cn(
@@ -27,7 +27,7 @@ export function ConnectionStatus() {
     status === "healthy" && "text-emerald-400",
     status === "degraded" && "text-amber-400",
     (status === "unhealthy" || status === "unreachable") && "text-red-400",
-    status === "unknown" && "text-slate-500"
+    status === "unknown" && "text-slate-500",
   );
 
   const labels: Record<string, string> = {

@@ -10,10 +10,9 @@ Date: 2026-04-20
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from ..models.job_listing import ExperienceLevel, JobListing
-from ..models.user_profile import Skill as UserSkill
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
 

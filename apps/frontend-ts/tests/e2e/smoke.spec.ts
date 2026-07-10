@@ -37,7 +37,9 @@ async function navigateTo(page: Page, linkName: string): Promise<void> {
   if (isMobile) {
     await page.getByLabel("Open navigation").click();
   }
-  await page.getByRole("link", { name: linkName, exact: true }).click({ force: !isMobile });
+  await page
+    .getByRole("link", { name: linkName, exact: true })
+    .click({ force: !isMobile });
 }
 
 test.describe("App load", () => {

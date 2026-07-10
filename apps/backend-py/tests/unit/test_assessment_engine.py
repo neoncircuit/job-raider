@@ -3,8 +3,7 @@
 # Date: 2026-05-22
 
 import json
-from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -19,10 +18,10 @@ from src.models.assessment import (
     QuestionScore,
     QuestionType,
 )
-from src.models.job_listing import JobListing, JobRequirement, JobSource, Skill
-from src.models.user_profile import ContactInfo, ProficiencyLevel
+from src.models.job_listing import JobListing, JobSource, Skill
+from src.models.user_profile import ContactInfo
 from src.models.user_profile import Skill as ProfileSkill
-from src.models.user_profile import SkillCategory, UserProfile, WorkExperience
+from src.models.user_profile import SkillCategory, UserProfile
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -185,9 +184,6 @@ class TestGenerateQuestions:
         # (it's filtered out before building the seed)
         taxonomy = engine._build_topic_taxonomy(None, None)
         available = [t for t in taxonomy if t != "used_topic"]
-        seed_topics = [
-            t.strip() for t in user_msg.split("on ")[1].split(".") if t.strip()
-        ]
         assert "used_topic" not in user_msg or len(available) == 0
 
     def test_uses_high_temperature(self, engine, mock_llm_router, sample_session):

@@ -7,7 +7,6 @@ for agent operations to reduce code duplication and ensure consistency.
 
 import logging
 import os
-import traceback
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional, Tuple

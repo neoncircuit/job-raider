@@ -8,19 +8,22 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-import asyncio
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
-from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..utils.logger import Components, get_logger
 from ..utils.sentry import init_sentry
 from .auth import verify_api_key
+from .models.responses import ErrorResponse
 from .routes import (
     agents,
     applications,
@@ -78,9 +81,6 @@ async def validate_llm_providers():
     If no providers are available, we log a warning but don't crash -
     the application will fail gracefully when LLM features are used.
     """
-    import os
-    import sys
-
     logger.info("=== LLM Provider Validation ===")
 
     available_providers = []
@@ -89,7 +89,7 @@ async def validate_llm_providers():
     # Check Ollama
     ollama_host = os.getenv("OLLAMA_HOST", "localhost:11434")
     try:
-        import requests
+        import requests  # type: ignore[import-untyped]
 
         response = requests.get(
             f"http://{ollama_host.replace('http://', '')}/api/tags", timeout=3
@@ -144,6 +144,31 @@ async def validate_llm_providers():
     logger.info("=== Provider Validation Complete ===")
 
 
+def _parse_cors_origins() -> List[str]:
+    """
+    Build the CORS ``allow_origins`` list from the environment.
+
+    ``CORS_ALLOWED_ORIGINS`` is a comma-separated list of origins. In
+    development, when the variable is unset, safe local defaults are used.
+    In production an unset variable yields an empty list so no cross-origin
+    requests are permitted.
+
+    Returns:
+        List of allowed origin URLs.
+    """
+    raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    if raw:
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+    if os.getenv("ENVIRONMENT", "development").lower() == "development":
+        return [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ]
+
+    return []
+
+
 # Create FastAPI application
 app = FastAPI(
     title="Job Raider API",
@@ -155,11 +180,101 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=_parse_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """
+    Return a normalized error response for request validation failures.
+
+    Args:
+        request: The request that triggered the validation error.
+        exc: The validation exception raised by FastAPI/Pydantic.
+
+    Returns:
+        JSONResponse with status 422 and an ErrorResponse payload.
+    """
+    error = ErrorResponse(
+        error="Validation failed",
+        message="The request body or parameters are invalid.",
+        details={"errors": jsonable_encoder(exc.errors(), custom_encoder={Exception: str})},
+    )
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": error.error,
+            "message": error.message,
+            "details": error.details,
+            "timestamp": error.timestamp.isoformat(),
+        },
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """
+    Return a normalized error response for explicit HTTPExceptions.
+
+    Args:
+        request: The request that triggered the exception.
+        exc: The HTTPException raised by route handlers or dependencies.
+
+    Returns:
+        JSONResponse with the exception's status code and an ErrorResponse payload.
+    """
+    detail = exc.detail
+    if not isinstance(detail, str):
+        detail = str(detail)
+
+    error = ErrorResponse(
+        error="HTTP error",
+        message=detail,
+        details={"status_code": exc.status_code},
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": error.error,
+            "message": error.message,
+            "details": error.details,
+            "timestamp": error.timestamp.isoformat(),
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """
+    Catch-all handler for unhandled server errors.
+
+    Args:
+        request: The request that triggered the exception.
+        exc: The unhandled exception.
+
+    Returns:
+        JSONResponse with status 500 and a sanitized ErrorResponse payload.
+    """
+    logger.error(f"Unhandled exception for {request.url}: {exc}", exc_info=True)
+    error = ErrorResponse(
+        error="Internal server error",
+        message="An unexpected error occurred. Please try again later.",
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": error.error,
+            "message": error.message,
+            "timestamp": error.timestamp.isoformat(),
+        },
+    )
+
 
 # Mount static files for simple frontend
 static_dir = Path(__file__).parent / "static"

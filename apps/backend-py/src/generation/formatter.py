@@ -8,7 +8,6 @@ Author: Job Raider
 Date: 2026-04-27
 """
 
-import io
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -26,8 +25,7 @@ except ImportError:
 
 try:
     from docx import Document
-    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-    from docx.shared import Inches, Pt, RGBColor
+    from docx.shared import RGBColor
 
     DOCX_AVAILABLE = True
 except ImportError:
@@ -495,7 +493,6 @@ class ResumeFormatter:
         doc = Document()
         heading_color_hex = template["heading_color"].lstrip("#")
         heading_rgb = RGBColor.from_string(heading_color_hex)
-        bullet_char = "-" if options.ats_mode else "•"
 
         # Name/Title from summary
         lines = resume.summary.split("\n") if resume.summary else []

@@ -9,9 +9,8 @@ Date: 2026-04-20
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
-from pydantic import BaseModel
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType

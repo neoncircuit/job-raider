@@ -8,7 +8,6 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-import subprocess
 import threading
 import time
 from dataclasses import dataclass

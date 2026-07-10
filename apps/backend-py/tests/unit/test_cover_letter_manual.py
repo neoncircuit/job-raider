@@ -293,7 +293,7 @@ class TestGenerateManualCoverLetter:
             )
 
         assert resp.status_code == 400
-        assert "No active profile found" in resp.json()["detail"]
+        assert "No active profile found" in resp.json()["message"]
 
     def test_manual_cover_letter_profile_not_found(self, client):
         """Should return 404 when the active profile ID is missing from storage."""
@@ -313,7 +313,7 @@ class TestGenerateManualCoverLetter:
             )
 
         assert resp.status_code == 404
-        assert "Profile missing not found" in resp.json()["detail"]
+        assert "Profile missing not found" in resp.json()["message"]
 
     def test_manual_cover_letter_rejects_short_description(self, client):
         """Should reject descriptions shorter than the minimum length."""
@@ -327,8 +327,8 @@ class TestGenerateManualCoverLetter:
         )
 
         assert resp.status_code == 422
-        detail = resp.json()["detail"]
-        assert any("description" in str(err).lower() for err in detail)
+        errors = resp.json()["details"]["errors"]
+        assert any("description" in str(err).lower() for err in errors)
 
     def test_manual_cover_letter_rejects_missing_title(self, client):
         """Should reject a request missing the job title."""

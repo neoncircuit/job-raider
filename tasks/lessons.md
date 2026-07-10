@@ -85,6 +85,20 @@
 
 ## General Development Lessons
 
+### Frontend Code-Quality Gate
+
+**Lesson:** Run a TypeScript reviewer pass before declaring frontend work complete.
+
+**Why:**
+- Catches missing JSDoc docstrings on helpers, components, and test utilities before they reach the main branch.
+- Surfaces unsafe casts such as `as unknown as T` that can be replaced with runtime zod schemas.
+- Prevents iterative fix cycles after CI or human review.
+
+**How to apply:**
+- After writing a new page/component/test file, spawn a TypeScript reviewer to audit for docstrings, type safety, and project patterns.
+- Treat reviewer findings as blocking; fix them before updating `tasks/todo.md`.
+- Prefer runtime validation over `as unknown as` casts when accepting free-form JSON from users.
+
 ### Code Organization
 
 **Lesson:** Use clear module boundaries with __init__.py exports.
@@ -2731,3 +2745,17 @@
 - `git mv backend-py apps/backend-py` and `git mv frontend-ts apps/frontend-ts` before any content changes.
 - Migrate `.env`, `.venv`, `data`, `node_modules`, `.next`, and other gitignored state by hand afterward.
 - Verify with `git status` that the renames are tracked before committing.
+
+#### Global Exception Handlers Change Error Response Shape for Tests
+
+**Lesson:** Adding global FastAPI exception handlers that return a normalized `ErrorResponse` changes the JSON body for every `HTTPException`, `RequestValidationError`, and unhandled exception. Existing tests that assert `resp.json()["detail"]` will fail with `KeyError`.
+
+**Why:**
+- FastAPI's default `HTTPException` payload uses the `"detail"` key, so many route tests were written against that shape.
+- The new handlers return `{ "error": "...", "message": "...", "details": {...} }` for consistency across the API.
+- The change is global and affects every route that raises or returns an error, not just the routes being modified.
+
+**How to apply:**
+- Before adding global handlers, grep tests for `["detail"]` and decide whether to update assertions or preserve the old shape for specific routes.
+- After adding handlers, run the full test suite (not just the new tests) and update assertions to use `["message"]` for `HTTPException` cases and `["details"]["errors"]` for validation errors.
+- When serializing Pydantic validation errors, use `jsonable_encoder(..., custom_encoder={Exception: str})` because Pydantic V2 `ctx` may contain `Exception` objects that are not JSON-serializable by default.

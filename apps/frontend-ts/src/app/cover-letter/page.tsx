@@ -100,7 +100,9 @@ export default function CoverLetterPage() {
   });
 
   const canGenerate =
-    form.title.trim() && form.company.trim() && form.description.trim().length >= 50;
+    form.title.trim() &&
+    form.company.trim() &&
+    form.description.trim().length >= 50;
 
   const handleCopy = async () => {
     if (!result) return;
@@ -124,7 +126,8 @@ export default function CoverLetterPage() {
           Cover Letter
         </h1>
         <p className="text-muted-foreground">
-          Paste a job description and generate a tailored, proofread cover letter.
+          Paste a job description and generate a tailored, proofread cover
+          letter.
         </p>
       </div>
 
@@ -145,7 +148,9 @@ export default function CoverLetterPage() {
                   id="title"
                   placeholder="e.g. Software Engineer"
                   value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, title: e.target.value }))
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -154,7 +159,9 @@ export default function CoverLetterPage() {
                   id="company"
                   placeholder="e.g. Acme Inc"
                   value={form.company}
-                  onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, company: e.target.value }))
+                  }
                 />
               </div>
             </div>
@@ -165,7 +172,9 @@ export default function CoverLetterPage() {
                 id="location"
                 placeholder="e.g. Remote / Singapore"
                 value={form.location}
-                onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, location: e.target.value }))
+                }
               />
             </div>
 
@@ -176,7 +185,9 @@ export default function CoverLetterPage() {
                 placeholder="Paste the full job description here..."
                 className="min-h-[240px] resize-y"
                 value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, description: e.target.value }))
+                }
               />
               <p className="text-xs text-muted-foreground">
                 Minimum 50 characters required for meaningful generation.
@@ -185,7 +196,10 @@ export default function CoverLetterPage() {
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div className="space-y-0.5">
-                <Label htmlFor="deep" className="text-sm font-medium flex items-center gap-2">
+                <Label
+                  htmlFor="deep"
+                  className="text-sm font-medium flex items-center gap-2"
+                >
                   <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                   Deep validation
                 </Label>
@@ -204,12 +218,16 @@ export default function CoverLetterPage() {
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div className="space-y-0.5">
-                <Label htmlFor="review" className="text-sm font-medium flex items-center gap-2">
+                <Label
+                  htmlFor="review"
+                  className="text-sm font-medium flex items-center gap-2"
+                >
                   <PenTool className="h-3.5 w-3.5 text-indigo-500" />
                   Review & rewrite
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Ask a reviewer to critique the draft and rewrite it once if needed.
+                  Ask a reviewer to critique the draft and rewrite it once if
+                  needed.
                 </p>
               </div>
               <Switch

@@ -8,10 +8,10 @@
  * Date: 2026-06-08
  */
 
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: "./tests/e2e",
 
   // Timeout for each test (milliseconds)
   timeout: 30000,
@@ -32,24 +32,24 @@ export default defineConfig({
 
   // Reporter to use
   reporter: [
-    ['html', { outputFolder: 'playwright-report' }],
-    ['junit', { outputFile: 'playwright-results/junit.xml' }],
-    ['list'],
+    ["html", { outputFolder: "playwright-report" }],
+    ["junit", { outputFile: "playwright-results/junit.xml" }],
+    ["list"],
   ],
 
   // Shared settings for all tests
   use: {
     // Base URL for tests - can be overridden per test
-    baseURL: 'http://localhost:3000',
+    baseURL: "http://localhost:3000",
 
     // Collect trace when retrying the failed test
-    trace: 'on-first-retry',
+    trace: "on-first-retry",
 
     // Take screenshot on failure
-    screenshot: 'only-on-failure',
+    screenshot: "only-on-failure",
 
     // Record video on failure
-    video: 'retain-on-failure',
+    video: "retain-on-failure",
 
     // Browser context options
     viewport: { width: 1280, height: 720 },
@@ -61,20 +61,20 @@ export default defineConfig({
   // to avoid failures on Firefox/WebKit (whose binaries are not installed).
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
 
     {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
+      name: "Mobile Chrome",
+      use: { ...devices["Pixel 5"] },
     },
   ],
 
   // Run your local dev server before starting the tests
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
+    command: "npm run dev",
+    url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

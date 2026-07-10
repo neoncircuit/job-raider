@@ -33,7 +33,7 @@ async function handler(req: NextRequest, ctx: ProxyRouteContext) {
       // (it contains the boundary that the backend needs)
       body = await req.blob();
     } else {
-      body = await req.text() || null;
+      body = (await req.text()) || null;
     }
   }
 
@@ -49,7 +49,7 @@ async function handler(req: NextRequest, ctx: ProxyRouteContext) {
   } catch (err) {
     return NextResponse.json(
       { error: "Backend unreachable", message: String(err) },
-      { status: 503 }
+      { status: 503 },
     );
   }
 

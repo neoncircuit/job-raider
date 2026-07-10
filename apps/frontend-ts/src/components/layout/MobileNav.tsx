@@ -14,7 +14,9 @@ export function MobileNav() {
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary cosmic-glow">
           <Zap size={13} className="text-primary-foreground" fill="current" />
         </div>
-        <p className="text-sm font-bold text-sidebar-foreground tracking-tight">Job Raider</p>
+        <p className="text-sm font-bold text-sidebar-foreground tracking-tight">
+          Job Raider
+        </p>
       </div>
 
       <Sheet open={open} onOpenChange={setOpen}>

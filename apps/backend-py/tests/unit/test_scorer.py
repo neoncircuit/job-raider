@@ -2,27 +2,15 @@
 # Author: Job Raider
 # Date: 2026-04-21
 
-from datetime import datetime
 
 import pytest
 
 from src.models.job_listing import (
-    ExperienceLevel,
     JobListing,
     JobRequirement,
     JobSource,
 )
 from src.models.job_listing import Skill as JobSkill
-from src.models.user_profile import (
-    ContactInfo,
-    ProficiencyLevel,
-    Project,
-    Skill,
-    SkillCategory,
-    TargetJob,
-    UserProfile,
-    WorkExperience,
-)
 from src.scoring.filter import JobFilter
 from src.scoring.matcher import JobMatcher, MatchScore
 

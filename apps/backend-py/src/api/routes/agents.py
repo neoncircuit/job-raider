@@ -10,7 +10,7 @@ import threading
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
@@ -18,8 +18,6 @@ from ...agents.base import Task, TaskType
 from ...agents.career_coach import CareerCoachAgent
 from ...agents.coordinator import AgentCoordinator
 from ...llm.router import LLMRouter
-from ...models.job_listing import JobListing
-from ...models.user_profile import UserProfile
 from ..auth import verify_api_key
 from ..rate_limiter import get_rate_limiter
 
@@ -144,39 +142,54 @@ class CareerGoalsRequest(BaseModel):
         return v
 
 
-class SkillDevelopmentPlanRequest(BaseModel):
-    """Request model for skill development plan."""
-
-    skill_name: str = Field(
-        ..., min_length=1, max_length=100, description="Name of the skill to develop"
-    )
-    current_level: str = Field(..., description="Current skill level")
-    profile: Optional[Dict[str, Any]] = Field(
-        None, description="Optional user profile for context"
-    )
-
-    @field_validator("skill_name")
-    @classmethod
-    def skill_name_must_not_be_empty(cls, v):
-        if not v or not v.strip():
-            raise ValueError("Skill name cannot be empty")
-        return v.strip()
-
-    @field_validator("current_level")
-    @classmethod
-    def current_level_must_be_valid(cls, v):
-        valid_levels = ["none", "beginner", "intermediate", "advanced", "expert"]
-        if v.lower() not in valid_levels:
-            raise ValueError(f'Current level must be one of: {", ".join(valid_levels)}')
-        return v.lower()
-
-
 def get_agent_coordinator() -> AgentCoordinator:
     """Dependency to get the agent coordinator instance."""
     coordinator = _agent_manager.get_coordinator()
     if coordinator is None:
         raise HTTPException(status_code=503, detail="Agent system not initialized")
     return coordinator
+
+
+def _require_task_id(task_id: str) -> str:
+    """
+    Validate that the coordinator accepted a task submission.
+
+    Args:
+        task_id: Task identifier returned by the coordinator.
+
+    Returns:
+        The validated task identifier.
+
+    Raises:
+        HTTPException: 503 if the coordinator did not return a task ID, meaning
+            the agent system is unable to accept work at this time.
+    """
+    if not task_id:
+        raise HTTPException(
+            status_code=503,
+            detail="Agent system is currently unavailable. Please try again later.",
+        )
+    return task_id
+
+
+async def _check_rate_limit(http_request: Request) -> None:
+    """
+    Enforce rate limiting for the current request path.
+
+    Args:
+        http_request: Incoming HTTP request.
+
+    Raises:
+        HTTPException: 429 if the rate limit has been exceeded.
+    """
+    limiter = get_rate_limiter()
+    client_id = http_request.client.host if http_request.client else "unknown"
+    endpoint = http_request.url.path
+    allowed, error_message = limiter.check_rate_limit(client_id, endpoint)
+    if not allowed:
+        raise HTTPException(
+            status_code=429, detail={"error": error_message, "retry_after": 60}
+        )
 
 
 def initialize_agent_system(llm_router: LLMRouter) -> AgentCoordinator:
@@ -227,7 +240,7 @@ def initialize_agent_system(llm_router: LLMRouter) -> AgentCoordinator:
 async def get_agent_status(
     coordinator: AgentCoordinator = Depends(get_agent_coordinator),
     authorized: None = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Get status of all registered agents.
 
@@ -251,7 +264,7 @@ async def get_agent_status(
 @router.get("/performance")
 async def get_agent_performance(
     coordinator: AgentCoordinator = Depends(get_agent_coordinator),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Get performance metrics for all agents.
 
@@ -275,41 +288,35 @@ async def get_agent_performance(
 @router.post("/career-analysis")
 async def trigger_career_analysis(
     request: CareerAnalysisRequest,
-    background_tasks: BackgroundTasks,
     http_request: Request,
     coordinator: AgentCoordinator = Depends(get_agent_coordinator),
     authorized: None = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Trigger career analysis using the Career Coach agent.
 
     Args:
         request: Validated request containing profile and optional target jobs
+        http_request: Incoming HTTP request for rate limiting
+        coordinator: Agent coordinator dependency
+        authorized: API key authorization dependency
 
     Returns:
         Task ID for tracking the analysis
     """
-    # Rate limiting check
-    limiter = get_rate_limiter()
-    client_id = http_request.client.host if http_request.client else "unknown"
-    endpoint = http_request.url.path
-    allowed, error_message = limiter.check_rate_limit(client_id, endpoint)
-    if not allowed:
-        raise HTTPException(
-            status_code=429, detail={"error": error_message, "retry_after": 60}
-        )
+    await _check_rate_limit(http_request)
 
     try:
-        # Create career path analysis task
         task = Task(
             type=TaskType.CAREER_PATH_ANALYSIS,
             data={"profile": request.profile},
             context={"profile": request.profile, "target_jobs": request.target_jobs},
-            priority=7,  # High priority for user-initiated analysis
+            priority=7,
         )
 
-        # Submit to career coach agent
-        task_id = await coordinator.submit_task(task, agent_id="career_coach")
+        task_id = _require_task_id(
+            await coordinator.submit_task(task, agent_id="career_coach")
+        )
 
         return JSONResponse(
             content={
@@ -337,37 +344,32 @@ async def trigger_gap_analysis(
     http_request: Request,
     coordinator: AgentCoordinator = Depends(get_agent_coordinator),
     authorized: None = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Trigger gap analysis using the Career Coach agent.
 
     Args:
         request: Validated request containing profile and target jobs
+        http_request: Incoming HTTP request for rate limiting
+        coordinator: Agent coordinator dependency
+        authorized: API key authorization dependency
 
     Returns:
         Task ID for tracking the analysis
     """
-    # Rate limiting check
-    limiter = get_rate_limiter()
-    client_id = http_request.client.host if http_request.client else "unknown"
-    endpoint = http_request.url.path
-    allowed, error_message = limiter.check_rate_limit(client_id, endpoint)
-    if not allowed:
-        raise HTTPException(
-            status_code=429, detail={"error": error_message, "retry_after": 60}
-        )
+    await _check_rate_limit(http_request)
 
     try:
-        # Create gap analysis task
         task = Task(
             type=TaskType.GAP_ANALYSIS,
             data={"profile": request.profile, "target_jobs": request.target_jobs},
             context={"profile": request.profile, "target_jobs": request.target_jobs},
-            priority=7,  # High priority for user-initiated analysis
+            priority=7,
         )
 
-        # Submit to career coach agent
-        task_id = await coordinator.submit_task(task, agent_id="career_coach")
+        task_id = _require_task_id(
+            await coordinator.submit_task(task, agent_id="career_coach")
+        )
 
         return JSONResponse(
             content={
@@ -395,28 +397,22 @@ async def create_upskilling_roadmap(
     http_request: Request,
     coordinator: AgentCoordinator = Depends(get_agent_coordinator),
     authorized: None = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Generate upskilling roadmap based on gap analysis.
 
     Args:
         request: Validated request containing gap analysis results
+        http_request: Incoming HTTP request for rate limiting
+        coordinator: Agent coordinator dependency
+        authorized: API key authorization dependency
 
     Returns:
         Task ID for tracking the roadmap generation
     """
-    # Rate limiting check
-    limiter = get_rate_limiter()
-    client_id = http_request.client.host if http_request.client else "unknown"
-    endpoint = http_request.url.path
-    allowed, error_message = limiter.check_rate_limit(client_id, endpoint)
-    if not allowed:
-        raise HTTPException(
-            status_code=429, detail={"error": error_message, "retry_after": 60}
-        )
+    await _check_rate_limit(http_request)
 
     try:
-        # Create upskilling roadmap task
         task = Task(
             type=TaskType.UPSKILLING_ROADMAP,
             data={"gap_analysis": request.gap_analysis},
@@ -424,8 +420,9 @@ async def create_upskilling_roadmap(
             priority=6,
         )
 
-        # Submit to career coach agent
-        task_id = await coordinator.submit_task(task, agent_id="career_coach")
+        task_id = _require_task_id(
+            await coordinator.submit_task(task, agent_id="career_coach")
+        )
 
         return JSONResponse(
             content={
@@ -453,28 +450,22 @@ async def set_career_goals(
     http_request: Request,
     coordinator: AgentCoordinator = Depends(get_agent_coordinator),
     authorized: None = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Generate SMART career goals based on profile and market analysis.
 
     Args:
         request: Validated request containing profile information
+        http_request: Incoming HTTP request for rate limiting
+        coordinator: Agent coordinator dependency
+        authorized: API key authorization dependency
 
     Returns:
         Task ID for tracking the goal setting
     """
-    # Rate limiting check
-    limiter = get_rate_limiter()
-    client_id = http_request.client.host if http_request.client else "unknown"
-    endpoint = http_request.url.path
-    allowed, error_message = limiter.check_rate_limit(client_id, endpoint)
-    if not allowed:
-        raise HTTPException(
-            status_code=429, detail={"error": error_message, "retry_after": 60}
-        )
+    await _check_rate_limit(http_request)
 
     try:
-        # Create career goal setting task
         task = Task(
             type=TaskType.CAREER_GOAL_SETTING,
             data={"profile": request.profile},
@@ -482,8 +473,9 @@ async def set_career_goals(
             priority=5,
         )
 
-        # Submit to career coach agent
-        task_id = await coordinator.submit_task(task, agent_id="career_coach")
+        task_id = _require_task_id(
+            await coordinator.submit_task(task, agent_id="career_coach")
+        )
 
         return JSONResponse(
             content={
@@ -505,12 +497,54 @@ async def set_career_goals(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/tasks/{task_id}")
+async def get_task_result(
+    task_id: str,
+    coordinator: AgentCoordinator = Depends(get_agent_coordinator),
+) -> JSONResponse:
+    """
+    Retrieve the result of a previously submitted agent task.
+
+    Args:
+        task_id: Task identifier returned by a task submission endpoint.
+        coordinator: Agent coordinator dependency.
+
+    Returns:
+        ``200`` with the stored result envelope when complete, ``202`` when the
+        task is still pending, or ``404`` when the task ID is unknown or expired.
+    """
+    if not task_id or not task_id.strip():
+        raise HTTPException(status_code=400, detail="Task ID is required")
+
+    record = coordinator.get_task_result(task_id.strip())
+    if record is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if record["status"] == "pending":
+        return JSONResponse(
+            content={
+                "success": True,
+                "data": record,
+                "timestamp": datetime.now().isoformat(),
+            },
+            status_code=202,
+        )
+
+    return JSONResponse(
+        content={
+            "success": True,
+            "data": record,
+            "timestamp": datetime.now().isoformat(),
+        }
+    )
+
+
 @router.get("/recommendations")
 async def get_recommendations(
     profile_id: Optional[str] = None,
     limit: int = 10,
     coordinator: AgentCoordinator = Depends(get_agent_coordinator),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Get career recommendations from the Career Coach agent.
 
@@ -562,7 +596,7 @@ async def get_recommendations(
 @router.get("/health")
 async def health_check(
     coordinator: AgentCoordinator = Depends(get_agent_coordinator),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Perform health check on the agent system.
 
@@ -600,7 +634,7 @@ async def health_check(
 @router.post("/shutdown")
 async def shutdown_agents(
     coordinator: AgentCoordinator = Depends(get_agent_coordinator),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Shutdown the agent system gracefully.
 

@@ -14,13 +14,17 @@ interface DISCAssessmentProps {
 }
 
 export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
-  const [currentStep, setCurrentStep] = useState<"intro" | "loading" | "assessment" | "submitting" | "complete">("intro");
+  const [currentStep, setCurrentStep] = useState<
+    "intro" | "loading" | "assessment" | "submitting" | "complete"
+  >("intro");
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<DISCQuestion[]>([]);
 
   // Track answers: question_id -> { most_like: "A"|"B"|"C"|"D", least_like: "A"|"B"|"C"|"D" }
-  const [answers, setAnswers] = useState<Record<string, { most_like?: string; least_like?: string }>>({});
+  const [answers, setAnswers] = useState<
+    Record<string, { most_like?: string; least_like?: string }>
+  >({});
 
   // Load existing profile query
   const { data: existingProfile } = useQuery({
@@ -73,7 +77,10 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
       });
 
       setCurrentStep("submitting");
-      return await discApi.submit({ session_id: sessionId, answers: discAnswers });
+      return await discApi.submit({
+        session_id: sessionId,
+        answers: discAnswers,
+      });
     },
     onSuccess: (result) => {
       setCurrentStep("complete");
@@ -90,7 +97,11 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
     startMutation.mutate();
   };
 
-  const handleSelection = (questionId: string, type: "most_like" | "least_like", label: string) => {
+  const handleSelection = (
+    questionId: string,
+    type: "most_like" | "least_like",
+    label: string,
+  ) => {
     // Validate: can't select same option for both most and least
     const currentAnswer = answers[questionId] || {};
     const otherType = type === "most_like" ? "least_like" : "most_like";
@@ -114,7 +125,9 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
     const answer = answers[question.id];
 
     if (!answer?.most_like || !answer?.least_like) {
-      toast.error("Please select both Most like you and Least like you before continuing");
+      toast.error(
+        "Please select both Most like you and Least like you before continuing",
+      );
       return;
     }
 
@@ -153,16 +166,24 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
         <CardContent>
           <div className="space-y-3">
             <p className="text-sm text-gray-700">
-              Discover your work style with our DISC personality assessment. Many job applications
-              include similar assessments, so this helps you practice and understand your results.
+              Discover your work style with our DISC personality assessment.
+              Many job applications include similar assessments, so this helps
+              you practice and understand your results.
             </p>
             <ul className="text-xs text-gray-600 space-y-1 ml-4 list-disc">
-              <li>24 questions covering leadership, communication, work style, and problem-solving</li>
-              <li>Most/Least format: choose which options are most and least like you</li>
+              <li>
+                24 questions covering leadership, communication, work style, and
+                problem-solving
+              </li>
+              <li>
+                Most/Least format: choose which options are most and least like
+                you
+              </li>
               <li>Get job match recommendations based on your profile</li>
             </ul>
             <div className="rounded-md bg-indigo-50 p-3 text-xs text-indigo-800">
-              <strong>Takes 5-8 minutes</strong> · Industry-standard format · No wrong answers
+              <strong>Takes 5-8 minutes</strong> · Industry-standard format · No
+              wrong answers
             </div>
             {hasExistingProfile && (
               <div className="rounded-md bg-green-50 p-3 text-xs text-green-800">
@@ -174,7 +195,11 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
               className="w-full"
               disabled={startMutation.isPending}
             >
-              {startMutation.isPending ? "Loading..." : hasExistingProfile ? "Retake Assessment" : "Start Assessment"}
+              {startMutation.isPending
+                ? "Loading..."
+                : hasExistingProfile
+                  ? "Retake Assessment"
+                  : "Start Assessment"}
             </Button>
           </div>
         </CardContent>
@@ -231,7 +256,9 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <p className="text-sm font-medium text-gray-900">{question.question}</p>
+            <p className="text-sm font-medium text-gray-900">
+              {question.question}
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Most Like column */}
@@ -242,7 +269,9 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
                 {question.options.map((option) => (
                   <button
                     key={option.label}
-                    onClick={() => handleSelection(question.id, "most_like", option.label)}
+                    onClick={() =>
+                      handleSelection(question.id, "most_like", option.label)
+                    }
                     disabled={currentStep === "submitting"}
                     className={`w-full text-left rounded-lg border px-4 py-3 text-sm transition-all ${
                       answer.most_like === option.label
@@ -264,7 +293,9 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
                 {question.options.map((option) => (
                   <button
                     key={option.label}
-                    onClick={() => handleSelection(question.id, "least_like", option.label)}
+                    onClick={() =>
+                      handleSelection(question.id, "least_like", option.label)
+                    }
                     disabled={currentStep === "submitting"}
                     className={`w-full text-left rounded-lg border px-4 py-3 text-sm transition-all ${
                       answer.least_like === option.label
@@ -289,15 +320,23 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
               </Button>
               <Button
                 onClick={handleNext}
-                disabled={!answer.most_like || !answer.least_like || currentStep === "submitting"}
+                disabled={
+                  !answer.most_like ||
+                  !answer.least_like ||
+                  currentStep === "submitting"
+                }
                 className="min-w-[100px]"
               >
                 {currentStep === "submitting" ? (
                   "Submitting..."
                 ) : isLastQuestion ? (
-                  <>Submit Results <ChevronRight className="ml-1 h-4 w-4" /></>
+                  <>
+                    Submit Results <ChevronRight className="ml-1 h-4 w-4" />
+                  </>
                 ) : (
-                  <>Next <ChevronRight className="ml-1 h-4 w-4" /></>
+                  <>
+                    Next <ChevronRight className="ml-1 h-4 w-4" />
+                  </>
                 )}
               </Button>
             </div>
@@ -325,7 +364,9 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
           {submitMutation.data && (
             <div className="space-y-3 mt-4">
               <div className="rounded-md bg-indigo-50 p-4">
-                <h3 className="text-sm font-semibold text-indigo-900 mb-2">Your Profile</h3>
+                <h3 className="text-sm font-semibold text-indigo-900 mb-2">
+                  Your Profile
+                </h3>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <span className="font-medium">Dominance (D):</span>{" "}
@@ -346,21 +387,35 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
                 </div>
                 <div className="mt-3 pt-3 border-t border-indigo-200">
                   <p className="text-xs text-indigo-800">
-                    <strong>Primary Type:</strong> {submitMutation.data.primary_type}
+                    <strong>Primary Type:</strong>{" "}
+                    {submitMutation.data.primary_type}
                     {submitMutation.data.secondary_type && (
-                      <span> · <strong>Secondary:</strong> {submitMutation.data.secondary_type}</span>
+                      <span>
+                        {" "}
+                        · <strong>Secondary:</strong>{" "}
+                        {submitMutation.data.secondary_type}
+                      </span>
                     )}
                   </p>
                 </div>
               </div>
 
               <div className="rounded-md bg-green-50 p-4">
-                <h3 className="text-sm font-semibold text-green-900 mb-2">Top Job Matches</h3>
+                <h3 className="text-sm font-semibold text-green-900 mb-2">
+                  Top Job Matches
+                </h3>
                 <div className="space-y-2">
                   {submitMutation.data.job_matches.slice(0, 3).map((match) => (
-                    <div key={match.job_type} className="flex justify-between items-center">
-                      <span className="text-xs text-green-800">{match.job_type}</span>
-                      <span className="text-xs font-semibold text-green-700">{match.match_score}%</span>
+                    <div
+                      key={match.job_type}
+                      className="flex justify-between items-center"
+                    >
+                      <span className="text-xs text-green-800">
+                        {match.job_type}
+                      </span>
+                      <span className="text-xs font-semibold text-green-700">
+                        {match.match_score}%
+                      </span>
                     </div>
                   ))}
                 </div>

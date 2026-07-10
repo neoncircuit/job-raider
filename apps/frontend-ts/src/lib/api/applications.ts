@@ -20,16 +20,25 @@ export const applicationsApi = {
   action: (
     jobId: string,
     action: JobAction,
-    opts?: { note?: string; metadata?: Record<string, unknown> }
+    opts?: { note?: string; metadata?: Record<string, unknown> },
   ) =>
-    request<{ success: boolean; job_id: string; action: string; new_status?: string; message: string }>(
-      "POST",
-      "/applications/actions",
-      { body: { job_id: jobId, action, ...opts } }
-    ),
+    request<{
+      success: boolean;
+      job_id: string;
+      action: string;
+      new_status?: string;
+      message: string;
+    }>("POST", "/applications/actions", {
+      body: { job_id: jobId, action, ...opts },
+    }),
 
   getDashboard: (filters: DashboardFilters = {}) =>
-    request<ApplicationDashboardResponse>("GET", "/applications/dashboard", { params: filters as Record<string, string | number | boolean | undefined | null> }),
+    request<ApplicationDashboardResponse>("GET", "/applications/dashboard", {
+      params: filters as Record<
+        string,
+        string | number | boolean | undefined | null
+      >,
+    }),
 
   getDetail: (jobId: string) =>
     request<ApplicationDetail>("GET", `/applications/${jobId}`),
@@ -42,11 +51,12 @@ export const applicationsApi = {
     application_method?: string;
     metadata?: Record<string, unknown>;
   }) =>
-    request<{ success: boolean; application_id: string; status: string; message: string }>(
-      "POST",
-      "/applications/external",
-      { body: data }
-    ),
+    request<{
+      success: boolean;
+      application_id: string;
+      status: string;
+      message: string;
+    }>("POST", "/applications/external", { body: data }),
 
   markAppliedExternally: (jobId: string, jobTitle?: string, company?: string) =>
     request<{ success: boolean; message: string }>(
@@ -58,8 +68,8 @@ export const applicationsApi = {
           job_title: jobTitle || "Unknown",
           company: company || "Unknown",
           application_method: "External site",
-        }
-      }
+        },
+      },
     ),
 
   createCustomStatus: (data: {
@@ -68,7 +78,9 @@ export const applicationsApi = {
     color?: string;
     icon?: string;
   }) =>
-    request<CustomStatus>("POST", "/applications/statuses/custom", { body: data }),
+    request<CustomStatus>("POST", "/applications/statuses/custom", {
+      body: data,
+    }),
 
   getCustomStatuses: (activeOnly = true) =>
     request<CustomStatus[]>("GET", "/applications/statuses/custom", {

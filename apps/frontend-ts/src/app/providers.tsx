@@ -2,87 +2,97 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import type { JobSearchResponse } from "@/lib/types/api";
-import type { Dispatch, SetStateAction } from "react";
-import { validateAuthConfig } from "@/lib/api/client";
-import { useEffect } from "react";
+import { createLogger } from "@/lib/logger";
 
-// ── App State Context (client-only UI state) ──────────────────────────────────
+const logger = createLogger("Providers");
 
+/**
+ * Client-only UI state shared across the application.
+ *
+ * Server/cache state belongs in TanStack Query, not here.
+ */
 interface AppState {
+  /** Currently selected job ID in the jobs list. */
   selectedJobId: string | null;
+  /** Set the currently selected job ID. */
   setSelectedJobId: Dispatch<SetStateAction<string | null>>;
+  /** Zero-based page index for the jobs list pagination. */
   jobsPage: number;
+  /** Set the jobs list page index. */
   setJobsPage: Dispatch<SetStateAction<number>>;
-  searchResults: JobSearchResponse | null;
-  setSearchResults: Dispatch<SetStateAction<JobSearchResponse | null>>;
+  /** Active automation run ID, if any. */
   activeRunId: string | null;
+  /** Set the active automation run ID. */
   setActiveRunId: Dispatch<SetStateAction<string | null>>;
-  savedJobIds: Set<string>;
-  addSavedJobId: (id: string) => void;
-  removeSavedJobId: (id: string) => void;
 }
 
 const AppStateContext = createContext<AppState | null>(null);
 
-export function useAppState() {
+/**
+ * Hook to access the client-only application UI state.
+ *
+ * @throws {Error} If used outside of {@link Providers}.
+ * @returns The current application state and its setters.
+ */
+export function useAppState(): AppState {
   const ctx = useContext(AppStateContext);
-  if (!ctx) throw new Error("useAppState must be used within Providers");
+  if (!ctx) {
+    throw new Error("useAppState must be used within Providers");
+  }
   return ctx;
 }
 
-// ── Providers ─────────────────────────────────────────────────────────────────
+interface ProvidersProps {
+  /** Child components to wrap. */
+  children: ReactNode;
+}
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const queryClientRef = useRef<QueryClient | null>(null);
-  if (queryClientRef.current == null) {
-    queryClientRef.current = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: 1,
-          refetchOnWindowFocus: false,
+/**
+ * Root client providers for the application.
+ *
+ * Bundles TanStack Query, theme switching, toast notifications, and a minimal
+ * client-only state context. Each render reuses the same `QueryClient` thanks
+ * to `useMemo` with a stable initializer.
+ */
+export function Providers({ children }: ProvidersProps) {
+  const queryClient = useMemo(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
         },
-      },
-    });
-  }
+      }),
+    [],
+  );
 
-  // eslint-disable-next-line react-hooks/refs
-  const queryClient = queryClientRef.current;
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [jobsPage, setJobsPage] = useState(0);
-  const [searchResults, setSearchResults] = useState<JobSearchResponse | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
-  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
 
-  const addSavedJobId = (id: string) =>
-    setSavedJobIds((prev) => new Set(prev).add(id));
-  const removeSavedJobId = (id: string) =>
-    setSavedJobIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
-
-  // Validate auth configuration on mount
-  useEffect(() => {
-    const authStatus = validateAuthConfig();
-    console.log("[JobRaider] Auth configuration:", authStatus);
-  }, []);
+  logger.info("Providers mounted");
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
         <AppStateContext.Provider
           value={{
             selectedJobId,
             setSelectedJobId,
             jobsPage,
             setJobsPage,
-            searchResults,
-            setSearchResults,
             activeRunId,
             setActiveRunId,
-            savedJobIds,
-            addSavedJobId,
-            removeSavedJobId,
           }}
         >
           {children}

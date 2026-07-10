@@ -3,7 +3,8 @@
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
-export type PipelineStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+export type PipelineStatus =
+  "pending" | "running" | "completed" | "failed" | "cancelled";
 export type ExperienceLevel =
   | "Entry Level"
   | "Mid Level"
@@ -32,7 +33,8 @@ export type SkillCategory =
   | "soft_skill"
   | "domain"
   | "other";
-export type ProficiencyLevel = "Beginner" | "Intermediate" | "Advanced" | "Expert";
+export type ProficiencyLevel =
+  "Beginner" | "Intermediate" | "Advanced" | "Expert";
 
 // ── Health ────────────────────────────────────────────────────────────────────
 
@@ -181,11 +183,7 @@ export interface SkillRequirement {
 }
 
 export type TrustTier =
-  | "legitimate"
-  | "low_risk"
-  | "moderate_risk"
-  | "suspicious"
-  | "likely_scam";
+  "legitimate" | "low_risk" | "moderate_risk" | "suspicious" | "likely_scam";
 
 export interface TrustAnalysis {
   tier: TrustTier;
@@ -572,9 +570,11 @@ export interface ResumeAnalysis {
 // ── Assessment ─────────────────────────────────────────────────────────────────
 
 export type AssessmentMode = "job_targeted" | "skill_based";
-export type QuestionType = "conceptual" | "scenario" | "coding" | "system_design";
+export type QuestionType =
+  "conceptual" | "scenario" | "coding" | "system_design";
 export type AnswerFormat = "freeform" | "multiple_choice";
-export type DifficultyLevel = "beginner" | "intermediate" | "advanced" | "expert";
+export type DifficultyLevel =
+  "beginner" | "intermediate" | "advanced" | "expert";
 export type SessionStatus = "in_progress" | "completed" | "abandoned";
 
 export interface MultipleChoiceOption {
@@ -647,7 +647,8 @@ export interface ProgressStats {
 // ── DISC Assessment ───────────────────────────────────────────────────────────────
 
 export type DISCTrait = "D" | "I" | "S" | "C";
-export type DISCCategory = "leadership" | "communication" | "work_style" | "problem_solving";
+export type DISCCategory =
+  "leadership" | "communication" | "work_style" | "problem_solving";
 
 export interface DISCQuestionOption {
   label: string;
@@ -775,4 +776,145 @@ export interface LinkedInProfileAnalysis {
   summary_rewrite_suggestions: string[];
   competitive_edge: string;
   metadata?: Record<string, unknown> | null;
+}
+
+// ── Agent Task Store ──────────────────────────────────────────────────────────
+
+export interface TaskSubmissionResponse {
+  task_id: string;
+  agent: string;
+  task_type: string;
+  status: string;
+}
+
+export interface TaskRecord<T = Record<string, unknown>> {
+  task_id: string;
+  status: "pending" | "completed" | "failed";
+  agent?: string | null;
+  task_type?: string | null;
+  result?: T | null;
+  error?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Career Coach ──────────────────────────────────────────────────────────────
+
+export interface CareerAnalysisRequest {
+  profile: UserProfile;
+  target_jobs?: Record<string, unknown>[];
+}
+
+export interface CareerPositioning {
+  experience_level: string;
+  skill_count: number;
+  primary_skills: (string | undefined)[];
+  positioning_score: number;
+}
+
+export interface CareerTrajectory {
+  current_stage: string;
+  next_stage: string;
+  estimated_timeline: string;
+  required_advancements: string[];
+}
+
+export interface StrategicRecommendation {
+  category: string;
+  title: string;
+  description: string;
+  priority: string;
+  actions: string[];
+}
+
+export interface CareerAnalysisResult {
+  current_positioning: CareerPositioning;
+  career_trajectory: CareerTrajectory;
+  target_alignment: Record<string, unknown>;
+  strategic_recommendations: StrategicRecommendation[];
+}
+
+export interface GapAnalysisRequest {
+  profile: UserProfile;
+  target_jobs: Record<string, unknown>[];
+}
+
+export interface JobGapData {
+  missing: string[];
+  overlap: string[];
+  coverage: number;
+  total_required: number;
+  total_matched: number;
+}
+
+export interface SkillGapRecommendation {
+  type: string;
+  skill: string;
+  severity: string;
+  job: string;
+  resources: Record<string, unknown>[];
+}
+
+export interface GapAnalysisResult {
+  skills_gap: Record<string, JobGapData>;
+  experience_gap: Record<string, unknown>;
+  education_gap: Record<string, unknown>;
+  recommendations: SkillGapRecommendation[];
+}
+
+export interface UpskillingRoadmapRequest {
+  gap_analysis: GapAnalysisResult;
+  profile?: UserProfile | null;
+}
+
+export interface PrioritizedSkill {
+  skill: string;
+  priority: string;
+  reason: string;
+}
+
+export interface LearningPathMilestone {
+  week: number;
+  milestone: string;
+}
+
+export interface LearningPath {
+  skill_name: string;
+  current_level: string;
+  target_level: string;
+  estimated_weeks: number;
+  difficulty: string;
+  resources: Record<string, unknown>[];
+  milestones: LearningPathMilestone[];
+  prerequisites: string[];
+}
+
+export interface RoadmapTimeline {
+  total_weeks: number;
+  phases: Record<string, unknown>[];
+}
+
+export interface UpskillingRoadmapResult {
+  priority_skills: PrioritizedSkill[];
+  learning_paths: LearningPath[];
+  timeline: RoadmapTimeline;
+  resource_recommendations: Record<string, unknown>[];
+  milestones: Record<string, unknown>[];
+}
+
+export interface CareerGoal {
+  goal: string;
+  timeline: string;
+  actions: string[];
+}
+
+export interface CareerGoalsRequest {
+  profile: UserProfile;
+}
+
+export interface CareerGoalsResult {
+  short_term_goals: CareerGoal[];
+  medium_term_goals: CareerGoal[];
+  long_term_goals: CareerGoal[];
+  smart_goals: CareerGoal[];
 }

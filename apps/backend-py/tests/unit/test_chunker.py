@@ -1,23 +1,9 @@
 """Unit tests for the TextChunker."""
 
-from datetime import datetime
 
-import pytest
 
-from src.models.job_listing import JobListing, JobRequirement, JobSource, Skill
-from src.models.user_profile import (
-    ContactInfo,
-    Education,
-    Project,
-)
-from src.models.user_profile import Skill as UserSkill
-from src.models.user_profile import (
-    SkillCategory,
-    TargetJob,
-    UserProfile,
-    WorkExperience,
-)
-from src.rag.chunker import TextChunk, TextChunker
+from src.models.job_listing import JobListing, JobSource
+from src.rag.chunker import TextChunker
 from src.rag.config import ChunkingConfig
 
 

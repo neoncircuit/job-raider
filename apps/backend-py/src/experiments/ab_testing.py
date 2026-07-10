@@ -14,10 +14,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from ..metrics.cost_tracker import CostTracker
-from ..metrics.outcome_tracker import OutcomeTracker
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..scoring.matcher import JobMatcher

@@ -8,7 +8,6 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-import json
 import os
 import time
 from typing import Any, Dict, List, Optional
@@ -22,9 +21,7 @@ from .base import (
     LLMConfig,
     LLMResponse,
     Message,
-    MessageType,
     ModelNotFoundError,
-    TokenUsage,
 )
 
 
@@ -161,7 +158,7 @@ class OllamaClient(BaseLLMClient):
         self.validate_messages(messages)
 
         # Check VRAM before inference
-        use_gpu = self._check_vram_before_inference()
+        self._check_vram_before_inference()
 
         # Build request payload
         payload = {

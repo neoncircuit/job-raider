@@ -12,7 +12,12 @@
 
 import type { Page, Route } from "@playwright/test";
 
-import { sampleJobs, sampleProfile, sampleCoverLetter, sampleCoverLetterValidation } from "../../setup/fixtures";
+import {
+  sampleJobs,
+  sampleProfile,
+  sampleCoverLetter,
+  sampleCoverLetterValidation,
+} from "../../setup/fixtures";
 
 /** Synthetic health payload (shape consumed by `src/app/dashboard/page.tsx`). */
 const mockHealth = {
@@ -79,7 +84,10 @@ export async function mockApi(page: Page): Promise<void> {
       case "GET /pipeline/history":
         return route.fulfill({ status: 200, json: mockPipelineHistory });
       case "GET /jobs/sources":
-        return route.fulfill({ status: 200, json: { sources: ["linkedin", "jsearch"] } });
+        return route.fulfill({
+          status: 200,
+          json: { sources: ["linkedin", "jsearch"] },
+        });
       case "GET /profile":
         return route.fulfill({ status: 200, json: sampleProfile });
       case "POST /profile/analyze-linkedin":

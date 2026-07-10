@@ -10,7 +10,9 @@ export interface JobDescriptionSection {
 /**
  * Format a raw job description into structured, readable sections
  */
-export function formatJobDescription(description: string): JobDescriptionSection[] {
+export function formatJobDescription(
+  description: string,
+): JobDescriptionSection[] {
   if (!description || description.trim().length === 0) {
     return [];
   }
@@ -28,16 +30,18 @@ export function formatJobDescription(description: string): JobDescriptionSection
  * Clean up messy job descriptions
  */
 function cleanDescription(text: string): string {
-  return text
-    // Remove excessive whitespace (more than 2 consecutive newlines)
-    .replace(/\n{3,}/g, '\n\n')
-    // Clean up bullet points
-    .replace(/[·•●]/g, '•')
-    // Normalize spaces
-    .replace(/[ \t]+/g, ' ')
-    // Remove URLs (optional - keeps things cleaner)
-    .replace(/https?:\/\/[^\s]+/g, '[URL]')
-    .trim();
+  return (
+    text
+      // Remove excessive whitespace (more than 2 consecutive newlines)
+      .replace(/\n{3,}/g, "\n\n")
+      // Clean up bullet points
+      .replace(/[·•●]/g, "•")
+      // Normalize spaces
+      .replace(/[ \t]+/g, " ")
+      // Remove URLs (optional - keeps things cleaner)
+      .replace(/https?:\/\/[^\s]+/g, "[URL]")
+      .trim()
+  );
 }
 
 /**
@@ -69,16 +73,19 @@ const SECTION_PATTERNS = [
  */
 function parseSections(text: string): JobDescriptionSection[] {
   const sections: JobDescriptionSection[] = [];
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
 
   let currentSection: JobDescriptionSection = {
-    title: 'Overview',
-    content: []
+    title: "Overview",
+    content: [],
   };
 
   for (const line of lines) {
     // Check if this line is a section header (no heuristic - only exact patterns)
-    const isHeader = SECTION_PATTERNS.some(pattern => pattern.test(line));
+    const isHeader = SECTION_PATTERNS.some((pattern) => pattern.test(line));
 
     if (isHeader) {
       // Save previous section if it has content
@@ -88,8 +95,8 @@ function parseSections(text: string): JobDescriptionSection[] {
 
       // Start new section
       currentSection = {
-        title: line.replace(/[•:]/g, '').trim(),
-        content: []
+        title: line.replace(/[•:]/g, "").trim(),
+        content: [],
       };
     } else {
       // Add line to current section
@@ -105,8 +112,8 @@ function parseSections(text: string): JobDescriptionSection[] {
   // If no sections were found, treat entire description as one section
   if (sections.length === 0) {
     sections.push({
-      title: 'Description',
-      content: lines
+      title: "Description",
+      content: lines,
     });
   }
 
@@ -132,11 +139,17 @@ export function isBulletPoint(line: string): boolean {
   if (trimmed.length < 120 && trimmed.length > 3 && !/[.!?]$/.test(trimmed)) {
     // Exclude very clear headers (section titles)
     const firstWord = trimmed.split(/\s+/)[0].toLowerCase();
-    const isVeryClearHeader = /^(about|responsibilities|requirements|benefits|perks|company|organization|team|culture|why|how|what)$/i.test(firstWord);
+    const isVeryClearHeader =
+      /^(about|responsibilities|requirements|benefits|perks|company|organization|team|culture|why|how|what)$/i.test(
+        firstWord,
+      );
 
     if (!isVeryClearHeader) {
       // Exclude obvious full sentences
-      const hasFullSentencePattern = /\b(you\s+will|we\s+are|they\s+will|you'll|we'll|you\s+should|we\s+should)\s+(be|have|do|go|get|take|make)\b/i.test(trimmed);
+      const hasFullSentencePattern =
+        /\b(you\s+will|we\s+are|they\s+will|you'll|we'll|you\s+should|we\s+should)\s+(be|have|do|go|get|take|make)\b/i.test(
+          trimmed,
+        );
 
       if (!hasFullSentencePattern) {
         // Pretty much anything else short and capitalized is a bullet point
@@ -160,7 +173,7 @@ export function isBulletPoint(line: string): boolean {
  */
 export function cleanBulletPoint(text: string): string {
   return text
-    .replace(/^[•\-\*•●]\s*/, '')     // Remove bullet character completely
-    .replace(/^\d+[.)\]]\s*/, '')     // Remove numbered list markers
+    .replace(/^[•\-\*•●]\s*/, "") // Remove bullet character completely
+    .replace(/^\d+[.)\]]\s*/, "") // Remove numbered list markers
     .trim();
 }

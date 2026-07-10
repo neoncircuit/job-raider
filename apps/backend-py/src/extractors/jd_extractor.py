@@ -10,7 +10,7 @@ Date: 2026-04-20
 
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from bs4 import BeautifulSoup
 
@@ -142,7 +142,6 @@ class JDExtractor:
         """
         errors = []
         warnings = []
-        job_listing = None
 
         try:
             # Parse HTML
@@ -518,7 +517,6 @@ Return a JSON object with these exact fields:
     def _extract_skills(self, sections: Dict[str, str]) -> List[Skill]:
         """Extract skills from sections."""
         skills = []
-        section_text = sections.get("skills", "")
 
         # Look for common programming languages, frameworks, tools
         # This is a simplified version - in production, use a more comprehensive list

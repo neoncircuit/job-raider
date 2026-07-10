@@ -10,22 +10,30 @@ export const PIPELINE_STAGES = [
   { key: "submit_applications", label: "Submit Applications" },
 ] as const;
 
+/**
+ * Theme-aware Tailwind classes for job-source badges.
+ *
+ * These use semantic tokens so they remain readable in both light and dark modes.
+ */
 export const SOURCE_COLORS: Record<string, string> = {
-  linkedin: "bg-blue-600 text-white",
-  jsearch: "bg-indigo-600 text-white",
-  manual: "bg-gray-500 text-white",
+  linkedin: "bg-info text-info-foreground",
+  jsearch: "bg-primary text-primary-foreground",
+  manual: "bg-muted text-muted-foreground",
 };
 
+/**
+ * Theme-aware Tailwind classes for status badges.
+ */
 export const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  running: "bg-blue-100 text-blue-800",
-  completed: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
-  cancelled: "bg-gray-100 text-gray-800",
-  healthy: "bg-green-100 text-green-800",
-  degraded: "bg-yellow-100 text-yellow-800",
-  unhealthy: "bg-red-100 text-red-800",
-  unknown: "bg-gray-100 text-gray-800",
+  pending: "bg-warning/10 text-warning border-warning/30",
+  running: "bg-info/10 text-info border-info/30",
+  completed: "bg-success/10 text-success border-success/30",
+  failed: "bg-destructive/10 text-destructive border-destructive/30",
+  cancelled: "bg-muted text-muted-foreground",
+  healthy: "bg-success/10 text-success border-success/30",
+  degraded: "bg-warning/10 text-warning border-warning/30",
+  unhealthy: "bg-destructive/10 text-destructive border-destructive/30",
+  unknown: "bg-muted text-muted-foreground",
 };
 
 export const DEFAULT_SOURCES = ["linkedin", "jsearch"];

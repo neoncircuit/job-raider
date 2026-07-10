@@ -6,7 +6,6 @@ JobListing, the deduplicate stage persists those IDs to the AppliedJobsTracker
 and filters them from the output.
 """
 
-from datetime import datetime
 from pathlib import Path
 
 import pytest

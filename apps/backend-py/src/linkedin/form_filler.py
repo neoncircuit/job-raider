@@ -12,7 +12,7 @@ import random
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from playwright.sync_api import Page
 
@@ -23,8 +23,6 @@ from .form_models import (
     AnswerConfidence,
     FormFillResult,
     FormQuestion,
-    FormStep,
-    ParsedForm,
     QuestionAnswer,
     QuestionType,
 )
