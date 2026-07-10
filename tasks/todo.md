@@ -2429,8 +2429,22 @@ The E2E suite had three failure modes:
 - Frontend production build: `npm run build` succeeded.
 - Playwright E2E: `npm run test:e2e` passed (`22 passed`).
 
-### Files Changed
+## CI Failure Remediation — isort (2026-07-10) [COMPLETED]
 
+After the Black/E2E fixes cleared, the `Lint Code` job failed on the `Check import ordering with isort` step.
+
+- Ran `isort src/ tests/` inside `apps/backend-py` to fix ordering in:
+  - `src/assessment/disc_engine.py`
+  - `src/generation/resume_writer.py`
+  - `src/generation/selector.py`
+- Verified with `isort --check-only src/ tests/` (no errors).
+- Re-ran `black --check src/ tests/` (0 files would be reformatted).
+- Re-ran `flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics` (0 errors).
+- Re-ran backend test suite: `493 passed`.
+
+The `Lint with pylint` step is configured with `continue-on-error: true` and `|| true`; the errors it reports are pre-existing false positives (Pydantic `FieldInfo` and dynamic member issues) and were not introduced by these changes. The `post setup python` step is part of the same job and now proceeds because the isort step is green.
+
+### Files Changed
 - `apps/backend-py/src/api/main.py`
 - `apps/backend-py/src/utils/logging_helpers.py`
 - `apps/backend-py/tests/unit/test_application_tracker.py`

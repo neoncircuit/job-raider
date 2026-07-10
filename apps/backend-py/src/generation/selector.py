@@ -11,7 +11,6 @@ Date: 2026-04-20
 from dataclasses import dataclass
 from typing import Dict, List
 
-
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing

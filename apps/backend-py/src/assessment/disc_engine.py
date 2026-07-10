@@ -13,8 +13,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
-from ..utils.logger import Components, get_logger
 from src.models.assessment import DISCAnswer, DISCResult, DISCScore, DISCTrait
+
+from ..utils.logger import Components, get_logger
 
 logger = get_logger(Components.GENERATION)
 
