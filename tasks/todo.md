@@ -2386,11 +2386,12 @@ job-raider/
 
 ## Branch Consolidation (2026-07-10) [COMPLETED]
 
-Because this project currently has a single contributor, we are moving from a feature-branch workflow to a single `master` branch to reduce overhead.
+Because this project currently has a single contributor, we are moving from a feature-branch workflow to a single `main` branch to reduce overhead.
 
-- Merged `monorepo-restructure-apps` into `master`.
+- Merged `monorepo-restructure-apps` into `main` (via a temporary `master` consolidation).
 - Deleted the local `monorepo-restructure-apps` feature branch.
-- Pushed `master` to `origin/master`.
+- Deleted the local and remote `master` branch.
+- Pushed `main` to `origin/main`.
 - Cleaned up untracked artifacts:
   - Fixed `data/` pattern in `.gitignore` (removed trailing whitespace).
   - Added `.codebase-memory/` to `.gitignore`.
