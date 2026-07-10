@@ -2384,3 +2384,26 @@ job-raider/
 - The frontend continues to use npm and `package-lock.json`; pnpm is no longer used.
 - No root `package.json` or npm workspaces were introduced; `apps/frontend-ts/` remains self-contained.
 
+## Branch Consolidation (2026-07-10) [COMPLETED]
+
+Because this project currently has a single contributor, we are moving from a feature-branch workflow to a single `master` branch to reduce overhead.
+
+- Merged `monorepo-restructure-apps` into `master`.
+- Deleted the local `monorepo-restructure-apps` feature branch.
+- Pushed `master` to `origin/master`.
+- Cleaned up untracked artifacts:
+  - Fixed `data/` pattern in `.gitignore` (removed trailing whitespace).
+  - Added `.codebase-memory/` to `.gitignore`.
+  - Removed stray `apps/backend-py/package-lock.json`.
+
+### Verification
+
+```bash
+git status --short
+# shows only the committed .gitignore change; no untracked artifacts
+git log --oneline -3
+# 58e6daf chore: clean untracked artifacts and ignore codebase-memory index
+# 029bc40 feat: complete Phase 54 monorepo restructure, security hardening, and Career Coach UI
+# 84d4c5d refactor: move backend-py and frontend-ts under apps/
+```
+
