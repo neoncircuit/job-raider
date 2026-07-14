@@ -2485,3 +2485,96 @@ git log --oneline -3
 # 84d4c5d refactor: move backend-py and frontend-ts under apps/
 ```
 
+## Tech Stack Documentation [COMPLETED]
+
+- [x] Add canonical Tech Stack table to `docs/architecture.md`
+- [x] Add compact Tech Stack table to `README.md`
+- [x] Add Tech Stack overview and cross-reference link to `docs/index.md`
+- [x] Verify markdown tables render correctly
+- [x] Run backend quality gates (black, isort, flake8)
+- [x] Run frontend quality gates (type-check, lint, format:check)
+
+### Review
+
+Added a consolidated Tech Stack section to all three documentation entry points so readers without deep domain knowledge can understand what technologies power the project and why.
+
+- `docs/architecture.md` now contains the canonical, detailed table (Category / Component / Version / Purpose).
+- `README.md` has a compact high-level table for quick scanning.
+- `docs/index.md` provides an overview table plus a cross-reference link to the canonical section.
+
+### Verification Results
+
+- `git status --short` shows only the expected documentation changes and the untracked `docs/designs/` directory (not part of this work).
+- Backend quality gates passed inside `apps/backend-py`:
+  - `black --check src/ tests/` — 166 files would be left unchanged.
+  - `isort --check-only src/ tests/` — no output (clean).
+  - `flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics` — 0 errors.
+- Frontend quality gates passed inside `apps/frontend-ts`:
+  - `npm run type-check` — `tsc --noEmit` passes.
+  - `npm run lint` — 0 errors, 0 warnings.
+  - `npm run format:check` — all matched files use Prettier code style.
+
+## End-to-End Verification and Edge-Case Hardening [COMPLETED]
+
+- [x] Diagnose dashboard E2E failures (stale dev server, unmocked `/assessment/skills`, hydration mismatch)
+- [x] Rewrite `useIsClient` to the canonical mount-guard pattern with a documented lint suppression
+- [x] Gate all data-dependent dashboard UI behind `isClient` to eliminate TanStack Query cache hydration mismatches
+- [x] Add `GET /assessment/skills` mock to the E2E mock layer so the Assessment page can render safely
+- [x] Clear corrupted `.next` dev cache that caused `ChunkLoadError` / `SyntaxError` on SSR chunks
+- [x] Run full Playwright E2E suite (42 tests, all browsers)
+- [x] Run frontend CI gates: ESLint, TypeScript, Prettier, Vitest (51 tests), Next.js production build
+- [x] Run backend CI gates: black, isort, flake8, pytest (493 tests)
+- [x] Add `.flake8` project config so local `flake8` mirrors the CI severity selection
+- [x] Remove accidental `apps/frontend-ts/%1` artifact
+- [x] Commit all changes to `main`
+
+### Changes Made
+
+- `apps/frontend-ts/src/lib/hooks/use-is-client.ts`
+  - Replaced `useSyncExternalStore` with `useState(false)` + `useEffect` mount guard.
+  - Added docstring explaining why the post-mount `setState` is intentional and why the lint rule is suppressed.
+
+- `apps/frontend-ts/src/app/dashboard/page.tsx`
+  - Introduced `const ready = isClient;` and gated stat cards, health rows, and history rows behind it.
+  - This makes SSR and the initial hydration render identical, preventing mismatches when cached TanStack Query data is available.
+
+- `apps/frontend-ts/tests/e2e/support/mock-api.ts`
+  - Added `GET /assessment/skills` fixture returning `{ skills: [...] }` so the Assessment page no longer crashes on `.map()` of `undefined`.
+
+- `apps/frontend-ts/next.config.ts` / `apps/frontend-ts/src/app/page.tsx`
+  - Root redirect moved to `next.config.ts` `redirects()`; the server-component `page.tsx` was removed.
+
+- `apps/frontend-ts/tests/e2e/smoke.spec.ts`
+  - Replaced individual navigation tests with a data-driven loop over all primary routes.
+
+- `apps/backend-py/main.py`
+  - Re-ordered imports with `isort` (no functional change).
+
+- `apps/backend-py/.flake8`
+  - New config selecting only severe/syntax issues (`E9,F63,F7,F82`) to match `.github/workflows/ci.yml`.
+
+- Documentation
+  - `README.md`, `docs/architecture.md`, and `docs/index.md` received consolidated Tech Stack tables.
+  - `docs/designs/study-notes-trainer.md` added as a draft design for a future Study Notes Trainer feature.
+
+### Verification Results
+
+- Playwright E2E: `42 passed` across Desktop Chrome, Firefox, WebKit, and Mobile Chrome.
+- Frontend unit tests: `51 passed` in 10 test files.
+- Next.js production build: successful, all 15 routes prerendered.
+- Backend pytest: `493 passed`.
+- Backend quality gates:
+  - `black --check src tests main.py` — clean.
+  - `isort --check-only src tests main.py` — clean.
+  - `flake8 src tests main.py` — 0 errors.
+- Frontend quality gates:
+  - `npm run lint` — clean.
+  - `npm run type-check` — clean.
+  - `npm run format:check` — clean.
+
+### Lessons
+
+- A stale Next.js dev server on port 3000 can return 500s for old hashed chunks, breaking hydration and causing tests to hang. Always clear the process and the `.next` cache before a definitive E2E run.
+- TanStack Query's shared cache can make the client hydration render differ from the server HTML. Gating data-dependent UI with a mount guard is simpler and more reliable than trying to dehydrate/rehydrate in these pages.
+- When CI uses a selective `flake8 --select`, local `.flake8` should mirror that selection so `flake8` passes locally without relaxing the project's actual lint contract.
+

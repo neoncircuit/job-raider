@@ -58,22 +58,43 @@ test.describe("App load", () => {
   });
 });
 
+const PRIMARY_ROUTES = [
+  { label: "Dashboard", path: "dashboard", heading: "Dashboard" },
+  { label: "Pipeline", path: "pipeline", heading: "Pipeline" },
+  { label: "Jobs", path: "jobs", heading: "Jobs" },
+  { label: "Cover Letter", path: "cover-letter", heading: "Cover Letter" },
+  { label: "Career Coach", path: "career-coach", heading: "Career Coach" },
+  { label: "Applications", path: "applications", heading: "Applications" },
+  { label: "Profile", path: "profile", heading: "Profile" },
+  { label: "Assessment", path: "assessment", heading: "Assessment" },
+  {
+    label: "Resume Analysis",
+    path: "resume-analysis",
+    heading: "Resume Analysis",
+  },
+  {
+    label: "LinkedIn Analysis",
+    path: "linkedin-analysis",
+    heading: "LinkedIn Analysis",
+  },
+  { label: "Metrics", path: "metrics", heading: "Metrics" },
+  { label: "Settings", path: "settings", heading: "Settings" },
+];
+
 test.describe("Primary navigation", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/dashboard");
   });
 
-  test("opens the Jobs page", async ({ page }) => {
-    await navigateTo(page, "Jobs");
-    await expect(page).toHaveURL(/\/jobs/);
-    await expect(page.locator("h1")).toContainText("Jobs");
-  });
-
-  test("opens the Profile page", async ({ page }) => {
-    await navigateTo(page, "Profile");
-    // Profile is compiled on demand in dev; give the dev server extra time
-    // to bundle and hydrate the page before asserting the route.
-    await expect(page).toHaveURL(/\/profile/, { timeout: 15_000 });
-    await expect(page.locator("h1")).toContainText("Profile");
-  });
+  for (const route of PRIMARY_ROUTES) {
+    test(`opens the ${route.label} page`, async ({ page }) => {
+      await navigateTo(page, route.label);
+      // Some routes are compiled on demand in dev; give the dev server extra
+      // time to bundle and hydrate the page before asserting the route.
+      await expect(page).toHaveURL(new RegExp(`\\/${route.path}`), {
+        timeout: 15_000,
+      });
+      await expect(page.locator("h1")).toContainText(route.heading);
+    });
+  }
 });

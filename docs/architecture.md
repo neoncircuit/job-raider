@@ -4,6 +4,47 @@
 
 Job Raider is an automated job application pipeline that aggregates job listings from multiple platforms, scores relevance, generates tailored resumes, and automates submissions where possible.
 
+## Tech Stack
+
+The following table lists the core technologies that make up Job Raider, the minimum version used in the project, and the role each one plays. Versions are pinned in `apps/backend-py/requirements.txt` and `apps/frontend-ts/package.json`.
+
+| Category | Component | Version | Purpose |
+|----------|-----------|---------|---------|
+| **Backend Runtime** | Python | 3.11+ | Core language and async runtime |
+| | FastAPI | 0.115+ | Async web framework for REST and WebSocket endpoints |
+| | Uvicorn | 0.30+ | ASGI server with WebSocket support |
+| | Pydantic | 2.5+ | Request/response validation and settings management |
+| **Data Layer** | SQLAlchemy | 2.0+ | Async ORM for PostgreSQL |
+| | Alembic | 1.13+ | Database schema migrations |
+| | asyncpg | 0.29+ | Async PostgreSQL driver |
+| | Supabase | 2.4+ | Storage bucket operations |
+| | pgvector | 0.2+ | SQLAlchemy types for vector columns |
+| | ChromaDB | 1.0+ | Local embedded vector store for the RAG pipeline |
+| **LLM Providers** | Ollama | latest | Local model serving (default) |
+| | Anthropic API | — | Cloud fallback (Claude models) |
+| | Google GenAI | — | Cloud fallback (Gemini models) |
+| **Scraping & Documents** | Playwright | 1.40+ | Headless browser automation for LinkedIn and E2E tests |
+| | BeautifulSoup4 | 4.12+ | HTML parsing for scrapers |
+| | pypdf | 4.0+ | PDF resume parsing |
+| | python-docx | 1.1+ | DOCX resume parsing and generation |
+| | reportlab | 4.0+ | PDF resume generation |
+| **Frontend Framework** | Next.js | 16.2.4 | React framework with App Router |
+| | React | 19.2.4 | UI component library |
+| | TypeScript | 5.x | Static typing |
+| | Tailwind CSS | 4.x | Utility-first CSS |
+| | shadcn/ui | 4.5.0 | Headless UI component primitives |
+| **Frontend Libraries** | TanStack Query | 5.100.5 | Server-state fetching and caching |
+| | React Hook Form | 7.74.0 | Form state management |
+| | Zod | 4.3.6 | Runtime schema validation |
+| | Recharts | 3.8.1 | Metrics and dashboard charts |
+| **Operations** | Docker | — | Container packaging for backend and frontend |
+| | Docker Compose | — | Multi-service orchestration |
+| | MLflow | 2.0+ | Experiment and metric tracking |
+| | Sentry SDK | 1.40+ | Error tracking and performance monitoring |
+| **Testing** | pytest | 8.0+ | Python unit and integration tests |
+| | Vitest | 1.0+ | Frontend unit tests |
+| | Playwright | 1.40+ | Browser-based E2E tests |
+
 ## System Architecture
 
 ```mermaid

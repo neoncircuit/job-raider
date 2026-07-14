@@ -20,6 +20,7 @@ import { formatCurrency, formatDatetime } from "@/lib/utils/format";
 import { STATUS_COLORS } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 
 function HealthIcon({ status }: { status: string }) {
   if (status === "healthy")
@@ -71,30 +72,38 @@ function StatCard({ title, value, sub, icon, iconBg }: StatCardProps) {
 }
 
 export default function DashboardPage() {
+  const isClient = useIsClient();
+
   const health = useQuery({
     queryKey: ["health"],
     queryFn: healthApi.getHealth,
     staleTime: 15_000,
     refetchInterval: 30_000,
-    enabled: typeof window !== "undefined",
+    enabled: isClient,
   });
 
   const metrics = useQuery({
     queryKey: ["metrics-summary"],
     queryFn: metricsApi.getSummary,
     staleTime: 30_000,
-    enabled: typeof window !== "undefined",
+    enabled: isClient,
   });
 
   const history = useQuery({
     queryKey: ["pipeline-history"],
     queryFn: () => pipelineApi.getHistory(5),
     staleTime: 30_000,
-    enabled: typeof window !== "undefined",
+    enabled: isClient,
   });
 
   const m = metrics.data;
   const h = health.data;
+
+  // All data-dependent UI is gated behind isClient so the server render and the
+  // hydration render match. Without this, cached TanStack Query data from a
+  // previous client visit can render rows on the client while the server still
+  // shows placeholders, triggering a React hydration mismatch.
+  const ready = isClient;
 
   return (
     <PageContainer variant="full-bleed">
@@ -111,30 +120,32 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 stagger-in">
         <StatCard
           title="Applications"
-          value={m?.outcomes.total_applications ?? "—"}
-          sub={`${m ? (m.outcomes.interview_rate * 100).toFixed(1) : "—"}% interview rate`}
+          value={ready && m ? m.outcomes.total_applications : "—"}
+          sub={`${ready && m ? (m.outcomes.interview_rate * 100).toFixed(1) : "—"}% interview rate`}
           icon={<Send className="h-5 w-5 text-white" />}
           iconBg="bg-white/15"
         />
         <StatCard
           title="API Cost"
-          value={m ? formatCurrency(m.cost.total_usd) : "—"}
+          value={ready && m ? formatCurrency(m.cost.total_usd) : "—"}
           sub={
-            m ? `${formatCurrency(m.cost.per_application)} / app` : undefined
+            ready && m
+              ? `${formatCurrency(m.cost.per_application)} / app`
+              : undefined
           }
           icon={<DollarSign className="h-5 w-5 text-white" />}
           iconBg="bg-white/15"
         />
         <StatCard
           title="Local Usage"
-          value={m ? `${m.cost.local_usage_percent.toFixed(0)}%` : "—"}
+          value={ready && m ? `${m.cost.local_usage_percent.toFixed(0)}%` : "—"}
           sub="Ollama vs API calls"
           icon={<TrendingUp className="h-5 w-5 text-white" />}
           iconBg="bg-white/15"
         />
         <StatCard
           title="Offers"
-          value={m?.outcomes.offers ?? "—"}
+          value={ready && m ? m.outcomes.offers : "—"}
           sub="Received so far"
           icon={<Briefcase className="h-5 w-5 text-white" />}
           iconBg="bg-white/15"
@@ -151,28 +162,29 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2.5">
-            {health.isLoading && (
+            {ready && (health.isLoading || health.isPending) && (
               <p className="text-sm text-muted-foreground">Checking…</p>
             )}
-            {health.isError && (
+            {ready && health.isError && (
               <p className="text-sm text-red-500">Backend unreachable</p>
             )}
-            {h?.checks?.map((c) => (
-              <div
-                key={c.name}
-                className="flex items-center justify-between py-1 border-b border-border/50 last:border-0"
-              >
-                <div className="flex items-center gap-2">
-                  <HealthIcon status={c.status} />
-                  <span className="text-sm font-medium text-foreground capitalize">
-                    {c.name.replace(/_/g, " ")}
+            {ready &&
+              h?.checks?.map((c) => (
+                <div
+                  key={c.name}
+                  className="flex items-center justify-between py-1 border-b border-border/50 last:border-0"
+                >
+                  <div className="flex items-center gap-2">
+                    <HealthIcon status={c.status} />
+                    <span className="text-sm font-medium text-foreground capitalize">
+                      {c.name.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground truncate max-w-[180px] md:max-w-[240px] lg:max-w-xs">
+                    {c.message}
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground truncate max-w-[180px] md:max-w-[240px] lg:max-w-xs">
-                  {c.message}
-                </span>
-              </div>
-            ))}
+              ))}
           </CardContent>
         </Card>
 
@@ -185,41 +197,43 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {history.isLoading && (
+            {ready && (history.isLoading || history.isPending) && (
               <p className="text-sm text-muted-foreground">Loading…</p>
             )}
-            {history.isError && (
+            {ready && history.isError && (
               <p className="text-sm text-red-500">Could not load history</p>
             )}
-            {history.data?.runs.length === 0 && (
+            {ready && history.data?.runs.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 No runs yet. Start a pipeline to begin.
               </p>
             )}
-            {history.data?.runs.map((r) => (
-              <div
-                key={r.run_id}
-                className="flex items-center justify-between py-1 border-b border-border/50 last:border-0"
-              >
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0}{" "}
-                    applied
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDatetime(r.created_at)}
-                  </p>
-                </div>
-                <Badge
-                  className={cn(
-                    "text-xs font-medium",
-                    STATUS_COLORS[r.status] ?? "bg-muted text-muted-foreground",
-                  )}
+            {ready &&
+              history.data?.runs.map((r) => (
+                <div
+                  key={r.run_id}
+                  className="flex items-center justify-between py-1 border-b border-border/50 last:border-0"
                 >
-                  {r.status}
-                </Badge>
-              </div>
-            ))}
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0}{" "}
+                      applied
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDatetime(r.created_at)}
+                    </p>
+                  </div>
+                  <Badge
+                    className={cn(
+                      "text-xs font-medium",
+                      STATUS_COLORS[r.status] ??
+                        "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {r.status}
+                  </Badge>
+                </div>
+              ))}
           </CardContent>
         </Card>
       </div>

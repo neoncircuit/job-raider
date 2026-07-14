@@ -43,6 +43,21 @@ graph LR
 
 This reduces API costs by 80% while maintaining quality.
 
+## Tech Stack
+
+Job Raider is a Python-centric backend with a Next.js dashboard. The stack is chosen to keep processing local where possible, fallback to cloud LLMs when needed, and run consistently across local development and Docker.
+
+| Layer | Technologies |
+|-------|--------------|
+| Backend | Python 3.11+, FastAPI 0.115+, Uvicorn 0.30+, Pydantic 2.5+ |
+| Data | SQLAlchemy 2.0+, Alembic 1.13+, asyncpg 0.29+, Supabase 2.4+, pgvector 0.2+, ChromaDB 1.0+ |
+| LLMs | Ollama, Anthropic API, Google GenAI |
+| Scraping & Documents | Playwright 1.40+, BeautifulSoup4 4.12+, pypdf 4.0+, python-docx 1.1+, reportlab 4.0+ |
+| Frontend | Next.js 16.2.4, React 19.2.4, TypeScript 5, Tailwind CSS 4, shadcn/ui 4.5.0 |
+| Frontend Libraries | TanStack Query 5.100.5, React Hook Form 7.74.0, Zod 4.3.6, Recharts 3.8.1 |
+| Operations | Docker, Docker Compose, MLflow 2.0+, Sentry SDK 1.40+ |
+| Testing | pytest 8.0+, Vitest 1.0+, Playwright 1.40+ |
+
 ## Quick Start
 
 ### Prerequisites

@@ -27,10 +27,49 @@ const mockHealth = {
 
 /** Synthetic metrics-summary payload (shape consumed by the dashboard stat cards). */
 const mockMetricsSummary = {
-  outcomes: { total_applications: 5, interview_rate: 0.2, offers: 1 },
-  cost: { total_usd: 1.23, per_application: 0.25, local_usage_percent: 95 },
+  outcomes: {
+    total_applications: 5,
+    interview_rate: 0.2,
+    offers: 1,
+    interviews: 1,
+  },
+  cost: {
+    total_usd: 1.23,
+    per_application: 0.25,
+    local_usage_percent: 95,
+    total_calls: 120,
+  },
+  health: { healthy: 4, degraded: 0, unhealthy: 0 },
+  recent_calls: [],
 };
 
+/** Synthetic settings payload (shape consumed by `src/app/settings/page.tsx`). */
+const mockSettings = {
+  routing: {
+    default: {
+      primary_provider: "ollama",
+      primary_model: "qwen2.5:7b",
+      fallback_provider: "anthropic",
+      fallback_model: "claude-3-5-sonnet-20241022",
+    },
+  },
+  api_config: {
+    anthropic_api_key: null,
+    ollama_host: "http://localhost:11434",
+  },
+  model_params: {
+    temperature: 0.7,
+    max_tokens: 4096,
+    top_p: 0.9,
+  },
+  cost_limits: {
+    max_api_cost_per_run: 5.0,
+    enable_cache: true,
+    cache_ttl: 3600,
+  },
+  updated_at: "2026-06-28T12:00:00Z",
+  version: "0.1.0",
+};
 /** Synthetic pipeline-history payload (shape consumed by the dashboard "Recent Runs" card). */
 const mockPipelineHistory = {
   runs: [
@@ -88,6 +127,9 @@ export async function mockApi(page: Page): Promise<void> {
           status: 200,
           json: { sources: ["linkedin", "jsearch"] },
         });
+      case "GET /settings":
+      case "GET /settings/":
+        return route.fulfill({ status: 200, json: mockSettings });
       case "GET /profile":
         return route.fulfill({ status: 200, json: sampleProfile });
       case "POST /profile/analyze-linkedin":
@@ -125,6 +167,11 @@ export async function mockApi(page: Page): Promise<void> {
               },
             ],
           },
+        });
+      case "GET /assessment/skills":
+        return route.fulfill({
+          status: 200,
+          json: { skills: ["JavaScript", "TypeScript", "React", "Python"] },
         });
       default:
         // Safety net: any unmapped proxied call returns an empty 200 so an

@@ -9,12 +9,12 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-import sys
-import os
 import argparse
+import os
 import subprocess
+import sys
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
 
 # Check for dependencies first
@@ -188,18 +188,17 @@ def ensure_dependencies():
 if __name__ == "__main__":
     ensure_dependencies()
 
-from src.pipeline.orchestrator import (
-    PipelineOrchestrator,
-    PipelineConfig,
-    PipelineStage,
-)
-from src.models.user_profile import UserProfile
-from src.models.job_listing import JobListing
 from src.extractors.resume_parser import ResumeParser
-from src.utils.logger import setup_logging, Components
-from src.utils.logger import get_logger
 from src.generation.resume_analyzer import ResumeAnalyzer
 from src.llm.router import LLMRouter
+from src.models.job_listing import JobListing
+from src.models.user_profile import UserProfile
+from src.pipeline.orchestrator import (
+    PipelineConfig,
+    PipelineOrchestrator,
+    PipelineStage,
+)
+from src.utils.logger import Components, get_logger, setup_logging
 
 
 def load_user_profile(resume_path: str) -> UserProfile:
