@@ -18,6 +18,13 @@ import { ConnectionStatus } from "./ConnectionStatus";
 import { SidebarNavLink } from "./SidebarNavLink";
 import { ThemeToggle } from "@/components/theme-toggle";
 
+/** Profile is the heart of the app — pinned at the top, above the workflow nav. */
+const PROFILE_ITEM = {
+  href: "/profile",
+  icon: <User size={16} />,
+  label: "Profile",
+};
+
 const NAV_ITEMS = [
   {
     href: "/dashboard",
@@ -33,7 +40,6 @@ const NAV_ITEMS = [
     icon: <ClipboardList size={16} />,
     label: "Applications",
   },
-  { href: "/profile", icon: <User size={16} />, label: "Profile" },
   {
     href: "/assessment",
     icon: <GraduationCap size={16} />,
@@ -88,10 +94,19 @@ export function SidebarContent({ onNavItemClick }: SidebarContentProps) {
       <ConnectionStatus />
       <Separator className="bg-sidebar-border" />
 
-      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-        {NAV_ITEMS.map((item) => (
-          <SidebarNavLink key={item.href} {...item} onClick={onNavItemClick} />
-        ))}
+      <nav className="flex-1 overflow-y-auto px-2 py-3">
+        {/* Profile — the heart of the app, pinned above the workflow nav */}
+        <SidebarNavLink {...PROFILE_ITEM} onClick={onNavItemClick} />
+        <Separator className="my-3 bg-sidebar-border" />
+        <div className="space-y-0.5">
+          {NAV_ITEMS.map((item) => (
+            <SidebarNavLink
+              key={item.href}
+              {...item}
+              onClick={onNavItemClick}
+            />
+          ))}
+        </div>
       </nav>
 
       <div className="px-2 py-3 border-t border-sidebar-border space-y-1">

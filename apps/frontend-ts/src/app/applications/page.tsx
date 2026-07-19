@@ -3,14 +3,28 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Bookmark, EyeOff, ExternalLink, Plus } from "lucide-react";
+import {
+  Bookmark,
+  EyeOff,
+  ExternalLink,
+  Plus,
+  CalendarCheck,
+  Sparkles,
+  Loader2,
+} from "lucide-react";
 import { applicationsApi } from "@/lib/api/applications";
+import { coverLetterApi } from "@/lib/api/coverLetter";
 import type { ApplicationSummary } from "@/lib/types/api";
+import type { PrepSheetResponse } from "@/lib/api/coverLetter";
+import { PrepSheetDisplay } from "@/components/prep-sheet-display";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate } from "@/lib/utils/format";
 import { STATUS_COLORS } from "@/lib/utils/constants";
@@ -18,6 +32,18 @@ import { cn } from "@/lib/utils/cn";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 // ── Application card ──────────────────────────────────────────────────────────
+
+// Statuses that mean the company has come back and interview prep is relevant.
+const INTERVIEW_STATUSES = new Set([
+  "under_review",
+  "screening_scheduled",
+  "screening_completed",
+  "technical_scheduled",
+  "technical_completed",
+  "onsite_scheduled",
+  "onsite_completed",
+  "final",
+]);
 
 function AppCard({
   app,
@@ -28,56 +54,131 @@ function AppCard({
   onUnsave?: () => void;
   onUnhide?: () => void;
 }) {
-  const statusColor =
-    STATUS_COLORS[app.current_status.toLowerCase()] ??
-    "bg-gray-100 text-gray-700";
+  const qc = useQueryClient();
+  const [prepOpen, setPrepOpen] = useState(false);
+  const [prep, setPrep] = useState<PrepSheetResponse | null>(null);
+
+  const status = app.current_status.toLowerCase();
+  const statusColor = STATUS_COLORS[status] ?? "bg-muted text-foreground";
+  const canRespond = status === "applied";
+  const inInterview = INTERVIEW_STATUSES.has(status);
+
+  const setStatus = useMutation({
+    mutationFn: (s: string) =>
+      applicationsApi.updateStatus(app.application_id, s),
+    onSuccess: (_data, s) => {
+      toast.success(
+        s === "rejected" ? "Marked as rejected" : "Moved to interview stage",
+      );
+      qc.invalidateQueries({ queryKey: ["applications"] });
+    },
+    onError: () => toast.error("Failed to update status"),
+  });
+
+  const prepMutation = useMutation({
+    mutationFn: async () => {
+      const detail = await applicationsApi.getDetail(app.application_id);
+      const description = String(detail.metadata?.description ?? "");
+      if (description.trim().length < 50) {
+        throw new Error("No saved job description for this listing");
+      }
+      return coverLetterApi.prep({
+        title: app.job_title,
+        company: app.company,
+        description,
+      });
+    },
+    onSuccess: (data) => {
+      setPrep(data);
+      setPrepOpen(true);
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Failed to generate prep sheet"),
+  });
 
   return (
     <Card>
       <CardContent className="flex items-center justify-between gap-4 pt-4 pb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-medium text-gray-900 truncate">
+            <p className="font-medium text-foreground truncate">
               {app.job_title}
             </p>
             {app.is_bookmarked && (
               <Bookmark className="h-3.5 w-3.5 shrink-0 text-blue-500" />
             )}
           </div>
-          <p className="text-sm text-gray-500">{app.company}</p>
+          <p className="text-sm text-muted-foreground">{app.company}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <Badge className={cn("text-xs", statusColor)}>
               {app.current_status.replace(/_/g, " ")}
             </Badge>
             {app.applied_date && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 {formatDate(app.applied_date)}
               </span>
             )}
             {app.days_since_application != null && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 {app.days_since_application}d ago
               </span>
             )}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           {app.source_url && (
             <a
               href={app.source_url}
               target="_blank"
               rel="noreferrer"
-              className="text-gray-400 hover:text-blue-600"
+              className="text-muted-foreground hover:text-blue-600"
             >
               <ExternalLink className="h-4 w-4" />
             </a>
+          )}
+          {canRespond && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setStatus.mutate("screening_scheduled")}
+              disabled={setStatus.isPending}
+            >
+              <CalendarCheck className="mr-1.5 h-3.5 w-3.5" />
+              Proceed to interview
+            </Button>
+          )}
+          {inInterview && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => prepMutation.mutate()}
+              disabled={prepMutation.isPending}
+            >
+              {prepMutation.isPending ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Prep for interview
+            </Button>
+          )}
+          {(canRespond || inInterview) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-red-500"
+              onClick={() => setStatus.mutate("rejected")}
+              disabled={setStatus.isPending}
+            >
+              Rejected
+            </Button>
           )}
           {onUnsave && (
             <Button
               size="sm"
               variant="ghost"
               onClick={onUnsave}
-              className="text-xs text-gray-500"
+              className="text-xs text-muted-foreground"
             >
               Unsave
             </Button>
@@ -87,13 +188,27 @@ function AppCard({
               size="sm"
               variant="ghost"
               onClick={onUnhide}
-              className="text-xs text-gray-500"
+              className="text-xs text-muted-foreground"
             >
               Unhide
             </Button>
           )}
         </div>
       </CardContent>
+
+      <Dialog open={prepOpen} onOpenChange={setPrepOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-base font-semibold">Interview prep</h3>
+              <p className="text-sm text-muted-foreground">
+                {app.job_title} · {app.company}
+              </p>
+            </div>
+            {prep && <PrepSheetDisplay prep={prep} />}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -102,22 +217,43 @@ function AppCard({
 
 function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
-  const jobId = "";
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState("");
   const [method, setMethod] = useState("");
+  const [description, setDescription] = useState("");
+  const [atInterview, setAtInterview] = useState(false);
+
+  const reset = () => {
+    setTitle("");
+    setCompany("");
+    setMethod("");
+    setDescription("");
+    setAtInterview(false);
+  };
 
   const track = useMutation({
-    mutationFn: () =>
-      applicationsApi.trackExternal({
-        job_id: jobId || `ext-${Date.now()}`,
+    mutationFn: async () => {
+      const jobId = `ext-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+      await applicationsApi.trackExternal({
+        job_id: jobId,
         job_title: title,
         company,
-        application_method: method || undefined,
-      }),
+        application_date: new Date().toISOString(),
+        application_method: method || "External site",
+        metadata: description.trim() ? { description: description.trim() } : {},
+      });
+      // If they already have an interview invite, jump straight to that stage
+      // so "Prep for interview" is immediately available on the card.
+      if (atInterview) {
+        await applicationsApi.updateStatus(jobId, "screening_scheduled");
+      }
+    },
     onSuccess: () => {
       toast.success("External application tracked.");
       setOpen(false);
+      reset();
       onSuccess();
     },
     onError: () => toast.error("Failed to track application."),
@@ -131,6 +267,11 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
       </Button>
     );
   }
+
+  // A saved job description is required before an external listing can enter the
+  // interview-prep flow, so gate the toggle on having enough text.
+  const canPrep = description.trim().length >= 50;
+  const blockedByPrep = atInterview && !canPrep;
 
   return (
     <Card>
@@ -164,11 +305,34 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
             placeholder="Company website, referral…"
           />
         </div>
+        <div className="space-y-1">
+          <Label>Job description</Label>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Paste the job description to enable interview prep for this listing…"
+            className="min-h-[120px] resize-y"
+          />
+          <p className="text-xs text-muted-foreground">
+            Optional, but required (50+ characters) to run interview prep later.
+          </p>
+        </div>
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="space-y-0.5">
+            <Label className="text-sm font-medium">
+              I already have an interview invite
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Marks this as an interview stage so you can prep right away.
+            </p>
+          </div>
+          <Switch checked={atInterview} onCheckedChange={setAtInterview} />
+        </div>
         <div className="flex gap-2">
           <Button
             size="sm"
             onClick={() => track.mutate()}
-            disabled={!title || !company || track.isPending}
+            disabled={!title || !company || blockedByPrep || track.isPending}
           >
             {track.isPending ? "Saving…" : "Save"}
           </Button>
@@ -176,6 +340,12 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
             Cancel
           </Button>
         </div>
+        {blockedByPrep && (
+          <p className="text-xs text-amber-600">
+            Add a job description (50+ characters) to track this as an interview
+            stage.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -225,8 +395,8 @@ export default function ApplicationsPage() {
   return (
     <PageContainer variant="full-bleed">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Applications</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">Applications</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Track and manage your job applications.
         </p>
       </div>
@@ -242,10 +412,10 @@ export default function ApplicationsPage() {
           ].map(({ label, value }) => (
             <div
               key={label}
-              className="rounded-lg border bg-white p-4 text-center"
+              className="rounded-lg border bg-card p-4 text-center"
             >
-              <p className="text-2xl font-bold text-gray-900">{value}</p>
-              <p className="text-xs text-gray-500">{label}</p>
+              <p className="text-2xl font-bold text-foreground">{value}</p>
+              <p className="text-xs text-muted-foreground">{label}</p>
             </div>
           ))}
         </div>
@@ -270,11 +440,11 @@ export default function ApplicationsPage() {
 
         <TabsContent value="all" className="mt-4 space-y-2">
           {allQuery.isLoading && (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           )}
           {(allQuery.data?.applications ?? []).length === 0 &&
             !allQuery.isLoading && (
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 No applications tracked yet.
               </p>
             )}
@@ -285,12 +455,14 @@ export default function ApplicationsPage() {
 
         <TabsContent value="saved" className="mt-4 space-y-2">
           {savedQuery.isLoading && (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           )}
           {(savedQuery.data?.applications ?? []).filter((a) => a.is_bookmarked)
             .length === 0 &&
             !savedQuery.isLoading && (
-              <p className="text-sm text-gray-400">No saved jobs yet.</p>
+              <p className="text-sm text-muted-foreground">
+                No saved jobs yet.
+              </p>
             )}
           {(savedQuery.data?.applications ?? [])
             .filter((a) => a.is_bookmarked)
@@ -305,12 +477,12 @@ export default function ApplicationsPage() {
 
         <TabsContent value="hidden" className="mt-4 space-y-2">
           {hiddenQuery.isLoading && (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           )}
           {(hiddenQuery.data?.applications ?? []).filter((a) => a.is_hidden)
             .length === 0 &&
             !hiddenQuery.isLoading && (
-              <p className="text-sm text-gray-400">No hidden jobs.</p>
+              <p className="text-sm text-muted-foreground">No hidden jobs.</p>
             )}
           {(hiddenQuery.data?.applications ?? [])
             .filter((a) => a.is_hidden)

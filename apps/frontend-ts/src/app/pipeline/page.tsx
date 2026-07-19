@@ -174,7 +174,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
             max={1}
             {...register("scamThreshold", { valueAsNumber: true })}
           />
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-muted-foreground">
             Jobs above this score are filtered out.
           </p>
         </div>
@@ -244,7 +244,7 @@ function LiveMonitor({ runId }: { runId: string }) {
       {/* Left — status + progress + stages */}
       <div className="space-y-4 lg:col-span-1">
         {/* Status bar */}
-        <div className="flex items-center justify-between rounded-lg border bg-white p-3">
+        <div className="flex items-center justify-between rounded-lg border bg-card p-3">
           <div className="flex items-center gap-2">
             {wsStatus === "connected" && !isComplete ? (
               <Wifi className="h-4 w-4 text-green-500 animate-pulse" />
@@ -252,11 +252,13 @@ function LiveMonitor({ runId }: { runId: string }) {
               <WifiOff
                 className={cn(
                   "h-4 w-4",
-                  wsStatus === "error" ? "text-red-500" : "text-gray-400",
+                  wsStatus === "error"
+                    ? "text-red-500"
+                    : "text-muted-foreground",
                 )}
               />
             )}
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-foreground">
               <code className="font-mono text-xs">{runId.slice(0, 12)}…</code>
             </span>
           </div>
@@ -279,8 +281,8 @@ function LiveMonitor({ runId }: { runId: string }) {
         />
 
         {/* Stage indicators */}
-        <div className="rounded-lg border bg-white p-3 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <div className="rounded-lg border bg-card p-3 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Stages
           </p>
           <div className="flex flex-col gap-1.5">
@@ -301,7 +303,7 @@ function LiveMonitor({ runId }: { runId: string }) {
                         ? "bg-green-500"
                         : active
                           ? "bg-blue-500 animate-pulse"
-                          : "bg-gray-200",
+                          : "bg-muted",
                     )}
                   />
                   <span
@@ -311,7 +313,7 @@ function LiveMonitor({ runId }: { runId: string }) {
                         ? "text-green-700 font-medium"
                         : active
                           ? "text-blue-700 font-medium"
-                          : "text-gray-400",
+                          : "text-muted-foreground",
                     )}
                   >
                     {s.label}
@@ -331,7 +333,7 @@ function LiveMonitor({ runId }: { runId: string }) {
         >
           {messages.map((m, i) => (
             <div key={i} className="flex gap-2">
-              <span className="shrink-0 text-gray-600">
+              <span className="shrink-0 text-muted-foreground">
                 {"timestamp" in m
                   ? new Date(m.timestamp).toLocaleTimeString()
                   : ""}
@@ -344,7 +346,7 @@ function LiveMonitor({ runId }: { runId: string }) {
                   m.type === "stage_started" && "text-indigo-300",
                 )}
               >
-                <span className="text-gray-500">[{m.type}]</span>{" "}
+                <span className="text-muted-foreground">[{m.type}]</span>{" "}
                 {"stage" in m && m.stage ? `${m.stage} ` : ""}
                 {"count" in m ? `count=${m.count} ` : ""}
                 {"progress" in m
@@ -355,7 +357,7 @@ function LiveMonitor({ runId }: { runId: string }) {
             </div>
           ))}
           {messages.length === 0 && (
-            <span className="text-gray-600">Waiting for events…</span>
+            <span className="text-muted-foreground">Waiting for events…</span>
           )}
         </div>
       </div>
@@ -372,51 +374,50 @@ function HistoryPanel({ onResume }: { onResume: (id: string) => void }) {
     staleTime: 30_000,
   });
 
-  if (isLoading) return <p className="text-sm text-gray-400">Loading…</p>;
+  if (isLoading)
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!data?.runs.length)
-    return <p className="text-sm text-gray-400">No runs yet.</p>;
+    return <p className="text-sm text-muted-foreground">No runs yet.</p>;
 
   return (
-    <PageContainer variant="content">
-      <div className="space-y-2">
-        {data.runs.map((r) => (
-          <div
-            key={r.run_id}
-            className="flex items-center justify-between rounded-lg border bg-white p-3"
-          >
-            <div>
-              <p className="text-sm font-mono text-gray-700">
-                {r.run_id.slice(0, 12)}…
-              </p>
-              <p className="text-xs text-gray-400">
-                {formatDatetime(r.created_at)}
-              </p>
-              <p className="text-xs text-gray-500">
-                {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0} applied
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge
-                className={cn(
-                  "text-xs",
-                  STATUS_COLORS[r.status] ?? "bg-gray-100 text-gray-700",
-                )}
-              >
-                {r.status}
-              </Badge>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-xs"
-                onClick={() => onResume(r.run_id)}
-              >
-                View
-              </Button>
-            </div>
+    <div className="space-y-2">
+      {data.runs.map((r) => (
+        <div
+          key={r.run_id}
+          className="flex items-center justify-between rounded-lg border bg-card p-3"
+        >
+          <div>
+            <p className="text-sm font-mono text-foreground">
+              {r.run_id.slice(0, 12)}…
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {formatDatetime(r.created_at)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0} applied
+            </p>
           </div>
-        ))}
-      </div>
-    </PageContainer>
+          <div className="flex items-center gap-2">
+            <Badge
+              className={cn(
+                "text-xs",
+                STATUS_COLORS[r.status] ?? "bg-muted text-foreground",
+              )}
+            >
+              {r.status}
+            </Badge>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs"
+              onClick={() => onResume(r.run_id)}
+            >
+              View
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -446,11 +447,11 @@ export default function PipelinePage() {
   });
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant="content">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Pipeline</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Pipeline</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Start, monitor, and review pipeline runs.
           </p>
         </div>
@@ -479,8 +480,8 @@ export default function PipelinePage() {
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="start" className="mt-5">
-          <PageContainer variant="form" className="space-y-0">
+        <TabsContent value="start" className="mt-6">
+          <div className="mx-auto w-full max-w-3xl">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
@@ -491,20 +492,20 @@ export default function PipelinePage() {
                 <StartForm onStarted={handleStarted} />
               </CardContent>
             </Card>
-          </PageContainer>
+          </div>
         </TabsContent>
 
-        <TabsContent value="monitor" className="mt-5">
+        <TabsContent value="monitor" className="mt-6">
           {activeRunId ? (
             <LiveMonitor runId={activeRunId} />
           ) : (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-muted-foreground">
               No active run. Start a pipeline first.
             </p>
           )}
         </TabsContent>
 
-        <TabsContent value="history" className="mt-5">
+        <TabsContent value="history" className="mt-6">
           <HistoryPanel
             onResume={(id) => {
               setActiveRunId(id);
@@ -513,6 +514,6 @@ export default function PipelinePage() {
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }

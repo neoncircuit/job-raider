@@ -40,7 +40,7 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <div className="flex flex-col items-center gap-1">
       <div className={cn("text-5xl font-bold", color)}>{score}</div>
-      <div className="text-xs text-gray-400">/ 100</div>
+      <div className="text-xs text-muted-foreground">/ 100</div>
     </div>
   );
 }
@@ -104,14 +104,14 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
         <CardContent className="flex items-center gap-8 pt-6 pb-5">
           <ScoreRing score={analysis.overall_score} />
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium text-foreground">
               LinkedIn Profile Analysis
             </p>
-            <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+            <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
               {analysis.summary}
             </p>
             {analysis.competitive_edge && (
-              <p className="mt-2 text-sm text-gray-700">
+              <p className="mt-2 text-sm text-foreground">
                 <span className="font-semibold">Competitive edge:</span>{" "}
                 {analysis.competitive_edge}
               </p>
@@ -141,7 +141,7 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
                 {(analysis.section_scores ?? []).map((s, i) => (
                   <div key={i} className="rounded-lg border p-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">
+                      <span className="text-sm font-medium text-foreground">
                         {s.section_name}
                       </span>
                       <span
@@ -157,10 +157,10 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
                         {s.score}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-gray-400">
+                    <div className="mt-1 text-xs text-muted-foreground">
                       Weight: {s.weight}
                     </div>
-                    <p className="mt-1.5 text-xs text-gray-600 leading-relaxed">
+                    <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
                       {s.feedback}
                     </p>
                   </div>
@@ -182,15 +182,15 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
                   <div key={i} className="rounded-lg border p-3">
                     <div className="flex items-center gap-2">
                       <PriorityBadge priority={insight.priority} />
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         {insight.category}
                       </span>
                     </div>
-                    <p className="mt-1.5 text-sm text-gray-700">
+                    <p className="mt-1.5 text-sm text-foreground">
                       <span className="font-semibold">Observation:</span>{" "}
                       {insight.observation}
                     </p>
-                    <p className="mt-1 text-sm text-gray-600">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       <span className="font-semibold">Recommendation:</span>{" "}
                       {insight.recommendation}
                     </p>
@@ -236,7 +236,7 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
             <CardContent>
               <ul className="space-y-1.5">
                 {(analysis.generated_headline_options ?? []).map((h, i) => (
-                  <li key={i} className="text-sm text-gray-700">
+                  <li key={i} className="text-sm text-foreground">
                     {i + 1}. {h}
                   </li>
                 ))}
@@ -256,7 +256,7 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
             <CardContent>
               <ol className="space-y-2">
                 {(analysis.summary_rewrite_suggestions ?? []).map((s, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-gray-700">
+                  <li key={i} className="flex gap-2 text-sm text-foreground">
                     <span className="shrink-0 font-semibold text-blue-600">
                       {i + 1}.
                     </span>
@@ -277,7 +277,7 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
             <CardContent>
               <ol className="space-y-2">
                 {(analysis.action_plan ?? []).map((step, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-gray-700">
+                  <li key={i} className="flex gap-2 text-sm text-foreground">
                     <span className="shrink-0 font-semibold text-green-600">
                       {i + 1}.
                     </span>
@@ -326,7 +326,7 @@ function SearchResults({
 }) {
   if (results.length === 0) {
     return (
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted-foreground">
         No results found. Try adjusting your search terms.
       </p>
     );
@@ -334,20 +334,22 @@ function SearchResults({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-gray-700">Search results</p>
+      <p className="text-sm font-medium text-foreground">Search results</p>
       {results.map((result, index) => (
         <Card key={index} className="hover:border-primary/50 transition-colors">
           <CardContent className="p-3 space-y-1">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900 truncate">
+                <p className="text-sm font-semibold text-foreground truncate">
                   {result.name}
                 </p>
-                <p className="text-xs text-gray-600 line-clamp-2">
+                <p className="text-xs text-muted-foreground line-clamp-2">
                   {result.headline}
                 </p>
                 {result.location && (
-                  <p className="text-xs text-gray-400">{result.location}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {result.location}
+                  </p>
                 )}
               </div>
               <Button
@@ -577,7 +579,7 @@ function AnalysisForm({
               value={profileUrl}
               onChange={(e) => setProfileUrl(e.target.value)}
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Requires LinkedIn credentials configured on the backend. If
               unavailable, the URL itself will be used as context.
             </p>
@@ -902,13 +904,13 @@ export default function LinkedInAnalysisPage() {
   const [result, setResult] = useState<LinkedInProfileAnalysis | null>(null);
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant={result ? "wide" : "form"}>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             LinkedIn Analysis
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             AI-powered feedback on your LinkedIn profile to attract inbound
             opportunities.
           </p>
@@ -921,14 +923,10 @@ export default function LinkedInAnalysisPage() {
       </div>
 
       {result ? (
-        <PageContainer variant="wide">
-          <AnalysisDisplay analysis={result} />
-        </PageContainer>
+        <AnalysisDisplay analysis={result} />
       ) : (
-        <PageContainer variant="form">
-          <AnalysisForm onResult={setResult} />
-        </PageContainer>
+        <AnalysisForm onResult={setResult} />
       )}
-    </div>
+    </PageContainer>
   );
 }

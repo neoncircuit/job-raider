@@ -27,7 +27,7 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <div className="flex flex-col items-center gap-1">
       <div className={cn("text-5xl font-bold", color)}>{score}</div>
-      <div className="text-xs text-gray-400">/ 100</div>
+      <div className="text-xs text-muted-foreground">/ 100</div>
     </div>
   );
 }
@@ -54,12 +54,12 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
         <CardContent className="flex items-center gap-8 pt-6 pb-5">
           <ScoreRing score={analysis.overall_score} />
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium text-foreground">
               {analysis.analysis_type === "job_specific"
                 ? "Job-Specific Analysis"
                 : "General Analysis"}
             </p>
-            <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+            <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
               {analysis.summary}
             </p>
             {analysis.target_alignment_score != null && (
@@ -93,7 +93,7 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
           <CardContent>
             <ul className="space-y-1.5">
               {(analysis.key_strengths ?? []).map((s, i) => (
-                <li key={i} className="flex gap-2 text-sm text-gray-700">
+                <li key={i} className="flex gap-2 text-sm text-foreground">
                   <span className="shrink-0 text-green-500">✓</span>
                   {s}
                 </li>
@@ -112,7 +112,7 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
           <CardContent>
             <ul className="space-y-1.5">
               {(analysis.key_improvements ?? []).map((s, i) => (
-                <li key={i} className="flex gap-2 text-sm text-gray-700">
+                <li key={i} className="flex gap-2 text-sm text-foreground">
                   <span className="shrink-0 text-amber-500">→</span>
                   {s}
                 </li>
@@ -130,7 +130,7 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-xs text-gray-500">
+                  <tr className="border-b text-left text-xs text-muted-foreground">
                     <th className="pb-2 pr-4">Skill</th>
                     <th className="pb-2 pr-4">Proficiency</th>
                     <th className="pb-2 pr-4">Experience</th>
@@ -139,14 +139,14 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
                 </thead>
                 <tbody className="divide-y">
                   {(analysis.skills_assessment ?? []).map((s, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
-                      <td className="py-2 pr-4 font-medium text-gray-800">
+                    <tr key={i} className="hover:bg-muted">
+                      <td className="py-2 pr-4 font-medium text-foreground">
                         {s.skill_name}
                       </td>
-                      <td className="py-2 pr-4 text-gray-500">
+                      <td className="py-2 pr-4 text-muted-foreground">
                         {s.proficiency_level}
                       </td>
-                      <td className="py-2 pr-4 text-gray-500">
+                      <td className="py-2 pr-4 text-muted-foreground">
                         {s.years_experience != null
                           ? `${s.years_experience}y`
                           : "—"}
@@ -206,7 +206,7 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
             <CardContent>
               <ol className="space-y-2">
                 {(analysis.resume_improvements ?? []).map((r, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-gray-700">
+                  <li key={i} className="flex gap-2 text-sm text-foreground">
                     <span className="shrink-0 font-semibold text-blue-600">
                       {i + 1}.
                     </span>
@@ -260,19 +260,19 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
           "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors",
           isDragActive
             ? "border-blue-500 bg-blue-50"
-            : "border-gray-200 bg-gray-50 hover:border-gray-400",
+            : "border-border bg-muted hover:border-border",
         )}
       >
         <input {...getInputProps()} />
-        <Upload className="mb-3 h-8 w-8 text-gray-400" />
+        <Upload className="mb-3 h-8 w-8 text-muted-foreground" />
         {file ? (
           <p className="text-sm font-medium text-blue-600">{file.name}</p>
         ) : (
           <>
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium text-foreground">
               Drop your resume here, or click to browse
             </p>
-            <p className="mt-1 text-xs text-gray-400">PDF or DOCX</p>
+            <p className="mt-1 text-xs text-muted-foreground">PDF or DOCX</p>
           </>
         )}
       </div>
@@ -305,11 +305,13 @@ export default function ResumeAnalysisPage() {
   const [result, setResult] = useState<ResumeAnalysis | null>(null);
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant={result ? "wide" : "form"}>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Resume Analysis</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">
+            Resume Analysis
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             AI-powered feedback on your resume with optional job-specific gap
             analysis.
           </p>
@@ -322,14 +324,10 @@ export default function ResumeAnalysisPage() {
       </div>
 
       {result ? (
-        <PageContainer variant="wide">
-          <AnalysisDisplay analysis={result} />
-        </PageContainer>
+        <AnalysisDisplay analysis={result} />
       ) : (
-        <PageContainer variant="form">
-          <AnalysisForm onResult={setResult} />
-        </PageContainer>
+        <AnalysisForm onResult={setResult} />
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -22,13 +22,18 @@ import {
   formatDatetime,
 } from "@/lib/utils/format";
 
-const PIE_COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
+const PIE_COLORS = [
+  "var(--chart-3)",
+  "var(--chart-1)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
 
 function Tile({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border bg-white p-4">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-xl font-bold text-gray-900">{value}</p>
+    <div className="rounded-lg border bg-card p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-bold text-foreground">{value}</p>
     </div>
   );
 }
@@ -41,17 +46,27 @@ export default function MetricsPage() {
   });
 
   if (isLoading)
-    return <p className="text-sm text-gray-400 p-4">Loading metrics…</p>;
+    return (
+      <p className="text-sm text-muted-foreground p-4">Loading metrics…</p>
+    );
   if (isError || !data)
     return <p className="text-sm text-red-500 p-4">Failed to load metrics.</p>;
 
   const { cost, outcomes, health } = data;
   const recent_calls = data.recent_calls ?? [];
 
+  const applications = outcomes.total_applications ?? 0;
+  const interviews = outcomes.interviews ?? 0;
+  const offers = outcomes.offers ?? 0;
+  const interviewRate =
+    Number.isFinite(outcomes.interview_rate) && applications > 0
+      ? formatPercentage(outcomes.interview_rate * 100)
+      : "—";
+
   const funnelData = [
-    { name: "Applied", count: outcomes.total_applications },
-    { name: "Interviewed", count: outcomes.interviews },
-    { name: "Offered", count: outcomes.offers },
+    { name: "Applied", count: applications },
+    { name: "Interviewed", count: interviews },
+    { name: "Offered", count: offers },
   ];
 
   const localCount = Math.round(
@@ -66,14 +81,14 @@ export default function MetricsPage() {
   return (
     <PageContainer variant="wide">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Metrics</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">Metrics</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Cost tracking, outcome funnel, and system health.
         </p>
       </div>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+        <h2 className="mb-3 text-sm font-semibold text-foreground uppercase tracking-wide">
           Cost
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -94,17 +109,14 @@ export default function MetricsPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+        <h2 className="mb-3 text-sm font-semibold text-foreground uppercase tracking-wide">
           Outcomes
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Tile label="Applications" value={outcomes.total_applications} />
-          <Tile label="Interviews" value={outcomes.interviews} />
-          <Tile label="Offers" value={outcomes.offers} />
-          <Tile
-            label="Interview Rate"
-            value={formatPercentage(outcomes.interview_rate * 100)}
-          />
+          <Tile label="Applications" value={applications} />
+          <Tile label="Interviews" value={interviews} />
+          <Tile label="Offers" value={offers} />
+          <Tile label="Interview Rate" value={interviewRate} />
         </div>
       </section>
 
@@ -124,7 +136,11 @@ export default function MetricsPage() {
                   tick={{ fontSize: 12 }}
                 />
                 <Tooltip formatter={(v) => [v, "Count"]} />
-                <Bar dataKey="count" fill="#3B82F6" radius={[0, 4, 4, 0]} />
+                <Bar
+                  dataKey="count"
+                  fill="var(--chart-1)"
+                  radius={[0, 4, 4, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -135,24 +151,32 @@ export default function MetricsPage() {
             <CardTitle className="text-base">LLM Call Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={costPieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={80}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {costPieData.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            {cost.total_calls > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={costPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {costPieData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[280px] items-center justify-center">
+                <p className="text-sm text-muted-foreground">
+                  No calls recorded yet.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -163,11 +187,13 @@ export default function MetricsPage() {
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {recent_calls.length === 0 ? (
-            <p className="text-sm text-gray-400">No calls recorded yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No calls recorded yet.
+            </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-xs text-gray-500">
+                <tr className="border-b text-left text-xs text-muted-foreground">
                   <th className="pb-2 pr-4">Task</th>
                   <th className="pb-2 pr-4">Provider</th>
                   <th className="pb-2 pr-4">Model</th>
@@ -177,16 +203,18 @@ export default function MetricsPage() {
               </thead>
               <tbody className="divide-y">
                 {recent_calls.map((c, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
-                    <td className="py-2 pr-4 text-gray-700">{c.task_type}</td>
-                    <td className="py-2 pr-4 text-gray-500 capitalize">
+                  <tr key={i} className="hover:bg-muted">
+                    <td className="py-2 pr-4 text-foreground">{c.task_type}</td>
+                    <td className="py-2 pr-4 text-muted-foreground capitalize">
                       {c.provider}
                     </td>
-                    <td className="py-2 pr-4 text-gray-500">{c.model}</td>
-                    <td className="py-2 pr-4 text-gray-700">
+                    <td className="py-2 pr-4 text-muted-foreground">
+                      {c.model}
+                    </td>
+                    <td className="py-2 pr-4 text-foreground">
                       {formatCurrency(c.cost_usd)}
                     </td>
-                    <td className="py-2 text-gray-400 text-xs">
+                    <td className="py-2 text-muted-foreground text-xs">
                       {formatDatetime(c.timestamp)}
                     </td>
                   </tr>
@@ -207,19 +235,19 @@ export default function MetricsPage() {
               <p className="text-2xl font-bold text-green-600">
                 {health.healthy}
               </p>
-              <p className="text-xs text-gray-500">Healthy</p>
+              <p className="text-xs text-muted-foreground">Healthy</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-yellow-600">
                 {health.degraded}
               </p>
-              <p className="text-xs text-gray-500">Degraded</p>
+              <p className="text-xs text-muted-foreground">Degraded</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-red-600">
                 {health.unhealthy}
               </p>
-              <p className="text-xs text-gray-500">Unhealthy</p>
+              <p className="text-xs text-muted-foreground">Unhealthy</p>
             </div>
           </div>
         </CardContent>
