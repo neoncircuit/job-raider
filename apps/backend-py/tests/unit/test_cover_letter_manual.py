@@ -128,11 +128,11 @@ def client(mock_writer, mock_selector, mock_validator):
     ), patch(
         "src.generation.cover_letter_service.CoverLetterReviewer"
     ) as mock_reviewer, patch(
-        "src.api.routes.cover_letter.stored_profiles",
+        "src.api.routes.profile.stored_profiles",
         {"profile-1": profile},
         create=True,
     ), patch(
-        "src.api.routes.cover_letter.active_profile_id", "profile-1", create=True
+        "src.api.routes.profile.active_profile_id", "profile-1", create=True
     ):
         mock_reviewer.return_value.review.return_value = CoverLetterReviewResult(
             critique="Looks good.",
@@ -281,7 +281,7 @@ class TestGenerateManualCoverLetter:
 
     def test_manual_cover_letter_without_active_profile(self, client):
         """Should return 400 when no active profile exists."""
-        with patch("src.api.routes.cover_letter.active_profile_id", None, create=True):
+        with patch("src.api.routes.profile.active_profile_id", None, create=True):
             resp = client.post(
                 "/api/cover-letter/manual",
                 json={
@@ -297,10 +297,8 @@ class TestGenerateManualCoverLetter:
 
     def test_manual_cover_letter_profile_not_found(self, client):
         """Should return 404 when the active profile ID is missing from storage."""
-        with patch(
-            "src.api.routes.cover_letter.stored_profiles", {}, create=True
-        ), patch(
-            "src.api.routes.cover_letter.active_profile_id", "missing", create=True
+        with patch("src.api.routes.profile.stored_profiles", {}, create=True), patch(
+            "src.api.routes.profile.active_profile_id", "missing", create=True
         ):
             resp = client.post(
                 "/api/cover-letter/manual",

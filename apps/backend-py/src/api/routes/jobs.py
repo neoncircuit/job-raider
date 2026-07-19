@@ -18,7 +18,7 @@ from ...utils.location_normalizer import normalize_all_locations
 from ...utils.logger import Components, get_logger
 from ..models.requests import JobSearchRequest, SemanticSearchRequest
 from ..models.responses import SemanticSearchResult
-from .profile import active_profile_id, stored_profiles
+from . import profile as profile_state
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
@@ -166,13 +166,22 @@ async def search_jobs(
 
         # Score jobs if profile is available
         scored_listings = []
-        if active_profile_id and active_profile_id in stored_profiles:
+        if (
+            profile_state.active_profile_id
+            and profile_state.active_profile_id in profile_state.stored_profiles
+        ):
             from ...models.user_profile import UserProfile
 
-            profile_data = stored_profiles[active_profile_id].get("profile")
+            profile_data = profile_state.stored_profiles[
+                profile_state.active_profile_id
+            ].get("profile")
             if profile_data:
                 try:
-                    profile = UserProfile(**profile_data)
+                    profile = (
+                        profile_data
+                        if isinstance(profile_data, UserProfile)
+                        else UserProfile(**profile_data)
+                    )
                     matcher = JobMatcher(fresh_grad_mode=request.fresh_grad_mode)
 
                     for listing in all_listings:
@@ -308,7 +317,7 @@ async def score_job(job_id: str):
     Returns:
         Job with relevance score
     """
-    if not active_profile_id:
+    if not profile_state.active_profile_id:
         raise HTTPException(
             status_code=400,
             detail="No active profile found. Upload a resume first.",
@@ -503,7 +512,7 @@ async def apply_to_job(
     )
 
     # Check for active profile
-    if not active_profile_id:
+    if not profile_state.active_profile_id:
         logger.warning("[Auto Apply] No active profile found")
         raise HTTPException(
             status_code=400,
@@ -511,17 +520,17 @@ async def apply_to_job(
         )
 
     # Get the active profile
-    profile = stored_profiles.get(active_profile_id)
+    profile = profile_state.stored_profiles.get(profile_state.active_profile_id)
     if not profile:
         logger.error(
-            f"[Auto Apply] Profile ID {active_profile_id} not found in stored profiles"
+            f"[Auto Apply] Profile ID {profile_state.active_profile_id} not found in stored profiles"
         )
         raise HTTPException(
             status_code=404,
-            detail=f"Profile {active_profile_id} not found",
+            detail=f"Profile {profile_state.active_profile_id} not found",
         )
 
-    logger.info(f"[Auto Apply] Using profile: {active_profile_id}")
+    logger.info(f"[Auto Apply] Using profile: {profile_state.active_profile_id}")
 
     # Dry run mode - simulate application without submission
     if dry_run:
@@ -572,17 +581,17 @@ async def generate_cover_letter(
     Returns:
         Generated cover letter with validation results.
     """
-    if not active_profile_id:
+    if not profile_state.active_profile_id:
         raise HTTPException(
             status_code=400,
             detail="No active profile found. Upload a resume first.",
         )
 
-    profile = stored_profiles.get(active_profile_id)
+    profile = profile_state.stored_profiles.get(profile_state.active_profile_id)
     if not profile:
         raise HTTPException(
             status_code=404,
-            detail=f"Profile {active_profile_id} not found",
+            detail=f"Profile {profile_state.active_profile_id} not found",
         )
 
     try:
@@ -591,7 +600,12 @@ async def generate_cover_letter(
         )
         from ...models.job_listing import JobListing, JobSource
 
-        user_profile = UserProfile(**profile["profile"])
+        raw_profile = profile["profile"]
+        user_profile = (
+            raw_profile
+            if isinstance(raw_profile, UserProfile)
+            else UserProfile(**raw_profile)
+        )
 
         if job_data:
             job_listing = JobListing(
@@ -712,7 +726,7 @@ async def get_job_similarity(job_id: str):
     Returns:
         Similarity score and breakdown.
     """
-    if not active_profile_id:
+    if not profile_state.active_profile_id:
         raise HTTPException(
             status_code=400,
             detail="No active profile found. Upload a resume first.",

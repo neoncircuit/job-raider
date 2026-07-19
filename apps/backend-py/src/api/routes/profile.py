@@ -7,6 +7,8 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
+import asyncio
+import json
 import os
 import shutil
 import uuid
@@ -180,6 +182,95 @@ except PermissionError:
     UPLOAD_DIR = Path("/tmp/job-raider/profiles")
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+# Persisted active-profile state lives on the mounted data volume so the
+# profile survives backend restarts (the in-memory store alone is wiped on
+# every container recreate).
+_STATE_FILE = UPLOAD_DIR / "active_profile.json"
+
+
+def _parse_dt(value: Any) -> datetime:
+    """Parse an ISO datetime string back into a datetime, tolerating junk.
+
+    Args:
+        value: A datetime, an ISO-8601 string, or anything else.
+
+    Returns:
+        The parsed datetime, or the current time as a fallback.
+    """
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return datetime.now()
+    return datetime.now()
+
+
+def _persist_state() -> None:
+    """Write the active profile to disk so it survives backend restarts.
+
+    Serializes the parsed UserProfile and its metadata to a JSON file on the
+    mounted data volume. Failures are logged and swallowed so persistence never
+    breaks the request that triggered it.
+
+    Returns:
+        None.
+    """
+    if not active_profile_id or active_profile_id not in stored_profiles:
+        return
+    entry = stored_profiles[active_profile_id]
+    profile = entry.get("profile")
+    payload = {
+        "active_profile_id": active_profile_id,
+        "resume_path": entry.get("resume_path"),
+        "original_filename": entry.get("original_filename"),
+        "created_at": _parse_dt(entry.get("created_at")).isoformat(),
+        "updated_at": _parse_dt(entry.get("updated_at")).isoformat(),
+        "profile": (
+            profile.model_dump(mode="json")
+            if hasattr(profile, "model_dump")
+            else profile
+        ),
+    }
+    try:
+        _STATE_FILE.write_text(json.dumps(payload))
+    except Exception as exc:
+        logger.warning(f"Failed to persist active profile: {exc}")
+
+
+def _load_state() -> None:
+    """Restore a previously persisted active profile on startup.
+
+    Reconstructs the UserProfile object so downstream readers (which expect an
+    object, not a dict) behave identically to a fresh upload. A missing or
+    unreadable state file is ignored.
+
+    Returns:
+        None.
+    """
+    global active_profile_id
+    if not _STATE_FILE.exists():
+        return
+    try:
+        payload = json.loads(_STATE_FILE.read_text())
+        pid = payload["active_profile_id"]
+        stored_profiles[pid] = {
+            "profile": UserProfile.model_validate(payload["profile"]),
+            "resume_path": payload.get("resume_path"),
+            "original_filename": payload.get("original_filename"),
+            "created_at": _parse_dt(payload.get("created_at")),
+            "updated_at": _parse_dt(payload.get("updated_at")),
+        }
+        active_profile_id = pid
+        logger.info(f"Restored persisted profile {pid} from {_STATE_FILE}")
+    except Exception as exc:
+        logger.warning(f"Failed to load persisted profile: {exc}")
+
+
+# Restore any persisted profile at import time (single-user model).
+_load_state()
+
 
 @router.post("/upload", response_model=Dict[str, str])
 async def upload_resume(
@@ -231,6 +322,7 @@ async def upload_resume(
         stored_profiles[profile_id] = {
             "profile": profile,
             "resume_path": str(filepath),
+            "original_filename": file.filename,
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
         }
@@ -238,6 +330,9 @@ async def upload_resume(
         # Set as active profile
         global active_profile_id
         active_profile_id = profile_id
+
+        # Persist so the profile survives backend restarts.
+        _persist_state()
 
         logger.info(f"Created profile {profile_id} from uploaded resume")
 
@@ -286,6 +381,7 @@ async def get_profile():
     return {
         "profile_id": active_profile_id,
         "resume_path": profile_data["resume_path"],
+        "original_filename": profile_data.get("original_filename"),
         "contact_info": {
             "name": profile.name,
             "email": profile.contact.email,
@@ -485,6 +581,9 @@ async def update_profile(request: ProfileUpdateRequest):
     # Update timestamp
     profile_data["updated_at"] = datetime.now()
 
+    # Persist the edit so it survives restarts.
+    _persist_state()
+
     logger.info(f"Updated profile {active_profile_id}")
 
     return {"message": "Profile updated successfully"}
@@ -642,6 +741,64 @@ async def analyze_resume(
             temp_filepath.unlink()
 
 
+def _fetch_linkedin_profile_text_sync(profile_url: str) -> str:
+    """
+    Fetch LinkedIn profile text using the sync Playwright session.
+
+    Must run in a worker thread (e.g. via asyncio.to_thread) because the
+    sync Playwright API cannot be used inside the asyncio event loop.
+
+    Args:
+        profile_url: LinkedIn profile URL to fetch.
+
+    Returns:
+        Fetched profile text, or "" if unavailable.
+    """
+    session = _get_linkedin_session()
+    if not session:
+        logger.warning(
+            "LinkedIn credentials/session unavailable; "
+            "analyzing from provided text only."
+        )
+        return ""
+    try:
+        return session.fetch_profile_text(profile_url) or ""
+    except Exception as e:
+        logger.warning(f"Failed to fetch LinkedIn profile: {e}")
+        return ""
+    finally:
+        session.close()
+
+
+def _search_linkedin_people_sync(input_data: "LinkedInPeopleSearchInput"):
+    """
+    Run a LinkedIn people search using the sync Playwright session.
+
+    Must run in a worker thread because the sync Playwright API cannot be
+    used inside the asyncio event loop.
+
+    Args:
+        input_data: People search query parameters.
+
+    Returns:
+        Raw search result dicts, or None if the session is unavailable.
+    """
+    session = _get_linkedin_session()
+    if not session:
+        return None
+    try:
+        return session.search_people(
+            keywords=input_data.keywords,
+            name=input_data.name,
+            title=input_data.title,
+            company=input_data.company,
+            location=input_data.location,
+            limit=input_data.limit,
+        )
+    finally:
+        session.close()
+
+
 @router.post("/analyze-linkedin")
 async def analyze_linkedin(input_data: LinkedInProfileInput):
     """
@@ -662,27 +819,17 @@ async def analyze_linkedin(input_data: LinkedInProfileInput):
         analyzer = _get_linkedin_analyzer()
 
         if input_data.profile_url and input_data.profile_url.strip():
-            session = _get_linkedin_session()
-            if session:
-                try:
-                    fetched_text = session.fetch_profile_text(
-                        input_data.profile_url.strip()
-                    )
-                    if fetched_text:
-                        existing_raw = input_data.raw_text or ""
-                        input_data.raw_text = (
-                            f"FETCHED LINKEDIN PROFILE ({input_data.profile_url}):\n"
-                            f"{fetched_text}\n\n{existing_raw}"
-                        ).strip()
-                except Exception as e:
-                    logger.warning(f"Failed to fetch LinkedIn profile: {e}")
-                finally:
-                    session.close()
-            else:
-                logger.warning(
-                    "LinkedIn credentials/session unavailable; "
-                    "analyzing from provided text only."
-                )
+            # Sync Playwright cannot run inside the asyncio event loop, so
+            # the whole session lifecycle happens in a worker thread.
+            fetched_text = await asyncio.to_thread(
+                _fetch_linkedin_profile_text_sync, input_data.profile_url.strip()
+            )
+            if fetched_text:
+                existing_raw = input_data.raw_text or ""
+                input_data.raw_text = (
+                    f"FETCHED LINKEDIN PROFILE ({input_data.profile_url}):\n"
+                    f"{fetched_text}\n\n{existing_raw}"
+                ).strip()
 
         analysis = await analyzer.analyze_async(input_data)
 
@@ -749,8 +896,17 @@ async def search_linkedin_people(input_data: LinkedInPeopleSearchInput):
     Returns:
         LinkedIn people search results.
     """
-    session = _get_linkedin_session()
-    if not session:
+    try:
+        # Sync Playwright cannot run inside the asyncio event loop, so the
+        # whole session lifecycle happens in a worker thread.
+        raw_results = await asyncio.to_thread(_search_linkedin_people_sync, input_data)
+    except Exception as e:
+        logger.error(f"LinkedIn people search failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"LinkedIn people search failed: {str(e)}"
+        )
+
+    if raw_results is None:
         raise HTTPException(
             status_code=503,
             detail=(
@@ -759,25 +915,9 @@ async def search_linkedin_people(input_data: LinkedInPeopleSearchInput):
             ),
         )
 
-    try:
-        raw_results = session.search_people(
-            keywords=input_data.keywords,
-            name=input_data.name,
-            title=input_data.title,
-            company=input_data.company,
-            location=input_data.location,
-            limit=input_data.limit,
-        )
-        results = [LinkedInPeopleSearchResult(**r) for r in raw_results]
-        return LinkedInPeopleSearchResponse(
-            query=input_data.model_dump(exclude={"limit"}),
-            total=len(results),
-            results=results,
-        )
-    except Exception as e:
-        logger.error(f"LinkedIn people search failed: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail=f"LinkedIn people search failed: {str(e)}"
-        )
-    finally:
-        session.close()
+    results = [LinkedInPeopleSearchResult(**r) for r in raw_results]
+    return LinkedInPeopleSearchResponse(
+        query=input_data.model_dump(exclude={"limit"}),
+        total=len(results),
+        results=results,
+    )
