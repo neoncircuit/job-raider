@@ -286,6 +286,19 @@ class ManualCoverLetterRequest(BaseModel):
         return v
 
 
+class CoverLetterValidateRequest(ManualCoverLetterRequest):
+    """Request to validate an (edited) cover letter against a job description."""
+
+    content: str = Field(..., min_length=1, description="Cover letter text to validate")
+    deep: bool = Field(default=False, description="Run LLM-powered validation")
+
+
+class CoverLetterExplainRequest(ManualCoverLetterRequest):
+    """Request to explain a cover letter's quality in plain language."""
+
+    content: str = Field(..., min_length=1, description="Cover letter text to explain")
+
+
 class CoverLetterExportRequest(BaseModel):
     """Request to export a cover letter to DOCX or PDF."""
 

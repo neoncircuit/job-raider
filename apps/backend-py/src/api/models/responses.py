@@ -288,3 +288,35 @@ class CoverLetterResponse(BaseModel):
     job_id: str
     cover_letter: Dict[str, Any]
     validation: CoverLetterValidationResponse
+
+
+class JdMatchResponse(BaseModel):
+    """Response with a heuristic JD-vs-profile match assessment."""
+
+    score: int  # 0-100
+    passed_threshold: bool
+    recommendation: str  # "apply", "maybe", "skip"
+    reasoning: str
+    breakdown: Dict[str, int] = Field(default_factory=dict)
+    matched_keywords: List[str] = Field(default_factory=list)
+    missing_skills: List[str] = Field(default_factory=list)
+    # Heuristic company/JD scam screen ("flags to review", not a verdict).
+    scam_risk: str = "low"  # "low", "medium", "high"
+    scam_flags: List[str] = Field(default_factory=list)
+
+
+class ScoreExplanationResponse(BaseModel):
+    """Plain-language explanation of why a score was given."""
+
+    strengths: List[str] = Field(default_factory=list)
+    concerns: List[str] = Field(default_factory=list)
+    improvements: List[str] = Field(default_factory=list)
+
+
+class PrepSheetResponse(BaseModel):
+    """Response with an LLM-generated interview prep sheet for a JD."""
+
+    success: bool
+    likely_questions: List[str] = Field(default_factory=list)
+    gaps_to_address: List[str] = Field(default_factory=list)
+    talking_points: List[str] = Field(default_factory=list)

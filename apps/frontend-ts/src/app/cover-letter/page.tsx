@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Mail,
@@ -12,9 +13,28 @@ import {
   CheckCircle,
   Loader2,
   PenTool,
+  Gauge,
+  AlertTriangle,
+  ClipboardList,
+  HelpCircle,
+  Lightbulb,
+  FileUser,
+  ClipboardCheck,
 } from "lucide-react";
 import { coverLetterApi, downloadFile } from "@/lib/api/coverLetter";
-import type { CoverLetterResponse } from "@/lib/types/api";
+import type {
+  JdMatchResponse,
+  PrepSheetResponse,
+  ScoreExplanation,
+} from "@/lib/api/coverLetter";
+import { profileApi } from "@/lib/api/profile";
+import { applicationsApi } from "@/lib/api/applications";
+import type {
+  CoverLetterResponse,
+  CoverLetterValidation,
+  UserProfile,
+} from "@/lib/types/api";
+import { formatDate } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,6 +65,97 @@ const initialForm: FormState = {
   review: false,
 };
 
+const recommendationStyles: Record<JdMatchResponse["recommendation"], string> =
+  {
+    apply: "bg-emerald-500/15 text-emerald-600",
+    maybe: "bg-amber-500/15 text-amber-600",
+    skip: "bg-red-500/15 text-red-600",
+  };
+
+/** Debounce delay before auto-assessing the pasted JD (ms). */
+const ASSESS_DEBOUNCE_MS = 800;
+
+/**
+ * Derive a human-friendly filename and file type for the active CV.
+ *
+ * Prefers the original uploaded filename; falls back to the stored resume
+ * path's basename (a generated `profile_<id>.<ext>` name). The file type is
+ * the uppercased extension of whichever source is available.
+ *
+ * @param profile - The active user profile from GET /profile.
+ * @returns The display filename and uppercased file type (may be empty).
+ */
+function describeCv(profile: UserProfile): {
+  filename: string;
+  fileType: string;
+} {
+  const source = profile.original_filename ?? profile.resume_path ?? "";
+  const base = source.split(/[\\/]/).pop() ?? source;
+  const ext = base.includes(".") ? (base.split(".").pop() ?? "") : "";
+  return {
+    filename: profile.original_filename ?? base ?? "Resume",
+    fileType: ext.toUpperCase(),
+  };
+}
+
+/**
+ * Turn a score-breakdown category key (e.g. "keyword_match") into a readable
+ * label (e.g. "Keyword Match").
+ */
+function prettyCategory(key: string): string {
+  return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Render a plain-language score explanation as grouped strengths, concerns,
+ * and improvement bullets. Shared by the job-fit and cover-letter panels.
+ */
+function ExplanationBlock({ explanation }: { explanation: ScoreExplanation }) {
+  const sections = [
+    {
+      label: "Strengths",
+      items: explanation.strengths,
+      color: "text-emerald-600",
+      Icon: CheckCircle,
+    },
+    {
+      label: "Concerns",
+      items: explanation.concerns,
+      color: "text-amber-600",
+      Icon: AlertTriangle,
+    },
+    {
+      label: "How to improve",
+      items: explanation.improvements,
+      color: "text-indigo-500",
+      Icon: Lightbulb,
+    },
+  ];
+  const hasAny = sections.some((s) => s.items.length > 0);
+  if (!hasAny) return null;
+  return (
+    <div className="rounded-lg border p-3 space-y-2">
+      {sections.map(({ label, items, color, Icon }) =>
+        items.length > 0 ? (
+          <div key={label} className="space-y-1">
+            <p
+              className={`text-xs font-semibold flex items-center gap-1.5 ${color}`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </p>
+            <ul className="list-disc pl-5 space-y-0.5 text-xs text-muted-foreground">
+              {items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null,
+      )}
+    </div>
+  );
+}
+
 /**
  * Dedicated Cover Letter tab for the "other" category of jobs discovered
  * outside the platform's scrapers. Paste a job description, generate a
@@ -54,6 +165,38 @@ export default function CoverLetterPage() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [result, setResult] = useState<CoverLetterResponse | null>(null);
   const [copied, setCopied] = useState(false);
+  const [assessment, setAssessment] = useState<JdMatchResponse | null>(null);
+  const [assessError, setAssessError] = useState<string | null>(null);
+  const [assessLoading, setAssessLoading] = useState(false);
+  const [prepSheet, setPrepSheet] = useState<PrepSheetResponse | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Editable letter body + live-revalidated quality metrics, plus on-demand
+  // plain-language explanations of the fit and letter scores.
+  const [editedContent, setEditedContent] = useState("");
+  const [validation, setValidation] = useState<CoverLetterValidation | null>(
+    null,
+  );
+  const [revalidating, setRevalidating] = useState(false);
+  const [fitExplain, setFitExplain] = useState<ScoreExplanation | null>(null);
+  const [letterExplain, setLetterExplain] = useState<ScoreExplanation | null>(
+    null,
+  );
+  const revalidateAbortRef = useRef<AbortController | null>(null);
+
+  // Aftermath status recorded to the job tracker for this listing.
+  const [aftermath, setAftermath] = useState<string | null>(null);
+  const trackedJobIdRef = useRef<string | null>(null);
+
+  // Active CV reference so the user can confirm which resume is being used.
+  // Reuses the shared ["profile"] query key, so uploading a new resume on the
+  // Profile page refreshes this indicator without a manual reload.
+  const {
+    data: profile,
+    isLoading: profileLoading,
+    isError: profileError,
+  } = useQuery({ queryKey: ["profile"], queryFn: profileApi.get });
+  const cv = profile ? describeCv(profile) : null;
 
   const generateMutation = useMutation({
     mutationFn: () =>
@@ -69,6 +212,12 @@ export default function CoverLetterPage() {
       ),
     onSuccess: (data) => {
       setResult(data);
+      setEditedContent(data.cover_letter.content);
+      setValidation(data.validation);
+      setPrepSheet(null);
+      setLetterExplain(null);
+      setAftermath(null);
+      trackedJobIdRef.current = null;
       toast.success("Cover letter generated");
       logger.info("Generated cover letter", { jobId: data.job_id });
     },
@@ -82,7 +231,7 @@ export default function CoverLetterPage() {
     mutationFn: async (format: "docx" | "pdf") => {
       if (!result) throw new Error("No cover letter to export");
       const res = await coverLetterApi.export({
-        content: result.cover_letter.content,
+        content: editedContent,
         format,
         company: form.company,
         title: form.title,
@@ -99,6 +248,183 @@ export default function CoverLetterPage() {
     },
   });
 
+  const prepMutation = useMutation({
+    mutationFn: () =>
+      coverLetterApi.prep({
+        title: form.title,
+        company: form.company,
+        description: form.description,
+        location: form.location || undefined,
+      }),
+    onSuccess: (data) => {
+      setPrepSheet(data);
+      toast.success("Prep sheet generated");
+    },
+    onError: (err: Error) => {
+      logger.error("Prep sheet generation failed", err);
+      toast.error(err.message || "Failed to generate prep sheet");
+    },
+  });
+
+  const explainFitMutation = useMutation({
+    mutationFn: () =>
+      coverLetterApi.explainFit({
+        title: form.title,
+        company: form.company,
+        description: form.description,
+        location: form.location || undefined,
+      }),
+    onSuccess: setFitExplain,
+    onError: (err: Error) => {
+      logger.error("Fit explanation failed", err);
+      toast.error(err.message || "Failed to explain the score");
+    },
+  });
+
+  const explainLetterMutation = useMutation({
+    mutationFn: () =>
+      coverLetterApi.explainLetter({
+        content: editedContent,
+        title: form.title,
+        company: form.company,
+        description: form.description,
+        location: form.location || undefined,
+      }),
+    onSuccess: setLetterExplain,
+    onError: (err: Error) => {
+      logger.error("Letter explanation failed", err);
+      toast.error(err.message || "Failed to explain the quality");
+    },
+  });
+
+  // Record an aftermath status (applied / saved / did-not-apply) to the tracker.
+  // The listing is created once (storing the JD in metadata so interview prep
+  // can run later from the tracker), then transitioned to the chosen status.
+  const aftermathMutation = useMutation({
+    mutationFn: async (status: string) => {
+      const isNew = !trackedJobIdRef.current;
+      const jobId =
+        trackedJobIdRef.current ??
+        `cl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      trackedJobIdRef.current = jobId;
+      if (isNew) {
+        await applicationsApi.trackExternal({
+          job_id: jobId,
+          job_title: form.title,
+          company: form.company,
+          application_date: new Date().toISOString(),
+          application_method: "cover_letter",
+          metadata: {
+            description: form.description,
+            location: form.location || undefined,
+          },
+        });
+      }
+      // A brand-new record already starts as "applied"; otherwise transition.
+      if (!(isNew && status === "applied")) {
+        await applicationsApi.updateStatus(jobId, status);
+      }
+      return status;
+    },
+    onSuccess: (status) => {
+      setAftermath(status);
+      toast.success("Saved to your job tracker");
+    },
+    onError: (err: Error) => {
+      logger.error("Aftermath status update failed", err);
+      toast.error(err.message || "Failed to update the tracker");
+    },
+  });
+
+  const { title, company, location, description } = form;
+
+  // Auto-assess job fit while the user fills in the form, debounced and
+  // aborting any in-flight request that has gone stale. All state updates
+  // happen inside the debounced callback so the effect body stays free of
+  // synchronous setState (which triggers cascading renders).
+  useEffect(() => {
+    const ready =
+      title.trim() && company.trim() && description.trim().length >= 50;
+
+    const timer = setTimeout(async () => {
+      abortRef.current?.abort();
+
+      if (!ready) {
+        setAssessment(null);
+        setAssessError(null);
+        setAssessLoading(false);
+        return;
+      }
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setAssessLoading(true);
+      setAssessError(null);
+      try {
+        const data = await coverLetterApi.assess(
+          {
+            title,
+            company,
+            description,
+            location: location || undefined,
+          },
+          controller.signal,
+        );
+        // Only apply the latest request's result (guard against a slow earlier
+        // response overwriting a newer one).
+        if (abortRef.current === controller) setAssessment(data);
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          logger.error("JD assessment failed", err);
+          setAssessError("Could not assess job fit");
+        }
+      } finally {
+        if (abortRef.current === controller) setAssessLoading(false);
+      }
+    }, ASSESS_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [title, company, location, description]);
+
+  // Re-run the quality breakdown on the edited letter, debounced. Fast
+  // deterministic validation (no LLM), so it can track edits live. State
+  // updates live inside the debounced callback to avoid synchronous setState.
+  useEffect(() => {
+    // Keep the richer validation produced at generation time until the user
+    // actually edits the letter; only then re-validate the changed text.
+    if (!result || editedContent === result.cover_letter.content) return;
+    const timer = setTimeout(async () => {
+      revalidateAbortRef.current?.abort();
+      const controller = new AbortController();
+      revalidateAbortRef.current = controller;
+      setRevalidating(true);
+      try {
+        const data = await coverLetterApi.validate(
+          {
+            content: editedContent,
+            title,
+            company,
+            description,
+            location: location || undefined,
+            deep: form.deep,
+          },
+          controller.signal,
+        );
+        if (revalidateAbortRef.current === controller) setValidation(data);
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          logger.error("Cover letter re-validation failed", err);
+        }
+      } finally {
+        if (revalidateAbortRef.current === controller) setRevalidating(false);
+      }
+    }, ASSESS_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+    // Re-validate when the edited text changes; job fields are stable per letter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editedContent]);
+
   const canGenerate =
     form.title.trim() &&
     form.company.trim() &&
@@ -107,7 +433,7 @@ export default function CoverLetterPage() {
   const handleCopy = async () => {
     if (!result) return;
     try {
-      await navigator.clipboard.writeText(result.cover_letter.content);
+      await navigator.clipboard.writeText(editedContent);
       setCopied(true);
       toast.success("Copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
@@ -118,7 +444,7 @@ export default function CoverLetterPage() {
   };
 
   return (
-    <PageContainer variant="content" className="py-6">
+    <PageContainer variant="full-bleed">
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -131,9 +457,53 @@ export default function CoverLetterPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Active CV indicator: confirms which resume is being referenced. */}
+      <div className="rounded-lg border bg-muted/30 px-4 py-2.5">
+        {profileLoading ? (
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Checking active CV...
+          </p>
+        ) : profileError || !profile || !cv ? (
+          <p className="text-sm flex items-center gap-2 text-amber-600 dark:text-amber-500">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              No CV uploaded &mdash; generation needs an active resume.{" "}
+              <Link
+                href="/profile"
+                className="font-medium underline underline-offset-2"
+              >
+                Upload one on the Profile page
+              </Link>
+              .
+            </span>
+          </p>
+        ) : (
+          <div className="flex items-center gap-2.5">
+            <FileUser className="h-4 w-4 text-primary shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">
+                Referencing CV: {cv.filename}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {[
+                  profile.contact_info?.name,
+                  cv.fileType || null,
+                  profile.created_at
+                    ? `uploaded ${formatDate(profile.created_at)}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-12">
         {/* Input form */}
-        <Card>
+        <Card className="lg:col-span-4">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" />
@@ -259,8 +629,137 @@ export default function CoverLetterPage() {
           </CardContent>
         </Card>
 
+        {/* Job fit column */}
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-primary" />
+              Job Fit
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {assessLoading ? (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Assessing job fit...
+              </p>
+            ) : assessError ? (
+              <p className="text-sm text-destructive flex items-center gap-2">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {assessError}
+              </p>
+            ) : assessment ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Gauge className="h-3.5 w-3.5 text-primary" />
+                    Job fit: {assessment.score}/100
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${recommendationStyles[assessment.recommendation]}`}
+                  >
+                    {assessment.recommendation.toUpperCase()}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {assessment.reasoning}
+                </p>
+                {Object.keys(assessment.breakdown).length > 0 && (
+                  <div className="space-y-1 pt-0.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">
+                      Score breakdown (points toward 100)
+                    </p>
+                    {Object.entries(assessment.breakdown)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([category, points]) => {
+                        const max = Math.max(
+                          ...Object.values(assessment.breakdown),
+                          1,
+                        );
+                        return (
+                          <div
+                            key={category}
+                            className="flex items-center gap-2"
+                          >
+                            <span className="w-28 shrink-0 text-[11px] text-muted-foreground">
+                              {prettyCategory(category)}
+                            </span>
+                            <div className="h-1.5 flex-1 rounded-full bg-muted">
+                              <div
+                                className="h-1.5 rounded-full bg-primary"
+                                style={{
+                                  width: `${(points / max) * 100}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="w-6 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                              {points}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+                {assessment.matched_keywords.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium">Matched:</span>{" "}
+                    {assessment.matched_keywords.slice(0, 12).join(", ")}
+                  </p>
+                )}
+                {assessment.missing_skills.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium">Missing skills:</span>{" "}
+                    {assessment.missing_skills.join(", ")}
+                  </p>
+                )}
+                {assessment.scam_flags.length > 0 ? (
+                  <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 space-y-1">
+                    <p className="text-[11px] font-semibold text-amber-600 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Company risk: {assessment.scam_risk.toUpperCase()} — flags
+                      to review
+                    </p>
+                    <ul className="list-disc pl-4 text-[11px] text-muted-foreground space-y-0.5">
+                      {assessment.scam_flags.map((flag) => (
+                        <li key={flag}>{flag}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-emerald-600 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    No common scam signals detected
+                  </p>
+                )}
+                <div className="pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => explainFitMutation.mutate()}
+                    disabled={explainFitMutation.isPending}
+                  >
+                    {explainFitMutation.isPending ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Lightbulb className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {fitExplain ? "Refresh explanation" : "Explain this score"}
+                  </Button>
+                </div>
+                {fitExplain && <ExplanationBlock explanation={fitExplain} />}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Fill in the job title, company, and description (50+ characters)
+                to see your fit score, breakdown, and company-risk flags.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Result panel */}
-        <div className="space-y-6">
+        <div className="space-y-6 lg:col-span-5">
           {result ? (
             <>
               <Card>
@@ -289,10 +788,20 @@ export default function CoverLetterPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Textarea
-                    readOnly
-                    value={result.cover_letter.content}
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
                     className="min-h-[320px] resize-y font-serif leading-relaxed"
                   />
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    {revalidating ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Re-checking quality...
+                      </>
+                    ) : (
+                      "Edit the letter above — the quality breakdown updates automatically."
+                    )}
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
@@ -316,7 +825,136 @@ export default function CoverLetterPage() {
                 </CardContent>
               </Card>
 
-              <CoverLetterValidationDisplay validation={result.validation} />
+              {/* Aftermath status recorded to the job tracker. */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ClipboardCheck className="h-4 w-4 text-primary" />
+                    Application status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Record what you did with this listing — it appears in your
+                    job tracker, and its job description is saved for interview
+                    prep later.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: "Applied", value: "applied" },
+                      { label: "Saved", value: "saved_bookmarked" },
+                      { label: "Did not apply", value: "not_interested" },
+                    ].map(({ label, value }) => (
+                      <Button
+                        key={value}
+                        size="sm"
+                        variant={aftermath === value ? "default" : "outline"}
+                        disabled={aftermathMutation.isPending}
+                        onClick={() => aftermathMutation.mutate(value)}
+                      >
+                        {aftermathMutation.isPending &&
+                        aftermathMutation.variables === value ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : null}
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {validation && (
+                <div className="space-y-2">
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => explainLetterMutation.mutate()}
+                      disabled={explainLetterMutation.isPending}
+                    >
+                      {explainLetterMutation.isPending ? (
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Lightbulb className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      {letterExplain
+                        ? "Refresh explanation"
+                        : "Explain quality"}
+                    </Button>
+                  </div>
+                  <CoverLetterValidationDisplay validation={validation} />
+                  {letterExplain && (
+                    <ExplanationBlock explanation={letterExplain} />
+                  )}
+                </div>
+              )}
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-primary" />
+                      Interview Prep
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => prepMutation.mutate()}
+                      disabled={prepMutation.isPending}
+                    >
+                      {prepMutation.isPending ? (
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      {prepSheet ? "Regenerate" : "Generate prep sheet"}
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                {prepSheet && (
+                  <CardContent className="space-y-4 text-sm">
+                    {prepSheet.likely_questions.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="font-medium flex items-center gap-2">
+                          <HelpCircle className="h-3.5 w-3.5 text-primary" />
+                          Likely questions
+                        </p>
+                        <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                          {prepSheet.likely_questions.map((q) => (
+                            <li key={q}>{q}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {prepSheet.gaps_to_address.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="font-medium flex items-center gap-2">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                          Gaps to address honestly
+                        </p>
+                        <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                          {prepSheet.gaps_to_address.map((g) => (
+                            <li key={g}>{g}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {prepSheet.talking_points.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="font-medium flex items-center gap-2">
+                          <Lightbulb className="h-3.5 w-3.5 text-indigo-500" />
+                          Talking points
+                        </p>
+                        <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                          {prepSheet.talking_points.map((t) => (
+                            <li key={t}>{t}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                )}
+              </Card>
             </>
           ) : (
             <Card className="h-full min-h-[400px] flex items-center justify-center">

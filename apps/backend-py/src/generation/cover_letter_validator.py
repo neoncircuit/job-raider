@@ -464,6 +464,22 @@ class CoverLetterValidator:
             data = json.loads(json_match.group(0))
             overall = data.get("overall_score", 0)
 
+            # The LLM can return a non-canonical recommendation (wrong case,
+            # spaces, or an unexpected word). Normalize to the three allowed
+            # values so downstream consumers never receive a surprise string.
+            raw_recommendation = (
+                str(data.get("recommendation", "needs_revision"))
+                .strip()
+                .lower()
+                .replace(" ", "_")
+                .replace("-", "_")
+            )
+            recommendation = (
+                raw_recommendation
+                if raw_recommendation in {"approve", "needs_revision", "reject"}
+                else "needs_revision"
+            )
+
             return CoverLetterValidationResult(
                 is_valid=data.get("is_valid", False),
                 score=overall,
@@ -472,7 +488,7 @@ class CoverLetterValidator:
                 structure_score=data.get("structure_score", 0),
                 content_score=data.get("content_score", 0),
                 tone_score=data.get("tone_score", 0),
-                recommendation=data.get("recommendation", "needs_revision"),
+                recommendation=recommendation,
                 details={"llm_feedback": data.get("issues", [])},
             )
 

@@ -1,5 +1,8 @@
 import { request } from "./client";
-import type { CoverLetterResponse } from "@/lib/types/api";
+import type {
+  CoverLetterResponse,
+  CoverLetterValidation,
+} from "@/lib/types/api";
 
 export interface ManualCoverLetterRequest {
   title: string;
@@ -15,6 +18,36 @@ export interface CoverLetterExportRequest {
   title: string;
 }
 
+export interface JdMatchResponse {
+  score: number;
+  passed_threshold: boolean;
+  recommendation: "apply" | "maybe" | "skip";
+  reasoning: string;
+  breakdown: Record<string, number>;
+  matched_keywords: string[];
+  missing_skills: string[];
+  scam_risk: "low" | "medium" | "high";
+  scam_flags: string[];
+}
+
+export interface PrepSheetResponse {
+  success: boolean;
+  likely_questions: string[];
+  gaps_to_address: string[];
+  talking_points: string[];
+}
+
+export interface ScoreExplanation {
+  strengths: string[];
+  concerns: string[];
+  improvements: string[];
+}
+
+export interface ValidateCoverLetterRequest extends ManualCoverLetterRequest {
+  content: string;
+  deep?: boolean;
+}
+
 export const coverLetterApi = {
   /**
    * Generate a tailored cover letter from a manually pasted job description.
@@ -28,6 +61,52 @@ export const coverLetterApi = {
       params: Object.keys(params).length > 0 ? params : undefined,
     });
   },
+
+  /**
+   * Score a pasted job description against the stored profile without
+   * generating a letter. Supports aborting stale requests while typing.
+   */
+  assess: (req: ManualCoverLetterRequest, signal?: AbortSignal) =>
+    request<JdMatchResponse>("POST", "/cover-letter/assess", {
+      body: req,
+      signal,
+    }),
+
+  /**
+   * Generate an interview prep sheet (likely questions, gaps, talking
+   * points) for a pasted job description.
+   */
+  prep: (req: ManualCoverLetterRequest) =>
+    request<PrepSheetResponse>("POST", "/cover-letter/prep", { body: req }),
+
+  /**
+   * Re-validate an edited cover letter and return fresh quality metrics.
+   * Fast deterministic checks unless `deep` is set. Supports aborting stale
+   * requests while the user types.
+   */
+  validate: (req: ValidateCoverLetterRequest, signal?: AbortSignal) =>
+    request<CoverLetterValidation>("POST", "/cover-letter/validate", {
+      body: req,
+      signal,
+    }),
+
+  /**
+   * Generate a plain-language explanation of the job-fit score (strengths,
+   * concerns, improvements). On-demand LLM call.
+   */
+  explainFit: (req: ManualCoverLetterRequest) =>
+    request<ScoreExplanation>("POST", "/cover-letter/explain-fit", {
+      body: req,
+    }),
+
+  /**
+   * Generate a plain-language explanation of the cover letter's quality
+   * (strengths, concerns, improvements). On-demand LLM call.
+   */
+  explainLetter: (req: ValidateCoverLetterRequest) =>
+    request<ScoreExplanation>("POST", "/cover-letter/explain-letter", {
+      body: req,
+    }),
 
   /**
    * Export an existing cover letter to DOCX or PDF.

@@ -88,10 +88,10 @@ function ScoreBar({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <Icon className="h-3.5 w-3.5 text-gray-400" />
-      <span className="w-20 text-xs text-gray-600">{label}</span>
+      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      <span className="w-20 text-xs text-muted-foreground">{label}</span>
       <div className="flex-1">
-        <div className="h-1.5 w-full rounded-full bg-gray-100">
+        <div className="h-1.5 w-full rounded-full bg-muted">
           <div
             className={cn(
               "h-1.5 rounded-full transition-all",
@@ -113,7 +113,12 @@ function ScoreBar({
 export function CoverLetterValidationDisplay({
   validation,
 }: CoverLetterValidationDisplayProps) {
-  const config = RECOMMENDATION_CONFIG[validation.recommendation];
+  // Fall back gracefully if the backend sends an unrecognized recommendation
+  // (e.g. an LLM validator returning a non-canonical string) so the whole
+  // result panel never crashes on an unexpected value.
+  const config =
+    RECOMMENDATION_CONFIG[validation.recommendation] ??
+    RECOMMENDATION_CONFIG.needs_revision;
   const RecIcon = config.icon;
 
   const details = validation.details as Record<string, unknown> | undefined;
@@ -149,7 +154,7 @@ export function CoverLetterValidationDisplay({
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm">
-              <FileText className="h-4 w-4 text-gray-500" />
+              <FileText className="h-4 w-4 text-muted-foreground" />
               Proofread Result
             </span>
             <Badge
@@ -166,13 +171,13 @@ export function CoverLetterValidationDisplay({
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Overall Score</span>
               <span className={cn("font-medium", scoreColor(validation.score))}>
                 {validation.score}/100
               </span>
             </div>
-            <div className="h-2 w-full rounded-full bg-gray-100">
+            <div className="h-2 w-full rounded-full bg-muted">
               <div
                 className={cn(
                   "h-2 rounded-full transition-all",
@@ -183,7 +188,7 @@ export function CoverLetterValidationDisplay({
                 }}
               />
             </div>
-            <div className="flex items-center gap-4 text-xs text-gray-500">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span>{validation.word_count} words</span>
               {paragraphCount != null && (
                 <span>{paragraphCount} paragraphs</span>
@@ -197,7 +202,7 @@ export function CoverLetterValidationDisplay({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <LayoutTemplate className="h-4 w-4 text-gray-500" />
+            <LayoutTemplate className="h-4 w-4 text-muted-foreground" />
             Quality Breakdown
           </CardTitle>
         </CardHeader>
@@ -236,7 +241,7 @@ export function CoverLetterValidationDisplay({
               {validation.issues.map((issue, i) => (
                 <li
                   key={i}
-                  className="flex items-start gap-2 text-xs text-gray-700"
+                  className="flex items-start gap-2 text-xs text-foreground"
                 >
                   <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
                   {issueLabel(issue)}
@@ -300,7 +305,7 @@ export function CoverLetterValidationDisplay({
               {llmFeedback.map((feedback, i) => (
                 <li
                   key={i}
-                  className="flex items-start gap-2 text-xs text-gray-700"
+                  className="flex items-start gap-2 text-xs text-foreground"
                 >
                   <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
                   {feedback}
@@ -325,14 +330,17 @@ export function CoverLetterValidationDisplay({
                   Rewritten once
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-xs text-gray-600">
+                <Badge
+                  variant="outline"
+                  className="text-xs text-muted-foreground"
+                >
                   Original draft
                 </Badge>
               )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className="text-xs text-gray-700">{reviewDetails.critique}</p>
+            <p className="text-xs text-foreground">{reviewDetails.critique}</p>
             <div className="flex flex-wrap gap-1.5">
               {reviewDetails.rewrite_needed && (
                 <Badge variant="outline" className="text-xs text-amber-600">
@@ -356,7 +364,7 @@ export function CoverLetterValidationDisplay({
       {validation.issues.length === 0 &&
         llmFeedback.length === 0 &&
         !reviewDetails && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             No issues detected. The cover letter looks good.
           </p>
         )}
