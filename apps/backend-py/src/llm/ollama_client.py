@@ -254,10 +254,14 @@ class OllamaClient(BaseLLMClient):
             LLMResponse with generated content and metadata
         """
         import asyncio
+        import functools
 
-        # Run synchronous generation in executor
+        # Run synchronous generation in executor. run_in_executor() does not
+        # forward keyword arguments, so bind them with functools.partial.
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self.generate, messages, **kwargs)
+        return await loop.run_in_executor(
+            None, functools.partial(self.generate, messages, **kwargs)
+        )
 
     def count_tokens(self, text: str) -> int:
         """
