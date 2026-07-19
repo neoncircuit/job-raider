@@ -12,11 +12,12 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ...agents.base import Task, TaskType
 from ...agents.career_coach import CareerCoachAgent
 from ...agents.coordinator import AgentCoordinator
+from ...agents.keyword_matching import resolve_keywords
 from ...llm.router import LLMRouter
 from ..auth import verify_api_key
 from ..rate_limiter import get_rate_limiter
@@ -79,6 +80,10 @@ class CareerAnalysisRequest(BaseModel):
     target_jobs: List[Dict[str, Any]] = Field(
         default_factory=list, description="Optional target jobs for analysis"
     )
+    keywords: List[str] = Field(
+        default_factory=list,
+        description="Free-form role/skill keywords resolved via fuzzy matching",
+    )
 
     @field_validator("profile")
     @classmethod
@@ -93,7 +98,11 @@ class GapAnalysisRequest(BaseModel):
 
     profile: Dict[str, Any] = Field(..., description="User profile data")
     target_jobs: List[Dict[str, Any]] = Field(
-        ..., min_length=1, description="Target jobs to analyze gaps against"
+        default_factory=list, description="Target jobs to analyze gaps against"
+    )
+    keywords: List[str] = Field(
+        default_factory=list,
+        description="Free-form role/skill keywords resolved via fuzzy matching",
     )
 
     @field_validator("profile")
@@ -103,30 +112,56 @@ class GapAnalysisRequest(BaseModel):
             raise ValueError("Profile must be a non-empty dictionary")
         return v
 
-    @field_validator("target_jobs")
-    @classmethod
-    def target_jobs_must_not_be_empty(cls, v):
-        if not v or len(v) == 0:
-            raise ValueError("At least one target job must be provided")
-        return v
+    @model_validator(mode="after")
+    def require_targets_or_keywords(self):
+        if not self.target_jobs and not any(k.strip() for k in self.keywords):
+            raise ValueError("Provide at least one target job or keyword")
+        return self
 
 
 class UpskillingRoadmapRequest(BaseModel):
-    """Request model for upskilling roadmap generation."""
+    """Request model for upskilling roadmap generation.
 
-    gap_analysis: Dict[str, Any] = Field(..., description="Gap analysis results")
+    Callers may either supply a precomputed ``gap_analysis`` or, more commonly,
+    provide ``keywords``/``target_jobs`` and let the backend derive the gap
+    analysis internally. This lets the UI collect free-form role/skill keywords
+    instead of forcing users to paste raw gap-analysis JSON.
+    """
+
+    gap_analysis: Optional[Dict[str, Any]] = Field(
+        None, description="Precomputed gap analysis results (optional)"
+    )
     profile: Optional[Dict[str, Any]] = Field(
-        None, description="Optional user profile for context"
+        None, description="User profile used to derive the roadmap"
+    )
+    target_jobs: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Target jobs to derive gaps against"
+    )
+    keywords: List[str] = Field(
+        default_factory=list,
+        description="Free-form role/skill keywords resolved via fuzzy matching",
     )
 
     @field_validator("gap_analysis")
     @classmethod
     def gap_analysis_must_be_valid(cls, v):
-        if not v or not isinstance(v, dict):
+        if v is None:
+            return v
+        if not isinstance(v, dict):
             raise ValueError("Gap analysis must be a valid dictionary")
         if "skills_gap" not in v:
             raise ValueError("Gap analysis must contain skills_gap field")
         return v
+
+    @model_validator(mode="after")
+    def require_gap_or_targets(self):
+        has_gap = bool(self.gap_analysis and self.gap_analysis.get("skills_gap"))
+        has_targets = bool(self.target_jobs) or any(k.strip() for k in self.keywords)
+        if not has_gap and not has_targets:
+            raise ValueError(
+                "Provide a gap analysis, or target jobs/keywords to derive one"
+            )
+        return self
 
 
 class CareerGoalsRequest(BaseModel):
@@ -307,10 +342,14 @@ async def trigger_career_analysis(
     await _check_rate_limit(http_request)
 
     try:
+        target_jobs = list(request.target_jobs)
+        if request.keywords:
+            target_jobs.extend(resolve_keywords(request.keywords)["target_jobs"])
+
         task = Task(
             type=TaskType.CAREER_PATH_ANALYSIS,
             data={"profile": request.profile},
-            context={"profile": request.profile, "target_jobs": request.target_jobs},
+            context={"profile": request.profile, "target_jobs": target_jobs},
             priority=7,
         )
 
@@ -360,10 +399,14 @@ async def trigger_gap_analysis(
     await _check_rate_limit(http_request)
 
     try:
+        target_jobs = list(request.target_jobs)
+        if request.keywords:
+            target_jobs.extend(resolve_keywords(request.keywords)["target_jobs"])
+
         task = Task(
             type=TaskType.GAP_ANALYSIS,
-            data={"profile": request.profile, "target_jobs": request.target_jobs},
-            context={"profile": request.profile, "target_jobs": request.target_jobs},
+            data={"profile": request.profile, "target_jobs": target_jobs},
+            context={"profile": request.profile, "target_jobs": target_jobs},
             priority=7,
         )
 
@@ -413,10 +456,18 @@ async def create_upskilling_roadmap(
     await _check_rate_limit(http_request)
 
     try:
+        target_jobs = list(request.target_jobs)
+        if request.keywords:
+            target_jobs.extend(resolve_keywords(request.keywords)["target_jobs"])
+
         task = Task(
             type=TaskType.UPSKILLING_ROADMAP,
             data={"gap_analysis": request.gap_analysis},
-            context={"gap_analysis": request.gap_analysis, "profile": request.profile},
+            context={
+                "gap_analysis": request.gap_analysis,
+                "profile": request.profile,
+                "target_jobs": target_jobs,
+            },
             priority=6,
         )
 

@@ -173,6 +173,30 @@ class TestTaskSubmission:
         assert body["data"]["task_id"] == "task-abc"
         assert body["data"]["task_type"] == "upskilling_roadmap"
 
+    def test_upskilling_roadmap_accepts_keywords_only(self, client, mock_coordinator):
+        """A roadmap can be requested from keywords alone (no gap-analysis JSON)."""
+        payload = {
+            "profile": {"name": "Test User", "skills": [{"name": "python"}]},
+            "keywords": ["data scientist", "backend developer"],
+        }
+
+        response = client.post("/api/agents/upskilling-roadmap", json=payload)
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["data"]["task_id"] == "task-abc"
+        assert body["data"]["task_type"] == "upskilling_roadmap"
+
+    def test_upskilling_roadmap_requires_gap_or_targets(self, client):
+        """A roadmap request with neither gap analysis nor targets is rejected."""
+        response = client.post(
+            "/api/agents/upskilling-roadmap",
+            json={"profile": {"name": "Test User"}},
+        )
+
+        assert response.status_code == 422
+        assert response.json()["error"] == "Validation failed"
+
     def test_career_goals_submits_task(self, client, mock_coordinator):
         """POST /career-goals should return a task ID for valid input."""
         payload = {"profile": {"name": "Test User", "goals": ["become staff engineer"]}}

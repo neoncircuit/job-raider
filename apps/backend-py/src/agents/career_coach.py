@@ -6,7 +6,7 @@ and personalized career recommendations.
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -311,7 +311,12 @@ class CareerCoachAgent(BaseAgent):
         elif task.type == TaskType.CAREER_PATH_ANALYSIS:
             required_fields = ["profile"]
         elif task.type == TaskType.UPSKILLING_ROADMAP:
-            required_fields = ["gap_analysis"]
+            # A roadmap can be produced either from a precomputed gap analysis
+            # or from resolved target jobs (from which gaps are derived).
+            combined_data = {**task.data, **task.context}
+            has_gap = bool((combined_data.get("gap_analysis") or {}).get("skills_gap"))
+            has_targets = bool(combined_data.get("target_jobs"))
+            return has_gap or has_targets
         elif task.type == TaskType.CAREER_GOAL_SETTING:
             required_fields = ["profile"]
         elif task.type == TaskType.SKILL_DEVELOPMENT_PLAN:
@@ -496,8 +501,14 @@ class CareerCoachAgent(BaseAgent):
         Returns:
             Upskilling roadmap results
         """
-        gap_analysis = context.get("gap_analysis", data.get("gap_analysis", {}))
+        gap_analysis = context.get("gap_analysis", data.get("gap_analysis")) or {}
         profile = context.get("profile", data.get("profile", {}))
+
+        # When no precomputed gap analysis is supplied, derive one from the
+        # resolved target jobs so callers can request a roadmap from keywords
+        # alone (no need to paste raw gap-analysis JSON).
+        if not gap_analysis.get("skills_gap") and context.get("target_jobs"):
+            gap_analysis = await self._analyze_gaps(data, context)
 
         # Extract skill gaps
         skill_gaps = gap_analysis.get("skills_gap", {})
@@ -728,7 +739,11 @@ class CareerCoachAgent(BaseAgent):
         return sorted(prioritized, key=lambda x: x["priority"] == "high", reverse=True)
 
     def _generate_learning_paths(self, missing_skills: set) -> List[Dict[str, Any]]:
-        """Generate learning paths for missing skills."""
+        """Generate learning paths for missing skills.
+
+        Returns plain dicts (via ``asdict``) so the roadmap payload stays JSON
+        serializable when the task result is returned by the API.
+        """
         learning_paths = []
 
         for skill in missing_skills:
@@ -748,7 +763,7 @@ class CareerCoachAgent(BaseAgent):
                 prerequisites=[],
             )
 
-            learning_paths.append(learning_path)
+            learning_paths.append(asdict(learning_path))
 
         return learning_paths
 

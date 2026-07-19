@@ -384,6 +384,12 @@ export interface UserProfile {
   notice_period_weeks?: number | null;
   willing_to_relocate?: boolean;
   preferred_work_locations?: string[];
+  // Source-CV metadata (populated by GET /profile; absent from /profile/export)
+  profile_id?: string;
+  resume_path?: string;
+  original_filename?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export type VisaStatus =
@@ -803,6 +809,8 @@ export interface TaskRecord<T = Record<string, unknown>> {
 export interface CareerAnalysisRequest {
   profile: UserProfile;
   target_jobs?: Record<string, unknown>[];
+  /** Free-form role/skill keywords; the backend fuzzy-matches them to target jobs. */
+  keywords?: string[];
 }
 
 export interface CareerPositioning {
@@ -836,7 +844,9 @@ export interface CareerAnalysisResult {
 
 export interface GapAnalysisRequest {
   profile: UserProfile;
-  target_jobs: Record<string, unknown>[];
+  target_jobs?: Record<string, unknown>[];
+  /** Free-form role/skill keywords; the backend fuzzy-matches them to target jobs. */
+  keywords?: string[];
 }
 
 export interface JobGapData {
@@ -863,8 +873,12 @@ export interface GapAnalysisResult {
 }
 
 export interface UpskillingRoadmapRequest {
-  gap_analysis: GapAnalysisResult;
+  /** Precomputed gap analysis. Optional when keywords/target_jobs are given. */
+  gap_analysis?: GapAnalysisResult | null;
   profile?: UserProfile | null;
+  target_jobs?: Record<string, unknown>[];
+  /** Free-form role/skill keywords; the backend fuzzy-matches and derives gaps. */
+  keywords?: string[];
 }
 
 export interface PrioritizedSkill {

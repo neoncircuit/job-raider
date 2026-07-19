@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod/v4";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -12,17 +9,19 @@ import {
   Flag,
   Lightbulb,
   Loader2,
+  Plus,
   RefreshCw,
   Sparkles,
   Target,
+  X,
 } from "lucide-react";
 import { agentsApi } from "@/lib/api/agents";
 import { profileApi } from "@/lib/api/profile";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { formatDatetime } from "@/lib/utils/format";
@@ -56,51 +55,6 @@ const emptyProfile: UserProfile = {
   education: [],
   projects: [],
 };
-
-/**
- * Parse an optional JSON array string into a list of objects.
- *
- * @param raw Raw JSON array string; whitespace-only strings yield ``undefined``.
- * @returns Parsed array of objects, or ``undefined`` if the input is empty.
- */
-function parseOptionalJsonArray(
-  raw: string,
-): Record<string, unknown>[] | undefined {
-  if (!raw.trim()) return undefined;
-  const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed)) throw new Error("Expected a JSON array");
-  return parsed as Record<string, unknown>[];
-}
-
-/**
- * Parse a required JSON array string into a non-empty list of objects.
- *
- * @param raw Raw JSON array string.
- * @returns Parsed non-empty array of objects.
- * @throws Error if the input is not a non-empty JSON array.
- */
-function parseRequiredJsonArray(raw: string): Record<string, unknown>[] {
-  const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error("Expected a non-empty JSON array");
-  }
-  return parsed as Record<string, unknown>[];
-}
-
-/**
- * Parse a required JSON object string into a record.
- *
- * @param raw Raw JSON object string.
- * @returns Parsed object as a record.
- * @throws Error if the input is not a JSON object.
- */
-function parseRequiredJsonObject(raw: string): Record<string, unknown> {
-  const parsed = JSON.parse(raw);
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("Expected a JSON object");
-  }
-  return parsed as Record<string, unknown>;
-}
 
 // ── Shared polling hook ───────────────────────────────────────────────────────
 
@@ -331,38 +285,53 @@ function UpskillingRoadmapResultView({
 }: {
   result: UpskillingRoadmapResult;
 }) {
+  const stats = [
+    { label: "Total timeline", value: `${result.timeline.total_weeks} weeks` },
+    { label: "Learning paths", value: result.learning_paths.length },
+    { label: "Priority skills", value: result.priority_skills.length },
+  ];
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Badge variant="secondary">
-          Timeline: {result.timeline.total_weeks} weeks
-        </Badge>
+    <div className="space-y-6">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {stats.map((stat) => (
+          <Card key={stat.label} size="sm">
+            <CardContent className="py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                {stat.label}
+              </p>
+              <p className="text-xl font-semibold">{stat.value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
-      <div>
-        <h4 className="mb-2 text-sm font-medium">Priority Skills</h4>
-        <div className="flex flex-wrap gap-2">
-          {result.priority_skills.map((skill, idx) => (
-            <Badge key={idx} variant="outline">
-              {skill.skill} ({skill.priority})
-            </Badge>
-          ))}
+
+      {result.priority_skills.length > 0 && (
+        <div>
+          <h4 className="mb-2 text-sm font-medium">Priority Skills</h4>
+          <div className="flex flex-wrap gap-2">
+            {result.priority_skills.map((skill, idx) => (
+              <Badge key={idx} variant="outline">
+                {skill.skill} ({skill.priority})
+              </Badge>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
       <div>
         <h4 className="mb-2 text-sm font-medium">Learning Paths</h4>
-        <div className="space-y-2">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {result.learning_paths.map((path, idx) => (
-            <Card key={idx} size="sm">
-              <CardContent className="space-y-1">
-                <p className="text-sm font-medium">
-                  {path.skill_name} · {path.current_level} → {path.target_level}
-                </p>
+            <Card key={idx} size="sm" className="h-full">
+              <CardContent className="space-y-1.5 py-3">
+                <p className="text-sm font-medium">{path.skill_name}</p>
                 <p className="text-xs text-muted-foreground">
-                  Estimated {path.estimated_weeks} weeks · difficulty:{" "}
-                  {path.difficulty}
+                  {path.current_level} → {path.target_level} · ~
+                  {path.estimated_weeks} wks · {path.difficulty}
                 </p>
                 {path.milestones.length > 0 && (
-                  <ul className="list-disc pl-4 text-xs text-muted-foreground">
+                  <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
                     {path.milestones.map((m) => (
                       <li key={m.week}>
                         Week {m.week}: {m.milestone}
@@ -429,81 +398,86 @@ function CareerGoalsResultView({ result }: { result: CareerGoalsResult }) {
   );
 }
 
-// ── Form schemas ──────────────────────────────────────────────────────────────
+// ── Keyword input ─────────────────────────────────────────────────────────────
 
-const jsonArrayFieldSchema = z.string().refine(
-  (v) => {
-    if (!v.trim()) return true;
-    try {
-      return Array.isArray(JSON.parse(v));
-    } catch {
-      return false;
-    }
-  },
-  { message: "Must be a valid JSON array" },
-);
+/**
+ * Chip-style keyword editor: type a keyword, press Enter or Add, and it
+ * appears as a removable chip.
+ *
+ * @param id ID for the underlying input element.
+ * @param keywords Current keyword list.
+ * @param onChange Called with the updated keyword list.
+ * @param placeholder Placeholder text for the input.
+ * @returns Keyword chip editor.
+ */
+function KeywordListInput({
+  id,
+  keywords,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  keywords: string[];
+  onChange: (keywords: string[]) => void;
+  placeholder?: string;
+}) {
+  const [draft, setDraft] = useState("");
 
-const jsonArrayRequiredFieldSchema = z
-  .string()
-  .min(1, "Target jobs are required")
-  .refine(
-    (v) => {
-      try {
-        const parsed = JSON.parse(v);
-        return Array.isArray(parsed) && parsed.length > 0;
-      } catch {
-        return false;
-      }
-    },
-    { message: "Must be a valid non-empty JSON array" },
+  const addKeyword = () => {
+    const value = draft.trim();
+    if (!value) return;
+    const exists = keywords.some(
+      (k) => k.toLowerCase() === value.toLowerCase(),
+    );
+    if (!exists) onChange([...keywords, value]);
+    setDraft("");
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <Input
+          id={id}
+          value={draft}
+          placeholder={placeholder}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addKeyword();
+            }
+          }}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={addKeyword}
+          disabled={!draft.trim()}
+        >
+          <Plus className="mr-1 h-4 w-4" />
+          Add
+        </Button>
+      </div>
+      {keywords.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {keywords.map((keyword) => (
+            <Badge key={keyword} variant="secondary" className="gap-1 pr-1">
+              {keyword}
+              <button
+                type="button"
+                aria-label={`Remove ${keyword}`}
+                className="rounded-sm hover:text-red-500"
+                onClick={() => onChange(keywords.filter((k) => k !== keyword))}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
   );
-
-const jsonObjectRequiredFieldSchema = z
-  .string()
-  .min(1, "Gap analysis result is required")
-  .refine(
-    (v) => {
-      try {
-        const parsed = JSON.parse(v);
-        return parsed && typeof parsed === "object" && !Array.isArray(parsed);
-      } catch {
-        return false;
-      }
-    },
-    { message: "Must be a valid JSON object" },
-  );
-
-const careerAnalysisSchema = z.object({ targetJobs: jsonArrayFieldSchema });
-const gapAnalysisSchema = z.object({
-  targetJobs: jsonArrayRequiredFieldSchema,
-});
-const roadmapSchema = z.object({ gapJson: jsonObjectRequiredFieldSchema });
-
-/** Runtime schema for a single job's skill-gap data. */
-const jobGapDataSchema = z.object({
-  missing: z.array(z.string()),
-  overlap: z.array(z.string()),
-  coverage: z.number(),
-  total_required: z.number(),
-  total_matched: z.number(),
-});
-
-/** Runtime schema for a skill-gap recommendation entry. */
-const skillGapRecommendationSchema = z.object({
-  type: z.string(),
-  skill: z.string(),
-  severity: z.string(),
-  job: z.string(),
-  resources: z.array(z.record(z.string(), z.unknown())),
-});
-
-/** Runtime schema validating the JSON payload accepted by the roadmap tab. */
-const gapAnalysisResultSchema = z.object({
-  skills_gap: z.record(z.string(), jobGapDataSchema),
-  experience_gap: z.record(z.string(), z.unknown()),
-  education_gap: z.record(z.string(), z.unknown()),
-  recommendations: z.array(skillGapRecommendationSchema),
-});
+}
 
 // ── Tab components ────────────────────────────────────────────────────────────
 
@@ -519,18 +493,13 @@ function CareerAnalysisTab({ profile }: { profile: UserProfile }) {
     (id, signal) => agentsApi.getTask<CareerAnalysisResult>(id, signal),
   );
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<{ targetJobs: string }>({
-    resolver: zodResolver(careerAnalysisSchema),
-    defaultValues: { targetJobs: "" },
-  });
+  const [keywords, setKeywords] = useState<string[]>([]);
 
-  const onSubmit = ({ targetJobs }: { targetJobs: string }) => {
-    const target_jobs = parseOptionalJsonArray(targetJobs);
-    const payload: CareerAnalysisRequest = { profile, target_jobs };
+  const handleAnalyze = () => {
+    const payload: CareerAnalysisRequest = {
+      profile,
+      keywords: keywords.length > 0 ? keywords : undefined,
+    };
     submit.mutate(() => agentsApi.careerAnalysis(payload));
   };
 
@@ -544,28 +513,28 @@ function CareerAnalysisTab({ profile }: { profile: UserProfile }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
               <Label htmlFor="career-target-jobs">
-                Target Jobs JSON (optional)
+                Target Roles (optional)
               </Label>
-              <Textarea
+              <KeywordListInput
                 id="career-target-jobs"
-                placeholder={`[{"title": "Senior Software Engineer", "company": "Example Corp"}]`}
-                {...register("targetJobs")}
+                keywords={keywords}
+                onChange={setKeywords}
+                placeholder="e.g. Senior Software Engineer"
               />
               <p className="text-xs text-muted-foreground">
-                Paste a JSON array of target jobs, or leave blank to analyze
-                against your profile targets.
+                Type a role or skill keyword and press Add. Leave empty to
+                analyze against your profile targets.
               </p>
-              {errors.targetJobs && (
-                <p className="text-xs text-red-500">
-                  {errors.targetJobs.message}
-                </p>
-              )}
             </div>
             <div className="flex gap-2">
-              <Button type="submit" disabled={submit.isPending}>
+              <Button
+                type="button"
+                onClick={handleAnalyze}
+                disabled={submit.isPending}
+              >
                 {submit.isPending ? (
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                 ) : (
@@ -580,7 +549,7 @@ function CareerAnalysisTab({ profile }: { profile: UserProfile }) {
                 </Button>
               )}
             </div>
-          </form>
+          </div>
         </CardContent>
       </Card>
 
@@ -630,18 +599,14 @@ function GapAnalysisTab({ profile }: { profile: UserProfile }) {
     (id, signal) => agentsApi.getTask<GapAnalysisResult>(id, signal),
   );
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<{ targetJobs: string }>({
-    resolver: zodResolver(gapAnalysisSchema),
-    defaultValues: { targetJobs: "" },
-  });
+  const [keywords, setKeywords] = useState<string[]>([]);
 
-  const onSubmit = ({ targetJobs }: { targetJobs: string }) => {
-    const target_jobs = parseRequiredJsonArray(targetJobs);
-    const payload: GapAnalysisRequest = { profile, target_jobs };
+  const handleAnalyze = () => {
+    if (keywords.length === 0) {
+      toast.error("Add at least one target role keyword");
+      return;
+    }
+    const payload: GapAnalysisRequest = { profile, keywords };
     submit.mutate(() => agentsApi.gapAnalysis(payload));
   };
 
@@ -655,26 +620,26 @@ function GapAnalysisTab({ profile }: { profile: UserProfile }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="gap-target-jobs">Target Jobs JSON *</Label>
-              <Textarea
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="gap-target-jobs">Target Roles *</Label>
+              <KeywordListInput
                 id="gap-target-jobs"
-                placeholder={`[{"title": "Senior Software Engineer", "required_skills": ["Python", "FastAPI"]}]`}
-                {...register("targetJobs")}
+                keywords={keywords}
+                onChange={setKeywords}
+                placeholder="e.g. Backend Developer, Python"
               />
               <p className="text-xs text-muted-foreground">
-                Paste a JSON array describing the roles you want to compare
-                against your profile.
+                Type the roles or skills you want to compare against and press
+                Add.
               </p>
-              {errors.targetJobs && (
-                <p className="text-xs text-red-500">
-                  {errors.targetJobs.message}
-                </p>
-              )}
             </div>
             <div className="flex gap-2">
-              <Button type="submit" disabled={submit.isPending}>
+              <Button
+                type="button"
+                onClick={handleAnalyze}
+                disabled={submit.isPending || keywords.length === 0}
+              >
                 {submit.isPending ? (
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                 ) : (
@@ -689,7 +654,7 @@ function GapAnalysisTab({ profile }: { profile: UserProfile }) {
                 </Button>
               )}
             </div>
-          </form>
+          </div>
         </CardContent>
       </Card>
 
@@ -739,20 +704,14 @@ function UpskillingRoadmapTab({ profile }: { profile: UserProfile }) {
     (id, signal) => agentsApi.getTask<UpskillingRoadmapResult>(id, signal),
   );
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<{ gapJson: string }>({
-    resolver: zodResolver(roadmapSchema),
-    defaultValues: { gapJson: "" },
-  });
+  const [keywords, setKeywords] = useState<string[]>([]);
 
-  const onSubmit = ({ gapJson }: { gapJson: string }) => {
-    const parsedGap = parseRequiredJsonObject(gapJson);
-    const gap_analysis: GapAnalysisResult =
-      gapAnalysisResultSchema.parse(parsedGap);
-    const payload: UpskillingRoadmapRequest = { gap_analysis, profile };
+  const handleGenerate = () => {
+    if (keywords.length === 0) {
+      toast.error("Add at least one target role or skill keyword");
+      return;
+    }
+    const payload: UpskillingRoadmapRequest = { profile, keywords };
     submit.mutate(() => agentsApi.upskillingRoadmap(payload));
   };
 
@@ -766,24 +725,26 @@ function UpskillingRoadmapTab({ profile }: { profile: UserProfile }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="roadmap-gap-json">Gap Analysis JSON *</Label>
-              <Textarea
-                id="roadmap-gap-json"
-                placeholder={`{"skills_gap": {...}, "recommendations": [...]}`}
-                className="min-h-40"
-                {...register("gapJson")}
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="roadmap-target-jobs">Target Roles *</Label>
+              <KeywordListInput
+                id="roadmap-target-jobs"
+                keywords={keywords}
+                onChange={setKeywords}
+                placeholder="e.g. Data Scientist, Machine Learning"
               />
               <p className="text-xs text-muted-foreground">
-                Paste the JSON result from a previous gap analysis.
+                Type the roles or skills you want to grow into and press Add.
+                We&apos;ll find your gaps and build a learning plan around them.
               </p>
-              {errors.gapJson && (
-                <p className="text-xs text-red-500">{errors.gapJson.message}</p>
-              )}
             </div>
             <div className="flex gap-2">
-              <Button type="submit" disabled={submit.isPending}>
+              <Button
+                type="button"
+                onClick={handleGenerate}
+                disabled={submit.isPending || keywords.length === 0}
+              >
                 {submit.isPending ? (
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                 ) : (
@@ -798,7 +759,7 @@ function UpskillingRoadmapTab({ profile }: { profile: UserProfile }) {
                 </Button>
               )}
             </div>
-          </form>
+          </div>
         </CardContent>
       </Card>
 
@@ -941,40 +902,38 @@ export default function CareerCoachPage() {
 
   return (
     <PageContainer variant="wide">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Compass className="h-6 w-6" />
-            Career Coach
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Run AI-powered career analyses against your profile: career-path
-            insights, skill gaps, upskilling roadmaps, and SMART goals.
-          </p>
-        </div>
-
-        <Tabs defaultValue="career">
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="career">Career Path</TabsTrigger>
-            <TabsTrigger value="gap">Skill Gap</TabsTrigger>
-            <TabsTrigger value="roadmap">Upskilling Roadmap</TabsTrigger>
-            <TabsTrigger value="goals">Career Goals</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="career" className="mt-5">
-            <CareerAnalysisTab profile={profile} />
-          </TabsContent>
-          <TabsContent value="gap" className="mt-5">
-            <GapAnalysisTab profile={profile} />
-          </TabsContent>
-          <TabsContent value="roadmap" className="mt-5">
-            <UpskillingRoadmapTab profile={profile} />
-          </TabsContent>
-          <TabsContent value="goals" className="mt-5">
-            <CareerGoalsTab profile={profile} />
-          </TabsContent>
-        </Tabs>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <Compass className="h-6 w-6" />
+          Career Coach
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Run AI-powered career analyses against your profile: career-path
+          insights, skill gaps, upskilling roadmaps, and SMART goals.
+        </p>
       </div>
+
+      <Tabs defaultValue="career">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="career">Career Path</TabsTrigger>
+          <TabsTrigger value="gap">Skill Gap</TabsTrigger>
+          <TabsTrigger value="roadmap">Upskilling Roadmap</TabsTrigger>
+          <TabsTrigger value="goals">Career Goals</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="career" className="mt-6">
+          <CareerAnalysisTab profile={profile} />
+        </TabsContent>
+        <TabsContent value="gap" className="mt-6">
+          <GapAnalysisTab profile={profile} />
+        </TabsContent>
+        <TabsContent value="roadmap" className="mt-6">
+          <UpskillingRoadmapTab profile={profile} />
+        </TabsContent>
+        <TabsContent value="goals" className="mt-6">
+          <CareerGoalsTab profile={profile} />
+        </TabsContent>
+      </Tabs>
     </PageContainer>
   );
 }
