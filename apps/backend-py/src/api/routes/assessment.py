@@ -162,7 +162,11 @@ async def start_session(request: AssessmentStartRequest):
         profile_data = stored_profiles[active_profile_id].get("profile")
         if profile_data:
             try:
-                profile = UserProfile(**profile_data)
+                profile = (
+                    profile_data
+                    if isinstance(profile_data, UserProfile)
+                    else UserProfile(**profile_data)
+                )
             except Exception:
                 pass
 
@@ -229,6 +233,9 @@ async def get_available_skills():
     skills = []
     if active_profile_id and active_profile_id in stored_profiles:
         profile_data = stored_profiles[active_profile_id].get("profile", {})
+        if hasattr(profile_data, "model_dump"):
+            # Stored as a UserProfile object; normalize to a dict.
+            profile_data = profile_data.model_dump()
         for skill in profile_data.get("skills", []):
             if isinstance(skill, dict) and skill.get("name"):
                 skills.append(skill["name"])
