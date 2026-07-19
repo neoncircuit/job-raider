@@ -165,12 +165,12 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-foreground">
               Discover your work style with our DISC personality assessment.
               Many job applications include similar assessments, so this helps
               you practice and understand your results.
             </p>
-            <ul className="text-xs text-gray-600 space-y-1 ml-4 list-disc">
+            <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
               <li>
                 24 questions covering leadership, communication, work style, and
                 problem-solving
@@ -214,7 +214,9 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
         <CardContent className="py-8">
           <div className="flex flex-col items-center justify-center space-y-3">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-            <p className="text-sm text-gray-600">Loading assessment...</p>
+            <p className="text-sm text-muted-foreground">
+              Loading assessment...
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -238,25 +240,25 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
             </CardTitle>
             <button
               onClick={handleRetake}
-              className="text-xs text-gray-400 hover:text-gray-600"
+              className="text-xs text-muted-foreground hover:text-muted-foreground"
               disabled={currentStep === "submitting"}
             >
               Cancel
             </button>
           </div>
-          <div className="h-1 w-full bg-gray-100 rounded-full mt-2">
+          <div className="h-1 w-full bg-muted rounded-full mt-2">
             <div
               className="h-full bg-indigo-600 rounded-full transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-muted-foreground mt-1">
             {question.category.replace("_", " ")}
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-medium text-foreground">
               {question.question}
             </p>
 
@@ -276,7 +278,7 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
                     className={`w-full text-left rounded-lg border px-4 py-3 text-sm transition-all ${
                       answer.most_like === option.label
                         ? "border-green-500 bg-green-50 text-green-900"
-                        : "border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50"
+                        : "border-border text-foreground hover:border-green-300 hover:bg-green-50"
                     }`}
                   >
                     <span className="font-medium mr-2">{option.label}.</span>
@@ -300,7 +302,7 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
                     className={`w-full text-left rounded-lg border px-4 py-3 text-sm transition-all ${
                       answer.least_like === option.label
                         ? "border-red-500 bg-red-50 text-red-900"
-                        : "border-gray-200 text-gray-700 hover:border-red-300 hover:bg-red-50"
+                        : "border-border text-foreground hover:border-red-300 hover:bg-red-50"
                     }`}
                   >
                     <span className="font-medium mr-2">{option.label}.</span>
@@ -357,7 +359,7 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-foreground">
             Your DISC personality profile has been calculated and saved.
           </p>
 

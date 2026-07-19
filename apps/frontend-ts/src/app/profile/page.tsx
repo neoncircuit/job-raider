@@ -41,7 +41,7 @@ const PROFICIENCY_COLORS: Record<string, string> = {
   Advanced: "bg-blue-100 dark:bg-info/10 text-blue-800 dark:text-info",
   Intermediate: "bg-sky-100 dark:bg-info/10 text-sky-800 dark:text-info",
   Beginner:
-    "bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground",
+    "bg-muted dark:bg-muted text-muted-foreground dark:text-muted-foreground",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -96,21 +96,21 @@ function ResumeDropzone({ onUploaded }: { onUploaded: () => void }) {
         "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors",
         isDragActive
           ? "border-blue-500 dark:border-primary bg-blue-50 dark:bg-primary/10"
-          : "border-gray-200 dark:border-border bg-gray-50 dark:bg-muted hover:border-gray-400 dark:hover:border-muted-foreground/50",
+          : "border-border dark:border-border bg-muted dark:bg-muted hover:border-border dark:hover:border-muted-foreground/50",
       )}
     >
       <input {...getInputProps()} />
-      <Upload className="mb-3 h-8 w-8 text-gray-400 dark:text-muted-foreground" />
+      <Upload className="mb-3 h-8 w-8 text-muted-foreground dark:text-muted-foreground" />
       {upload.isPending ? (
         <p className="text-sm text-blue-600 dark:text-primary">
           Parsing resume… this may take 30–60 s
         </p>
       ) : (
         <>
-          <p className="text-sm font-medium text-gray-700 dark:text-muted-foreground">
+          <p className="text-sm font-medium text-foreground dark:text-muted-foreground">
             Drop your resume here, or click to browse
           </p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground dark:text-muted-foreground">
             PDF or DOCX, max 10 MB
           </p>
         </>
@@ -154,10 +154,10 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             {/* Name + meta */}
             <div className="space-y-1">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground">
+              <h2 className="text-2xl font-bold text-foreground dark:text-foreground">
                 {c.name || "—"}
               </h2>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground dark:text-muted-foreground">
                 {c.location && (
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5" />
@@ -204,7 +204,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                       href={c.github_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center gap-1 text-xs text-gray-600 dark:text-muted-foreground hover:underline"
+                      className="flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground hover:underline"
                     >
                       <Link className="h-3 w-3" /> GitHub
                     </a>
@@ -214,7 +214,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                       href={c.portfolio_url ?? c.website_url ?? "#"}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center gap-1 text-xs text-gray-600 dark:text-muted-foreground hover:underline"
+                      className="flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground hover:underline"
                     >
                       <Globe className="h-3 w-3" /> Portfolio
                     </a>
@@ -226,7 +226,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
 
           {/* Summary */}
           {summary && (
-            <p className="mt-4 text-sm leading-relaxed text-gray-600 dark:text-muted-foreground border-t pt-4 italic">
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground border-t pt-4 italic">
               {summary}
             </p>
           )}
@@ -255,14 +255,14 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <Wrench className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+                  <Wrench className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
                   Skills
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {(core_skills?.length ?? 0) > 0 && (
                   <div>
-                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-muted-foreground">
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground">
                       Core
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -279,7 +279,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                 )}
                 {Object.entries(skillsByCategory).map(([cat, catSkills]) => (
                   <div key={cat}>
-                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-muted-foreground">
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground">
                       {CATEGORY_LABELS[cat] ?? cat}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -290,8 +290,8 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                             "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
                             s.proficiency
                               ? (PROFICIENCY_COLORS[s.proficiency] ??
-                                  "bg-gray-100 dark:bg-muted text-gray-700 dark:text-muted-foreground")
-                              : "bg-gray-100 dark:bg-muted text-gray-700 dark:text-muted-foreground",
+                                  "bg-muted dark:bg-muted text-foreground dark:text-muted-foreground")
+                              : "bg-muted dark:bg-muted text-foreground dark:text-muted-foreground",
                           )}
                         >
                           {s.name}
@@ -314,7 +314,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <Globe className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+                  <Globe className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
                   Languages
                 </CardTitle>
               </CardHeader>
@@ -337,14 +337,14 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm">
-                    <Target className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+                    <Target className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
                     Job Targets
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   {target_job.keywords?.length > 0 && (
                     <div>
-                      <p className="mb-1 text-xs font-medium text-gray-400 dark:text-muted-foreground">
+                      <p className="mb-1 text-xs font-medium text-muted-foreground dark:text-muted-foreground">
                         Keywords
                       </p>
                       <div className="flex flex-wrap gap-1.5">
@@ -358,7 +358,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                   )}
                   {target_job.locations?.length > 0 && (
                     <div>
-                      <p className="mb-1 text-xs font-medium text-gray-400 dark:text-muted-foreground">
+                      <p className="mb-1 text-xs font-medium text-muted-foreground dark:text-muted-foreground">
                         Locations
                       </p>
                       <div className="flex flex-wrap gap-1.5">
@@ -384,20 +384,20 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <Award className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+                  <Award className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
                   Certifications
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {certifications!.map((cert, i) => (
                   <div key={i}>
-                    <p className="text-sm font-medium text-gray-900 dark:text-foreground">
+                    <p className="text-sm font-medium text-foreground dark:text-foreground">
                       {cert.name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-muted-foreground">
+                    <p className="text-xs text-muted-foreground dark:text-muted-foreground">
                       {cert.issuer}
                     </p>
-                    <div className="mt-0.5 flex gap-2 text-xs text-gray-400 dark:text-muted-foreground">
+                    <div className="mt-0.5 flex gap-2 text-xs text-muted-foreground dark:text-muted-foreground">
                       {cert.issue_date && (
                         <span>Issued {formatDate(cert.issue_date)}</span>
                       )}
@@ -406,7 +406,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                       )}
                     </div>
                     {cert.credential_id && (
-                      <p className="mt-0.5 text-xs text-gray-400 dark:text-muted-foreground">
+                      <p className="mt-0.5 text-xs text-muted-foreground dark:text-muted-foreground">
                         ID: {cert.credential_id}
                       </p>
                     )}
@@ -421,7 +421,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <GraduationCap className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+                  <GraduationCap className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
                   Education
                 </CardTitle>
               </CardHeader>
@@ -430,19 +430,19 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                   <div key={i} className={cn(i > 0 && "border-t pt-3")}>
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-foreground">
+                        <p className="font-semibold text-foreground dark:text-foreground">
                           {e.degree}
                         </p>
                         {e.field_of_study && (
-                          <p className="text-sm text-gray-600 dark:text-muted-foreground">
+                          <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                             {e.field_of_study}
                           </p>
                         )}
-                        <p className="text-sm text-gray-600 dark:text-muted-foreground">
+                        <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                           {e.institution}
                         </p>
                       </div>
-                      <div className="shrink-0 text-right text-xs text-gray-400 dark:text-muted-foreground">
+                      <div className="shrink-0 text-right text-xs text-muted-foreground dark:text-muted-foreground">
                         {e.graduation_date && (
                           <p>Graduated {formatDate(e.graduation_date)}</p>
                         )}
@@ -462,7 +462,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                       </div>
                     )}
                     {(e.coursework?.length ?? 0) > 0 && (
-                      <p className="mt-1.5 text-xs text-gray-500 dark:text-muted-foreground">
+                      <p className="mt-1.5 text-xs text-muted-foreground dark:text-muted-foreground">
                         <span className="font-medium">Coursework:</span>{" "}
                         {e.coursework!.join(", ")}
                       </p>
@@ -481,7 +481,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <Briefcase className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+                  <Briefcase className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
                   Experience
                 </CardTitle>
               </CardHeader>
@@ -491,15 +491,15 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                     <div className="border-l-2 border-blue-300 dark:border-primary pl-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="font-semibold text-gray-900 dark:text-foreground">
+                          <p className="font-semibold text-foreground dark:text-foreground">
                             {e.title}
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-muted-foreground">
+                          <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                             {e.company}
                             {e.location ? ` · ${e.location}` : ""}
                           </p>
                         </div>
-                        <p className="shrink-0 text-xs text-gray-400 dark:text-muted-foreground">
+                        <p className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground">
                           {e.start_date ? formatDate(e.start_date) : "?"} —{" "}
                           {e.current
                             ? "Present"
@@ -509,7 +509,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                         </p>
                       </div>
                       {e.description && (
-                        <p className="mt-2 text-sm text-gray-600 dark:text-muted-foreground leading-relaxed">
+                        <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground leading-relaxed">
                           {e.description}
                         </p>
                       )}
@@ -518,7 +518,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                           {e.highlights.map((h, j) => (
                             <li
                               key={j}
-                              className="flex gap-2 text-sm text-gray-700 dark:text-muted-foreground"
+                              className="flex gap-2 text-sm text-foreground dark:text-muted-foreground"
                             >
                               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400 dark:bg-primary" />
                               {h}
@@ -532,7 +532,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                             <Badge
                               key={t}
                               variant="outline"
-                              className="text-xs text-gray-500 dark:text-muted-foreground"
+                              className="text-xs text-muted-foreground dark:text-muted-foreground"
                             >
                               {t}
                             </Badge>
@@ -551,7 +551,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <FolderOpen className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+                  <FolderOpen className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
                   Projects
                 </CardTitle>
               </CardHeader>
@@ -561,18 +561,18 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                     <div className="border-l-2 border-violet-300 dark:border-primary pl-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="font-semibold text-gray-900 dark:text-foreground">
+                          <p className="font-semibold text-foreground dark:text-foreground">
                             {p.name}
                           </p>
                           {p.role && (
-                            <p className="text-xs text-gray-500 dark:text-muted-foreground">
+                            <p className="text-xs text-muted-foreground dark:text-muted-foreground">
                               {p.role}
                             </p>
                           )}
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           {(p.start_date || p.end_date) && (
-                            <span className="text-xs text-gray-400 dark:text-muted-foreground">
+                            <span className="text-xs text-muted-foreground dark:text-muted-foreground">
                               {p.start_date ? formatDate(p.start_date) : ""}
                               {p.end_date
                                 ? ` — ${formatDate(p.end_date)}`
@@ -584,7 +584,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                               href={p.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-gray-400 dark:text-muted-foreground hover:text-blue-600 dark:hover:text-primary"
+                              className="text-muted-foreground dark:text-muted-foreground hover:text-blue-600 dark:hover:text-primary"
                             >
                               <ExternalLink className="h-4 w-4" />
                             </a>
@@ -592,7 +592,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                         </div>
                       </div>
                       {p.description && (
-                        <p className="mt-1.5 text-sm text-gray-600 dark:text-muted-foreground leading-relaxed">
+                        <p className="mt-1.5 text-sm text-muted-foreground dark:text-muted-foreground leading-relaxed">
                           {p.description}
                         </p>
                       )}
@@ -601,7 +601,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                           {p.highlights.map((h, j) => (
                             <li
                               key={j}
-                              className="flex gap-2 text-sm text-gray-700 dark:text-muted-foreground"
+                              className="flex gap-2 text-sm text-foreground dark:text-muted-foreground"
                             >
                               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400 dark:bg-primary" />
                               {h}
@@ -615,7 +615,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                             <Badge
                               key={t}
                               variant="outline"
-                              className="text-xs text-gray-500 dark:text-muted-foreground"
+                              className="text-xs text-muted-foreground dark:text-muted-foreground"
                             >
                               {t}
                             </Badge>
@@ -651,7 +651,7 @@ export default function ProfilePage() {
 
   if (isLoading)
     return (
-      <p className="text-sm text-gray-400 dark:text-muted-foreground p-4">
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground p-4">
         Loading profile…
       </p>
     );
@@ -660,10 +660,10 @@ export default function ProfilePage() {
     <PageContainer variant="wide">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground">
+          <h1 className="text-2xl font-bold text-foreground dark:text-foreground">
             Profile
           </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground">
             Your parsed resume and target preferences.
           </p>
         </div>
@@ -671,7 +671,7 @@ export default function ProfilePage() {
           {hasProfile && (
             <button
               onClick={() => setShowAppSettings(true)}
-              className="flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-border px-3 py-1.5 text-sm text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-muted"
+              className="flex items-center gap-1.5 rounded-md border border-border dark:border-border px-3 py-1.5 text-sm text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-muted"
             >
               <Settings className="h-3.5 w-3.5" />
               Application Settings
@@ -679,7 +679,7 @@ export default function ProfilePage() {
           )}
           <button
             onClick={() => setShowUpload((v) => !v)}
-            className="rounded-md border border-gray-200 dark:border-border px-3 py-1.5 text-sm text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-muted"
+            className="rounded-md border border-border dark:border-border px-3 py-1.5 text-sm text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-muted"
           >
             {showUpload
               ? "Cancel"
@@ -695,7 +695,7 @@ export default function ProfilePage() {
       )}
 
       {isError && !hasProfile && (
-        <p className="text-sm text-gray-400 dark:text-muted-foreground">
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground">
           No profile yet. Upload your resume to get started.
         </p>
       )}

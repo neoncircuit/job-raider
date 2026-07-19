@@ -42,7 +42,7 @@ export function JobClassificationDisplay({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-medium text-foreground">
               {classification.industry}
             </p>
           </CardContent>
@@ -56,7 +56,7 @@ export function JobClassificationDisplay({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-medium text-foreground">
               {classification.role_category}
             </p>
           </CardContent>
@@ -70,11 +70,11 @@ export function JobClassificationDisplay({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-medium text-foreground">
               {classification.company_size}
             </p>
             {classification.company_stage && (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {classification.company_stage}
               </p>
             )}
@@ -105,7 +105,7 @@ export function JobClassificationDisplay({
             >
               {classification.work_pace}
             </Badge>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               {classification.team_structure}
             </p>
           </CardContent>
@@ -124,16 +124,18 @@ export function JobClassificationDisplay({
           <CardContent className="flex gap-4">
             {classification.management_level && (
               <div>
-                <p className="text-xs text-gray-500">Management Level</p>
-                <p className="text-sm font-medium text-gray-900 capitalize">
+                <p className="text-xs text-muted-foreground">
+                  Management Level
+                </p>
+                <p className="text-sm font-medium text-foreground capitalize">
                   {classification.management_level.replace(/_/g, " ")}
                 </p>
               </div>
             )}
             {classification.impact_scope && (
               <div>
-                <p className="text-xs text-gray-500">Impact Scope</p>
-                <p className="text-sm font-medium text-gray-900 capitalize">
+                <p className="text-xs text-muted-foreground">Impact Scope</p>
+                <p className="text-sm font-medium text-foreground capitalize">
                   {classification.impact_scope}
                 </p>
               </div>
@@ -156,7 +158,7 @@ export function JobClassificationDisplay({
           <CardContent className="space-y-3">
             {classification.technical_skills?.length > 0 && (
               <div>
-                <p className="mb-1.5 text-xs font-medium text-gray-700">
+                <p className="mb-1.5 text-xs font-medium text-foreground">
                   Technical Skills
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -178,7 +180,7 @@ export function JobClassificationDisplay({
 
             {classification.soft_skills?.length > 0 && (
               <div>
-                <p className="mb-1.5 text-xs font-medium text-gray-700">
+                <p className="mb-1.5 text-xs font-medium text-foreground">
                   Soft Skills
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -200,7 +202,7 @@ export function JobClassificationDisplay({
 
             {classification.domain_skills?.length > 0 && (
               <div>
-                <p className="mb-1.5 text-xs font-medium text-gray-700">
+                <p className="mb-1.5 text-xs font-medium text-foreground">
                   Domain Knowledge
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -233,15 +235,15 @@ export function JobClassificationDisplay({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-foreground">
               Estimated experience required:{" "}
-              <span className="font-semibold text-gray-900">
+              <span className="font-semibold text-foreground">
                 {classification.actual_experience_years[0]} -{" "}
                 {classification.actual_experience_years[1]} years
               </span>
             </p>
             {classification.experience_level_confidence > 0 && (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Confidence:{" "}
                 {Math.round(classification.experience_level_confidence * 100)}%
               </p>
@@ -297,7 +299,7 @@ export function JobClassificationDisplay({
       )}
 
       {/* Classification Confidence */}
-      <p className="text-center text-xs text-gray-400">
+      <p className="text-center text-xs text-muted-foreground">
         Classification confidence:{" "}
         {Math.round(classification.classification_confidence * 100)}%
       </p>

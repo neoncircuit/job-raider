@@ -29,7 +29,7 @@ function HealthIcon({ status }: { status: string }) {
     return <AlertTriangle className="h-4 w-4 text-amber-500" />;
   if (status === "unhealthy")
     return <XCircle className="h-4 w-4 text-red-500" />;
-  return <Activity className="h-4 w-4 text-slate-400" />;
+  return <Activity className="h-4 w-4 text-muted-foreground" />;
 }
 
 interface StatCardProps {
@@ -123,7 +123,7 @@ export default function DashboardPage() {
           value={ready && m ? m.outcomes.total_applications : "—"}
           sub={`${ready && m ? (m.outcomes.interview_rate * 100).toFixed(1) : "—"}% interview rate`}
           icon={<Send className="h-5 w-5 text-white" />}
-          iconBg="bg-white/15"
+          iconBg="bg-card/15"
         />
         <StatCard
           title="API Cost"
@@ -134,21 +134,21 @@ export default function DashboardPage() {
               : undefined
           }
           icon={<DollarSign className="h-5 w-5 text-white" />}
-          iconBg="bg-white/15"
+          iconBg="bg-card/15"
         />
         <StatCard
           title="Local Usage"
           value={ready && m ? `${m.cost.local_usage_percent.toFixed(0)}%` : "—"}
           sub="Ollama vs API calls"
           icon={<TrendingUp className="h-5 w-5 text-white" />}
-          iconBg="bg-white/15"
+          iconBg="bg-card/15"
         />
         <StatCard
           title="Offers"
           value={ready && m ? m.outcomes.offers : "—"}
           sub="Received so far"
           icon={<Briefcase className="h-5 w-5 text-white" />}
-          iconBg="bg-white/15"
+          iconBg="bg-card/15"
         />
       </div>
 

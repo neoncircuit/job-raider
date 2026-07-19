@@ -124,12 +124,12 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <BarChart3 className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+            <BarChart3 className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
             Skills Breakdown
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500 dark:text-muted-foreground">
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground">
             No skills data available
           </p>
         </CardContent>
@@ -141,7 +141,7 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <BarChart3 className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+          <BarChart3 className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
           Skills Breakdown
         </CardTitle>
       </CardHeader>
@@ -197,14 +197,14 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
                 key={item.category}
                 className="flex items-center justify-between text-xs"
               >
-                <span className="text-gray-600 dark:text-muted-foreground">
+                <span className="text-muted-foreground dark:text-muted-foreground">
                   {item.category}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900 dark:text-foreground">
+                  <span className="font-medium text-foreground dark:text-foreground">
                     {item.score}%
                   </span>
-                  <span className="text-gray-400 dark:text-muted-foreground">
+                  <span className="text-muted-foreground dark:text-muted-foreground">
                     ({item.count})
                   </span>
                 </div>
@@ -229,7 +229,7 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <TrendingUp className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
             Career Timeline
           </CardTitle>
         </CardHeader>
@@ -237,10 +237,10 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
           <div className="flex h-[180px] items-center justify-center text-center">
             <div>
               <Sparkles className="mx-auto h-8 w-8 text-purple-400 dark:text-primary mb-2" />
-              <p className="text-sm font-medium text-gray-700 dark:text-muted-foreground">
+              <p className="text-sm font-medium text-foreground dark:text-muted-foreground">
                 Starting Your Journey
               </p>
-              <p className="text-xs text-gray-500 dark:text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground dark:text-muted-foreground mt-1">
                 Add experience to build your timeline
               </p>
             </div>
@@ -287,7 +287,7 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <TrendingUp className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+          <TrendingUp className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
           Career Timeline
         </CardTitle>
       </CardHeader>
@@ -309,7 +309,7 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
                 return (
                   <div className="rounded-lg border bg-popover text-popover-foreground border-border p-2 shadow-lg">
                     <p className="text-sm font-medium">{data.year}</p>
-                    <p className="text-xs text-gray-500 dark:text-muted-foreground">
+                    <p className="text-xs text-muted-foreground dark:text-muted-foreground">
                       {data.years} years experience
                     </p>
                   </div>
@@ -323,7 +323,7 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
             />
           </BarChart>
         </ResponsiveContainer>
-        <p className="mt-2 text-center text-xs text-gray-500 dark:text-muted-foreground">
+        <p className="mt-2 text-center text-xs text-muted-foreground dark:text-muted-foreground">
           Years of professional experience by year
         </p>
       </CardContent>
@@ -570,7 +570,7 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <Award className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+          <Award className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
           Strength Assessment
         </CardTitle>
       </CardHeader>
@@ -599,13 +599,13 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
             return (
               <div key={item.label} className="rounded-lg border p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 dark:text-muted-foreground">
+                  <span className="text-xs text-muted-foreground dark:text-muted-foreground">
                     {item.label}
                   </span>
-                  <Icon className="h-3.5 w-3.5 text-gray-400 dark:text-muted-foreground" />
+                  <Icon className="h-3.5 w-3.5 text-muted-foreground dark:text-muted-foreground" />
                 </div>
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-lg font-semibold text-gray-900 dark:text-foreground">
+                  <span className="text-lg font-semibold text-foreground dark:text-foreground">
                     {item.value}
                   </span>
                   <Badge className={cn("text-[10px]", item.level.color)}>
@@ -620,7 +620,7 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
         {/* DISC-style Profile */}
         <div className="rounded-lg border p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium text-gray-700 dark:text-muted-foreground">
+            <p className="text-xs font-medium text-foreground dark:text-muted-foreground">
               Working Style Profile
             </p>
             <span
@@ -628,7 +628,7 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
                 "text-[10px]",
                 discResult
                   ? "text-green-600 dark:text-success bg-green-50 dark:bg-success/10 px-2 py-0.5 rounded-full"
-                  : "text-gray-400 dark:text-muted-foreground",
+                  : "text-muted-foreground dark:text-muted-foreground",
               )}
             >
               {discResult ? "From assessment" : "Estimated from resume"}
@@ -663,14 +663,14 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
             ].map((item) => (
               <div key={item.label}>
                 <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="font-medium text-gray-700 dark:text-muted-foreground">
+                  <span className="font-medium text-foreground dark:text-muted-foreground">
                     {item.label}
                   </span>
-                  <span className="text-gray-500 dark:text-muted-foreground">
+                  <span className="text-muted-foreground dark:text-muted-foreground">
                     {item.value}%
                   </span>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-muted">
+                <div className="h-1.5 w-full rounded-full bg-muted dark:bg-muted">
                   <div
                     className={cn("h-full rounded-full", item.color)}
                     style={{ width: `${item.value}%` }}
@@ -693,7 +693,7 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
         {/* Core Strengths */}
         {coreSkillsCount > 0 && (
           <div className="rounded-lg border p-3">
-            <p className="mb-2 text-xs font-medium text-gray-700 dark:text-muted-foreground">
+            <p className="mb-2 text-xs font-medium text-foreground dark:text-muted-foreground">
               Core Strengths
             </p>
             <div className="flex flex-wrap gap-1.5">

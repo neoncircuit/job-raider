@@ -128,7 +128,7 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
         <CardContent>
           <div className="space-y-2">
             {/* Confidence bar */}
-            <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Risk Confidence</span>
               <span
                 className={cn("font-medium", scoreColor(analysis.risk_score))}
@@ -136,7 +136,7 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
                 {Math.round(analysis.confidence * 100)}%
               </span>
             </div>
-            <div className="h-2 w-full rounded-full bg-gray-100">
+            <div className="h-2 w-full rounded-full bg-muted">
               <div
                 className={cn(
                   "h-2 rounded-full transition-all",
@@ -155,7 +155,7 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <MessageSquare className="h-4 w-4 text-gray-500" />
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
             Category Scores
           </CardTitle>
         </CardHeader>
@@ -165,10 +165,12 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
               const score = analysis.category_scores[key] ?? 0;
               return (
                 <div key={key} className="flex items-center gap-3">
-                  <CatIcon className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="w-24 text-xs text-gray-600">{label}</span>
+                  <CatIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="w-24 text-xs text-muted-foreground">
+                    {label}
+                  </span>
                   <div className="flex-1">
-                    <div className="h-1.5 w-full rounded-full bg-gray-100">
+                    <div className="h-1.5 w-full rounded-full bg-muted">
                       <div
                         className={cn(
                           "h-1.5 rounded-full",
@@ -209,7 +211,7 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
               {analysis.reasons.map((reason, i) => (
                 <li
                   key={i}
-                  className="flex items-start gap-2 text-xs text-gray-700"
+                  className="flex items-start gap-2 text-xs text-foreground"
                 >
                   <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
                   {reason}
@@ -233,15 +235,15 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
                 AI Analysis
               </CardTitle>
               {showLlmSummary ? (
-                <ChevronUp className="h-4 w-4 text-gray-400" />
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-gray-400" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
               )}
             </button>
           </CardHeader>
           {showLlmSummary && (
             <CardContent>
-              <p className="text-xs leading-relaxed text-gray-700">
+              <p className="text-xs leading-relaxed text-foreground">
                 {analysis.llm_summary}
               </p>
               {analysis.llm_indicators &&
@@ -265,7 +267,7 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
 
       {/* No concerns message */}
       {analysis.reasons.length === 0 && !analysis.llm_summary && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           No trust concerns detected for this listing.
         </p>
       )}

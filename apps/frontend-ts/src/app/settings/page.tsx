@@ -125,7 +125,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   placeholder="sk-ant-…"
                   {...register("api_config.anthropic_api_key")}
                 />
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   Leave blank to use Ollama only.
                 </p>
               </div>
@@ -187,7 +187,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Temperature</Label>
-                <span className="text-sm font-mono text-gray-700">
+                <span className="text-sm font-mono text-foreground">
                   {temperature.toFixed(2)}
                 </span>
               </div>
@@ -203,7 +203,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   });
                 }}
               />
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Lower = more focused. Higher = more creative.
               </p>
             </div>
@@ -211,7 +211,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Top P</Label>
-                <span className="text-sm font-mono text-gray-700">
+                <span className="text-sm font-mono text-foreground">
                   {topP.toFixed(2)}
                 </span>
               </div>
@@ -225,7 +225,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   setValue("model_params.top_p", val, { shouldDirty: true });
                 }}
               />
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Nucleus sampling cutoff. 0.9 is a good default.
               </p>
             </div>
@@ -241,7 +241,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   valueAsNumber: true,
                 })}
               />
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Maximum response length. 4096 covers most tasks.
               </p>
             </div>
@@ -286,15 +286,17 @@ export default function SettingsPage() {
   });
 
   if (isLoading)
-    return <p className="text-sm text-gray-400 p-4">Loading settings…</p>;
+    return (
+      <p className="text-sm text-muted-foreground p-4">Loading settings…</p>
+    );
   if (isError || !data)
     return <p className="text-sm text-red-500 p-4">Failed to load settings.</p>;
 
   return (
     <PageContainer variant="form">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Configure model routing, API keys, and cost limits.
         </p>
       </div>

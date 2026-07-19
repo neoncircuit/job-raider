@@ -27,7 +27,7 @@ export function ConnectionStatus() {
     status === "healthy" && "text-emerald-400",
     status === "degraded" && "text-amber-400",
     (status === "unhealthy" || status === "unreachable") && "text-red-400",
-    status === "unknown" && "text-slate-500",
+    status === "unknown" && "text-muted-foreground",
   );
 
   const labels: Record<string, string> = {

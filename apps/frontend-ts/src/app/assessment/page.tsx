@@ -82,10 +82,10 @@ function SetupView({
         <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-4">
           <GraduationCap className="h-8 w-8 text-indigo-600" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900">
+        <h2 className="text-xl font-bold text-foreground">
           Technical Assessment Trainer
         </h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Practice technical questions tailored to your target roles and skills.
         </p>
       </div>
@@ -98,7 +98,7 @@ function SetupView({
             "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
             mode === "skill_based"
               ? "bg-indigo-600 text-white shadow-md"
-              : "bg-white text-gray-600 border hover:bg-gray-50",
+              : "bg-card text-muted-foreground border hover:bg-muted",
           )}
         >
           Practice by Skill
@@ -109,7 +109,7 @@ function SetupView({
             "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
             mode === "job_targeted"
               ? "bg-indigo-600 text-white shadow-md"
-              : "bg-white text-gray-600 border hover:bg-gray-50",
+              : "bg-card text-muted-foreground border hover:bg-muted",
           )}
         >
           Target a Job
@@ -134,7 +134,7 @@ function SetupView({
                 "px-3 py-1.5 rounded-full text-sm transition-colors",
                 selectedSkills.includes(skill)
                   ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200",
+                  : "bg-muted text-foreground hover:bg-muted",
               )}
             >
               {skill}
@@ -162,7 +162,7 @@ function SetupView({
                 "px-3 py-1.5 rounded-md text-sm capitalize transition-colors",
                 difficulty === d
                   ? DIFFICULTY_COLORS[d]
-                  : "bg-gray-100 text-gray-500 hover:bg-gray-200",
+                  : "bg-muted text-muted-foreground hover:bg-muted",
               )}
             >
               {d}
@@ -239,7 +239,7 @@ function SessionView({
       <div className="text-center space-y-4 py-8">
         <Trophy className="h-12 w-12 mx-auto text-amber-500" />
         <h3 className="text-lg font-semibold">All questions answered!</h3>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           {session.overall_score !== null
             ? `Final score: ${session.overall_score}/100`
             : "Review your results or generate more questions."}
@@ -250,7 +250,11 @@ function SessionView({
           </Button>
           <Button onClick={onComplete}>Finish Session</Button>
         </div>
-        <Button variant="ghost" onClick={onBack} className="text-gray-400">
+        <Button
+          variant="ghost"
+          onClick={onBack}
+          className="text-muted-foreground"
+        >
           Back to Setup
         </Button>
       </div>
@@ -266,12 +270,12 @@ function SessionView({
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="text-gray-400 hover:text-gray-600 text-sm"
+          className="text-muted-foreground hover:text-muted-foreground text-sm"
         >
           Exit
         </button>
         <div className="flex-1">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
+          <div className="flex justify-between text-xs text-muted-foreground mb-1">
             <span>
               Question {questionIdx + 1} of {total}
             </span>
@@ -284,7 +288,7 @@ function SessionView({
               {session.current_difficulty}
             </Badge>
           </div>
-          <div className="h-1.5 bg-gray-200 rounded-full">
+          <div className="h-1.5 bg-muted rounded-full">
             <div
               className="h-full bg-indigo-500 rounded-full transition-all"
               style={{ width: `${(questionIdx / total) * 100}%` }}
@@ -317,13 +321,13 @@ function SessionView({
                 {lastScore.score}/100
               </span>
             </div>
-            <p className="text-sm text-gray-700">{lastScore.feedback}</p>
+            <p className="text-sm text-foreground">{lastScore.feedback}</p>
             {lastScore.improvements.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-amber-700 mb-1">
                   Improvements
                 </p>
-                <ul className="text-xs text-gray-600 space-y-0.5">
+                <ul className="text-xs text-muted-foreground space-y-0.5">
                   {lastScore.improvements.map((s, i) => (
                     <li key={i}>- {s}</li>
                   ))}
@@ -332,10 +336,10 @@ function SessionView({
             )}
             {lastScore.model_answer && (
               <details className="text-xs">
-                <summary className="cursor-pointer font-medium text-gray-700">
+                <summary className="cursor-pointer font-medium text-foreground">
                   Model Answer
                 </summary>
-                <p className="mt-1 text-gray-600 whitespace-pre-line">
+                <p className="mt-1 text-muted-foreground whitespace-pre-line">
                   {lastScore.model_answer}
                 </p>
               </details>
@@ -375,7 +379,7 @@ function SessionView({
               )}
             </div>
 
-            <p className="text-base font-medium text-gray-900 leading-relaxed">
+            <p className="text-base font-medium text-foreground leading-relaxed">
               {currentQuestion.question_text}
             </p>
 
@@ -390,7 +394,7 @@ function SessionView({
                         "w-full text-left rounded-lg border p-3 transition-colors",
                         selectedOption === opt.label
                           ? "border-indigo-500 bg-indigo-50"
-                          : "border-gray-200 hover:border-gray-300",
+                          : "border-border hover:border-border",
                       )}
                     >
                       <span className="font-medium mr-2">{opt.label}.</span>
@@ -405,7 +409,7 @@ function SessionView({
                 value={freeformAnswer}
                 onChange={(e) => setFreeformAnswer(e.target.value)}
                 placeholder="Type your answer here..."
-                className="w-full min-h-[120px] rounded-lg border border-gray-200 p-3 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-y"
+                className="w-full min-h-[120px] rounded-lg border border-border p-3 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-y"
               />
             )}
 
@@ -482,7 +486,7 @@ function ResultsView({
           </span>
         </div>
         <h2 className="text-xl font-bold">Session Complete</h2>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           {session.questions.length} questions |{" "}
           {session.mode === "job_targeted" ? "Job-Targeted" : "Skill-Based"} |{" "}
           {session.difficulty}
@@ -492,16 +496,16 @@ function ResultsView({
       {Object.keys(session.topic_breakdown).length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
               Topic Breakdown
             </p>
             <div className="space-y-2">
               {Object.entries(session.topic_breakdown).map(([topic, score]) => (
                 <div key={topic} className="flex items-center gap-3">
-                  <span className="text-sm text-gray-700 w-40 truncate">
+                  <span className="text-sm text-foreground w-40 truncate">
                     {topic}
                   </span>
-                  <div className="flex-1 h-2 bg-gray-200 rounded-full">
+                  <div className="flex-1 h-2 bg-muted rounded-full">
                     <div
                       className={cn(
                         "h-full rounded-full",
@@ -526,7 +530,7 @@ function ResultsView({
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
             Question Review
           </p>
           {session.questions.map((q) => {
@@ -544,7 +548,7 @@ function ResultsView({
                   >
                     {q.question_type.replace("_", " ")}
                   </Badge>
-                  <span className="text-sm text-gray-700 truncate flex-1">
+                  <span className="text-sm text-foreground truncate flex-1">
                     {q.question_text}
                   </span>
                   {score && (
@@ -564,13 +568,13 @@ function ResultsView({
                 </summary>
                 {score && (
                   <div className="px-3 pb-3 space-y-2 text-sm">
-                    <p className="text-gray-600">{score.feedback}</p>
+                    <p className="text-muted-foreground">{score.feedback}</p>
                     {score.model_answer && (
-                      <div className="bg-gray-50 rounded-md p-2">
-                        <p className="text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-muted rounded-md p-2">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
                           Model Answer
                         </p>
-                        <p className="text-gray-700 whitespace-pre-line">
+                        <p className="text-foreground whitespace-pre-line">
                           {score.model_answer}
                         </p>
                       </div>
@@ -683,8 +687,10 @@ export default function AssessmentPage() {
   return (
     <div className="flex h-full flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Assessment Trainer</h1>
-        <p className="mt-0.5 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">
+          Assessment Trainer
+        </h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
           Practice technical questions to prepare for interviews.
         </p>
       </div>

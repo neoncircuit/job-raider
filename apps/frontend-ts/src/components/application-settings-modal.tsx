@@ -159,12 +159,12 @@ export function ApplicationSettingsModal({
           {/* Work Authorization */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-gray-400" />
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
               <Label className="text-base font-semibold">
                 Work Authorization
               </Label>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               This helps us answer visa/sponsorship questions correctly.
             </p>
 
@@ -176,7 +176,7 @@ export function ApplicationSettingsModal({
                     "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
                     selectedVisaStatus === option.value
                       ? "border-indigo-500 bg-indigo-50"
-                      : "border-gray-200 hover:bg-gray-50",
+                      : "border-border hover:bg-muted",
                   )}
                 >
                   <input
@@ -186,10 +186,10 @@ export function ApplicationSettingsModal({
                     className="mt-1 h-4 w-4 accent-indigo-600"
                   />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-foreground">
                       {option.label}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {option.description}
                     </p>
                   </div>
@@ -207,7 +207,7 @@ export function ApplicationSettingsModal({
                   {...register("visa_expiration_date")}
                   className="w-full"
                 />
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   When does your visa expire?
                 </p>
               </div>
@@ -217,12 +217,12 @@ export function ApplicationSettingsModal({
           {/* Salary Expectations */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-gray-400" />
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
               <Label className="text-base font-semibold">
                 Salary Expectations
               </Label>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Helps us answer salary requirement questions. Leave blank if you
               prefer not to specify.
             </p>
@@ -253,7 +253,7 @@ export function ApplicationSettingsModal({
               <select
                 id="salary_currency"
                 {...register("salary_currency")}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
               >
                 <option value="USD">USD - US Dollar</option>
                 <option value="EUR">EUR - Euro</option>
@@ -269,10 +269,10 @@ export function ApplicationSettingsModal({
           {/* Notice Period */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
+              <Calendar className="h-4 w-4 text-muted-foreground" />
               <Label className="text-base font-semibold">Notice Period</Label>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               How many weeks notice do you need to give your current employer?
             </p>
 
@@ -284,7 +284,7 @@ export function ApplicationSettingsModal({
                 placeholder="2"
                 {...register("notice_period_weeks")}
               />
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Weeks (0 means immediately available)
               </p>
             </div>
@@ -293,7 +293,7 @@ export function ApplicationSettingsModal({
           {/* Relocation */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-gray-400" />
+              <Globe className="h-4 w-4 text-muted-foreground" />
               <Label className="text-base font-semibold">
                 Location Preferences
               </Label>
@@ -319,7 +319,7 @@ export function ApplicationSettingsModal({
                 placeholder="San Francisco, New York, London, Remote..."
                 {...register("preferred_work_locations")}
               />
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Comma-separated list of locations you&apos;d consider (beyond
                 your target job locations)
               </p>
