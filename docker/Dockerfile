@@ -52,11 +52,9 @@ RUN apt-get update && apt-get install -y \
 # Set working directory to match the new monorepo layout
 WORKDIR /app/backend-py
 
-# Copy backend-py directory structure from its new apps/ location
+# Copy only requirements first so the dependency and Ollama layers stay cached
+# across application code changes (source is copied last, below).
 COPY apps/backend-py/requirements.txt .
-COPY apps/backend-py/config/ ./config/
-COPY apps/backend-py/src/ ./src/
-COPY apps/backend-py/main.py .
 
 # Create virtual environment inside the backend directory and install dependencies
 RUN python3.10 -m venv .venv
@@ -69,13 +67,19 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Install Ollama (requires root)
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
-# Create non-root user for security
+# Create non-root user for security (owns everything copied so far)
 RUN useradd -m -u 1000 jobraider && \
     chown -R jobraider:jobraider /app
 
 # Copy and set up entrypoint script (as root)
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Copy application source LAST so editing code does not invalidate the
+# dependency/Ollama layers above, keeping code-only rebuilds fast.
+COPY --chown=jobraider:jobraider apps/backend-py/config/ ./config/
+COPY --chown=jobraider:jobraider apps/backend-py/src/ ./src/
+COPY --chown=jobraider:jobraider apps/backend-py/main.py .
 
 # Switch to jobraider user for runtime
 USER jobraider
@@ -109,8 +113,13 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Set entrypoint to install Playwright browsers at runtime if needed
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
-# Default command - run API server
-CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Default command - run API server.
+# Single worker: profile/session state (stored_profiles, active_profile_id) is
+# module-level in-memory and single-user by design. Multiple workers each hold
+# their own copy, so an upload on one worker is invisible to requests routed to
+# the other, surfacing as spurious "No active profile" (400) errors. Restore
+# multiple workers only after profile state moves to a shared store (DB/Redis).
+CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
 
 # Alternative commands:
 # - Run pipeline once: python main.py --resume data/resume.pdf --keywords "python" --locations "remote"
