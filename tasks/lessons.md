@@ -2759,3 +2759,62 @@
 - Before adding global handlers, grep tests for `["detail"]` and decide whether to update assertions or preserve the old shape for specific routes.
 - After adding handlers, run the full test suite (not just the new tests) and update assertions to use `["message"]` for `HTTPException` cases and `["details"]["errors"]` for validation errors.
 - When serializing Pydantic validation errors, use `jsonable_encoder(..., custom_encoder={Exception: str})` because Pydantic V2 `ctx` may contain `Exception` objects that are not JSON-serializable by default.
+
+#### In-Memory Profile State Is Incompatible with Multiple Uvicorn Workers
+
+**Lesson:** The active profile is module-level in-memory state (`stored_profiles`, `active_profile_id` in `apps/backend-py/src/api/routes/profile.py`). Running the API with `--workers 2` (the Dockerfile CMD did) gives each worker its own copy, so an upload handled by one worker is invisible to a request routed to the other, producing intermittent HTTP 400 "No active profile found. Upload a resume first." right after a successful upload.
+
+**Why:**
+- Uvicorn `--workers N` forks N independent processes with no shared memory.
+- Any module-level singleton (profiles, cached routers, session flags) diverges per worker.
+- The bug is load-balancer-dependent and therefore intermittent, which makes it easy to misdiagnose as a frontend or auth problem.
+- The cover-letter auto-assess (fires on every keystroke) multiplied the number of requests, so the wrong-worker path started hitting almost every time and surfaced the latent bug.
+
+**How to apply:**
+- With in-memory single-user state, pin `--workers 1` in `docker/Dockerfile`.
+- Before scaling workers back up, move profile/session state to a shared store (DB/Redis, or a JSON file on the mounted `data/` volume).
+- When a stateful endpoint fails "sometimes," check the worker count before touching the frontend — split-brain in-memory state is a prime suspect.
+- Remember that any backend restart clears this state; a CV must be re-uploaded after every container recreate.
+
+#### `from module import reassigned_global` Captures a Stale Copy (Import Aliasing)
+
+**Lesson:** `cover_letter.py` and `jobs.py` did `from .profile import active_profile_id, stored_profiles` at module top. `active_profile_id` is a module-level string that `profile.upload_resume` reassigns via `global active_profile_id = ...`. The top-level `from ... import` binds the value (`None`) into the consumer's namespace at import time; reassigning `profile.active_profile_id` later never updates that copy. Result: even with a single worker and a genuinely uploaded profile (the banner via `GET /profile` showed it correctly, because `get_profile` lives in `profile.py` and reads its own live global), the cover-letter endpoints kept raising HTTP 400 "No active profile found." `assessment.py` was immune because it imports the names *inside* its functions, re-reading the current value each call.
+
+**Why:**
+- `from m import name` copies the current binding; it does not create a live view onto `m.name`.
+- Rebinding an immutable module global (`str`, `int`, `None`) in the owning module does not propagate to consumers that imported the name by value.
+- Mutable globals (the `stored_profiles` dict) appear to work because consumers mutate the shared object in place — which masks the bug and makes it look profile-specific.
+- The symptom ("banner shows the CV but generation says no CV") is the tell: reader and writer are looking at two different bindings of the same logical variable.
+
+**How to apply:**
+- For state that gets reassigned, import the module and read the attribute live: `from . import profile as profile_state` then `profile_state.active_profile_id`. Do not `from .profile import active_profile_id`.
+- Or wrap the value in a mutable container (`_state = {"active_profile_id": None}`) so a shared reference sees updates.
+- When one endpoint sees state and another does not within the same process, suspect import aliasing before anything else.
+
+#### Stored Profile Is a UserProfile Object, Not a Dict (`UserProfile(**obj)` 500)
+
+**Lesson:** `upload_resume` stores `parser.parse_file(...)`, which returns a `UserProfile` object, as `stored_profiles[id]["profile"]`. Multiple consumers assumed a dict and did `UserProfile(**profile["profile"])` or `profile["profile"].get(...)`, which raises `TypeError: UserProfile() argument after ** must be a mapping, not UserProfile` (or `AttributeError` on `.get`). `get_profile` reads it correctly as an object (`.name`, `.contact.email`), which is why the profile banner worked while generation 500'd.
+
+**Why:**
+- The type annotation `parse_file(...) -> UserProfile` is the ground truth; the store keeps the object as-is.
+- `assessment.py` hid its copy of the bug inside a bare `try/except: pass`, silently degrading to no-profile instead of erroring — so the bug looked absent.
+- `cover_letter.py` and `jobs.py` were shielded by the upstream import-aliasing 400: the buggy line never executed until that 400 was fixed. Fixing one latent bug exposed the next.
+
+**How to apply:**
+- Treat `stored_profiles[id]["profile"]` as a `UserProfile`. To get an object: `raw if isinstance(raw, UserProfile) else UserProfile(**raw)`. To get a dict: `raw.model_dump() if isinstance(raw, UserProfile) else raw` (or `hasattr(raw, "model_dump")` to avoid the import).
+- Be suspicious of bare `except: pass` around model construction — it converts a real type bug into silent degradation and hides it for months.
+- When you remove a guard/short-circuit that was masking a code path, assume the newly reachable code has never actually run; exercise it before declaring done.
+
+#### An LLM-Sourced String Indexed into a Strict Frontend Config Map White-Screens the UI
+
+**Lesson:** `cover_letter_validator._validate_with_llm` returned `data.get("recommendation", "needs_revision")` — the raw LLM string — which the API types as one of `approve | needs_revision | reject`. The frontend did `RECOMMENDATION_CONFIG[validation.recommendation]` then `config.icon`. When the local model (deep validation) returned a non-canonical value like `"revise"` or `"Approve"`, the lookup was `undefined` and `config.icon` threw "Cannot read properties of undefined", replacing the whole generated cover letter with an error.
+
+**Why:**
+- A TypeScript `Record<Enum, T>` index is typed as always-present, so `config` looks non-nullable to the compiler — the crash only shows at runtime with an out-of-contract value.
+- LLM outputs are effectively free text; a documented enum in a prompt is a request, not a guarantee.
+- The value flowed straight from the model through the API to a UI lookup with no validation at any layer.
+
+**How to apply:**
+- Normalize/clamp any enum-typed field sourced from an LLM at the boundary where it enters the system (backend): lowercase, strip, map separators, and fall back to a safe default if it is not in the allowed set.
+- Also defend at the UI: `CONFIG[key] ?? CONFIG.someDefault` before dereferencing, so an out-of-contract value degrades instead of white-screening.
+- Front-end fixes rebuild fast (no Ollama/Playwright layer); prefer shipping the UI guard first to unblock, then deploy the backend normalization with the next backend batch.

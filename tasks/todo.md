@@ -2578,3 +2578,162 @@ Added a consolidated Tech Stack section to all three documentation entry points 
 - TanStack Query's shared cache can make the client hydration render differ from the server HTML. Gating data-dependent UI with a mount guard is simpler and more reliable than trying to dehydrate/rehydrate in these pages.
 - When CI uses a selective `flake8 --select`, local `.flake8` should mirror that selection so `flake8` passes locally without relaxing the project's actual lint contract.
 
+---
+
+## Cover Letter: Active CV Reference Indicator
+
+### Goal
+
+Show, on the Cover Letter page, which CV (active profile) is being referenced,
+so the user can confirm the correct resume is in use before generating letters,
+assessing fit, or building prep sheets.
+
+### Flow
+
+```mermaid
+flowchart LR
+    U[User uploads resume] --> UP[POST /profile/upload]
+    UP -->|stores original_filename| MEM[(In-memory active profile)]
+    CLP[Cover Letter page] -->|useQuery key: profile| GP[GET /profile]
+    GP -->|profile_id, resume_path,\noriginal_filename, created_at| MEM
+    GP --> BAN[Referencing CV banner]
+    BAN -->|no active profile| WARN[Amber prompt + link to /profile]
+```
+
+### Changes
+
+- `apps/backend-py/src/api/routes/profile.py`
+  - `upload_resume` now stores `original_filename` (the uploaded file's name)
+    on the active profile; previously only the generated `profile_<id>.<ext>`
+    path was kept.
+  - `get_profile` returns `original_filename` (via `.get`, backward compatible
+    with profiles created before this change).
+
+- `apps/frontend-ts/src/lib/types/api.ts`
+  - `UserProfile` widened with optional source-CV metadata already emitted by
+    `GET /profile`: `profile_id`, `resume_path`, `original_filename`,
+    `created_at`, `updated_at`.
+
+- `apps/frontend-ts/src/app/cover-letter/page.tsx`
+  - Fetches the active profile with the shared `["profile"]` query key so
+    uploads elsewhere refresh the indicator automatically.
+  - Adds a full-width "Referencing CV" banner between the header and the form
+    grid, showing filename, candidate name, file type, and upload date. Handles
+    loading and the no-CV case (amber prompt linking to the Profile page).
+  - `describeCv` helper derives the display filename (original filename
+    preferred, resume-path basename as fallback) and uppercased file type.
+
+### Verification Results
+
+- Backend quality gates (changed file):
+  - `black --check` — clean.
+  - `isort --check-only --profile black` — clean.
+  - `ruff check` — clean.
+- Frontend quality gates (changed files):
+  - `tsc --noEmit` — clean.
+  - `eslint` — clean.
+- Container rebuild and end-to-end verification: see session notes.
+
+### Lessons
+
+- The single-user profile store discards the original upload filename by design;
+  capturing it at upload time is the root-cause fix for "which CV", far more
+  reliable than inferring identity from the parsed candidate name alone.
+- The backend `GET /profile` already returned rich metadata (`profile_id`,
+  `resume_path`, `created_at`) that the frontend `UserProfile` type silently
+  dropped. Widening the type unlocked existing data with no new endpoint.
+
+---
+
+## Planned (next session): Editable Cover Letter with Live Re-Validation
+
+### Goal
+
+Let the user edit the generated cover letter in place; when they change it, the
+proofread / quality breakdown re-runs on the edited text so they can iterate
+until satisfied. Today validation is only produced as a side effect of
+generation, so editing leaves the quality panel stale.
+
+### Backend
+
+- New endpoint `POST /cover-letter/validate` in
+  `apps/backend-py/src/api/routes/cover_letter.py`.
+- New request model (in `api/models/requests.py`), e.g.
+  `CoverLetterValidateRequest { content, title, company, description,
+  location?, deep? }`.
+- Handler: `_require_active_profile()` -> `_active_user_profile()` -> build a
+  `JobListing` (JobSource.MANUAL) -> run `CoverLetterValidator` on the supplied
+  `content` -> return `_adapt_validation_response(...)` (reuse existing helper).
+- CAUTION to verify first: `CoverLetterValidator.validate(result, job_listing,
+  user_profile, selection)` needs a `GeneratedCoverLetter`-shaped `result`
+  (has `.content`, `.word_count`, ...) and a `selection`. Confirm the exact
+  shape of `GeneratedCoverLetter` and how `selection` is produced in
+  `cover_letter_service.generate_cover_letter_for_profile`, and construct a
+  minimal `result` from the edited text (recompute `word_count`). If `selection`
+  is required and expensive, consider a validate path that tolerates a null/light
+  selection, or reuse `_build_fallback_validation` structure for the non-LLM case.
+- `deep=true` uses the LLM validator (recommendation now normalized).
+
+### Frontend
+
+- `apps/frontend-ts/src/lib/api/coverLetter.ts`: add `validate(req)` method +
+  request type; response is the existing `CoverLetterValidation` shape.
+- `apps/frontend-ts/src/app/cover-letter/page.tsx`:
+  - Add `editedContent` state; initialize from the generate result; make the
+    result Textarea editable (remove `readOnly`, wire `onChange`).
+  - Add a separate `validation` state (seeded from the generate response) that
+    feeds `CoverLetterValidationDisplay`.
+  - Debounce (~800ms) re-validation on `editedContent` change (AbortController,
+    same pattern as the JD auto-assess), OR a "Re-check quality" button if auto
+    feels too chatty. Update `validation` from the response.
+  - Point Copy and Export at `editedContent` instead of
+    `result.cover_letter.content`.
+
+### Verification
+
+- Generate a letter, edit a sentence, confirm the quality breakdown re-runs and
+  the scores/issues reflect the edit. Export/Copy use the edited text.
+- Backend rebuilds are fast now (Dockerfile reordered), so iterate freely.
+
+---
+
+## Planned (next session): Plain-Language "Why" Explanations for Scores
+
+### Goal
+
+Metrics alone are not actionable. Add qualitative explanations behind both
+scores: for the cover letter, WHY it is strong / weak / needs work; for job fit,
+WHY the score landed where it did (strengths, concerns, what to improve).
+
+### Design constraint
+
+The JD auto-assess fires on every keystroke, so an LLM call must NOT sit in that
+path (latency). Keep the instant heuristic score, and add an on-demand
+"Explain this score" action per section that generates the prose via local Qwen
+(same pattern as the prep sheet: `create_router(prefer_local=True)` +
+`TaskType.QUESTION_ANSWERING`, JSON-parsed).
+
+### Job fit explanation
+
+- Backend: `POST /cover-letter/assess-explain` (or extend `/prep`-style) taking
+  the JD + active profile, returning `{ strengths: [...], concerns: [...],
+  improve: [...] }` grounded in matched/missing skills and the category
+  breakdown.
+- Frontend: an "Explain this score" button in the Job Fit card that fetches and
+  renders the three lists under the numeric breakdown.
+
+### Cover letter explanation
+
+- Fold into the `/cover-letter/validate` endpoint (#13): have it also return a
+  plain-language verdict summary — why-good / why-needs-work bullets — derived
+  from the LLM reviewer, not just issue codes. Surface prominently in
+  `CoverLetterValidationDisplay` (a "Why this rating" section), and make it
+  available in non-deep mode too (a lightweight explanation pass).
+- Consider making the explanation on-demand ("Explain quality") to avoid an LLM
+  call on every re-validation while editing.
+
+### Verification
+
+- For a clean JD and a scam-y JD, the job-fit explanation should differ sensibly.
+- Edit a cover letter to be weaker; the "why" should shift toward concerns.
+
