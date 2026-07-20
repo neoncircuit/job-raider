@@ -87,9 +87,18 @@ class CoverLetterWriter:
                     "4. Do NOT use generic phrases or templates\n"
                     "5. Be direct and confident in tone\n"
                     "6. Do NOT include headers, addresses, or date lines\n"
-                    "7. Start with a strong opening paragraph\n"
-                    "8. End with a brief call to action\n"
-                    "9. Return ONLY the letter body as plain text, no JSON"
+                    "7. Open with a specific hook: lead with the candidate's "
+                    "most relevant concrete achievement or a specific detail "
+                    "about the company's product, mission, or tech stack. "
+                    "NEVER open with cliches like 'I am writing to express "
+                    "my interest' or 'I am excited to apply'\n"
+                    "8. Include at least one quantified result (numbers, "
+                    "percentages, scale) from the candidate's background "
+                    "when one is available\n"
+                    "9. Avoid stock phrases such as 'team player', 'fast "
+                    "learner', 'passionate about', and 'proven track record'\n"
+                    "10. End with a brief, confident call to action\n"
+                    "11. Return ONLY the letter body as plain text, no JSON"
                 ),
             ),
             Message(
@@ -107,7 +116,9 @@ class CoverLetterWriter:
             response = self.llm_router.generate(
                 messages=messages,
                 task_type=TaskType.COVER_LETTER_WRITING,
-                temperature=0.7,
+                # Slightly higher than default creative temp: more varied
+                # phrasing between letters without sacrificing coherence.
+                temperature=0.8,
                 max_tokens=600,
             )
 
@@ -176,9 +187,18 @@ class CoverLetterWriter:
                     "4. Do NOT use generic phrases or templates\n"
                     "5. Be direct and confident in tone\n"
                     "6. Do NOT include headers, addresses, or date lines\n"
-                    "7. Start with a strong opening paragraph\n"
-                    "8. End with a brief call to action\n"
-                    "9. Return ONLY the letter body as plain text, no JSON"
+                    "7. Open with a specific hook: lead with the candidate's "
+                    "most relevant concrete achievement or a specific detail "
+                    "about the company's product, mission, or tech stack. "
+                    "NEVER open with cliches like 'I am writing to express "
+                    "my interest' or 'I am excited to apply'\n"
+                    "8. Include at least one quantified result (numbers, "
+                    "percentages, scale) from the candidate's background "
+                    "when one is available\n"
+                    "9. Avoid stock phrases such as 'team player', 'fast "
+                    "learner', 'passionate about', and 'proven track record'\n"
+                    "10. End with a brief, confident call to action\n"
+                    "11. Return ONLY the letter body as plain text, no JSON"
                 ),
             ),
             Message(
@@ -198,7 +218,9 @@ class CoverLetterWriter:
             response = self.llm_router.generate(
                 messages=messages,
                 task_type=TaskType.COVER_LETTER_WRITING,
-                temperature=0.7,
+                # Slightly higher than default creative temp: more varied
+                # phrasing between letters without sacrificing coherence.
+                temperature=0.8,
                 max_tokens=600,
             )
 
