@@ -183,6 +183,9 @@ export default function CoverLetterPage() {
     null,
   );
   const revalidateAbortRef = useRef<AbortController | null>(null);
+  // Content of the last successfully validated edit. Lets no-op edit cycles
+  // (e.g. space then backspace) skip re-validation so the score stays stable.
+  const lastValidatedRef = useRef<string | null>(null);
 
   // Aftermath status recorded to the job tracker for this listing.
   const [aftermath, setAftermath] = useState<string | null>(null);
@@ -393,6 +396,9 @@ export default function CoverLetterPage() {
     // Keep the richer validation produced at generation time until the user
     // actually edits the letter; only then re-validate the changed text.
     if (!result || editedContent === result.cover_letter.content) return;
+    // Skip if this exact text was already validated (e.g. type + undo within
+    // the debounce window) — re-running would only churn the displayed score.
+    if (editedContent === lastValidatedRef.current) return;
     const timer = setTimeout(async () => {
       revalidateAbortRef.current?.abort();
       const controller = new AbortController();
@@ -410,7 +416,10 @@ export default function CoverLetterPage() {
           },
           controller.signal,
         );
-        if (revalidateAbortRef.current === controller) setValidation(data);
+        if (revalidateAbortRef.current === controller) {
+          setValidation(data);
+          lastValidatedRef.current = editedContent;
+        }
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           logger.error("Cover letter re-validation failed", err);

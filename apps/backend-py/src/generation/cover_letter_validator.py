@@ -451,7 +451,9 @@ class CoverLetterValidator:
             response = self.llm_router.generate(
                 messages=messages,
                 task_type=TaskType.VALIDATION,
-                temperature=0.3,
+                # 0.0 keeps scoring deterministic: identical text must always
+                # produce identical scores (greedy decoding, no sampling noise).
+                temperature=0.0,
                 max_tokens=400,
             )
 
