@@ -16,7 +16,32 @@ on:
     branches: [ main, develop ]
   workflow_dispatch:
 
+# Least-privilege GITHUB_TOKEN: every job only needs to read repo contents.
+# Artifact/coverage uploads and Docker Hub publishing use their own secrets,
+# not the workflow token, so nothing here requires write access.
+permissions:
+  contents: read
+
+# Cancel superseded runs on PRs and develop to free runners and save minutes,
+# but let main/tag runs finish so every release commit keeps an uninterrupted
+# CI record.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
+  secrets-scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so every new commit is scanned, not just HEAD
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   lint:
     name: Lint Code
     runs-on: ubuntu-latest
