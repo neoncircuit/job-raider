@@ -266,7 +266,7 @@ class CoverLetterWriter:
         ]
 
         if job.description:
-            parts.append(f"\nDescription:\n{job.description[:500]}")
+            parts.append(f"\nDescription:\n{job.description[:2000]}")
 
         if job.requirements:
             parts.append("\nKey Requirements:")

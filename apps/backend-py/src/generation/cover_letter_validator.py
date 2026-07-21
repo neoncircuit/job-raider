@@ -35,6 +35,7 @@ class CoverLetterIssue(str, Enum):
     FABRICATED_EXPERIENCE = "fabricated_experience"
     MISSING_SELECTED_PROJECT = "missing_selected_project"
     FEW_PARAGRAPHS = "few_paragraphs"
+    LOW_JD_COVERAGE = "low_jd_coverage"
 
 
 @dataclass
@@ -137,8 +138,13 @@ class CoverLetterValidator:
         accuracy_issues = self._check_accuracy(content_lower, profile, selection)
         issues.extend(accuracy_issues)
 
+        jd_issues, jd_coverage = self._check_jd_coverage(content_lower, job, profile)
+        issues.extend(jd_issues)
+
         structure_score = self._calc_structure_score(content, structure_issues)
-        content_score = self._calc_content_score(content_issues, accuracy_issues)
+        content_score = self._calc_content_score(
+            content_issues + jd_issues, accuracy_issues
+        )
         tone_score = self._calc_tone_score(tone_issues)
 
         overall_score = int(
@@ -172,6 +178,7 @@ class CoverLetterValidator:
                 for p in selection.selected_projects
                 if p["name"].lower() in content_lower
             ],
+            "jd_coverage": jd_coverage,
         }
 
         return CoverLetterValidationResult(
@@ -300,6 +307,84 @@ class CoverLetterValidator:
 
         return issues
 
+    def _check_jd_coverage(
+        self,
+        content_lower: str,
+        job: JobListing,
+        profile: UserProfile,
+    ) -> tuple[List[CoverLetterIssue], Dict[str, Any]]:
+        """
+        Cross-check the letter against the job description's must-haves.
+
+        Two sources of "terms the letter should address", in priority order:
+
+        1. Structured: required skills parsed on the job listing
+           (scraped jobs from JSearch/LinkedIn).
+        2. Profile-match fallback: for manually pasted JDs with no
+           structured skills, profile skills whose names appear in the
+           raw JD text. This only ever suggests skills the candidate
+           actually has, so acting on it can never fabricate experience.
+
+        Args:
+            content_lower: Lowercase cover letter text
+            job: Target job listing
+            profile: Original user profile
+
+        Returns:
+            Tuple of (issues, coverage details for the response payload)
+        """
+        terms: List[str] = []
+        source: Optional[str] = None
+
+        structured = [
+            skill.name for skill in job.skills if skill.is_required and skill.name
+        ]
+        if structured:
+            source = "structured"
+            terms = structured[:10]
+        elif job.description:
+            jd_lower = job.description.lower()
+            matched_profile_skills = [
+                name
+                for name in profile.all_skills_names
+                if name and self._term_in_text(name.lower(), jd_lower)
+            ]
+            if matched_profile_skills:
+                source = "profile_match"
+                terms = matched_profile_skills[:10]
+
+        coverage: Dict[str, Any] = {
+            "source": source,
+            "matched": [],
+            "missing": [],
+        }
+        if len(terms) < 2:
+            # Not enough signal to judge coverage either way.
+            return [], coverage
+
+        for term in terms:
+            if self._term_in_text(term.lower(), content_lower):
+                coverage["matched"].append(term)
+            else:
+                coverage["missing"].append(term)
+
+        issues: List[CoverLetterIssue] = []
+        if len(coverage["matched"]) * 2 < len(terms):
+            issues.append(CoverLetterIssue.LOW_JD_COVERAGE)
+
+        return issues, coverage
+
+    @staticmethod
+    def _term_in_text(term_lower: str, text_lower: str) -> bool:
+        """
+        Whole-token match so short skills ("R", "Go", "C#") do not
+        false-positive on substrings of unrelated words.
+        """
+        if not term_lower:
+            return False
+        pattern = r"(?<!\w)" + re.escape(term_lower) + r"(?!\w)"
+        return re.search(pattern, text_lower) is not None
+
     def _count_paragraphs(self, content: str) -> int:
         """
         Count the number of paragraphs in the text.
@@ -371,6 +456,8 @@ class CoverLetterValidator:
         if CoverLetterIssue.MISSING_JOB_TITLE in content_issues:
             score -= 20
         if CoverLetterIssue.MISSING_SELECTED_PROJECT in content_issues:
+            score -= 15
+        if CoverLetterIssue.LOW_JD_COVERAGE in content_issues:
             score -= 15
         if CoverLetterIssue.FABRICATED_EXPERIENCE in accuracy_issues:
             score -= 30

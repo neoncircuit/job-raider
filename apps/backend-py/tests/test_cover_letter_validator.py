@@ -401,3 +401,85 @@ class TestCoverLetterValidationResult:
         assert result.score == 85
         assert result.word_count == 250
         assert result.recommendation == "approve"
+
+
+class TestJdCoverage:
+    """Test suite for the JD coverage cross-check."""
+
+    def test_structured_skills_all_matched(
+        self, sample_job, sample_profile, sample_selection
+    ):
+        """Letter mentioning every required skill passes the cross-check."""
+        validator = CoverLetterValidator()
+        result = validator.validate(
+            GOOD_COVER_LETTER, sample_job, sample_profile, sample_selection
+        )
+
+        coverage = result.details["jd_coverage"]
+        assert coverage["source"] == "structured"
+        assert set(coverage["matched"]) == {"Python", "Django", "React"}
+        assert coverage["missing"] == []
+        assert CoverLetterIssue.LOW_JD_COVERAGE not in result.issues
+
+    def test_detects_low_coverage(self, sample_job, sample_profile, sample_selection):
+        """Letter addressing under half the required skills is flagged."""
+        validator = CoverLetterValidator()
+        result = validator.validate(
+            GENERIC_COVER_LETTER, sample_job, sample_profile, sample_selection
+        )
+
+        coverage = result.details["jd_coverage"]
+        assert set(coverage["missing"]) == {"Python", "Django", "React"}
+        assert CoverLetterIssue.LOW_JD_COVERAGE in result.issues
+
+    def test_profile_match_fallback_for_pasted_jd(
+        self, sample_profile, sample_selection
+    ):
+        """Manual jobs with no parsed skills fall back to profile matching."""
+        job = JobListing(
+            title="Senior Python Developer",
+            company="TechStartup Inc",
+            job_id="manual-abc123",
+            source=JobSource.MANUAL,
+            description=(
+                "We need someone strong in Python and React to build our "
+                "customer-facing dashboard."
+            ),
+        )
+        validator = CoverLetterValidator()
+        result = validator.validate(
+            GOOD_COVER_LETTER, job, sample_profile, sample_selection
+        )
+
+        coverage = result.details["jd_coverage"]
+        assert coverage["source"] == "profile_match"
+        assert set(coverage["matched"]) == {"Python", "React"}
+        assert CoverLetterIssue.LOW_JD_COVERAGE not in result.issues
+
+    def test_insufficient_signal_skips_judgement(
+        self, sample_profile, sample_selection
+    ):
+        """Fewer than two matchable terms produces no coverage verdict."""
+        job = JobListing(
+            title="Senior Rust Developer",
+            company="TechStartup Inc",
+            job_id="manual-def456",
+            source=JobSource.MANUAL,
+            description="We need a Rust expert with embedded experience.",
+        )
+        validator = CoverLetterValidator()
+        result = validator.validate(
+            GENERIC_COVER_LETTER, job, sample_profile, sample_selection
+        )
+
+        coverage = result.details["jd_coverage"]
+        assert coverage["source"] is None
+        assert CoverLetterIssue.LOW_JD_COVERAGE not in result.issues
+
+    def test_term_matching_uses_word_boundaries(self):
+        """Short skill names must not match substrings of other words."""
+        match = CoverLetterValidator._term_in_text
+        assert match("go", "we use go daily") is True
+        assert match("go", "we use golang and mongodb") is False
+        assert match("c++", "experience with c++ and java") is True
+        assert match("r", "premier league") is False
