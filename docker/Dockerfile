@@ -22,8 +22,8 @@ ENV OLLAMA_HOST=0.0.0.0
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3.10 \
-    python3.10-venv \
+    python3.11 \
+    python3.11-venv \
     python3-pip \
     curl \
     git \
@@ -57,7 +57,7 @@ WORKDIR /app/backend-py
 COPY apps/backend-py/requirements.txt .
 
 # Create virtual environment inside the backend directory and install dependencies
-RUN python3.10 -m venv .venv
+RUN python3.11 -m venv .venv
 ENV PATH="/app/backend-py/.venv/bin:$PATH"
 
 # Upgrade pip and install Python dependencies
@@ -108,7 +108,7 @@ EXPOSE 11434
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import sys; sys.exit(0)" || exit 1
+    CMD curl -f http://localhost:8000/api/health || exit 1
 
 # Set entrypoint to install Playwright browsers at runtime if needed
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

@@ -91,24 +91,24 @@ cp apps/backend-py/.env.example apps/backend-py/.env
 #### Interactive Mode
 
 ```bash
-cd backend-py
-python main.py --interactive
+cd apps/backend-py
+.venv/bin/python main.py --interactive
 ```
 
 #### CLI Mode
 
 ```bash
 # Basic search with dry run
-cd backend-py
-python main.py \
+cd apps/backend-py
+.venv/bin/python main.py \
   --resume my_resume.pdf \
   --keywords "python engineer" \
   --locations "remote" \
   --dry-run
 
 # Full pipeline with submission
-cd backend-py
-python main.py \
+cd apps/backend-py
+.venv/bin/python main.py \
   --resume my_resume.pdf \
   --keywords "fintech AI" \
   --locations "remote" \
@@ -204,7 +204,7 @@ job-raider/                      # Project root (monorepo)
 │   ├── tests/                   # Vitest unit + Playwright E2E tests
 │   ├── Dockerfile               # Multi-stage production build (standalone)
 │   └── package.json             # Node dependencies
-├── frontend-py/                 # Legacy Streamlit dashboard (superseded by frontend-ts; still tested in CI)
+├── frontend-py/                 # Legacy Streamlit dashboard (superseded by frontend-ts)
 ├── data/                        # Shared data storage
 │   ├── alerts/                  # Alert records
 │   ├── applications/            # Tracked applications
@@ -363,19 +363,19 @@ The dashboard includes ten pages: Dashboard (overview), Pipeline (run/monitor), 
 
 ```bash
 # Backend tests
-cd backend-py
+cd apps/backend-py
 .venv/bin/python -m pytest tests/
-# Expected: 409 passed, 2 skipped
+# Expected: 504 passed
 
 # Frontend unit tests
-cd frontend-ts
+cd apps/frontend-ts
 npm run test -- --run
-# Expected: 28 passed
+# Expected: 51 passed across 10 test files
 
 # Frontend E2E tests
-cd frontend-ts
+cd apps/frontend-ts
 npm run test:e2e
-# Expected: 20 passed
+# Expected: 10 passed
 
 # Or use make from project root
 make test
@@ -389,10 +389,10 @@ make format      # Format code
 make lint        # Run linting
 
 # Or manually
-cd backend-py
-black src/
-pylint src/
-mypy src/
+cd apps/backend-py
+.venv/bin/python -m black src/ tests/
+.venv/bin/python -m ruff check src/ tests/
+.venv/bin/python -m mypy src/ --ignore-missing-imports --no-error-summary || true
 ```
 
 ## Contributing

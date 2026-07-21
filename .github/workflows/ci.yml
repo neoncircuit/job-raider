@@ -125,12 +125,13 @@ jobs:
           pytest tests/ --cov=src --cov-report=xml --cov-report=term --verbose
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           file: ./apps/backend-py/coverage.xml
           flags: unittests
           name: codecov-umbrella
-        continue-on-error: true
+          fail_ci_if_error: false
 
   lint-frontend:
     name: Lint Next.js Frontend
@@ -208,12 +209,13 @@ jobs:
           npm run test:coverage -- --run --reporter=verbose
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           file: ./apps/frontend-ts/coverage/lcov.info
           flags: frontend-unit
           name: codecov-frontend-unit
-        continue-on-error: true
+          fail_ci_if_error: false
 
   format-check-frontend:
     name: Check Next.js Frontend Formatting

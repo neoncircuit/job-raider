@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Job Raider - Next.js Dashboard
+
+This is the active Job Raider frontend: a Next.js + Tailwind CSS dashboard for running and monitoring the automated job-application pipeline.
+
+## Tech Stack
+
+- Next.js 16 with App Router
+- React 19 + TypeScript 5
+- Tailwind CSS 4 + shadcn/ui
+- TanStack Query, React Hook Form, Zod, Recharts
+- Vitest for unit tests
+- Playwright for E2E tests
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies (from `apps/frontend-ts`):
+
+```bash
+npm ci
+```
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The dashboard is served at [http://localhost:3000](http://localhost:3000). It expects the backend API at [http://localhost:8000](http://localhost:8000); start it first with `make dev-api` from the project root.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Available Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev              # Start the development server
+npm run build            # Build for production
+npm run start            # Start the production server
+npm run lint             # Run ESLint
+npm run type-check       # Run TypeScript type check
+npm run format           # Format with Prettier
+npm run format:check     # Check Prettier formatting
+npm run test             # Run unit tests in watch mode
+npm run test -- --run    # Run unit tests once
+npm run test:coverage    # Run unit tests with coverage
+npm run test:e2e         # Run Playwright E2E tests
+```
+
+## Project Structure
+
+```
+apps/frontend-ts/
+├── src/
+│   ├── app/          # Next.js App Router pages
+│   ├── components/   # Shared UI components and layouts
+│   ├── hooks/        # Custom React hooks
+│   ├── lib/          # API client, utilities, types
+│   └── styles/       # Global styles
+├── tests/            # Vitest unit tests and Playwright E2E specs
+├── public/           # Static assets
+└── package.json      # Dependencies and scripts
+```
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Project Root README](../../README.md)
