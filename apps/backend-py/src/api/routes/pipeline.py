@@ -21,6 +21,7 @@ from ..models.responses import (
     PipelineStatusResponse,
 )
 from ..websocket.progress import manager
+from . import profile as profile_state
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
@@ -129,23 +130,8 @@ async def start_pipeline(
         max_jobs_to_present=request.max_jobs,
     )
 
-    # Create or load profile
-    if request.profile_data:
-        # TODO: Parse profile_data into UserProfile
-        # For now, raise error
-        raise HTTPException(
-            status_code=400,
-            detail="Profile data parsing not yet implemented. Upload resume first.",
-        )
-    else:
-        # Load existing profile from storage
-        # TODO: Implement profile storage and retrieval
-        raise HTTPException(
-            status_code=400,
-            detail="No profile found. Upload a resume first via /api/profile/upload",
-        )
-
-    # Initialize run state
+    # Initialize run state early so status endpoints work even if profile
+    # resolution fails.
     pipeline_runs[run_id] = {
         "run_id": run_id,
         "status": "pending",
@@ -153,8 +139,37 @@ async def start_pipeline(
         "created_at": datetime.now(),
     }
 
+    # Create or load profile
+    if request.profile_data:
+        try:
+            profile = UserProfile(**request.profile_data)
+        except Exception as e:
+            logger.warning(f"Invalid profile_data for run {run_id}: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid profile data: {e}",
+            ) from e
+    elif (
+        profile_state.active_profile_id
+        and profile_state.active_profile_id in profile_state.stored_profiles
+    ):
+        entry = profile_state.stored_profiles[profile_state.active_profile_id]
+        profile = entry.get("profile")
+        if not isinstance(profile, UserProfile):
+            pipeline_runs[run_id]["status"] = "failed"
+            raise HTTPException(
+                status_code=400,
+                detail="Active profile is not loaded correctly. Re-upload your resume.",
+            )
+    else:
+        pipeline_runs[run_id]["status"] = "failed"
+        raise HTTPException(
+            status_code=400,
+            detail="No profile found. Upload a resume first via /api/profile/upload",
+        )
+
     # Start pipeline in background
-    background_tasks.add_task(run_pipeline_async, run_id, config, request.profile_data)
+    background_tasks.add_task(run_pipeline_async, run_id, config, profile)
 
     logger.info(f"Started pipeline {run_id}")
 
