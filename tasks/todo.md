@@ -2737,3 +2737,134 @@ path (latency). Keep the instant heuristic score, and add an on-demand
 - For a clean JD and a scam-y JD, the job-fit explanation should differ sensibly.
 - Edit a cover letter to be weaker; the "why" should shift toward concerns.
 
+
+## Comprehensive Audit Review (2026-07-21)
+
+### Scope
+
+Priority: **Critical + quick wins**. Fix blockers and broken things first, plus low-effort, high-impact cleanups. Defer larger refactors.
+
+### Completed fixes
+
+- [x] Committed in-flight cover-letter work (`LOW_JD_COVERAGE` validation, structured-skill matching, word-boundary detection).
+- [x] Unified Python lint/format between local tooling and CI on `black` + `ruff` + non-blocking `mypy`.
+- [x] Fixed broken `/api/pipeline/start` endpoint and added regression tests.
+- [x] Updated production Dockerfile to Python 3.11 and a real `/api/health` health check.
+- [x] Fixed `docker-compose.yml` on fresh machines by adding a minimal internal `mlflow` service and removing the stale external `shared-services` network.
+- [x] Updated deprecated Codecov action to v4 with explicit token.
+- [x] Removed stale/orphaned files (root `dev.sh`, frontend Jest config).
+- [x] Added MIT `LICENSE`.
+- [x] Refreshed stale documentation: `README.md`, `COMPREHENSIVE_TESTING_STRATEGY.md`, `apps/frontend-ts/README.md`.
+
+### Verification results
+
+```bash
+make lint              # ruff pass; mypy noise swallowed per project convention
+make type-check        # mypy exits 0 (non-blocking)
+make test              # backend 504 passed
+cd apps/frontend-ts
+npm run type-check     # tsc --noEmit pass
+npm run test -- --run  # 51 passed across 10 files
+npm run lint           # ESLint 0 errors / 0 warnings
+npm run format:check   # Prettier all matched
+npm run build          # Next.js static generation succeeds (15 pages)
+docker compose config  # compose schema valid
+```
+
+### Commit
+
+Audit changes committed as `dbe8be5`.
+
+---
+
+## Future-Considerations Plan (2026-07-21)
+
+The user asked for additional planning for future work once the audit was done. The items below are ranked by value/effort and aligned with the project's current trajectory. They are intentionally scoped so each can become a single implementation phase.
+
+### 1. Stabilize the cover-letter auto-assessment flow
+
+**Why:** The recent cover-letter work added validation but the end-to-end flow is not yet stress-tested in the UI.
+
+- Add a dedicated `/cover-letter/assess` backend smoke test that hits the route with a real profile and JD.
+- Wire the frontend validation call so the quality score updates on demand rather than on every keystroke.
+- Add a small suite of Vitest tests for `CoverLetterValidationDisplay`.
+
+**Out of scope for this item:** LLM-based plain-language explanations (see item 3).
+
+### 2. Persistent profile state
+
+**Why:** The current in-memory `stored_profiles` / `active_profile_id` forces single-worker uvicorn and causes spurious 400 errors if more than one worker is used. This is the biggest architectural constraint in the backend.
+
+- Move profile storage from module-level memory to a tiny SQLite-backed store in `apps/backend-py/src/profiles/`.
+- Keep the JSON file as an optional export/hydration source for backward compatibility.
+- Update `/api/profile/upload`, `GET /api/profile`, and `/api/pipeline/start` to read from the store.
+- Once the store is in place, restore uvicorn `--workers 2` or make it configurable via env var.
+
+**Out of scope:** Full user auth/multi-tenancy; keep single-user semantics.
+
+### 3. Plain-language "Why" explanations for scores
+
+**Why:** Numbers without reasoning are not actionable for users.
+
+- Add `POST /cover-letter/assess-explain` returning `strengths`, `concerns`, `improve` grounded in matched/missing skills.
+- Add `POST /jobs/{job_id}/explain-fit` returning a job-fit narrative based on the existing heuristic breakdown.
+- Surface both as on-demand "Explain this score" buttons in the frontend.
+
+**Constraint:** Do not call the LLM on every keystroke; only on explicit user action.
+
+### 4. Frontend E2E coverage for the audit area
+
+**Why:** The pipeline start fix and profile state are exactly the kind of cross-system behavior that should be covered by Playwright.
+
+- Add a Playwright spec that uploads a resume, waits for profile load, starts a pipeline, and asserts a run id is returned.
+- Run the spec in CI against the local backend (`make dev` stack).
+
+### 5. Dependency lock file
+
+**Why:** Fresh installs currently resolve against `requirements.txt` ranges, which can drift between machines and CI runs.
+
+- Generate `apps/backend-py/uv.lock` or `requirements-lock.txt` from a working environment.
+- Update CI to install from the lock file in the test/lint jobs.
+- Keep `requirements.txt` as the human-editable source of truth.
+
+### 6. Re-enable shared services (Ollama / MLflow) as opt-in
+
+**Why:** The audit removed the external `shared-services` network to make `docker compose up` work out of the box, but the shared-services pattern is still valuable for advanced users.
+
+- Add an override file `docker-compose.shared-services.yml` that re-attaches backend to `shared-services` and disables the internal `mlflow` service.
+- Document the two modes: standalone (default) and shared-services (advanced).
+
+### 7. Health-check consolidation
+
+**Why:** Health endpoints exist in FastAPI and Docker but are not exercised automatically.
+
+- Add a lightweight `scripts/health-check.sh` that polls `/api/health`, `/api/jobs/sources`, and the frontend proxy until all return 200.
+- Call it from `make dev` after startup and from CI as a final smoke step.
+
+### 8. CI artifact retention
+
+**Why:** CI uploads Playwright reports and screenshots but the retention policy and artifact names are basic.
+
+- Add unique artifact names per run (e.g., `playwright-report-${{ github.run_id }}`) and a 7-day retention.
+- Only upload screenshots on failure to keep artifact sizes small.
+
+### 9. Documentation debt sweep
+
+**Why:** Several docs still reference the Streamlit frontend or outdated project paths.
+
+- Audit `docs/usage.md`, `docs/architecture.md`, `docs/troubleshooting.md`, and `DOCKER.md` for stale references to `frontend-py/`, `backend-py/`, or removed files.
+- Update diagrams to the current Next.js + FastAPI + shared-services/standalone layout.
+
+### 10. Observability basics
+
+**Why:** The system has Sentry and MLflow hooks but no local tracing for debugging user-reported issues.
+
+- Add structured request logging middleware in FastAPI with correlation IDs.
+- Expose a `/api/health/details` endpoint with git commit, Python version, and dependency versions.
+- Add a frontend error boundary report that captures the correlation ID.
+
+---
+
+### Recommendation
+
+Start with **items 1 and 2** in parallel: they are the highest user-impact work and unblocks safer scaling of the backend. Items 3-5 are good follow-up phases. Items 6-10 are operational polish that can be picked up between feature sprints.

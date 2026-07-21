@@ -2818,3 +2818,44 @@
 - Normalize/clamp any enum-typed field sourced from an LLM at the boundary where it enters the system (backend): lowercase, strip, map separators, and fall back to a safe default if it is not in the allowed set.
 - Also defend at the UI: `CONFIG[key] ?? CONFIG.someDefault` before dereferencing, so an out-of-contract value degrades instead of white-screening.
 - Front-end fixes rebuild fast (no Ollama/Playwright layer); prefer shipping the UI guard first to unblock, then deploy the backend normalization with the next backend batch.
+
+## Comprehensive Audit Lessons (2026-07-21)
+
+### Verify commands from the right directory
+
+**Lesson:** Shell state is not preserved between tool calls. Commands like `npm run lint` must be run from the project root that contains `package.json`, not the monorepo root.
+
+**Why:**
+- Wastes time on `ENOENT: package.json` errors that look like broken tooling.
+- CI already specifies `working-directory`, so local checks should mirror that.
+
+**How to apply:**
+- Use `cd apps/frontend-ts && npm run ...` for frontend checks.
+- Use `make lint` / `make test` for backend checks that already `cd` internally.
+- Document verification commands with their required working directory.
+
+### Single-worker constraint is a real bottleneck
+
+**Lesson:** In-memory module-level state (profile store, active profile) silently breaks when uvicorn runs more than one worker. The failure looks like random 400 "No active profile" errors after a successful upload.
+
+**Why:**
+- Upload lands on worker A; next request routed to worker B has no profile.
+- Health checks pass because the server is running, masking the root cause.
+
+**How to apply:**
+- Keep `--workers 1` until profile state moves to a shared store.
+- Document the constraint in `docker/Dockerfile` and `docker-compose.yml`.
+- Treat moving profile state to SQLite/Redis as a high-priority architectural fix.
+
+### Stale documentation erodes trust
+
+**Lesson:** Docs that reference removed files (`dev.sh`, `frontend-py/`, `backend-py/`) or false test counts create friction for new contributors and future self.
+
+**Why:**
+- Users follow broken paths and assume the project is unmaintained.
+- Inflated test claims lead to surprise when real counts are lower.
+
+**How to apply:**
+- Run the full verification suite before updating test counts in docs.
+- Grep docs for old directory names after any restructure.
+- Make documentation updates part of the same commit as the code changes they describe.
