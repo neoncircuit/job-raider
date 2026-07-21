@@ -44,14 +44,12 @@ from .user_profile import (
     Education,
     ProficiencyLevel,
     Project,
-)
-from .user_profile import Skill as UserSkill
-from .user_profile import (
     SkillCategory,
     TargetJob,
     UserProfile,
     WorkExperience,
 )
+from .user_profile import Skill as UserSkill
 
 __all__ = [
     # Job Listing

@@ -14,11 +14,9 @@ from src.models.job_listing import (
     JobSource,
     JobType,
     SalaryRange,
-)
-from src.models.job_listing import Skill as JobSkill
-from src.models.job_listing import (
     WorkMode,
 )
+from src.models.job_listing import Skill as JobSkill
 from src.models.user_profile import (
     ContactInfo,
     ProficiencyLevel,

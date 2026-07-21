@@ -61,21 +61,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install black pylint flake8 isort mypy
+          pip install black ruff mypy
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Check code formatting with Black
         run: black --check src/ tests/
 
-      - name: Check import ordering with isort
-        run: isort --check-only src/ tests/
-
-      - name: Lint with flake8
-        run: flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
-
-      - name: Lint with pylint
-        run: pylint src/ --errors-only --fail-under=9.0 || true
-        continue-on-error: true
+      - name: Lint with Ruff
+        run: ruff check src/ tests/
 
   type-check:
     name: Type Check

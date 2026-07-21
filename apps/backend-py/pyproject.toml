@@ -1,5 +1,14 @@
 # Tooling configuration for the Job Raider backend.
-# isort uses the "black" profile so its import sorting is consistent with
-# `black` formatting (avoids the two tools fighting over multi-line imports).
+# Ruff mirrors the old flake8/isort gate while staying compatible with Black.
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]  # Black handles long-line formatting
+
+# isort is no longer used directly; this section is retained only for backwards
+# compatibility with older local environments that still invoke isort.
 [tool.isort]
 profile = "black"

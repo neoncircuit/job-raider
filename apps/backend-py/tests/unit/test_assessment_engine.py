@@ -19,9 +19,8 @@ from src.models.assessment import (
     QuestionType,
 )
 from src.models.job_listing import JobListing, JobSource, Skill
-from src.models.user_profile import ContactInfo
+from src.models.user_profile import ContactInfo, SkillCategory, UserProfile
 from src.models.user_profile import Skill as ProfileSkill
-from src.models.user_profile import SkillCategory, UserProfile
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
