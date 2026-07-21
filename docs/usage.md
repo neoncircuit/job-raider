@@ -51,7 +51,7 @@ Open http://localhost:3000 in your browser.
 #### Interactive Mode
 
 ```bash
-cd backend-py
+cd apps/backend-py
 python main.py --interactive
 ```
 
@@ -66,7 +66,7 @@ This will guide you through:
 
 ```bash
 # Basic search with dry run
-cd backend-py
+cd apps/backend-py
 python main.py \
   --resume my_resume.pdf \
   --keywords "python engineer" \
@@ -74,7 +74,7 @@ python main.py \
   --dry-run
 
 # Full pipeline with submission
-cd backend-py
+cd apps/backend-py
 python main.py \
   --resume my_resume.pdf \
   --keywords "fintech AI" \
@@ -83,7 +83,7 @@ python main.py \
   --no-dry-run
 
 # Resume from specific stage
-cd backend-py
+cd apps/backend-py
 python main.py \
   --resume my_resume.pdf \
   --keywords "SWE" \
@@ -168,14 +168,14 @@ The minimum score threshold is also reduced to 50 (from 60) to increase opportun
 
 ```bash
 # Interactive mode for first-time setup
-cd backend-py
+cd apps/backend-py
 python main.py --interactive
 ```
 
 ### Example 2: Remote Job Search
 
 ```bash
-cd backend-py
+cd apps/backend-py
 python main.py \
   --resume ~/Documents/my_resume.pdf \
   --keywords "remote python engineer" \
@@ -186,7 +186,7 @@ python main.py \
 ### Example 3: Target Specific Companies
 
 ```bash
-cd backend-py
+cd apps/backend-py
 python main.py \
   --resume ~/resume.pdf \
   --keywords "fintech blockchain" \
@@ -198,7 +198,7 @@ python main.py \
 ### Example 4: High-Volume Application
 
 ```bash
-cd backend-py
+cd apps/backend-py
 python main.py \
   --resume ~/resume.pdf \
   --keywords "software engineer" \
@@ -211,7 +211,7 @@ python main.py \
 
 ```bash
 # Resume from resume generation (skip scraping)
-cd backend-py
+cd apps/backend-py
 python main.py \
   --resume ~/resume.pdf \
   --keywords "python" \
@@ -226,7 +226,7 @@ Scrapes job listings from configured sources.
 
 ```bash
 # Specific sources only
-cd backend-py
+cd apps/backend-py
 python main.py \
   --resume resume.pdf \
   --keywords "python" \
@@ -252,7 +252,7 @@ Scores listings by relevance (0-100 scale).
 
 ```bash
 # Adjust minimum score
-cd backend-py
+cd apps/backend-py
 python main.py \
   --resume resume.pdf \
   --keywords "python" \
@@ -270,7 +270,7 @@ Shows ranked list for selection.
 
 ```bash
 # Adjust number of jobs presented
-cd backend-py
+cd apps/backend-py
 python main.py \
   --resume resume.pdf \
   --keywords "python" \
@@ -288,15 +288,15 @@ Submits applications (auto-submit where possible).
 
 ```bash
 # Dry run (default)
-cd backend-py
+cd apps/backend-py
 python main.py --resume resume.pdf --keywords "python" --locations "remote"
 
 # Actual submissions
-cd backend-py
+cd apps/backend-py
 python main.py --resume resume.pdf --keywords "python" --locations "remote" --no-dry-run
 
 # Skip submission entirely
-cd backend-py
+cd apps/backend-py
 python main.py --resume resume.pdf --keywords "python" --locations "remote" --skip-submission
 ```
 
@@ -599,7 +599,7 @@ docker info | grep -A 3 Runtimes
 Always start with dry-run mode:
 
 ```bash
-cd backend-py
+cd apps/backend-py
 python main.py --resume resume.pdf --keywords "python" --locations "remote" --dry-run
 ```
 
@@ -648,7 +648,7 @@ Track submission history:
 
 ```bash
 # Check application status
-ls ../data/results/applications/
+ls data/results/applications/
 ```
 
 ## Troubleshooting
@@ -691,7 +691,7 @@ ollama pull qwen2.5:7b
 nvidia-smi
 
 # Check models from backend-py
-cd backend-py
+cd apps/backend-py
 python scripts/check_ollama_models.py
 ```
 
@@ -720,7 +720,7 @@ default_keywords:
 
 ```python
 import sys
-sys.path.insert(0, 'backend-py')
+sys.path.insert(0, 'apps/backend-py')
 
 from src.pipeline.orchestrator import PipelineOrchestrator, PipelineConfig
 from src.models.user_profile import UserProfile

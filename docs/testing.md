@@ -24,7 +24,7 @@ Job Raider uses a comprehensive testing strategy with unit tests, integration te
 ### Frontend Unit Tests
 
 ```bash
-cd frontend-ts
+cd apps/frontend-ts
 
 # Run all tests once
 npm run test
@@ -45,7 +45,7 @@ npm run test -- tests/basic.test.ts
 ### Frontend E2E Tests
 
 ```bash
-cd frontend-ts
+cd apps/frontend-ts
 
 # Run all E2E tests
 npm run test:e2e
@@ -63,7 +63,7 @@ npx playwright test tests/e2e/basic.spec.ts
 ### Backend Tests
 
 ```bash
-cd backend-py
+cd apps/backend-py
 
 # Run all tests (use the venv interpreter to avoid broken shebangs)
 .venv/bin/python -m pytest tests/

@@ -109,7 +109,7 @@ rm -rf /mnt/d/GitHub/job-raider/htmlcov
 rm -rf ~/.cache/huggingface/*
 
 # Reinstall Playwright browsers (~1.2GB)
-cd backend-py
+cd apps/backend-py
 playwright install chromium
 ```
 
@@ -154,7 +154,7 @@ After cleaning, verify your setup:
 
 ```bash
 # Check Python environment
-cd backend-py
+cd apps/backend-py
 python --version
 pip list
 
@@ -248,7 +248,7 @@ ollama pull qwen2.5:7b
 
 ```bash
 # Reinstall dependencies
-cd backend-py
+cd apps/backend-py
 pip install -r requirements.txt
 
 # Reinstall Playwright

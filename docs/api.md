@@ -10,7 +10,7 @@ Main orchestrator for the job application pipeline.
 
 ```python
 import sys
-sys.path.insert(0, 'backend-py')
+sys.path.insert(0, 'apps/backend-py')
 
 from src.pipeline.orchestrator import (
     PipelineOrchestrator,
@@ -271,7 +271,7 @@ Represents a job listing.
 
 ```python
 import sys
-sys.path.insert(0, 'backend-py')
+sys.path.insert(0, 'apps/backend-py')
 
 from src.models.job_listing import JobListing, JobSource, ExperienceLevel
 

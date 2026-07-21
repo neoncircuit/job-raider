@@ -144,7 +144,7 @@ source apps/backend-py/.venv/bin/activate
 
 **Symptoms:**
 ```bash
-cd backend-py
+cd apps/backend-py
 pip install -r requirements.txt
 # Error: Could not find a version that satisfies the requirement...
 ```
@@ -153,7 +153,7 @@ pip install -r requirements.txt
 
 1. **Update pip:**
    ```bash
-   cd backend-py
+   cd apps/backend-py
    source .venv/bin/activate
    pip install --upgrade pip
    ```
@@ -171,7 +171,7 @@ pip install -r requirements.txt
 
 3. **Install Playwright browsers:**
    ```bash
-   cd backend-py
+   cd apps/backend-py
    source .venv/bin/activate
    playwright install chromium
    ```
@@ -366,7 +366,7 @@ Scraping complete: 0 listings found
 
 4. **Enable debug logging:**
    ```bash
-   cd backend-py
+   cd apps/backend-py
    python main.py --log-level DEBUG --log-file debug.log
    cat debug.log
    ```
@@ -903,11 +903,11 @@ Failed to restart docker.service: Unit docker.service not found.
 
 ```bash
 # Console only
-cd backend-py
+cd apps/backend-py
 python main.py --log-level DEBUG
 
 # Console and file
-cd backend-py
+cd apps/backend-py
 python main.py --log-level DEBUG --log-file debug.log
 
 # View logs
@@ -936,7 +936,7 @@ cat data/results/applications/{app_id}.json
 
 ```python
 import sys
-sys.path.insert(0, 'backend-py')
+sys.path.insert(0, 'apps/backend-py')
 
 # Test scraper
 from src.scrapers.manager import ScraperManager
@@ -1010,7 +1010,7 @@ LinkedIn's login page at `/checkpoint/lg/login` uses obfuscated DOM elements. Th
 
 ```bash
 # Test authentication with visible browser
-cd backend-py
+cd apps/backend-py
 .venv/bin/python3 test_linkedin_ea.py
 ```
 
@@ -1048,7 +1048,7 @@ The form parser and filler use `a[href*='/apply/']:has-text('Easy Apply')` as th
 1. Run the integration test to see what the page actually contains:
 
 ```bash
-cd backend-py
+cd apps/backend-py
 .venv/bin/python3 test_linkedin_ea.py "https://www.linkedin.com/jobs/view/JOB_ID/"
 ```
 

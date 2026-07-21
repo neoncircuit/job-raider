@@ -27,6 +27,7 @@ export default defineConfig({
       reporter: ["text", "json", "html", "lcov"],
       exclude: [
         "node_modules/",
+        ".next/",
         "tests/",
         "*.config.ts",
         "*.config.js",
