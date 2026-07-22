@@ -8,7 +8,6 @@ Date: 2026-04-21
 """
 
 import asyncio
-import json
 import os
 import shutil
 import uuid
@@ -33,6 +32,7 @@ from ...models.linkedin_analysis import (
 from ...models.user_profile import ApprenticeshipContract, UserProfile
 from ...utils.logger import Components, get_logger
 from ..models.requests import ProfileUpdateRequest
+from ..profile_storage import ProfileStorage
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
@@ -163,12 +163,6 @@ def _update_apprenticeship(profile: UserProfile, request: ProfileUpdateRequest) 
     )
 
 
-# Profile storage (use database in production)
-stored_profiles: Dict[str, Dict[str, Any]] = {}
-
-# Active profile ID (single user for now)
-active_profile_id: str = None
-
 # Upload directory - resolve relative to project root so it works
 # regardless of the working directory (local dev vs Docker container)
 _BASE_DIR = Path(__file__).resolve().parents[3]  # apps/backend-py/
@@ -182,90 +176,40 @@ except PermissionError:
     UPLOAD_DIR = Path("/tmp/job-raider/profiles")
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# Persisted active-profile state lives on the mounted data volume so the
-# profile survives backend restarts (the in-memory store alone is wiped on
-# every container recreate).
-_STATE_FILE = UPLOAD_DIR / "active_profile.json"
-
-
-def _parse_dt(value: Any) -> datetime:
-    """Parse an ISO datetime string back into a datetime, tolerating junk.
-
-    Args:
-        value: A datetime, an ISO-8601 string, or anything else.
-
-    Returns:
-        The parsed datetime, or the current time as a fallback.
-    """
-    if isinstance(value, datetime):
-        return value
-    if isinstance(value, str):
-        try:
-            return datetime.fromisoformat(value)
-        except ValueError:
-            return datetime.now()
-    return datetime.now()
+# Profile state is backed by JSON files on the mounted data volume
+# (per-profile files under store/ plus the active_profile.json marker), so
+# every uvicorn worker observes the same state. The names below remain
+# drop-in compatible with the historical in-memory dict/str that reader
+# modules (jobs, pipeline, cover_letter, assessment) reference.
+_storage = ProfileStorage(UPLOAD_DIR)
+stored_profiles = _storage.profiles
+active_profile_id = _storage.active_id
 
 
 def _persist_state() -> None:
-    """Write the active profile to disk so it survives backend restarts.
+    """Persist the active profile to disk so it survives restarts.
 
-    Serializes the parsed UserProfile and its metadata to a JSON file on the
-    mounted data volume. Failures are logged and swallowed so persistence never
-    breaks the request that triggered it.
+    Delegates to the shared ProfileStorage, which rewrites the active
+    profile's per-profile file and the active_profile.json marker
+    atomically. Failures are logged and swallowed inside the storage layer.
 
     Returns:
         None.
     """
-    if not active_profile_id or active_profile_id not in stored_profiles:
-        return
-    entry = stored_profiles[active_profile_id]
-    profile = entry.get("profile")
-    payload = {
-        "active_profile_id": active_profile_id,
-        "resume_path": entry.get("resume_path"),
-        "original_filename": entry.get("original_filename"),
-        "created_at": _parse_dt(entry.get("created_at")).isoformat(),
-        "updated_at": _parse_dt(entry.get("updated_at")).isoformat(),
-        "profile": (
-            profile.model_dump(mode="json")
-            if hasattr(profile, "model_dump")
-            else profile
-        ),
-    }
-    try:
-        _STATE_FILE.write_text(json.dumps(payload))
-    except Exception as exc:
-        logger.warning(f"Failed to persist active profile: {exc}")
+    _storage.persist_active()
 
 
 def _load_state() -> None:
-    """Restore a previously persisted active profile on startup.
+    """Restore persisted profile state at startup.
 
-    Reconstructs the UserProfile object so downstream readers (which expect an
-    object, not a dict) behave identically to a fresh upload. A missing or
-    unreadable state file is ignored.
+    Delegates to the shared ProfileStorage, which hydrates the active
+    profile from disk and migrates the legacy single-file marker into the
+    per-profile store on first run.
 
     Returns:
         None.
     """
-    global active_profile_id
-    if not _STATE_FILE.exists():
-        return
-    try:
-        payload = json.loads(_STATE_FILE.read_text())
-        pid = payload["active_profile_id"]
-        stored_profiles[pid] = {
-            "profile": UserProfile.model_validate(payload["profile"]),
-            "resume_path": payload.get("resume_path"),
-            "original_filename": payload.get("original_filename"),
-            "created_at": _parse_dt(payload.get("created_at")),
-            "updated_at": _parse_dt(payload.get("updated_at")),
-        }
-        active_profile_id = pid
-        logger.info(f"Restored persisted profile {pid} from {_STATE_FILE}")
-    except Exception as exc:
-        logger.warning(f"Failed to load persisted profile: {exc}")
+    _storage.load()
 
 
 # Restore any persisted profile at import time (single-user model).
@@ -327,12 +271,9 @@ async def upload_resume(
             "updated_at": datetime.now(),
         }
 
-        # Set as active profile
-        global active_profile_id
-        active_profile_id = profile_id
-
-        # Persist so the profile survives backend restarts.
-        _persist_state()
+        # Set as active profile (writes the per-profile file marker so
+        # every uvicorn worker observes the new active profile).
+        active_profile_id.set(profile_id)
 
         logger.info(f"Created profile {profile_id} from uploaded resume")
 
@@ -379,7 +320,7 @@ async def get_profile():
     profile = profile_data["profile"]
 
     return {
-        "profile_id": active_profile_id,
+        "profile_id": str(active_profile_id),
         "resume_path": profile_data["resume_path"],
         "original_filename": profile_data.get("original_filename"),
         "contact_info": {

@@ -2791,7 +2791,7 @@ The user asked for additional planning for future work once the audit was done. 
 
 **Out of scope for this item:** LLM-based plain-language explanations (see item 3).
 
-### 2. Persistent profile state
+### 2. Persistent profile state [COMPLETED 2026-07-22]
 
 **Why:** The current in-memory `stored_profiles` / `active_profile_id` forces single-worker uvicorn and causes spurious 400 errors if more than one worker is used. This is the biggest architectural constraint in the backend.
 
@@ -2799,6 +2799,8 @@ The user asked for additional planning for future work once the audit was done. 
 - Keep the JSON file as an optional export/hydration source for backward compatibility.
 - Update `/api/profile/upload`, `GET /api/profile`, and `/api/pipeline/start` to read from the store.
 - Once the store is in place, restore uvicorn `--workers 2` or make it configurable via env var.
+
+**Outcome:** Implemented with JSON files instead of SQLite (see "Persistent Profile State (2026-07-22)" below): the repo has no application-level SQLite usage but four established JSON storage precedents, so per-profile JSON files were the least-violence option. Multi-worker uvicorn restored via `UVICORN_WORKERS` (default 2).
 
 **Out of scope:** Full user auth/multi-tenancy; keep single-user semantics.
 
@@ -2903,4 +2905,78 @@ cd /mnt/d/GitHub/job-raider
 make lint          # exit 0 (ruff clean; mypy noise is pre-existing and unrelated)
 make type-check    # exit 0
 make test          # 524 passed
+```
+
+---
+
+## Persistent Profile State (2026-07-22) [COMPLETED]
+
+**Overview:** Eliminated the multi-worker "No active profile" (400) errors by backing profile state with JSON files on the mounted data volume, then restoring multi-worker uvicorn. Implemented with the smallest possible blast radius: one new module, edits confined to `profile.py` and the Dockerfile, zero changes to the four reader route modules or their tests.
+
+### Root Cause
+
+`stored_profiles` / `active_profile_id` lived in module-level memory in `src/api/routes/profile.py`. A partial mitigation (`_persist_state()` / `_load_state()` writing `data/profiles/active_profile.json`) only re-read the file at import time, so with more than one uvicorn worker an upload handled by worker A remained invisible to requests routed to worker B.
+
+### Storage Layout and Flow
+
+```mermaid
+flowchart LR
+    subgraph Worker A
+        UA[upload / update request]
+    end
+    subgraph Worker B
+        RB[GET /api/profile etc.]
+    end
+    UA -->|__setitem__| SF[data/profiles/store/&lt;profile_id&gt;.json]
+    UA -->|active_id.set| MK[data/profiles/active_profile.json]
+    SF -->|cache miss hydrates| RB
+    MK -->|read on every lookup| RB
+```
+
+- Per-profile files: `data/profiles/store/{profile_id}.json`, same payload shape as the legacy marker (`active_profile_id`, `resume_path`, `original_filename`, `created_at`/`updated_at` ISO-8601, `profile` as a UserProfile JSON dump).
+- Marker: `data/profiles/active_profile.json`, legacy format preserved.
+- All writes are atomic (temp file plus `os.replace`) so concurrent readers never see torn JSON.
+
+### Changes
+
+- [x] Add `src/api/profile_storage.py`: `ProfileStorage` owning `profiles` (a `MutableMapping` with an in-memory cache and per-profile JSON disk fallback) and `active_id` (a string-like wrapper that re-reads the marker on every boolean/comparison/string lookup). `load()` hydrates the active profile at startup and migrates the legacy single-file marker into the per-profile store; `persist_active()` re-serializes in-place edits.
+- [x] Rewire `src/api/routes/profile.py`: `stored_profiles` and `active_profile_id` now alias the storage objects under their historical names (reader modules unchanged); `_persist_state()` / `_load_state()` are thin delegators; `upload_resume` uses `active_profile_id.set(profile_id)`; the one response-body serialization uses `str(active_profile_id)`.
+- [x] Restore multi-worker uvicorn in `docker/Dockerfile`: `ENV UVICORN_WORKERS=2` with a shell-wrapped CMD (`exec` preserves PID-1 signal handling) so the count is configurable.
+- [x] Add `tests/unit/test_profile_storage.py` with 9 tests: cross-instance visibility (simulated workers), legacy marker migration, atomic valid-JSON writes, cache hit/miss behaviour.
+
+### Design Trade-off
+
+The `active_id` wrapper is slightly magical (string-like object that reads disk on lookup). The cleaner alternative (a `get_active_profile_id()` accessor) would have required editing four route modules and their tests; the wrapper keeps the blast radius in `profile.py` plus one new module, which is the least-violence choice. The original plan called for SQLite; JSON was chosen instead because the repo has no application-level SQLite usage but four established JSON storage precedents (`AssessmentStorage`, `SettingsStorage`, `AppliedJobsTracker`, `JobListingStorage`).
+
+### Verification Results
+
+Targeted tests (9 new plus adjacent route suites):
+
+```bash
+cd apps/backend-py
+PYTHONPATH=. .venv/bin/python -m pytest tests/unit/test_profile_storage.py tests/unit/test_profile_routes.py tests/unit/test_pipeline_routes.py -q
+# 18 passed
+```
+
+Full gates from the repo root:
+
+```bash
+cd /mnt/d/GitHub/job-raider
+make lint          # exit 0
+make type-check    # exit 0
+make test          # 532 passed
+```
+
+Manual two-instance check (simulates two workers over a copy of the real persisted marker; the fresh instance sees the active profile after legacy migration):
+
+```bash
+cd apps/backend-py
+PYTHONPATH=. .venv/bin/python -c "
+from pathlib import Path
+from src.api.profile_storage import ProfileStorage
+a = ProfileStorage(Path('/tmp/jr-manual-check')); b = ProfileStorage(Path('/tmp/jr-manual-check'))
+a.load()
+print(bool(b.active_id), b.active_id in b.profiles)
+"
+# True True
 ```
