@@ -7,7 +7,10 @@
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
+import {
+  CoverLetterValidationDisplay,
+  CoverLetterRecommendationBadge,
+} from "@/components/cover-letter-validation";
 import type { CoverLetterValidation } from "@/lib/types/api";
 
 const baseValidation: CoverLetterValidation = {
@@ -98,4 +101,68 @@ describe("CoverLetterValidationDisplay", () => {
       screen.getByText("No issues detected. The cover letter looks good."),
     ).toBeInTheDocument();
   });
+
+  it("renders reviewer feedback when present", () => {
+    const validation: CoverLetterValidation = {
+      ...baseValidation,
+      details: {
+        ...baseValidation.details,
+        review: {
+          critique: "Tighten the opening paragraph.",
+          rewrite_needed: true,
+          rewrite_count: 1,
+          model_used: "qwen2.5:3b",
+        },
+      },
+    };
+    render(<CoverLetterValidationDisplay validation={validation} />);
+    expect(screen.getByText("Reviewer Feedback")).toBeInTheDocument();
+    expect(
+      screen.getByText("Tighten the opening paragraph."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Rewritten once")).toBeInTheDocument();
+    expect(screen.getByText("Rewrite requested")).toBeInTheDocument();
+    expect(screen.getByText(/Model: qwen2\.5:3b/)).toBeInTheDocument();
+  });
+
+  it("hides the no-issues message when LLM feedback is present", () => {
+    const validation: CoverLetterValidation = {
+      ...baseValidation,
+      details: {
+        ...baseValidation.details,
+        llm_feedback: ["Good overall structure."],
+      },
+    };
+    render(<CoverLetterValidationDisplay validation={validation} />);
+    expect(screen.getByText("AI Feedback")).toBeInTheDocument();
+    expect(
+      screen.queryByText("No issues detected. The cover letter looks good."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("falls back to needs_revision styling for an unrecognized recommendation", () => {
+    const validation: CoverLetterValidation = {
+      ...baseValidation,
+      recommendation:
+        "unknown" as CoverLetterValidation["recommendation"],
+    };
+    render(<CoverLetterValidationDisplay validation={validation} />);
+    expect(screen.getByText("Needs revision")).toBeInTheDocument();
+  });
+});
+
+describe("CoverLetterRecommendationBadge", () => {
+  it.each([
+    ["approve", "Ready to send"],
+    ["needs_revision", "Needs revision"],
+    ["reject", "Major issues"],
+  ] as const)(
+    "renders the %s recommendation label",
+    (recommendation, label) => {
+      render(
+        <CoverLetterRecommendationBadge recommendation={recommendation} />,
+      );
+      expect(screen.getByText(label)).toBeInTheDocument();
+    },
+  );
 });

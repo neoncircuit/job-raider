@@ -2781,15 +2781,56 @@ Audit changes committed as `dbe8be5`.
 
 The user asked for additional planning for future work once the audit was done. The items below are ranked by value/effort and aligned with the project's current trajectory. They are intentionally scoped so each can become a single implementation phase.
 
-### 1. Stabilize the cover-letter auto-assessment flow
+### 1. Stabilize the cover-letter auto-assessment flow [COMPLETED 2026-07-22]
 
-**Why:** The recent cover-letter work added validation but the end-to-end flow is not yet stress-tested in the UI.
+**Why:** The recent cover-letter work added validation but the end-to-end flow was not yet stress-tested in the UI. Quality scores were also re-computing on every keystroke, which wasted requests and created a jumpy editing experience.
 
-- Add a dedicated `/cover-letter/assess` backend smoke test that hits the route with a real profile and JD.
-- Wire the frontend validation call so the quality score updates on demand rather than on every keystroke.
-- Add a small suite of Vitest tests for `CoverLetterValidationDisplay`.
+- [x] Add a dedicated `/cover-letter/assess` backend smoke test that hits the route with a real profile and JD.
+- [x] Wire the frontend validation call so the quality score updates on demand rather than on every keystroke.
+- [x] Add a small suite of Vitest tests for `CoverLetterValidationDisplay`.
 
 **Out of scope for this item:** LLM-based plain-language explanations (see item 3).
+
+**Implementation notes and flow:**
+
+```mermaid
+flowchart LR
+    A[User edits letter] --> B{Content changed since last validation?}
+    B -->|Yes| C[Re-check quality button enabled]
+    B -->|No| D[Button disabled]
+    C --> E[User clicks Re-check quality]
+    E --> F[AbortController cancels stale request]
+    F --> G[coverLetterApi.validate]
+    G --> H[Validation panel updates]
+```
+
+- Removed the 800 ms debounced `useEffect` that re-validated on every keystroke from `apps/frontend-ts/src/app/cover-letter/page.tsx`.
+- Added `handleRevalidate` that calls `coverLetterApi.validate` only when the user presses the new "Re-check quality" button.
+- `lastValidatedRef` tracks the content last successfully validated; the button is disabled while content matches that value or while a request is in-flight.
+- Added `POST /api/cover-letter/assess` smoke tests in `apps/backend-py/tests/unit/test_cover_letter_assess.py` using a patched active profile and auth bypass.
+- Extended `apps/frontend-ts/tests/components/cover-letter-validation.test.tsx` with badge labels, reviewer feedback, no-issues suppression, and unknown-recommendation fallback tests.
+- Updated `apps/frontend-ts/tests/app/cover-letter/page.test.tsx` to mock `assess`/`validate` and assert the on-demand re-check behavior.
+
+**Verification results:**
+
+```bash
+cd apps/backend-py
+PYTHONPATH=. .venv/bin/python -m pytest tests/unit/test_cover_letter_assess.py -v
+# 2 passed
+
+cd apps/frontend-ts
+npm run test -- tests/components/cover-letter-validation.test.tsx tests/app/cover-letter/page.test.tsx
+# 19 passed (12 component + 7 page)
+```
+
+Full gates from the repo root:
+
+```bash
+cd /mnt/d/GitHub/job-raider
+make lint          # exit 0 (ruff clean; mypy report-only noise is pre-existing)
+make type-check    # exit 0
+make test          # 534 passed
+```
 
 ### 2. Persistent profile state [COMPLETED 2026-07-22]
 

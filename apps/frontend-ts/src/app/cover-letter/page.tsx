@@ -217,6 +217,7 @@ export default function CoverLetterPage() {
       setResult(data);
       setEditedContent(data.cover_letter.content);
       setValidation(data.validation);
+      lastValidatedRef.current = data.cover_letter.content;
       setPrepSheet(null);
       setLetterExplain(null);
       setAftermath(null);
@@ -389,51 +390,6 @@ export default function CoverLetterPage() {
     return () => clearTimeout(timer);
   }, [title, company, location, description]);
 
-  // Re-run the quality breakdown on the edited letter, debounced. Fast
-  // deterministic validation (no LLM), so it can track edits live. State
-  // updates live inside the debounced callback to avoid synchronous setState.
-  useEffect(() => {
-    // Keep the richer validation produced at generation time until the user
-    // actually edits the letter; only then re-validate the changed text.
-    if (!result || editedContent === result.cover_letter.content) return;
-    // Skip if this exact text was already validated (e.g. type + undo within
-    // the debounce window) — re-running would only churn the displayed score.
-    if (editedContent === lastValidatedRef.current) return;
-    const timer = setTimeout(async () => {
-      revalidateAbortRef.current?.abort();
-      const controller = new AbortController();
-      revalidateAbortRef.current = controller;
-      setRevalidating(true);
-      try {
-        const data = await coverLetterApi.validate(
-          {
-            content: editedContent,
-            title,
-            company,
-            description,
-            location: location || undefined,
-            deep: form.deep,
-          },
-          controller.signal,
-        );
-        if (revalidateAbortRef.current === controller) {
-          setValidation(data);
-          lastValidatedRef.current = editedContent;
-        }
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          logger.error("Cover letter re-validation failed", err);
-        }
-      } finally {
-        if (revalidateAbortRef.current === controller) setRevalidating(false);
-      }
-    }, ASSESS_DEBOUNCE_MS);
-
-    return () => clearTimeout(timer);
-    // Re-validate when the edited text changes; job fields are stable per letter.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editedContent]);
-
   const canGenerate =
     form.title.trim() &&
     form.company.trim() &&
@@ -449,6 +405,42 @@ export default function CoverLetterPage() {
     } catch (err) {
       logger.error("Clipboard copy failed", err);
       toast.error("Could not copy to clipboard");
+    }
+  };
+
+  // Re-run the quality breakdown on the edited letter, on demand. The user
+  // triggers this via the "Re-check quality" button once they are done
+  // editing, instead of re-validating automatically on every keystroke.
+  const handleRevalidate = async () => {
+    if (!result) return;
+
+    revalidateAbortRef.current?.abort();
+    const controller = new AbortController();
+    revalidateAbortRef.current = controller;
+    setRevalidating(true);
+    try {
+      const data = await coverLetterApi.validate(
+        {
+          content: editedContent,
+          title,
+          company,
+          description,
+          location: location || undefined,
+          deep: form.deep,
+        },
+        controller.signal,
+      );
+      if (revalidateAbortRef.current === controller) {
+        setValidation(data);
+        lastValidatedRef.current = editedContent;
+      }
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
+        logger.error("Cover letter re-validation failed", err);
+        toast.error((err as Error).message || "Failed to re-check quality");
+      }
+    } finally {
+      if (revalidateAbortRef.current === controller) setRevalidating(false);
     }
   };
 
@@ -801,16 +793,34 @@ export default function CoverLetterPage() {
                     onChange={(e) => setEditedContent(e.target.value)}
                     className="min-h-[320px] resize-y font-serif leading-relaxed"
                   />
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    {revalidating ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Re-checking quality...
-                      </>
-                    ) : (
-                      "Edit the letter above — the quality breakdown updates automatically."
-                    )}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      {revalidating ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Re-checking quality...
+                        </>
+                      ) : (
+                        "Edit the letter above, then re-check the quality on demand."
+                      )}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRevalidate}
+                      disabled={
+                        revalidating ||
+                        editedContent === lastValidatedRef.current
+                      }
+                    >
+                      {revalidating ? (
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      Re-check quality
+                    </Button>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"

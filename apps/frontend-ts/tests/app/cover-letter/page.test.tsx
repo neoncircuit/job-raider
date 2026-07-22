@@ -25,12 +25,16 @@ import type { CoverLetterResponse } from "@/lib/types/api";
 
 const mockGenerate = vi.hoisted(() => vi.fn());
 const mockExport = vi.hoisted(() => vi.fn());
+const mockAssess = vi.hoisted(() => vi.fn());
+const mockValidate = vi.hoisted(() => vi.fn());
 const mockDownloadFile = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api/coverLetter", () => ({
   coverLetterApi: {
     generate: (...args: unknown[]) => mockGenerate(...args),
     export: (...args: unknown[]) => mockExport(...args),
+    assess: (...args: unknown[]) => mockAssess(...args),
+    validate: (...args: unknown[]) => mockValidate(...args),
   },
   downloadFile: (...args: unknown[]) => mockDownloadFile(...args),
 }));
@@ -62,12 +66,29 @@ describe("CoverLetterPage", () => {
   beforeEach(() => {
     mockGenerate.mockReset();
     mockExport.mockReset();
+    mockAssess.mockReset();
+    mockValidate.mockReset();
     mockDownloadFile.mockReset();
 
     mockGenerate.mockResolvedValue(sampleResponse);
     mockExport.mockResolvedValue(
       new Response(new Blob(["mock"]), { status: 200 }),
     );
+    mockAssess.mockResolvedValue({
+      score: 75,
+      passed_threshold: true,
+      recommendation: "maybe",
+      reasoning: "Solid match.",
+      breakdown: { keyword_match: 40 },
+      matched_keywords: ["React"],
+      missing_skills: [],
+      scam_risk: "low",
+      scam_flags: [],
+    });
+    mockValidate.mockResolvedValue({
+      ...sampleCoverLetterValidation,
+      score: 82,
+    });
     mockDownloadFile.mockResolvedValue(undefined);
   });
 
@@ -276,5 +297,51 @@ describe("CoverLetterPage", () => {
 
     expect(await screen.findByText(/needs revision/i)).toBeInTheDocument();
     expect(screen.getByText(/too short/i)).toBeInTheDocument();
+  });
+
+  it("re-checks quality on demand after editing the letter", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<CoverLetterPage />);
+
+    await user.type(
+      screen.getByLabelText(/job title/i),
+      "Senior Software Engineer",
+    );
+    await user.type(screen.getByLabelText(/company/i), "Tech Innovations Inc");
+    await user.type(
+      screen.getByLabelText(/job description/i),
+      "We are seeking a talented Senior Software Engineer with React and TypeScript experience.",
+    );
+
+    const generateButton = screen.getByRole("button", {
+      name: /generate cover letter/i,
+    });
+    await waitFor(() => expect(generateButton).not.toBeDisabled());
+    await user.click(generateButton);
+
+    const textarea = await screen.findByDisplayValue(sampleCoverLetter.content);
+    expect(textarea).toBeInTheDocument();
+
+    await user.clear(textarea);
+    await user.type(textarea, "Edited cover letter content");
+
+    const reCheckButton = screen.getByRole("button", {
+      name: /re-check quality/i,
+    });
+    await waitFor(() => expect(reCheckButton).not.toBeDisabled());
+    await user.click(reCheckButton);
+
+    await waitFor(() => {
+      expect(mockValidate).toHaveBeenCalledTimes(1);
+    });
+    expect(mockValidate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: "Edited cover letter content",
+        title: "Senior Software Engineer",
+        company: "Tech Innovations Inc",
+      }),
+      expect.any(AbortSignal),
+    );
+    expect(await screen.findByText("82/100")).toBeInTheDocument();
   });
 });
