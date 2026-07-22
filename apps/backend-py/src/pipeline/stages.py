@@ -23,7 +23,7 @@ from ..generation.selector import ResumeSelector
 from ..generation.validator import ResumeValidator
 from ..llm.embedding_client import EmbeddingClient
 from ..llm.router import LLMRouter
-from ..models.job_listing import JobListing
+from ..models.job_listing import JobListing, JobListingCollection
 from ..models.user_profile import UserProfile
 from ..rag.bm25_retriever import BM25Retriever
 from ..rag.chunker import TextChunker
@@ -201,10 +201,9 @@ class PipelineStages:
             self.logger.info(f"Deduplicating {len(listings)} listings")
 
             # Use collection's deduplicate method
-            from ..models.job_listing import JobListingCollection
-
-            collection = JobListingCollection(jobs=listings)
-            deduplicated = collection.deduplicate()
+            collection = JobListingCollection(listings=listings)
+            deduplicated_collection = collection.deduplicate()
+            deduplicated = deduplicated_collection.listings
 
             # Store in context and persistent storage
             self.context.deduplicated_listings = deduplicated
@@ -365,10 +364,12 @@ class PipelineStages:
             self.logger.info(f"Filtering {len(listings)} listings by user profile")
 
             # Filter by user profile
-            filtered = self.job_filter.filter_by_profile(
-                jobs=listings,
+            collection = JobListingCollection(listings=listings)
+            filtered_collection = self.job_filter.filter_by_profile(
+                collection=collection,
                 profile=self.context.user_profile,
             )
+            filtered = filtered_collection.listings
 
             self.context.filtered_listings = filtered
 
@@ -376,8 +377,8 @@ class PipelineStages:
                 "original_count": len(listings),
                 "filtered_count": len(filtered),
                 "removed_count": len(listings) - len(filtered),
-                "target_keywords": self.context.user_profile.target_job.keywords,
-                "target_locations": self.context.user_profile.target_job.locations,
+                "target_keywords": self.context.user_profile.targets.keywords,
+                "target_locations": self.context.user_profile.targets.locations,
             }
 
             self.logger.info(

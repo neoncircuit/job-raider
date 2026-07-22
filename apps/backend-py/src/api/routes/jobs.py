@@ -14,7 +14,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from ...models.user_profile import UserProfile
 from ...scoring.matcher import JobMatcher
 from ...scrapers.manager import ScraperManager
-from ...utils.location_normalizer import normalize_all_locations
+from ...utils.location_normalizer import location_matches, normalize_all_locations
 from ...utils.logger import Components, get_logger
 from ..models.requests import JobSearchRequest, SemanticSearchRequest
 from ..models.responses import SemanticSearchResult
@@ -131,31 +131,15 @@ async def search_jobs(
 
         # Filter by location if specified (post-filter to ensure API results match)
         if request.locations:
-            requested_location = request.locations[0].lower()
-            logger.info(f"[JOBS_SEARCH] Applying location filter: {requested_location}")
+            logger.info(f"[JOBS_SEARCH] Applying location filter: {request.locations}")
             filtered_listings = []
             for listing in all_listings:
-                # Check if listing location contains the requested location
-                if listing.location:
-                    listing_location_lower = listing.location.lower()
-                    # Match if requested location is contained in listing location or vice versa
-                    if (
-                        requested_location in listing_location_lower
-                        or listing_location_lower in requested_location
-                        or
-                        # Handle common country/city variations
-                        any(
-                            loc in listing_location_lower
-                            for loc in [
-                                requested_location,
-                                requested_location.replace(" ", ""),
-                                requested_location[:3],
-                            ]
-                        )
-                    ):
-                        filtered_listings.append(listing)
-                else:
-                    # If listing has no location, include it (better to have extra results)
+                # Include listings with no location; otherwise match any requested
+                # location using alias-aware matching.
+                if not listing.location or any(
+                    location_matches(req_loc, listing.location)
+                    for req_loc in request.locations
+                ):
                     filtered_listings.append(listing)
             all_listings = filtered_listings
             logger.info(f"After location filtering: {len(all_listings)} jobs")

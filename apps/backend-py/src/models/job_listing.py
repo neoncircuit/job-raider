@@ -20,6 +20,8 @@ from pydantic import (
     model_validator,
 )
 
+from ..utils.location_normalizer import location_matches
+
 
 class ExperienceLevel(str, Enum):
     """Experience level for job positions."""
@@ -372,7 +374,7 @@ class JobListingCollection(BaseModel):
             listing
             for listing in self.listings
             if listing.location
-            and any(loc.lower() in listing.location.lower() for loc in locations)
+            and any(location_matches(loc, listing.location) for loc in locations)
         ]
         return JobListingCollection(
             listings=filtered,

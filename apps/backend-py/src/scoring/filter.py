@@ -14,6 +14,7 @@ from typing import List, Optional, Set
 
 from ..models.job_listing import JobListing, JobListingCollection
 from ..models.user_profile import UserProfile
+from ..utils.location_normalizer import location_matches
 from ..utils.logger import Components, get_logger
 
 
@@ -145,7 +146,7 @@ class JobFilter:
         if self.locations:
             if listing.location:
                 for loc in self.locations:
-                    if loc.lower() in listing.location.lower():
+                    if location_matches(loc, listing.location):
                         match_reasons.append(MatchReason.LOCATION)
                         score += 10
                         break

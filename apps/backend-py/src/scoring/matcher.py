@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from ..models.job_listing import ExperienceLevel, JobListing
 from ..models.user_profile import UserProfile
+from ..utils.location_normalizer import location_matches
 from ..utils.logger import Components, get_logger
 
 
@@ -351,7 +352,7 @@ class JobMatcher:
         # Check if job location is in targets
         if job.location and profile.targets.locations:
             for target_loc in profile.targets.locations:
-                if target_loc.lower() in job.location.lower():
+                if location_matches(target_loc, job.location):
                     return weight
 
         # Partial credit if remote optional

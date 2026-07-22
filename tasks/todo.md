@@ -2868,3 +2868,39 @@ The user asked for additional planning for future work once the audit was done. 
 ### Recommendation
 
 Start with **items 1 and 2** in parallel: they are the highest user-impact work and unblocks safer scaling of the backend. Items 3-5 are good follow-up phases. Items 6-10 are operational polish that can be picked up between feature sprints.
+
+---
+
+## Location Alias Filtering & Pipeline Stage Fixes (2026-07-22) [COMPLETED]
+
+**Overview:** Fixed the "no listings showing" class of bugs caused by raw substring location matching and two broken pipeline stage call signatures. Changes kept to the minimum necessary.
+
+### Root Causes
+
+- Location checks across search, scoring, and pipeline filtering used raw substring matching (`loc.lower() in listing.location.lower()`), so alias searches such as "US" never matched listings labeled "United States" or "USA".
+- `stage_filter_by_profile` called `filter_by_profile(jobs=...)` with the wrong keyword (expected `collection=`) and referenced `user_profile.target_job.*` (real attribute is `targets`), silently failing and returning unfiltered input.
+- `stage_deduplicate` constructed `JobListingCollection(jobs=listings)` with the wrong keyword (expected `listings=`).
+
+### Changes
+
+- [x] Add `LOCATION_ALIASES`, `expand_location_aliases()`, and `location_matches()` to `apps/backend-py/src/utils/location_normalizer.py`, reusing the existing `COUNTRY_CODE_MAP` and `CITY_COUNTRY_MAP`; short aliases (2 chars or fewer) use word-boundary regex matching to avoid false positives such as "LA" matching "California".
+- [x] Replace substring location checks with `location_matches()` in four sites:
+  - `src/scoring/filter.py` (`JobFilter.filter_listing`)
+  - `src/scoring/matcher.py` (`JobMatcher._score_location`)
+  - `src/models/job_listing.py` (`JobListingCollection.filter_by_location`)
+  - `src/api/routes/jobs.py` (post-scrape filter, now checks all requested locations via `any(...)`)
+- [x] Fix `stage_filter_by_profile` in `src/pipeline/stages.py`: wrap listings in `JobListingCollection(listings=listings)`, pass `collection=`, read `filtered_collection.listings`, and use `targets.keywords` / `targets.locations` in metadata.
+- [x] Fix `stage_deduplicate` to use `JobListingCollection(listings=listings)`; promote `JobListingCollection` to a top-level import.
+- [x] Add `tests/unit/test_location_aliases.py` with 20 tests covering alias expansion, bidirectional matching (US/USA/United States, UK/GB/United Kingdom, NYC/New York, SF/San Francisco, SG/Singapore), case-insensitivity, and false-positive guards.
+
+### Verification results
+
+```bash
+cd apps/backend-py
+.venv/bin/python -m pytest tests/unit/test_location_aliases.py -v   # 20 passed
+.venv/bin/python -m pytest tests/unit/test_pipeline_routes.py tests/unit/test_location_aliases.py -q  # 24 passed
+cd /mnt/d/GitHub/job-raider
+make lint          # exit 0 (ruff clean; mypy noise is pre-existing and unrelated)
+make type-check    # exit 0
+make test          # 524 passed
+```
