@@ -264,8 +264,8 @@ class JobFilter:
             getattr(profile.targets, "exclude_internships", False)
         )
         allowed_levels = list(profile.targets.experience_levels or [])
-        hard_level_filter = (
-            profile.targets.constraint_mode == "filter" and bool(allowed_levels)
+        hard_level_filter = profile.targets.constraint_mode == "filter" and bool(
+            allowed_levels
         )
 
         if not exclude_internships and not hard_level_filter:

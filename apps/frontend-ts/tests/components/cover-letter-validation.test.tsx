@@ -143,8 +143,7 @@ describe("CoverLetterValidationDisplay", () => {
   it("falls back to needs_revision styling for an unrecognized recommendation", () => {
     const validation: CoverLetterValidation = {
       ...baseValidation,
-      recommendation:
-        "unknown" as CoverLetterValidation["recommendation"],
+      recommendation: "unknown" as CoverLetterValidation["recommendation"],
     };
     render(<CoverLetterValidationDisplay validation={validation} />);
     expect(screen.getByText("Needs revision")).toBeInTheDocument();

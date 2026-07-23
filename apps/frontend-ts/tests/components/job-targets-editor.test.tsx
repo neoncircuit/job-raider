@@ -58,7 +58,9 @@ describe("JobTargetsEditor", () => {
     const user = userEvent.setup();
     renderEditor();
 
-    await user.click(screen.getByRole("switch", { name: /Exclude internships/i }));
+    await user.click(
+      screen.getByRole("switch", { name: /Exclude internships/i }),
+    );
     await user.click(screen.getByText("Filter (hard)"));
     await user.click(screen.getByText("Save job targets"));
 

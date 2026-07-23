@@ -84,10 +84,7 @@ export default function JobsPage() {
       variant="full-bleed"
       className="h-full flex flex-col gap-4 space-y-0"
     >
-      <PageHeader
-        title="Jobs"
-        subtitle="Search and browse job listings."
-      />
+      <PageHeader title="Jobs" subtitle="Search and browse job listings." />
 
       <SearchBar onSearch={handleSearch} onGoogleSearch={handleGoogleSearch} />
 

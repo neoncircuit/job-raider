@@ -122,9 +122,7 @@ export default function DashboardPage() {
           title="Applications"
           value={ready && m ? m.outcomes.total_applications : "—"}
           sub={`${
-            ready && m
-              ? (m.outcomes.screening_rate * 100).toFixed(1)
-              : "—"
+            ready && m ? (m.outcomes.screening_rate * 100).toFixed(1) : "—"
           }% screening rate`}
           icon={<Send className="h-4 w-4" />}
         />

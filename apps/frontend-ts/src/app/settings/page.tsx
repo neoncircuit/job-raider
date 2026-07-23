@@ -301,9 +301,7 @@ export default function SettingsPage() {
       {isLoading && (
         <p className="text-sm text-muted-foreground">Loading settings…</p>
       )}
-      {isError && (
-        <QueryErrorBanner message="Failed to load settings." />
-      )}
+      {isError && <QueryErrorBanner message="Failed to load settings." />}
       {data && <SettingsForm initial={data} />}
     </PageContainer>
   );

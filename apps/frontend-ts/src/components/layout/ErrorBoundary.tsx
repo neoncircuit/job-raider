@@ -37,7 +37,9 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-destructive/50 bg-destructive/10 p-10 text-center">
           <AlertTriangle className="h-8 w-8 text-destructive" />
           <div>
-            <p className="font-semibold text-destructive">Something went wrong</p>
+            <p className="font-semibold text-destructive">
+              Something went wrong
+            </p>
             {this.state.message && (
               <p className="mt-1 text-sm text-destructive/80">
                 {this.state.message}

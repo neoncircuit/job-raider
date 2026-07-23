@@ -86,7 +86,9 @@ export default function MetricsPage() {
               { name: "Applied", count: applications },
               {
                 name: "Screening",
-                count: Math.round(applications * (outcomes.screening_rate || 0)),
+                count: Math.round(
+                  applications * (outcomes.screening_rate || 0),
+                ),
               },
               {
                 name: "Offered",
@@ -216,7 +218,9 @@ export default function MetricsPage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Recent LLM Calls</CardTitle>
+                    <CardTitle className="text-base">
+                      Recent LLM Calls
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="overflow-x-auto">
                     {recent_calls.length === 0 ? (
@@ -276,7 +280,9 @@ export default function MetricsPage() {
                         <p className="text-2xl font-bold text-amber-600">
                           {health.degraded}
                         </p>
-                        <p className="text-xs text-muted-foreground">Degraded</p>
+                        <p className="text-xs text-muted-foreground">
+                          Degraded
+                        </p>
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold text-destructive">

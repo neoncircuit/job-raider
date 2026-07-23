@@ -187,7 +187,9 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
             {...register("keywords")}
           />
           {errors.keywords && (
-            <p className="text-xs text-destructive">{errors.keywords.message}</p>
+            <p className="text-xs text-destructive">
+              {errors.keywords.message}
+            </p>
           )}
         </div>
         <div className="space-y-1">
