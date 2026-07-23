@@ -32,9 +32,10 @@ const OLLAMA_LARGE_TASKS = [
  * @param routing - Per-task routing map from settings.
  * @returns Tuple of small and large model names.
  */
-export function deriveOllamaTierModels(
-  routing: Record<string, ModelRouting>,
-): { small: string; large: string } {
+export function deriveOllamaTierModels(routing: Record<string, ModelRouting>): {
+  small: string;
+  large: string;
+} {
   const selection = routing.selection;
   const resume = routing.resume_writing;
   return {
@@ -75,8 +76,7 @@ export function applyOllamaTierModelsLocally(
         primary_provider: "ollama",
         primary_model: model,
         fallback_provider: existing?.fallback_provider ?? "anthropic",
-        fallback_model:
-          existing?.fallback_model ?? "claude-haiku-4-5-20251001",
+        fallback_model: existing?.fallback_model ?? "claude-haiku-4-5-20251001",
       };
     }
   };

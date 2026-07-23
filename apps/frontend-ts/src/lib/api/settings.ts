@@ -16,8 +16,7 @@ export const settingsApi = {
       { body: settings },
     ),
 
-  getModels: () =>
-    request<AvailableModelsResponse>("GET", "/settings/models"),
+  getModels: () => request<AvailableModelsResponse>("GET", "/settings/models"),
 
   applyOllamaDefaults: (smallModel: string, largeModel: string) =>
     request<AppSettings>("POST", "/settings/ollama-defaults", {

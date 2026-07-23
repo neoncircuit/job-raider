@@ -1,0 +1,8 @@
+# Fingerprints of confirmed false-positive gitleaks findings.
+# Format: <commit>:<file>:<rule-id>:<start-line>
+# See: https://github.com/gitleaks/gitleaks#gitleaksignore
+
+# "linkedin_analysis" is a task-name string literal in the Ollama tier
+# routing table, not a LinkedIn OAuth client ID. Low entropy (3.04) confirms
+# it is not a real secret.
+79d07d1f35f53e684f11592388726698976498f9:apps/frontend-ts/src/lib/ollama-tiers.ts:linkedin-client-id:22
