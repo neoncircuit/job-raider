@@ -507,10 +507,11 @@ export interface MetricsSummaryResponse {
 // ── Settings ──────────────────────────────────────────────────────────────────
 
 export interface ModelRouting {
+  task_type?: string;
   primary_provider: string;
   primary_model: string;
-  fallback_provider: string;
-  fallback_model: string;
+  fallback_provider?: string | null;
+  fallback_model?: string | null;
 }
 
 export interface ApiConfig {
@@ -537,6 +538,17 @@ export interface AppSettings {
   cost_limits: CostLimits;
   updated_at?: string;
   version?: string;
+}
+
+export interface AvailableModelsResponse {
+  ollama?: string[];
+  ollama_installed?: string[];
+  anthropic?: string[];
+  recommended?: {
+    small: string;
+    large: string;
+  };
+  [provider: string]: string[] | { small: string; large: string } | undefined;
 }
 
 // ── Resume Analysis ───────────────────────────────────────────────────────────

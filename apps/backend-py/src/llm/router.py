@@ -231,34 +231,73 @@ class LLMRouter:
         """
         Reload routes from user settings.
 
-        Updates the routing configuration based on user settings.
-        Clears client cache to force new connections with updated config.
+        Merges user overrides into a copy of DEFAULT_ROUTES so unspecified
+        tasks (e.g. embedding) keep their built-in configuration. Clears the
+        client cache so new connections use the updated routes.
 
         Args:
-            settings_routes: Dict of task_type to ModelRouting config from user settings
+            settings_routes: Dict of task_type to ModelRouting config (or
+                equivalent dict) from user settings.
         """
-        new_routes = {}
+        new_routes: Dict[TaskType, RouteConfig] = dict(self.DEFAULT_ROUTES)
 
         for task_type_str, routing_config in settings_routes.items():
             try:
                 task_type = TaskType(task_type_str)
-                new_routes[task_type] = RouteConfig(
-                    task_type=task_type,
-                    primary_provider=routing_config.primary_provider.value,
-                    primary_model=routing_config.primary_model,
-                    fallback_provider=routing_config.fallback_provider.value,
-                    fallback_model=routing_config.fallback_model,
-                )
             except ValueError:
-                # Skip invalid task types
                 continue
 
-        if new_routes:
-            self.routes = new_routes
-            # Clear client cache to force reconnection with new config
-            self._clients.clear()
-        else:
-            # If no valid routes, keep defaults
+            if isinstance(routing_config, dict):
+                primary_provider = routing_config.get("primary_provider")
+                primary_model = routing_config.get("primary_model")
+                fallback_provider = routing_config.get("fallback_provider")
+                fallback_model = routing_config.get("fallback_model")
+            else:
+                primary_provider = getattr(routing_config, "primary_provider", None)
+                primary_model = getattr(routing_config, "primary_model", None)
+                fallback_provider = getattr(routing_config, "fallback_provider", None)
+                fallback_model = getattr(routing_config, "fallback_model", None)
+
+            if hasattr(primary_provider, "value"):
+                primary_provider = primary_provider.value
+            if hasattr(fallback_provider, "value"):
+                fallback_provider = fallback_provider.value
+
+            if not primary_provider or not primary_model:
+                continue
+
+            new_routes[task_type] = RouteConfig(
+                task_type=task_type,
+                primary_provider=str(primary_provider),
+                primary_model=str(primary_model),
+                fallback_provider=(
+                    str(fallback_provider) if fallback_provider else None
+                ),
+                fallback_model=str(fallback_model) if fallback_model else None,
+            )
+
+        self.routes = new_routes
+        self._clients.clear()
+
+    def apply_user_settings(self) -> None:
+        """
+        Load persisted user settings and apply routing plus Ollama host.
+
+        Silently keeps constructor defaults when settings cannot be loaded.
+        """
+        try:
+            from ..api.ollama_models import parse_ollama_host_port
+            from ..api.settings import get_storage
+
+            settings = get_storage().load_settings()
+            if settings.routing:
+                self.reload_routes_from_settings(settings.routing)
+            if settings.api_config and settings.api_config.ollama_host:
+                host, port = parse_ollama_host_port(settings.api_config.ollama_host)
+                self.ollama_host = host
+                self.ollama_port = port
+                self._clients.clear()
+        except Exception:
             pass
 
     def _get_client(
@@ -446,6 +485,8 @@ def create_router(
     """
     Create an LLM router with optimized settings.
 
+    Loads saved user routing and Ollama host from settings when available.
+
     Args:
         prefer_local: If True, prefer local Ollama models over API
         api_key: Anthropic API key
@@ -455,10 +496,8 @@ def create_router(
         Configured LLMRouter instance
     """
     if prefer_local:
-        # Default routes already prefer local
-        return LLMRouter(api_key=api_key, **kwargs)
+        router = LLMRouter(api_key=api_key, **kwargs)
     else:
-        # Create routes that prefer Anthropic
         routes = {}
         for task_type, default_route in LLMRouter.DEFAULT_ROUTES.items():
             routes[task_type] = RouteConfig(
@@ -468,5 +507,7 @@ def create_router(
                 fallback_provider="ollama",
                 fallback_model=default_route.primary_model,
             )
+        router = LLMRouter(routes=routes, api_key=api_key, **kwargs)
 
-        return LLMRouter(routes=routes, api_key=api_key, **kwargs)
+    router.apply_user_settings()
+    return router

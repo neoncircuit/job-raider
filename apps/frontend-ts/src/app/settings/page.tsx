@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,6 +8,12 @@ import { z } from "zod/v4";
 import { toast } from "sonner";
 import { settingsApi } from "@/lib/api/settings";
 import type { AppSettings } from "@/lib/types/api";
+import {
+  RECOMMENDED_OLLAMA_LARGE,
+  RECOMMENDED_OLLAMA_SMALL,
+  applyOllamaTierModelsLocally,
+  deriveOllamaTierModels,
+} from "@/lib/ollama-tiers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,8 +47,22 @@ type FormValues = z.infer<typeof schema>;
 
 // ── Form ──────────────────────────────────────────────────────────────────────
 
+/**
+ * Settings form with API, Ollama model tiers, parameters, and cost limits.
+ *
+ * Remount via ``key`` when server settings change so local draft state resets
+ * without syncing through an effect.
+ *
+ * @param initial - Settings loaded from the API.
+ * @returns Configured settings form element.
+ */
 function SettingsForm({ initial }: { initial: AppSettings }) {
   const qc = useQueryClient();
+  const initialTiers = deriveOllamaTierModels(initial.routing);
+  const [routing, setRouting] = useState(initial.routing);
+  const [smallModel, setSmallModel] = useState(initialTiers.small);
+  const [largeModel, setLargeModel] = useState(initialTiers.large);
+  const [modelsDirty, setModelsDirty] = useState(false);
 
   const {
     register,
@@ -61,11 +82,50 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
     },
   });
 
+  const { data: models } = useQuery({
+    queryKey: ["settings-models"],
+    queryFn: settingsApi.getModels,
+    staleTime: 30_000,
+  });
+
+  const installed = models?.ollama_installed ?? [];
+  const ollamaOptions = models?.ollama ?? [];
+  const recommendedSmall =
+    models?.recommended?.small ?? RECOMMENDED_OLLAMA_SMALL;
+  const recommendedLarge =
+    models?.recommended?.large ?? RECOMMENDED_OLLAMA_LARGE;
+
+  const ensureOption = (value: string, options: string[]) =>
+    value && !options.includes(value) ? [value, ...options] : options;
+
+  const smallOptions = ensureOption(smallModel, ollamaOptions);
+  const largeOptions = ensureOption(largeModel, ollamaOptions);
+
+  const applyTier = (small: string, large: string) => {
+    const next = applyOllamaTierModelsLocally(
+      { ...initial, routing },
+      small,
+      large,
+    );
+    setRouting(next.routing);
+    setSmallModel(small);
+    setLargeModel(large);
+    setModelsDirty(true);
+  };
+
   const save = useMutation({
-    mutationFn: (values: FormValues) =>
-      settingsApi.update({ ...initial, ...values }),
+    mutationFn: (values: FormValues) => {
+      const withTiers = applyOllamaTierModelsLocally(
+        { ...initial, routing, ...values },
+        smallModel,
+        largeModel,
+      );
+      return settingsApi.update(withTiers);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["settings"] });
+      qc.invalidateQueries({ queryKey: ["settings-models"] });
+      setModelsDirty(false);
       toast.success("Settings saved.");
     },
     onError: () => toast.error("Failed to save settings."),
@@ -81,8 +141,14 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
   });
 
   const validate = useMutation({
-    mutationFn: (values: FormValues) =>
-      settingsApi.validate({ ...initial, ...values }),
+    mutationFn: (values: FormValues) => {
+      const withTiers = applyOllamaTierModelsLocally(
+        { ...initial, routing, ...values },
+        smallModel,
+        largeModel,
+      );
+      return settingsApi.validate(withTiers);
+    },
     onSuccess: (result) => {
       if (result.valid) {
         toast.success("Settings are valid.");
@@ -110,7 +176,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 <Label htmlFor="ollama_host">Ollama Host</Label>
                 <Input
                   id="ollama_host"
-                  placeholder="http://localhost:11434"
+                  placeholder="localhost:11434"
                   {...register("api_config.ollama_host")}
                 />
                 {errors.api_config?.ollama_host && (
@@ -130,6 +196,88 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 <p className="text-xs text-muted-foreground">
                   Leave blank to use Ollama only.
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Ollama Models</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Choose any installed Ollama model for small (fast) and large
+                (quality) tasks. Documented recommended defaults are{" "}
+                <span className="font-mono">{recommendedSmall}</span> and{" "}
+                <span className="font-mono">{recommendedLarge}</span>.
+              </p>
+              {installed.length === 0 && (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  No models detected from Ollama yet. Start Ollama and pull a
+                  model, or type a model name and save anyway.
+                </p>
+              )}
+              <div className="space-y-1">
+                <Label htmlFor="ollama_small">Small model (fast)</Label>
+                <select
+                  id="ollama_small"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                  value={smallModel}
+                  onChange={(e) => applyTier(e.target.value, largeModel)}
+                >
+                  {smallOptions.length === 0 && (
+                    <option value={smallModel}>{smallModel}</option>
+                  )}
+                  {smallOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                      {name === recommendedSmall ? " (recommended)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ollama_large">Large model (quality)</Label>
+                <select
+                  id="ollama_large"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                  value={largeModel}
+                  onChange={(e) => applyTier(smallModel, e.target.value)}
+                >
+                  {largeOptions.length === 0 && (
+                    <option value={largeModel}>{largeModel}</option>
+                  )}
+                  {largeOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                      {name === recommendedLarge ? " (recommended)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyTier(recommendedSmall, recommendedLarge)}
+                >
+                  Use recommended (3b / 7b)
+                </Button>
+                {installed.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const first = installed[0];
+                      const second = installed[1] ?? installed[0];
+                      applyTier(first, second);
+                    }}
+                  >
+                    Use first installed models
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -253,7 +401,10 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
 
       {/* Actions */}
       <div className="flex gap-3 border-t pt-4">
-        <Button type="submit" disabled={save.isPending || !isDirty}>
+        <Button
+          type="submit"
+          disabled={save.isPending || (!isDirty && !modelsDirty)}
+        >
           {save.isPending ? "Saving…" : "Save Settings"}
         </Button>
         <Button
@@ -302,7 +453,12 @@ export default function SettingsPage() {
         <p className="text-sm text-muted-foreground">Loading settings…</p>
       )}
       {isError && <QueryErrorBanner message="Failed to load settings." />}
-      {data && <SettingsForm initial={data} />}
+      {data && (
+        <SettingsForm
+          key={data.updated_at ?? data.version ?? "settings"}
+          initial={data}
+        />
+      )}
     </PageContainer>
   );
 }

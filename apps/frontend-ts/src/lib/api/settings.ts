@@ -1,5 +1,5 @@
 import { request } from "./client";
-import type { AppSettings } from "@/lib/types/api";
+import type { AppSettings, AvailableModelsResponse } from "@/lib/types/api";
 
 export const settingsApi = {
   get: () => request<AppSettings>("GET", "/settings/"),
@@ -16,5 +16,11 @@ export const settingsApi = {
       { body: settings },
     ),
 
-  getModels: () => request<Record<string, string[]>>("GET", "/settings/models"),
+  getModels: () =>
+    request<AvailableModelsResponse>("GET", "/settings/models"),
+
+  applyOllamaDefaults: (smallModel: string, largeModel: string) =>
+    request<AppSettings>("POST", "/settings/ollama-defaults", {
+      body: { small_model: smallModel, large_model: largeModel },
+    }),
 };

@@ -34,10 +34,12 @@ class ModelRouting(BaseModel):
         default=Provider.OLLAMA, description="Primary provider to use"
     )
     primary_model: str = Field(description="Primary model name")
-    fallback_provider: Provider = Field(
+    fallback_provider: Optional[Provider] = Field(
         default=Provider.ANTHROPIC, description="Fallback provider"
     )
-    fallback_model: str = Field(description="Fallback model name")
+    fallback_model: Optional[str] = Field(
+        default=None, description="Fallback model name"
+    )
 
     @field_validator("task_type")
     @classmethod
@@ -183,46 +185,26 @@ class SettingsStorage:
         Get default settings configuration.
 
         Returns:
-            Default UserSettings
+            Default UserSettings mirrored from LLMRouter.DEFAULT_ROUTES
+            (recommended Ollama defaults: qwen2.5:3b / qwen2.5:7b).
         """
-        # Default routing configurations
-        default_routing = {
-            "selection": ModelRouting(
-                task_type="selection",
-                primary_provider=Provider.OLLAMA,
-                primary_model="qwen2.5:3b",
-                fallback_provider=Provider.ANTHROPIC,
-                fallback_model="claude-haiku-4-5-20251001",
-            ),
-            "scoring": ModelRouting(
-                task_type="scoring",
-                primary_provider=Provider.OLLAMA,
-                primary_model="qwen2.5:3b",
-                fallback_provider=Provider.OLLAMA,
-                fallback_model="gemma3:4b",
-            ),
-            "jd_extraction": ModelRouting(
-                task_type="jd_extraction",
-                primary_provider=Provider.OLLAMA,
-                primary_model="qwen2.5:7b",
-                fallback_provider=Provider.ANTHROPIC,
-                fallback_model="claude-sonnet-4-6",
-            ),
-            "resume_writing": ModelRouting(
-                task_type="resume_writing",
-                primary_provider=Provider.OLLAMA,
-                primary_model="qwen2.5:7b",
-                fallback_provider=Provider.ANTHROPIC,
-                fallback_model="claude-sonnet-4-6",
-            ),
-            "resume_parsing": ModelRouting(
-                task_type="resume_parsing",
-                primary_provider=Provider.OLLAMA,
-                primary_model="qwen2.5:7b",
-                fallback_provider=Provider.ANTHROPIC,
-                fallback_model="claude-sonnet-4-6",
-            ),
-        }
+        from ..llm.router import LLMRouter
+
+        default_routing: Dict[str, ModelRouting] = {}
+        for task_type, route in LLMRouter.DEFAULT_ROUTES.items():
+            fallback_provider = None
+            if route.fallback_provider:
+                try:
+                    fallback_provider = Provider(route.fallback_provider)
+                except ValueError:
+                    fallback_provider = None
+            default_routing[task_type.value] = ModelRouting(
+                task_type=task_type.value,
+                primary_provider=Provider(route.primary_provider),
+                primary_model=route.primary_model,
+                fallback_provider=fallback_provider,
+                fallback_model=route.fallback_model,
+            )
 
         return UserSettings(
             routing=default_routing,

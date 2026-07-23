@@ -126,7 +126,11 @@ class ConfigLoader:
             strategy = {
                 "primary": routing.primary_provider.value,
                 "model": routing.primary_model,
-                "fallback": routing.fallback_provider.value,
+                "fallback": (
+                    routing.fallback_provider.value
+                    if routing.fallback_provider
+                    else None
+                ),
                 "fallback_model": routing.fallback_model,
             }
             router_strategies[task_type] = strategy

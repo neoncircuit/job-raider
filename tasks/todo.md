@@ -3132,3 +3132,20 @@ cd apps/frontend-ts
 npm run type-check
 npm run test -- --run tests/components/job-targets-editor.test.tsx tests/components/search-bar-profile-targets.test.tsx
 ```
+
+## Ollama Model Freedom of Choice (2026-07-23)
+
+**Overview:** Settings UI to pick any installed Ollama model for small/large task tiers; documented recommended defaults remain `qwen2.5:3b` / `qwen2.5:7b`. Live `/api/tags` list merged into models endpoint; `create_router()` applies saved routing.
+
+### Checklist
+
+- [x] Live Ollama tags + recommended defaults on `GET /settings/models`
+- [x] `create_router` / `reload_routes_from_settings` merge saved routing
+- [x] `POST /settings/ollama-defaults` + Settings UI small/large pickers
+- [x] Validation accepts installed Ollama models
+- [x] Backend + frontend tests
+
+### Review
+
+- Recommended defaults stay documented as 3b/7b; users can save any available models as their personal defaults.
+- Embedding route is preserved via merge (not wiped by partial settings).

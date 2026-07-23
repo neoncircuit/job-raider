@@ -7,16 +7,36 @@ Author: Job Raider
 Date: 2026-04-24
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
+from ...api.ollama_models import (
+    RECOMMENDED_OLLAMA_LARGE,
+    RECOMMENDED_OLLAMA_SMALL,
+    apply_ollama_tier_models,
+    list_installed_ollama_models,
+)
 from ...api.settings import UserSettings, get_storage
 from ...config.loader import get_config_loader
 from ...utils.logger import Components, get_logger
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
+
+
+class OllamaTierDefaults(BaseModel):
+    """Request body for applying small/large Ollama model defaults."""
+
+    small_model: str = Field(
+        default=RECOMMENDED_OLLAMA_SMALL,
+        description="Primary model for small/fast tasks",
+    )
+    large_model: str = Field(
+        default=RECOMMENDED_OLLAMA_LARGE,
+        description="Primary model for large/quality tasks",
+    )
 
 
 @router.get("/", response_model=UserSettings)
@@ -66,18 +86,66 @@ async def reset_settings() -> UserSettings:
     return defaults
 
 
-@router.get("/models", response_model=Dict[str, list])
-async def get_available_models() -> Dict[str, list]:
+@router.post("/ollama-defaults", response_model=UserSettings)
+async def apply_ollama_defaults(body: OllamaTierDefaults) -> UserSettings:
     """
-    Get list of available models by provider.
+    Apply small/large Ollama model choices across task routing and save.
 
-    Returns models defined in model_config.yaml, organized by provider.
+    Updates every Ollama-primary tier task to use the given models.
+    Recommended documented defaults remain qwen2.5:3b / qwen2.5:7b;
+    any installed model name may be supplied.
+
+    Args:
+        body: Small and large model names to apply.
 
     Returns:
-        Dict with provider names as keys and lists of model names as values
+        Updated settings after save.
+    """
+    storage = get_storage()
+    settings = storage.load_settings()
+    settings.routing = apply_ollama_tier_models(
+        settings.routing,
+        body.small_model.strip(),
+        body.large_model.strip(),
+    )
+    storage.save_settings(settings)
+    logger.info(
+        "Applied Ollama defaults: small=%s large=%s",
+        body.small_model,
+        body.large_model,
+    )
+    return settings
+
+
+@router.get("/models", response_model=Dict[str, Any])
+async def get_available_models() -> Dict[str, Any]:
+    """
+    Get available models by provider.
+
+    Merges YAML catalog entries with models installed in the local Ollama
+    instance (when reachable). Includes recommended small/large defaults.
+
+    Returns:
+        Dict with provider lists plus ``recommended`` and ``ollama_installed``.
     """
     loader = get_config_loader()
-    return loader.get_available_models()
+    storage = get_storage()
+    settings = storage.load_settings()
+    catalog = loader.get_available_models()
+
+    installed = list_installed_ollama_models(settings.api_config.ollama_host)
+    catalog_ollama = list(catalog.get("ollama", []))
+    merged_ollama = sorted(set(catalog_ollama) | set(installed))
+
+    return {
+        **catalog,
+        "ollama": merged_ollama,
+        "ollama_installed": installed,
+        "recommended": {
+            "small": RECOMMENDED_OLLAMA_SMALL,
+            "large": RECOMMENDED_OLLAMA_LARGE,
+        },
+    }
 
 
 @router.get("/models/{provider}/{model}", response_model=Dict[str, Any])
@@ -106,12 +174,38 @@ async def get_model_info(provider: str, model: str) -> Dict[str, Any]:
     return info
 
 
+def _allowed_models_for_provider(
+    provider: str,
+    catalog: Dict[str, List[str]],
+    installed_ollama: List[str],
+) -> Optional[List[str]]:
+    """
+    Build the allowlist used during settings validation for a provider.
+
+    Args:
+        provider: Provider key (ollama, anthropic, ...).
+        catalog: Models from YAML config.
+        installed_ollama: Live Ollama tags.
+
+    Returns:
+        Combined allowlist, or None when the provider has no catalog entry
+        (skip strict checks).
+    """
+    if provider not in catalog and provider != "ollama":
+        return None
+    base = list(catalog.get(provider, []))
+    if provider == "ollama":
+        return sorted(set(base) | set(installed_ollama))
+    return base
+
+
 @router.post("/validate", response_model=Dict[str, Any])
 async def validate_settings(settings: UserSettings) -> Dict[str, Any]:
     """
     Validate settings without saving them.
 
     Checks if API keys are valid, models exist, and configuration is consistent.
+    Ollama models may be either YAML-catalogued or installed locally.
 
     Args:
         settings: Settings to validate
@@ -120,37 +214,61 @@ async def validate_settings(settings: UserSettings) -> Dict[str, Any]:
         Validation results with success status and any errors/warnings
     """
     loader = get_config_loader()
-    results = {"valid": True, "errors": [], "warnings": []}
+    results: Dict[str, Any] = {"valid": True, "errors": [], "warnings": []}
 
-    # Validate model names exist
-    available_models = loader.get_available_models()
+    catalog = loader.get_available_models()
+    installed = list_installed_ollama_models(settings.api_config.ollama_host)
+    if not installed:
+        results["warnings"].append(
+            "Ollama is unreachable or has no models; installed-model checks skipped."
+        )
 
     for task_type, routing in settings.routing.items():
-        # Check primary model exists
         primary_provider = routing.primary_provider.value
-        if primary_provider in available_models:
-            if routing.primary_model not in available_models[primary_provider]:
+        allowed = _allowed_models_for_provider(primary_provider, catalog, installed)
+        if allowed is not None and routing.primary_model not in allowed:
+            if primary_provider == "ollama" and not installed and routing.primary_model:
+                results["warnings"].append(
+                    f"{task_type}: Primary model '{routing.primary_model}' "
+                    "could not be verified (Ollama unreachable)."
+                )
+            else:
                 results["errors"].append(
-                    f"{task_type}: Primary model '{routing.primary_model}' not found for {primary_provider}"
+                    f"{task_type}: Primary model '{routing.primary_model}' "
+                    f"not found for {primary_provider}"
                 )
                 results["valid"] = False
 
-        # Check fallback model exists
-        fallback_provider = routing.fallback_provider.value
-        if fallback_provider in available_models:
-            if routing.fallback_model not in available_models[fallback_provider]:
-                results["errors"].append(
-                    f"{task_type}: Fallback model '{routing.fallback_model}' not found for {fallback_provider}"
-                )
-                results["valid"] = False
+        if routing.fallback_provider and routing.fallback_model:
+            fallback_provider = routing.fallback_provider.value
+            allowed_fb = _allowed_models_for_provider(
+                fallback_provider, catalog, installed
+            )
+            if allowed_fb is not None and routing.fallback_model not in allowed_fb:
+                if (
+                    fallback_provider == "ollama"
+                    and not installed
+                    and routing.fallback_model
+                ):
+                    results["warnings"].append(
+                        f"{task_type}: Fallback model '{routing.fallback_model}' "
+                        "could not be verified (Ollama unreachable)."
+                    )
+                else:
+                    results["errors"].append(
+                        f"{task_type}: Fallback model '{routing.fallback_model}' "
+                        f"not found for {fallback_provider}"
+                    )
+                    results["valid"] = False
 
-    # Validate Ollama host format
-    if settings.api_config.ollama_host and ":" not in settings.api_config.ollama_host:
+    host_without_scheme = settings.api_config.ollama_host.replace(
+        "http://", ""
+    ).replace("https://", "")
+    if settings.api_config.ollama_host and ":" not in host_without_scheme:
         results["warnings"].append(
             "Ollama host should be in format 'host:port' (e.g., 'localhost:11434')"
         )
 
-    # Validate cost limits
     if settings.cost_limits.max_api_cost_per_run < 0:
         results["errors"].append("max_api_cost_per_run cannot be negative")
         results["valid"] = False
@@ -186,13 +304,10 @@ async def get_merged_config() -> Dict[str, Any]:
 @router.get("/config/default-routing", response_model=Dict[str, Dict[str, str]])
 async def get_default_routing() -> Dict[str, Dict[str, str]]:
     """
-    Get default routing from model_config.yaml.
-
-    Returns the routing configuration as defined in the YAML file,
-    before applying user settings.
+    Get default routing configuration from YAML.
 
     Returns:
-        Default routing configuration
+        Default routing map keyed by task type.
     """
     loader = get_config_loader()
     return loader.get_default_routing_from_config()

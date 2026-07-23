@@ -8,6 +8,8 @@ round-trips the settings returned by GET back through PUT to avoid constructing
 a full UserSettings body by hand.
 """
 
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
 
@@ -23,10 +25,19 @@ class TestSettingsAPI:
 
     def test_get_available_models(self, client: TestClient):
         """GET /api/settings/models returns models grouped by provider."""
-        response = client.get("/api/settings/models")
+        with patch(
+            "src.api.routes.settings.list_installed_ollama_models",
+            return_value=["qwen2.5:3b", "custom-local:1b"],
+        ):
+            response = client.get("/api/settings/models")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, dict)
+        assert "recommended" in data
+        assert data["recommended"]["small"] == "qwen2.5:3b"
+        assert data["recommended"]["large"] == "qwen2.5:7b"
+        assert "custom-local:1b" in data.get("ollama", [])
+        assert "custom-local:1b" in data.get("ollama_installed", [])
 
     def test_get_merged_config(self, client: TestClient):
         """GET /api/settings/config/merged returns merged configuration."""
@@ -48,3 +59,14 @@ class TestSettingsAPI:
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, dict)
+
+    def test_apply_ollama_defaults(self, client: TestClient):
+        """POST /api/settings/ollama-defaults updates tier routing and saves."""
+        response = client.post(
+            "/api/settings/ollama-defaults",
+            json={"small_model": "gemma3:4b", "large_model": "qwen2.5:14b"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["routing"]["selection"]["primary_model"] == "gemma3:4b"
+        assert data["routing"]["resume_writing"]["primary_model"] == "qwen2.5:14b"
