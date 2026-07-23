@@ -19,6 +19,7 @@ import {
   TrustTierBadge,
 } from "@/components/trust-analysis";
 import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
+import { ScoreExplanationDisplay } from "@/components/score-explanation";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatSalaryRange } from "@/lib/utils/format";
 import {
@@ -33,9 +34,11 @@ import {
   useClassifyJob,
   useAnalyzeTrust,
   useGenerateCoverLetter,
+  useExplainJobFit,
   useCachedClassification,
   useCachedTrustAnalysis,
   useCachedCoverLetter,
+  useCachedExplainFit,
 } from "@/lib/hooks/use-jobs";
 
 interface JobDetailProps {
@@ -69,10 +72,12 @@ export function JobDetail({
   const classify = useClassifyJob();
   const analyzeTrust = useAnalyzeTrust();
   const generateCoverLetter = useGenerateCoverLetter();
+  const explainFit = useExplainJobFit();
 
   const cachedClassification = useCachedClassification(job.job_id);
   const cachedTrust = useCachedTrustAnalysis(job.job_id);
   const cachedCoverLetter = useCachedCoverLetter(job.job_id, deepCheck);
+  const cachedExplainFit = useCachedExplainFit(job.job_id);
 
   const classification =
     cachedClassification.data ?? job.classification ?? null;
@@ -208,6 +213,26 @@ export function JobDetail({
             </Badge>
           )}
         </div>
+
+        {job.relevance_score != null && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+              Relevance Score
+            </p>
+            <Badge
+              className={cn(
+                "text-sm px-2 py-1",
+                job.relevance_score >= 80
+                  ? "bg-success text-success-foreground"
+                  : job.relevance_score >= 60
+                    ? "bg-warning text-warning-foreground"
+                    : "bg-destructive text-destructive-foreground",
+              )}
+            >
+              {job.relevance_score}/100
+            </Badge>
+          </div>
+        )}
       </div>
 
       {/* Scrollable content section */}
@@ -323,7 +348,7 @@ export function JobDetail({
             </div>
           ) : (
             <Button size="sm" onClick={onApply} className="flex-1">
-              Auto Apply
+              Simulate Apply
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={onSave}>
@@ -361,6 +386,36 @@ export function JobDetail({
           >
             {analyzeTrust.isPending ? "Analyzing Trust..." : "Analyze Trust"}
           </Button>
+        )}
+
+        {job.relevance_score != null && !cachedExplainFit.data && (
+          <div className="space-y-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => explainFit.mutate({ id: job.job_id, job })}
+              disabled={
+                explainFit.isPending || (job.description?.length ?? 0) < 50
+              }
+              className="w-full"
+            >
+              {explainFit.isPending ? "Explaining..." : "Explain This Match"}
+            </Button>
+            {(job.description?.length ?? 0) < 50 && (
+              <p className="text-xs text-muted-foreground text-center">
+                Job description needs at least 50 characters to explain.
+              </p>
+            )}
+          </div>
+        )}
+
+        {cachedExplainFit.data && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Why This Match
+            </p>
+            <ScoreExplanationDisplay explanation={cachedExplainFit.data} />
+          </div>
         )}
 
         {coverLetterData ? (

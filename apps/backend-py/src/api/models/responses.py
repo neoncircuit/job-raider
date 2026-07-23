@@ -311,6 +311,10 @@ class ScoreExplanationResponse(BaseModel):
     strengths: List[str] = Field(default_factory=list)
     concerns: List[str] = Field(default_factory=list)
     improvements: List[str] = Field(default_factory=list)
+    fit_score: Optional[int] = Field(
+        default=None,
+        description="Heuristic score the explanation was grounded on, when available.",
+    )
 
 
 class PrepSheetResponse(BaseModel):

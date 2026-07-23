@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
   BookOpen,
   Compass,
   Flag,
@@ -24,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { formatDatetime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import type {
@@ -38,23 +41,6 @@ import type {
   UpskillingRoadmapRequest,
   UserProfile,
 } from "@/lib/types/api";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const emptyProfile: UserProfile = {
-  contact_info: {},
-  target_job: {
-    keywords: [],
-    locations: [],
-    experience_levels: [],
-    remote_preference: false,
-    constraint_mode: "boost",
-  },
-  skills: [],
-  work_experience: [],
-  education: [],
-  projects: [],
-};
 
 // ── Shared polling hook ───────────────────────────────────────────────────────
 
@@ -886,7 +872,8 @@ function CareerGoalsTab({ profile }: { profile: UserProfile }) {
  * Career Coach page providing tabbed access to career analyses.
  *
  * Loads the user profile and renders four analysis tabs: Career Path, Skill
- * Gap, Upskilling Roadmap, and Career Goals.
+ * Gap, Upskilling Roadmap, and Career Goals. Requires a real profile (contact
+ * name) before analysis forms are shown — mirrors the cover-letter CV gate.
  *
  * @returns The Career Coach page component.
  */
@@ -898,42 +885,65 @@ export default function CareerCoachPage() {
     retry: 1,
   });
 
-  const profile = profileQuery.data ?? emptyProfile;
+  const profile = profileQuery.data;
+  const hasProfile = !!profile?.contact_info?.name;
 
   return (
     <PageContainer variant="wide">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Compass className="h-6 w-6" />
-          Career Coach
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Run AI-powered career analyses against your profile: career-path
-          insights, skill gaps, upskilling roadmaps, and SMART goals.
-        </p>
-      </div>
+      <PageHeader
+        title="Career Coach"
+        subtitle="Run AI-powered career analyses against your profile: career-path insights, skill gaps, upskilling roadmaps, and SMART goals."
+        icon={<Compass className="h-6 w-6" />}
+      />
 
-      <Tabs defaultValue="career">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="career">Career Path</TabsTrigger>
-          <TabsTrigger value="gap">Skill Gap</TabsTrigger>
-          <TabsTrigger value="roadmap">Upskilling Roadmap</TabsTrigger>
-          <TabsTrigger value="goals">Career Goals</TabsTrigger>
-        </TabsList>
+      {profileQuery.isLoading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Loading profile…
+        </div>
+      )}
 
-        <TabsContent value="career" className="mt-6">
-          <CareerAnalysisTab profile={profile} />
-        </TabsContent>
-        <TabsContent value="gap" className="mt-6">
-          <GapAnalysisTab profile={profile} />
-        </TabsContent>
-        <TabsContent value="roadmap" className="mt-6">
-          <UpskillingRoadmapTab profile={profile} />
-        </TabsContent>
-        <TabsContent value="goals" className="mt-6">
-          <CareerGoalsTab profile={profile} />
-        </TabsContent>
-      </Tabs>
+      {!profileQuery.isLoading && !hasProfile && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5">
+          <p className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-500">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              No profile uploaded &mdash; career analyses need an active resume.{" "}
+              <Link
+                href="/profile"
+                className="font-medium underline underline-offset-2"
+              >
+                Upload one on the Profile page
+              </Link>
+              .
+            </span>
+          </p>
+        </div>
+      )}
+
+      {hasProfile && profile && (
+        <Tabs defaultValue="career">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="career">Career Path</TabsTrigger>
+            <TabsTrigger value="gap">Skill Gap</TabsTrigger>
+            <TabsTrigger value="roadmap">Upskilling Roadmap</TabsTrigger>
+            <TabsTrigger value="goals">Career Goals</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="career" className="mt-6">
+            <CareerAnalysisTab profile={profile} />
+          </TabsContent>
+          <TabsContent value="gap" className="mt-6">
+            <GapAnalysisTab profile={profile} />
+          </TabsContent>
+          <TabsContent value="roadmap" className="mt-6">
+            <UpskillingRoadmapTab profile={profile} />
+          </TabsContent>
+          <TabsContent value="goals" className="mt-6">
+            <CareerGoalsTab profile={profile} />
+          </TabsContent>
+        </Tabs>
+      )}
     </PageContainer>
   );
 }

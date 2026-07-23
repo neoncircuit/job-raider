@@ -67,7 +67,14 @@ async def run_pipeline_async(
         # Run pipeline
         result = orchestrator.run()
 
-        # Update status
+        # Preserve an explicit user cancel; soft-cancel cannot stop the
+        # orchestrator mid-flight, but the final status must stay cancelled.
+        if pipeline_runs[run_id].get("status") == "cancelled":
+            pipeline_runs[run_id]["result"] = result
+            pipeline_runs[run_id]["completed_at"] = datetime.now()
+            logger.info(f"Pipeline {run_id} finished after cancel request")
+            return
+
         pipeline_runs[run_id]["status"] = "completed"
         pipeline_runs[run_id]["result"] = result
         pipeline_runs[run_id]["completed_at"] = datetime.now()
@@ -88,6 +95,11 @@ async def run_pipeline_async(
 
     except Exception as e:
         logger.error(f"Pipeline {run_id} failed: {e}", exc_info=True)
+
+        if pipeline_runs[run_id].get("status") == "cancelled":
+            pipeline_runs[run_id]["error"] = str(e)
+            pipeline_runs[run_id]["completed_at"] = datetime.now()
+            return
 
         # Update status
         pipeline_runs[run_id]["status"] = "failed"

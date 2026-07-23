@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   LayoutDashboard,
   Rocket,
@@ -75,7 +76,11 @@ export function SidebarContent({ onNavItemClick }: SidebarContentProps) {
     <>
       {/* Logo */}
       <div className="px-4 pt-5 pb-4">
-        <div className="flex items-center gap-2.5">
+        <Link
+          href="/dashboard"
+          onClick={onNavItemClick}
+          className="flex items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        >
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-lg cosmic-glow">
             <Zap size={15} className="text-primary-foreground" fill="current" />
           </div>
@@ -87,7 +92,7 @@ export function SidebarContent({ onNavItemClick }: SidebarContentProps) {
               Automated Pipeline
             </p>
           </div>
-        </div>
+        </Link>
       </div>
 
       <Separator className="bg-sidebar-border" />

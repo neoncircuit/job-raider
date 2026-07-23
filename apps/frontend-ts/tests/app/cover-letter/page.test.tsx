@@ -39,6 +39,25 @@ vi.mock("@/lib/api/coverLetter", () => ({
   downloadFile: (...args: unknown[]) => mockDownloadFile(...args),
 }));
 
+vi.mock("@/lib/api/profile", () => ({
+  profileApi: {
+    get: vi.fn().mockResolvedValue({
+      contact_info: { name: "Test User", email: "test@example.com" },
+      target_job: {
+        keywords: [],
+        locations: [],
+        experience_levels: [],
+        remote_preference: false,
+        constraint_mode: "boost",
+      },
+      skills: [],
+      work_experience: [],
+      education: [],
+      projects: [],
+    }),
+  },
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),

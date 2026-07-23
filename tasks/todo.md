@@ -2845,7 +2845,7 @@ make test          # 534 passed
 
 **Out of scope:** Full user auth/multi-tenancy; keep single-user semantics.
 
-### 3. Plain-language "Why" explanations for scores
+### 3. Plain-language "Why" explanations for scores [COMPLETED 2026-07-23]
 
 **Why:** Numbers without reasoning are not actionable for users.
 
@@ -2854,6 +2854,8 @@ make test          # 534 passed
 - Surface both as on-demand "Explain this score" buttons in the frontend.
 
 **Constraint:** Do not call the LLM on every keystroke; only on explicit user action.
+
+**Outcome:** The cover-letter side (`POST /cover-letter/explain-fit`, `POST /cover-letter/explain-letter`) was already implemented and wired into the Cover Letter page as part of item 1's stabilization work. The remaining gap was the Jobs page, which had no explanation UI at all — see "Job-Fit Explanation on the Jobs Page" below. Reused the existing `/cover-letter/explain-fit` endpoint (it already accepts arbitrary job fields and needed no changes) rather than adding a duplicate `/jobs/{job_id}/explain-fit` route, since `GET /jobs/{job_id}` and `POST /jobs/{job_id}/score` remain 501 stubs with no server-side job storage by ID.
 
 ### 4. Frontend E2E coverage for the audit area
 
@@ -3020,4 +3022,113 @@ a.load()
 print(bool(b.active_id), b.active_id in b.profiles)
 "
 # True True
+```
+
+---
+
+## Job-Fit Explanation on the Jobs Page (2026-07-23) [COMPLETED]
+
+**Overview:** Closed the Jobs-page half of the "Future-Considerations Plan" item 3. The cover-letter side (`/cover-letter/explain-fit`, `/cover-letter/explain-letter`) was already shipped as part of item 1; the Jobs page itself had no score-explanation UI, and `job-detail.tsx` did not even display `relevance_score` (only the compact `job-list-item.tsx` row did).
+
+### Approach
+
+Reused the existing `POST /cover-letter/explain-fit` endpoint directly from the Jobs page instead of adding a duplicate `/jobs/{job_id}/explain-fit` route: it already accepts `title`/`company`/`description`/`location` and computes+explains a fresh fit score, which is exactly what a job listing needs. `GET /jobs/{job_id}` and `POST /jobs/{job_id}/score` remain 501 stubs (no server-side job storage by ID exists), so this avoided adding backend logic that would only re-derive what the endpoint already does.
+
+### Changes
+
+- [x] Extracted the local `ExplanationBlock` function out of `apps/frontend-ts/src/app/cover-letter/page.tsx` into `apps/frontend-ts/src/components/score-explanation.tsx`, exported as `ScoreExplanationDisplay`, matching the naming convention of sibling display components (`CoverLetterValidationDisplay`, `TrustAnalysisDisplay`, `JobClassificationDisplay`). No behavior change to the Cover Letter page.
+- [x] Added `useExplainJobFit()` and `useCachedExplainFit()` to `apps/frontend-ts/src/lib/hooks/use-jobs.ts`, mirroring the existing `useClassifyJob()` / `useCachedClassification()` pair — calls `coverLetterApi.explainFit()` with the job's own fields and caches the result per job ID.
+- [x] Wired `apps/frontend-ts/src/components/jobs/job-detail.tsx`: added a `relevance_score` badge to the header (previously absent from this panel) and an "Explain this match" button in the footer actions, disabled while pending or when `(job.description?.length ?? 0) < 50` (the backend's `ManualCoverLetterRequest.description` requires `min_length=50`). Renders `ScoreExplanationDisplay` once an explanation is cached.
+- [x] Added `apps/backend-py/tests/unit/test_cover_letter_explain.py` — `/explain-fit` and `/explain-letter` had zero prior test coverage. Covers happy path, missing active profile (fit only — letter has no profile dependency), short-description validation, and malformed-LLM-JSON handling, mocking `create_router` at its import site in `cover_letter.py`.
+- [x] Added `apps/frontend-ts/tests/components/score-explanation.test.tsx` and `apps/frontend-ts/tests/components/job-detail.test.tsx` (job-detail had no prior test file at all).
+
+### Verification Results
+
+```bash
+cd apps/backend-py
+PYTHONPATH=. .venv/bin/python -m pytest tests/unit/test_cover_letter_explain.py -v
+# 7 passed
+
+cd apps/frontend-ts
+npm run test -- --run
+# 66 passed across 12 files
+npm run type-check     # tsc --noEmit clean
+npm run lint           # 0 new errors (one pre-existing, unrelated ref-access error in cover-letter/page.tsx)
+npm run build           # Next.js static generation succeeds (15 routes)
+npx prettier --check <changed files>   # all matched
+```
+
+Full gates from the repo root:
+
+```bash
+cd /mnt/d/GitHub/job-raider
+make lint          # exit 0 (ruff clean; mypy report-only noise is pre-existing)
+make type-check    # exit 0
+make test           # 541 passed
+```
+
+## UI/UX Polish & Unfinished-Feature Cleanup (2026-07-23)
+
+**Overview:** Perfect current single-user UI before automation / theme redesign / public deploy. Shared page chrome, honest labels for unfinished backend capabilities, metrics contract fix, score-explain polish.
+
+### Plan checklist
+
+- [x] Shared `PageHeader`, `EmptyState`, `QueryErrorBanner`; theme-fix `ErrorBoundary`
+- [x] Apply chrome/spacing across all 12 pages; Assessment nest + brand colors; logo links to `/dashboard`
+- [x] Relabel Simulate Apply; pipeline dry-run/cancel honesty; metrics outcomes contract; remove Assessment Target-a-Job mode; Explain helper text; Pipeline SourceSelector; Career Coach profile gate; Jobs empty states
+- [x] Score-explain polish (staleness clearing, `fit_score` grounding, list keys) + tests
+- [x] Document verification results
+
+### Key changes
+
+- Layout primitives under `apps/frontend-ts/src/components/layout/`
+- Outcomes types aligned to API `screening_rate` / `offer_rate` / `acceptance_rate`
+- Pipeline cancel preserves `cancelled` status on completion (backend)
+- `ScoreExplanationResponse.fit_score` returned from `/explain-fit`
+
+### Verification
+
+```bash
+# Backend (WSL)
+cd apps/backend-py
+PYTHONPATH=. .venv/bin/python -m pytest tests/unit/test_cover_letter_explain.py -q
+# 7 passed
+
+# Frontend (WSL nvm node 20)
+cd apps/frontend-ts
+npm install
+npm run type-check   # tsc --noEmit clean
+npm run test -- --run
+# 68 passed across 12 files
+```
+
+### Follow-ons (explicitly deferred)
+
+1. Preference + profile driven job-hunt automation
+2. Theme / visual redesign
+3. Public multi-user deployment
+
+## Job Preference Targeting (2026-07-23)
+
+**Overview:** Additive experimental feature � editable Profile job targets + opt-in "Use profile targets" on Pipeline/Jobs (default off). Easy to keep or discard.
+
+### Checklist
+
+- [x] Wire `target_experience` + `exclude_internships`; preference filters in `JobFilter.filter_by_profile`
+- [x] `JobTargetsEditor` on Profile
+- [x] Opt-in toggles on Pipeline + Jobs search
+- [x] Backend + frontend tests
+
+### Verification
+
+```bash
+# Backend (WSL)
+cd apps/backend-py
+PYTHONPATH=. .venv/bin/python -m pytest tests/unit/test_profile_targets.py tests/unit/test_scorer.py::TestJobFilter -q
+# 9 passed
+
+# Frontend (WSL nvm node 20)
+cd apps/frontend-ts
+npm run type-check
+npm run test -- --run tests/components/job-targets-editor.test.tsx tests/components/search-bar-profile-targets.test.tsx
 ```

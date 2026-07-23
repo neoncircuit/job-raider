@@ -34,12 +34,14 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
       return (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-red-200 bg-red-50 p-10 text-center">
-          <AlertTriangle className="h-8 w-8 text-red-400" />
+        <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-destructive/50 bg-destructive/10 p-10 text-center">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
           <div>
-            <p className="font-semibold text-red-700">Something went wrong</p>
+            <p className="font-semibold text-destructive">Something went wrong</p>
             {this.state.message && (
-              <p className="mt-1 text-sm text-red-500">{this.state.message}</p>
+              <p className="mt-1 text-sm text-destructive/80">
+                {this.state.message}
+              </p>
             )}
           </div>
           <Button variant="outline" size="sm" onClick={this.reset}>

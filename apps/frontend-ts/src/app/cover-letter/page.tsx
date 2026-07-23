@@ -42,7 +42,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
+import { ScoreExplanationDisplay } from "@/components/score-explanation";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("CoverLetterPage");
@@ -107,56 +109,6 @@ function prettyCategory(key: string): string {
 }
 
 /**
- * Render a plain-language score explanation as grouped strengths, concerns,
- * and improvement bullets. Shared by the job-fit and cover-letter panels.
- */
-function ExplanationBlock({ explanation }: { explanation: ScoreExplanation }) {
-  const sections = [
-    {
-      label: "Strengths",
-      items: explanation.strengths,
-      color: "text-emerald-600",
-      Icon: CheckCircle,
-    },
-    {
-      label: "Concerns",
-      items: explanation.concerns,
-      color: "text-amber-600",
-      Icon: AlertTriangle,
-    },
-    {
-      label: "How to improve",
-      items: explanation.improvements,
-      color: "text-indigo-500",
-      Icon: Lightbulb,
-    },
-  ];
-  const hasAny = sections.some((s) => s.items.length > 0);
-  if (!hasAny) return null;
-  return (
-    <div className="rounded-lg border p-3 space-y-2">
-      {sections.map(({ label, items, color, Icon }) =>
-        items.length > 0 ? (
-          <div key={label} className="space-y-1">
-            <p
-              className={`text-xs font-semibold flex items-center gap-1.5 ${color}`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </p>
-            <ul className="list-disc pl-5 space-y-0.5 text-xs text-muted-foreground">
-              {items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null,
-      )}
-    </div>
-  );
-}
-
-/**
  * Dedicated Cover Letter tab for the "other" category of jobs discovered
  * outside the platform's scrapers. Paste a job description, generate a
  * tailored cover letter using the local model, and export it as DOCX/PDF.
@@ -185,7 +137,8 @@ export default function CoverLetterPage() {
   const revalidateAbortRef = useRef<AbortController | null>(null);
   // Content of the last successfully validated edit. Lets no-op edit cycles
   // (e.g. space then backspace) skip re-validation so the score stays stable.
-  const lastValidatedRef = useRef<string | null>(null);
+  // State (not a ref) because it's read during render to disable the button.
+  const [lastValidated, setLastValidated] = useState<string | null>(null);
 
   // Aftermath status recorded to the job tracker for this listing.
   const [aftermath, setAftermath] = useState<string | null>(null);
@@ -217,7 +170,7 @@ export default function CoverLetterPage() {
       setResult(data);
       setEditedContent(data.cover_letter.content);
       setValidation(data.validation);
-      lastValidatedRef.current = data.cover_letter.content;
+      setLastValidated(data.cover_letter.content);
       setPrepSheet(null);
       setLetterExplain(null);
       setAftermath(null);
@@ -355,6 +308,7 @@ export default function CoverLetterPage() {
 
       if (!ready) {
         setAssessment(null);
+        setFitExplain(null);
         setAssessError(null);
         setAssessLoading(false);
         return;
@@ -376,7 +330,10 @@ export default function CoverLetterPage() {
         );
         // Only apply the latest request's result (guard against a slow earlier
         // response overwriting a newer one).
-        if (abortRef.current === controller) setAssessment(data);
+        if (abortRef.current === controller) {
+          setAssessment(data);
+          setFitExplain(null);
+        }
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           logger.error("JD assessment failed", err);
@@ -432,7 +389,8 @@ export default function CoverLetterPage() {
       );
       if (revalidateAbortRef.current === controller) {
         setValidation(data);
-        lastValidatedRef.current = editedContent;
+        setLastValidated(editedContent);
+        setLetterExplain(null);
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
@@ -446,17 +404,11 @@ export default function CoverLetterPage() {
 
   return (
     <PageContainer variant="full-bleed">
-      {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Mail className="h-6 w-6 text-primary" />
-          Cover Letter
-        </h1>
-        <p className="text-muted-foreground">
-          Paste a job description and generate a tailored, proofread cover
-          letter.
-        </p>
-      </div>
+      <PageHeader
+        title="Cover Letter"
+        subtitle="Paste a job description and generate a tailored, proofread cover letter."
+        icon={<Mail className="h-6 w-6 text-primary" />}
+      />
 
       {/* Active CV indicator: confirms which resume is being referenced. */}
       <div className="rounded-lg border bg-muted/30 px-4 py-2.5">
@@ -748,7 +700,9 @@ export default function CoverLetterPage() {
                     {fitExplain ? "Refresh explanation" : "Explain this score"}
                   </Button>
                 </div>
-                {fitExplain && <ExplanationBlock explanation={fitExplain} />}
+                {fitExplain && (
+                  <ScoreExplanationDisplay explanation={fitExplain} />
+                )}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -790,7 +744,10 @@ export default function CoverLetterPage() {
                 <CardContent className="space-y-4">
                   <Textarea
                     value={editedContent}
-                    onChange={(e) => setEditedContent(e.target.value)}
+                    onChange={(e) => {
+                      setEditedContent(e.target.value);
+                      setLetterExplain(null);
+                    }}
                     className="min-h-[320px] resize-y font-serif leading-relaxed"
                   />
                   <div className="flex items-center justify-between gap-2">
@@ -808,10 +765,7 @@ export default function CoverLetterPage() {
                       variant="outline"
                       size="sm"
                       onClick={handleRevalidate}
-                      disabled={
-                        revalidating ||
-                        editedContent === lastValidatedRef.current
-                      }
+                      disabled={revalidating || editedContent === lastValidated}
                     >
                       {revalidating ? (
                         <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -903,7 +857,7 @@ export default function CoverLetterPage() {
                   </div>
                   <CoverLetterValidationDisplay validation={validation} />
                   {letterExplain && (
-                    <ExplanationBlock explanation={letterExplain} />
+                    <ScoreExplanationDisplay explanation={letterExplain} />
                   )}
                 </div>
               )}

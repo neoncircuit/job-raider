@@ -41,6 +41,8 @@ export interface ScoreExplanation {
   strengths: string[];
   concerns: string[];
   improvements: string[];
+  /** Heuristic score the explanation was grounded on, when returned. */
+  fit_score?: number | null;
 }
 
 export interface ValidateCoverLetterRequest extends ManualCoverLetterRequest {

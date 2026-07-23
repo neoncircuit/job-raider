@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils/cn";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 /**
  * Render a circular score indicator for the LinkedIn profile analysis.
@@ -905,22 +906,17 @@ export default function LinkedInAnalysisPage() {
 
   return (
     <PageContainer variant={result ? "wide" : "form"}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            LinkedIn Analysis
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            AI-powered feedback on your LinkedIn profile to attract inbound
-            opportunities.
-          </p>
-        </div>
-        {result && (
-          <Button variant="outline" size="sm" onClick={() => setResult(null)}>
-            New Analysis
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="LinkedIn Analysis"
+        subtitle="AI-powered feedback on your LinkedIn profile to attract inbound opportunities."
+        actions={
+          result ? (
+            <Button variant="outline" size="sm" onClick={() => setResult(null)}>
+              New Analysis
+            </Button>
+          ) : undefined
+        }
+      />
 
       {result ? (
         <AnalysisDisplay analysis={result} />

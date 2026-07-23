@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils/cn";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 // ── Score ring ────────────────────────────────────────────────────────────────
 
@@ -306,22 +307,17 @@ export default function ResumeAnalysisPage() {
 
   return (
     <PageContainer variant={result ? "wide" : "form"}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Resume Analysis
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            AI-powered feedback on your resume with optional job-specific gap
-            analysis.
-          </p>
-        </div>
-        {result && (
-          <Button variant="outline" size="sm" onClick={() => setResult(null)}>
-            New Analysis
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Resume Analysis"
+        subtitle="AI-powered feedback on your resume with optional job-specific gap analysis."
+        actions={
+          result ? (
+            <Button variant="outline" size="sm" onClick={() => setResult(null)}>
+              New Analysis
+            </Button>
+          ) : undefined
+        }
+      />
 
       {result ? (
         <AnalysisDisplay analysis={result} />

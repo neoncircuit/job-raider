@@ -277,6 +277,10 @@ class TargetJob(BaseModel):
         default="boost",
         description="How apprenticeship constraints apply: 'filter' excludes non-matching jobs, 'boost' raises matching job scores",
     )
+    exclude_internships: bool = Field(
+        default=False,
+        description="When true, drop internship-level roles from preference filtering",
+    )
 
 
 class VisaStatus(str, Enum):

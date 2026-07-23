@@ -29,9 +29,9 @@ const mockHealth = {
 const mockMetricsSummary = {
   outcomes: {
     total_applications: 5,
-    interview_rate: 0.2,
-    offers: 1,
-    interviews: 1,
+    screening_rate: 0.2,
+    offer_rate: 0.1,
+    acceptance_rate: 0.05,
   },
   cost: {
     total_usd: 1.23,

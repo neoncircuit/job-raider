@@ -163,6 +163,94 @@ class TestJobFilter:
         # Legitimate jobs should remain
         assert len(filtered.listings) == len(sample_job_listings)
 
+    def test_exclude_internships_preference(self, sample_user_profile):
+        """Exclude-internships drops internship-level and internship-titled jobs."""
+        from src.models.job_listing import (
+            ExperienceLevel,
+            JobListingCollection,
+            JobSource,
+        )
+
+        sample_user_profile.targets.keywords = ["python"]
+        sample_user_profile.targets.exclude_internships = True
+        sample_user_profile.targets.constraint_mode = "boost"
+
+        intern = JobListing(
+            title="Python Internship",
+            company="Lab",
+            location="Remote",
+            description="Learn python engineering on a summer internship.",
+            skills=[],
+            source=JobSource.MANUAL,
+            job_id="intern_1",
+            experience_level=ExperienceLevel.INTERNSHIP,
+        )
+        regular = JobListing(
+            title="Python Engineer",
+            company="Lab",
+            location="Remote",
+            description="Build python services.",
+            skills=[],
+            source=JobSource.MANUAL,
+            job_id="eng_1",
+            experience_level=ExperienceLevel.ENTRY,
+        )
+        collection = JobListingCollection(listings=[intern, regular])
+        filtered = JobFilter().filter_by_profile(collection, sample_user_profile)
+
+        assert intern not in filtered.listings
+        assert regular in filtered.listings
+
+    def test_hard_experience_level_filter(self, sample_user_profile):
+        """Filter mode drops jobs whose experience level is outside targets."""
+        from src.models.job_listing import (
+            ExperienceLevel,
+            JobListingCollection,
+            JobSource,
+        )
+
+        sample_user_profile.targets.keywords = ["engineer"]
+        sample_user_profile.targets.experience_levels = [ExperienceLevel.ENTRY]
+        sample_user_profile.targets.constraint_mode = "filter"
+        sample_user_profile.targets.exclude_internships = False
+
+        entry = JobListing(
+            title="Software Engineer",
+            company="Co",
+            location="Remote",
+            description="Entry engineer role",
+            skills=[],
+            source=JobSource.MANUAL,
+            job_id="entry_1",
+            experience_level=ExperienceLevel.ENTRY,
+        )
+        senior = JobListing(
+            title="Software Engineer",
+            company="Co",
+            location="Remote",
+            description="Senior engineer role",
+            skills=[],
+            source=JobSource.MANUAL,
+            job_id="senior_1",
+            experience_level=ExperienceLevel.SENIOR,
+        )
+        unknown = JobListing(
+            title="Software Engineer",
+            company="Co",
+            location="Remote",
+            description="Engineer role unspecified level",
+            skills=[],
+            source=JobSource.MANUAL,
+            job_id="unk_1",
+            experience_level=ExperienceLevel.NOT_SPECIFIED,
+        )
+        collection = JobListingCollection(listings=[entry, senior, unknown])
+        filtered = JobFilter().filter_by_profile(collection, sample_user_profile)
+
+        assert entry in filtered.listings
+        assert senior not in filtered.listings
+        assert unknown in filtered.listings
+
 
 @pytest.mark.unit
 class TestMatchScore:

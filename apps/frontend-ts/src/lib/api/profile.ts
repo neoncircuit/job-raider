@@ -6,12 +6,13 @@ import type {
   LinkedInProfileAnalysis,
   LinkedInPeopleSearchInput,
   LinkedInPeopleSearchResponse,
+  ProfileTargetsUpdate,
 } from "@/lib/types/api";
 
 export const profileApi = {
   get: () => request<UserProfile>("GET", "/profile"),
 
-  update: (updates: Partial<UserProfile>) =>
+  update: (updates: Partial<UserProfile> | ProfileTargetsUpdate) =>
     request<{ message: string }>("PUT", "/profile", { body: updates }),
 
   export: () => request<UserProfile>("GET", "/profile/export"),

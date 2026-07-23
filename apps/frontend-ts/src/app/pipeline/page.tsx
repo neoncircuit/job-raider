@@ -27,6 +27,12 @@ import {
 } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/layout/EmptyState";
+import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
+import { SourceSelector } from "@/components/jobs/source-selector";
+import { useProfileTargets } from "@/lib/hooks/use-profile-targets";
+import Link from "next/link";
 
 // ── WebSocket hook ─────────────────────────────────────────────────────────────
 
@@ -92,6 +98,14 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
     staleTime: Infinity,
   });
 
+  const { targets, hasKeywords } = useProfileTargets();
+  const [applyTargetsEnabled, setApplyTargetsEnabled] = useState(false);
+
+  const availableSources = sources.data?.sources ?? DEFAULT_SOURCES;
+  /** Null means “follow whatever sources are available”; set once the user edits. */
+  const [selectedSources, setSelectedSources] = useState<string[] | null>(null);
+  const effectiveSources = selectedSources ?? availableSources;
+
   const {
     register,
     handleSubmit,
@@ -111,12 +125,22 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
     },
   });
 
+  const applyProfileTargets = (enabled: boolean) => {
+    setApplyTargetsEnabled(enabled);
+    if (!enabled || !targets) return;
+    setValue("keywords", (targets.keywords ?? []).join(", "), {
+      shouldValidate: true,
+    });
+    setValue("locations", (targets.locations ?? []).join(", "));
+  };
+
   const start = useMutation({
     mutationFn: (v: FormValues) =>
       pipelineApi.start({
         keywords: v.keywords.split(/[\s,]+/).filter(Boolean),
         locations: v.locations.split(/[\s,]+/).filter(Boolean),
-        sources: sources.data?.sources ?? DEFAULT_SOURCES,
+        sources:
+          effectiveSources.length > 0 ? effectiveSources : availableSources,
         min_score: v.minScore,
         max_jobs: v.maxJobs,
         scam_threshold: v.scamThreshold,
@@ -132,6 +156,29 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
 
   return (
     <form onSubmit={handleSubmit((v) => start.mutate(v))} className="space-y-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Switch
+            id="use-profile-targets-pipeline"
+            checked={applyTargetsEnabled}
+            disabled={!hasKeywords}
+            onCheckedChange={applyProfileTargets}
+          />
+          <Label htmlFor="use-profile-targets-pipeline">
+            Use profile targets
+          </Label>
+        </div>
+        {!hasKeywords && (
+          <p className="text-xs text-muted-foreground">
+            Set keywords on{" "}
+            <Link href="/profile" className="underline hover:text-foreground">
+              Profile
+            </Link>{" "}
+            to enable this option.
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <Label>Keywords *</Label>
@@ -140,7 +187,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
             {...register("keywords")}
           />
           {errors.keywords && (
-            <p className="text-xs text-red-500">{errors.keywords.message}</p>
+            <p className="text-xs text-destructive">{errors.keywords.message}</p>
           )}
         </div>
         <div className="space-y-1">
@@ -178,6 +225,21 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
             Jobs above this score are filtered out.
           </p>
         </div>
+        <div className="space-y-1">
+          <Label>Sources</Label>
+          <div className="pt-0.5">
+            <SourceSelector
+              available={availableSources}
+              selected={effectiveSources}
+              onChange={setSelectedSources}
+            />
+          </div>
+          {sources.isError && (
+            <p className="text-xs text-muted-foreground">
+              Using default sources (could not load source list).
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-6">
@@ -187,7 +249,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
             checked={dryRun}
             onCheckedChange={(v) => setValue("dryRun", v)}
           />
-          <Label htmlFor="dry_run">Dry Run (no actual applications)</Label>
+          <Label htmlFor="dry_run">Dry Run (recommended)</Label>
         </div>
         <div className="flex items-center gap-2">
           <Switch
@@ -200,8 +262,10 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
       </div>
 
       {!dryRun && (
-        <p className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
-          Dry Run is OFF — the pipeline will submit real applications.
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+          Dry Run is OFF. Real submissions are best-effort and limited (for
+          example LinkedIn Easy Apply only when credentials are configured).
+          Prefer Dry Run unless you intend to attempt live submissions.
         </p>
       )}
 
@@ -368,7 +432,7 @@ function LiveMonitor({ runId }: { runId: string }) {
 // ── History ───────────────────────────────────────────────────────────────────
 
 function HistoryPanel({ onResume }: { onResume: (id: string) => void }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["pipeline-history"],
     queryFn: () => pipelineApi.getHistory(20),
     staleTime: 30_000,
@@ -376,8 +440,20 @@ function HistoryPanel({ onResume }: { onResume: (id: string) => void }) {
 
   if (isLoading)
     return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isError)
+    return (
+      <QueryErrorBanner
+        title="Could not load history"
+        message={error instanceof Error ? error.message : "Unknown error"}
+      />
+    );
   if (!data?.runs.length)
-    return <p className="text-sm text-muted-foreground">No runs yet.</p>;
+    return (
+      <EmptyState
+        title="No runs yet"
+        description="Start a pipeline to see history here."
+      />
+    );
 
   return (
     <div className="space-y-2">
@@ -439,34 +515,34 @@ export default function PipelinePage() {
       return pipelineApi.cancel(activeRunId);
     },
     onSuccess: () => {
-      toast.success("Pipeline cancelled.");
+      toast.success(
+        "Cancel requested. The run may still finish stages already in progress.",
+      );
       setActiveRunId(null);
       setTab("history");
     },
-    onError: () => toast.error("Cancel failed."),
+    onError: () => toast.error("Cancel request failed."),
   });
 
   return (
     <PageContainer variant="content">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Pipeline</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Start, monitor, and review pipeline runs.
-          </p>
-        </div>
-        {activeRunId && tab === "monitor" && (
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => cancel.mutate()}
-            disabled={cancel.isPending}
-          >
-            <Square className="mr-1.5 h-3.5 w-3.5" />
-            Cancel Run
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Pipeline"
+        subtitle="Start, monitor, and review pipeline runs."
+        actions={
+          activeRunId && tab === "monitor" ? (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => cancel.mutate()}
+              disabled={cancel.isPending}
+            >
+              <Square className="mr-1.5 h-3.5 w-3.5" />
+              Request Cancel
+            </Button>
+          ) : undefined
+        }
+      />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
@@ -499,9 +575,10 @@ export default function PipelinePage() {
           {activeRunId ? (
             <LiveMonitor runId={activeRunId} />
           ) : (
-            <p className="text-sm text-muted-foreground">
-              No active run. Start a pipeline first.
-            </p>
+            <EmptyState
+              title="No active run"
+              description="Start a pipeline first to open the live monitor."
+            />
           )}
         </TabsContent>
 

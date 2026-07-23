@@ -360,6 +360,18 @@ export interface TargetJob {
   experience_levels: ExperienceLevel[];
   remote_preference: boolean;
   constraint_mode: "boost" | "filter";
+  /** When true, preference filtering drops internship listings. */
+  exclude_internships?: boolean;
+}
+
+/** Flat payload accepted by PUT /profile for job-hunt targets. */
+export interface ProfileTargetsUpdate {
+  target_keywords?: string[];
+  target_locations?: string[];
+  target_experience?: ExperienceLevel[];
+  remote_preference?: boolean;
+  constraint_mode?: "boost" | "filter";
+  exclude_internships?: boolean;
 }
 
 export interface UserProfile {
@@ -462,12 +474,12 @@ export interface CostMetrics {
 
 export interface OutcomeMetrics {
   total_applications: number;
-  interviews: number;
-  offers: number;
-  rejection_count?: number;
-  interview_rate: number;
+  /** Fraction of applications that reached screening (0–1). */
+  screening_rate: number;
+  /** Fraction of applications that received an offer (0–1). */
   offer_rate: number;
-  overall_rate: number;
+  /** Fraction of applications that were accepted (0–1). */
+  acceptance_rate: number;
 }
 
 export interface HealthMetrics {

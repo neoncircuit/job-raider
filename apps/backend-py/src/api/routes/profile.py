@@ -22,7 +22,7 @@ from ...generation.linkedin_analyzer import LinkedInAnalyzer
 from ...generation.resume_analyzer import ResumeAnalyzer
 from ...linkedin.session import LinkedInSession, LinkedInSessionConfig
 from ...llm.router import LLMRouter
-from ...models.job_listing import JobListing
+from ...models.job_listing import ExperienceLevel, JobListing
 from ...models.linkedin_analysis import (
     LinkedInPeopleSearchInput,
     LinkedInPeopleSearchResponse,
@@ -36,6 +36,30 @@ from ..profile_storage import ProfileStorage
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
+
+
+def _parse_experience_levels(values: list[str]) -> list[ExperienceLevel]:
+    """
+    Map string labels to ExperienceLevel enums, skipping unknown values.
+
+    Args:
+        values: Experience level labels from the client (e.g. "Entry Level").
+
+    Returns:
+        List of recognized ExperienceLevel values.
+    """
+    by_value = {level.value.lower(): level for level in ExperienceLevel}
+    by_name = {level.name.lower(): level for level in ExperienceLevel}
+    parsed: list[ExperienceLevel] = []
+    for raw in values:
+        key = (raw or "").strip().lower()
+        if not key:
+            continue
+        level = by_value.get(key) or by_name.get(key.replace(" ", "_"))
+        if level is not None and level not in parsed:
+            parsed.append(level)
+    return parsed
+
 
 # Module-level singletons for expensive analyzer objects
 _llm_router: Optional[LLMRouter] = None
@@ -354,6 +378,9 @@ async def get_profile():
             "salary_min": profile.targets.salary_min,
             "industries": profile.targets.industries,
             "constraint_mode": profile.targets.constraint_mode,
+            "exclude_internships": getattr(
+                profile.targets, "exclude_internships", False
+            ),
         },
         "skills": [
             {
@@ -508,6 +535,10 @@ async def update_profile(request: ProfileUpdateRequest):
         profile.targets.keywords = request.target_keywords
     if request.target_locations is not None:
         profile.targets.locations = request.target_locations
+    if request.target_experience is not None:
+        profile.targets.experience_levels = _parse_experience_levels(
+            request.target_experience
+        )
     if request.remote_preference is not None:
         profile.targets.remote_preference = request.remote_preference
     if request.salary_min is not None:
@@ -515,6 +546,8 @@ async def update_profile(request: ProfileUpdateRequest):
     if request.constraint_mode is not None:
         if request.constraint_mode in ("filter", "boost"):
             profile.targets.constraint_mode = request.constraint_mode
+    if request.exclude_internships is not None:
+        profile.targets.exclude_internships = request.exclude_internships
 
     # Update apprenticeship contract
     _update_apprenticeship(profile, request)

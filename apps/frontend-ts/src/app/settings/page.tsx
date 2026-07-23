@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -278,6 +280,11 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+/**
+ * Settings page: always renders chrome, with loading/error inside the container.
+ *
+ * @returns Settings page with API, model, and cost configuration.
+ */
 export default function SettingsPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["settings"],
@@ -285,22 +292,19 @@ export default function SettingsPage() {
     staleTime: 60_000,
   });
 
-  if (isLoading)
-    return (
-      <p className="text-sm text-muted-foreground p-4">Loading settings…</p>
-    );
-  if (isError || !data)
-    return <p className="text-sm text-red-500 p-4">Failed to load settings.</p>;
-
   return (
     <PageContainer variant="form">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Configure model routing, API keys, and cost limits.
-        </p>
-      </div>
-      <SettingsForm initial={data} />
+      <PageHeader
+        title="Settings"
+        subtitle="Configure model routing, API keys, and cost limits."
+      />
+      {isLoading && (
+        <p className="text-sm text-muted-foreground">Loading settings…</p>
+      )}
+      {isError && (
+        <QueryErrorBanner message="Failed to load settings." />
+      )}
+      {data && <SettingsForm initial={data} />}
     </PageContainer>
   );
 }

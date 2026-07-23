@@ -5,6 +5,9 @@ import { Search, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppState } from "@/app/providers";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/layout/EmptyState";
+import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
 import { SearchBar } from "@/components/jobs/search-bar";
 import { JobListItem } from "@/components/jobs/job-list-item";
 import { JobDetail } from "@/components/jobs/job-detail";
@@ -51,6 +54,11 @@ export default function JobsPage() {
   const isSaved = (id: string) => savedIds.has(id);
   const isAppliedExternally = (id: string) => externalIds.has(id);
 
+  /**
+   * Commit a structured job search and reset pagination/selection.
+   *
+   * @param request - Search request payload from the search bar.
+   */
   const handleSearch = (request: JobSearchRequest) => {
     logger.info(`Committed search request: ${JSON.stringify(request)}`);
     setSearchParams(request);
@@ -59,6 +67,11 @@ export default function JobsPage() {
     setSelectedJobId(null);
   };
 
+  /**
+   * Switch to the Google Jobs fallback panel for a free-text query.
+   *
+   * @param query - Google search query string.
+   */
   const handleGoogleSearch = (query: string) => {
     logger.info(`Google search triggered - query: ${query}`);
     setGoogleQuery(query);
@@ -71,12 +84,10 @@ export default function JobsPage() {
       variant="full-bleed"
       className="h-full flex flex-col gap-4 space-y-0"
     >
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Jobs</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Search and browse job listings.
-        </p>
-      </div>
+      <PageHeader
+        title="Jobs"
+        subtitle="Search and browse job listings."
+      />
 
       <SearchBar onSearch={handleSearch} onGoogleSearch={handleGoogleSearch} />
 
@@ -87,9 +98,10 @@ export default function JobsPage() {
       )}
 
       {search.error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-          Search failed: {search.error.message}
-        </div>
+        <QueryErrorBanner
+          title="Search failed"
+          message={search.error.message}
+        />
       )}
 
       {googleQuery ? (
@@ -124,11 +136,22 @@ export default function JobsPage() {
             </p>
           </div>
         </div>
-      ) : searchParams == null || jobs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Run a search to see results.
-        </p>
-      ) : (
+      ) : searchParams == null && !search.isLoading ? (
+        <EmptyState
+          title="Run a search…"
+          description="Enter keywords and filters above to browse matching job listings."
+          icon={<Search className="h-8 w-8" />}
+        />
+      ) : searchParams != null &&
+        jobs.length === 0 &&
+        !search.isLoading &&
+        !search.error ? (
+        <EmptyState
+          title="No jobs found"
+          description="Try different keywords, locations, or sources and search again."
+          icon={<Search className="h-8 w-8" />}
+        />
+      ) : searchParams != null && jobs.length > 0 ? (
         <div className="flex flex-1 flex-col gap-4 min-h-0 overflow-hidden lg:flex-row">
           {/* Left panel — job list */}
           <div className="flex w-full shrink-0 flex-col gap-2 overflow-y-auto lg:w-96">
@@ -201,13 +224,15 @@ export default function JobsPage() {
                 }
               />
             ) : (
-              <div className="flex h-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
-                Select a job to see details
-              </div>
+              <EmptyState
+                title="Select a job"
+                description="Choose a listing from the left to see full details."
+                className="h-full"
+              />
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </PageContainer>
   );
 }

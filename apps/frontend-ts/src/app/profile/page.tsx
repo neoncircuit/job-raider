@@ -12,7 +12,6 @@ import {
   Wrench,
   Award,
   Globe,
-  Target,
   ExternalLink,
   Link,
   MapPin,
@@ -27,12 +26,15 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { ApplicationSettingsModal } from "@/components/application-settings-modal";
+import { JobTargetsEditor } from "@/components/job-targets-editor";
 import {
   SkillsRadar,
   ExperienceTimeline,
   StrengthAssessment,
 } from "@/components/profile-visualizations";
+import { Button } from "@/components/ui/button";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -330,54 +332,11 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
             </Card>
           )}
 
-          {/* Target Job */}
-          {target_job &&
-            (target_job.keywords?.length > 0 ||
-              target_job.locations?.length > 0) && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <Target className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
-                    Job Targets
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  {target_job.keywords?.length > 0 && (
-                    <div>
-                      <p className="mb-1 text-xs font-medium text-muted-foreground dark:text-muted-foreground">
-                        Keywords
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {target_job.keywords.map((k) => (
-                          <Badge key={k} variant="outline" className="text-xs">
-                            {k}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {target_job.locations?.length > 0 && (
-                    <div>
-                      <p className="mb-1 text-xs font-medium text-muted-foreground dark:text-muted-foreground">
-                        Locations
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {target_job.locations.map((l) => (
-                          <Badge key={l} variant="outline" className="text-xs">
-                            {l}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {target_job.remote_preference && (
-                    <p className="text-xs text-indigo-600 dark:text-primary font-medium">
-                      Open to remote
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+          {/* Target Job — experimental editable prefs */}
+          <JobTargetsEditor
+            key={JSON.stringify(target_job ?? {})}
+            targetJob={target_job}
+          />
 
           {/* Certifications */}
           {(certifications?.length ?? 0) > 0 && (
@@ -636,6 +595,13 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+/**
+ * Profile page: parsed resume display, upload, and application settings.
+ *
+ * Always renders PageContainer + PageHeader so loading does not drop chrome.
+ *
+ * @returns Profile page content.
+ */
 export default function ProfilePage() {
   const [showUpload, setShowUpload] = useState(false);
   const [showAppSettings, setShowAppSettings] = useState(false);
@@ -649,53 +615,48 @@ export default function ProfilePage() {
 
   const hasProfile = !!data?.contact_info?.name;
 
-  if (isLoading)
-    return (
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground p-4">
-        Loading profile…
-      </p>
-    );
-
   return (
     <PageContainer variant="wide">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground dark:text-foreground">
-            Profile
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground">
-            Your parsed resume and target preferences.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {hasProfile && (
-            <button
-              onClick={() => setShowAppSettings(true)}
-              className="flex items-center gap-1.5 rounded-md border border-border dark:border-border px-3 py-1.5 text-sm text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-muted"
+      <PageHeader
+        title="Profile"
+        subtitle="Your parsed resume and target preferences."
+        actions={
+          <>
+            {hasProfile && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAppSettings(true)}
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Application Settings
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowUpload((v) => !v)}
             >
-              <Settings className="h-3.5 w-3.5" />
-              Application Settings
-            </button>
-          )}
-          <button
-            onClick={() => setShowUpload((v) => !v)}
-            className="rounded-md border border-border dark:border-border px-3 py-1.5 text-sm text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-muted"
-          >
-            {showUpload
-              ? "Cancel"
-              : hasProfile
-                ? "Re-upload Resume"
-                : "Upload Resume"}
-          </button>
-        </div>
-      </div>
+              {showUpload
+                ? "Cancel"
+                : hasProfile
+                  ? "Re-upload Resume"
+                  : "Upload Resume"}
+            </Button>
+          </>
+        }
+      />
 
-      {(showUpload || !hasProfile) && (
+      {isLoading && (
+        <p className="text-sm text-muted-foreground">Loading profile…</p>
+      )}
+
+      {!isLoading && (showUpload || !hasProfile) && (
         <ResumeDropzone onUploaded={() => setShowUpload(false)} />
       )}
 
-      {isError && !hasProfile && (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground">
+      {isError && !hasProfile && !isLoading && (
+        <p className="text-sm text-muted-foreground">
           No profile yet. Upload your resume to get started.
         </p>
       )}

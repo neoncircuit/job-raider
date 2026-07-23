@@ -136,6 +136,7 @@ class ProfileUpdateRequest(BaseModel):
     remote_preference: Optional[bool] = None
     salary_min: Optional[float] = None
     constraint_mode: Optional[str] = None
+    exclude_internships: Optional[bool] = None
 
     # Apprenticeship/Traineeship contract (optional)
     apprenticeship_field: Optional[str] = None

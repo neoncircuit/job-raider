@@ -22,6 +22,8 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils/cn";
 import { DISCAssessment } from "@/components/disc-assessment";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
 
 // ── Difficulty colors ────────────────────────────────────────────────────────
 
@@ -41,35 +43,57 @@ const QUESTION_TYPE_COLORS: Record<string, string> = {
 
 // ── Setup View ───────────────────────────────────────────────────────────────
 
+/**
+ * Setup form for skill-based practice and DISC entry.
+ *
+ * Does not wrap itself in PageContainer — the parent page owns page chrome.
+ *
+ * @param onStart - Start a skill-based technical assessment session.
+ * @param onStartDISC - Switch to the DISC assessment flow.
+ * @returns Setup form JSX.
+ */
 function SetupView({
   onStart,
   onStartDISC,
 }: {
   onStart: (
-    mode: "job_targeted" | "skill_based",
     skills: string[],
     difficulty: DifficultyLevel,
     count: number,
   ) => void;
   onStartDISC: () => void;
 }) {
-  const [mode, setMode] = useState<"job_targeted" | "skill_based">(
-    "skill_based",
-  );
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("intermediate");
   const [count, setCount] = useState(5);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-
-  const skillsQuery = assessmentApi.availableSkills;
-
-  // Simple fetch for skills
   const [availableSkills, setAvailableSkills] = useState<string[]>([]);
-  useEffect(() => {
-    skillsQuery()
-      .then((data) => setAvailableSkills(data.skills))
-      .catch(() => {});
-  }, [skillsQuery]);
+  const [skillsError, setSkillsError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    assessmentApi
+      .availableSkills()
+      .then((data) => {
+        if (!cancelled) {
+          setAvailableSkills(data.skills);
+          setSkillsError(null);
+        }
+      })
+      .catch((err: Error) => {
+        if (!cancelled) {
+          setSkillsError(err.message || "Failed to load available skills.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /**
+   * Toggle a skill chip in the practice selection.
+   *
+   * @param skill - Skill label to add or remove.
+   */
   const toggleSkill = (skill: string) => {
     setSelectedSkills((prev) =>
       prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill],
@@ -77,50 +101,33 @@ function SetupView({
   };
 
   return (
-    <PageContainer variant="form">
+    <div className="space-y-6">
       <div className="text-center">
-        <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-4">
-          <GraduationCap className="h-8 w-8 text-indigo-600" />
+        <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
+          <GraduationCap className="h-8 w-8 text-primary" />
         </div>
         <h2 className="text-xl font-bold text-foreground">
           Technical Assessment Trainer
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Practice technical questions tailored to your target roles and skills.
+          Practice technical questions tailored to your skills, or take a DISC
+          assessment.
         </p>
       </div>
 
-      {/* Mode toggle */}
-      <div className="flex gap-3 justify-center">
-        <button
-          onClick={() => setMode("skill_based")}
-          className={cn(
-            "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-            mode === "skill_based"
-              ? "bg-indigo-600 text-white shadow-md"
-              : "bg-card text-muted-foreground border hover:bg-muted",
-          )}
-        >
+      {/* Mode actions: skill practice (primary) + DISC (secondary) */}
+      <div className="flex gap-3 justify-center flex-wrap">
+        <span className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground shadow-md">
           Practice by Skill
-        </button>
-        <button
-          onClick={() => setMode("job_targeted")}
-          className={cn(
-            "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-            mode === "job_targeted"
-              ? "bg-indigo-600 text-white shadow-md"
-              : "bg-card text-muted-foreground border hover:bg-muted",
-          )}
-        >
-          Target a Job
-        </button>
-        <button
-          onClick={onStartDISC}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-purple-600 text-white border hover:bg-purple-700 shadow-md"
-        >
+        </span>
+        <Button variant="outline" onClick={onStartDISC}>
           DISC Assessment
-        </button>
+        </Button>
       </div>
+
+      {skillsError && (
+        <QueryErrorBanner title="Skills unavailable" message={skillsError} />
+      )}
 
       {/* Skill picker */}
       <div>
@@ -129,11 +136,12 @@ function SetupView({
           {availableSkills.map((skill) => (
             <button
               key={skill}
+              type="button"
               onClick={() => toggleSkill(skill)}
               className={cn(
                 "px-3 py-1.5 rounded-full text-sm transition-colors",
                 selectedSkills.includes(skill)
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted text-foreground hover:bg-muted",
               )}
             >
@@ -157,6 +165,7 @@ function SetupView({
           ).map((d) => (
             <button
               key={d}
+              type="button"
               onClick={() => setDifficulty(d)}
               className={cn(
                 "px-3 py-1.5 rounded-md text-sm capitalize transition-colors",
@@ -180,19 +189,19 @@ function SetupView({
           max={15}
           value={count}
           onChange={(e) => setCount(Number(e.target.value))}
-          className="w-full accent-indigo-600"
+          className="w-full accent-primary"
         />
       </div>
 
       <Button
-        onClick={() => onStart(mode, selectedSkills, difficulty, count)}
+        onClick={() => onStart(selectedSkills, difficulty, count)}
         className="w-full"
         size="lg"
       >
         <Play className="mr-2 h-4 w-4" />
         Start Assessment
       </Button>
-    </PageContainer>
+    </div>
   );
 }
 
@@ -460,7 +469,7 @@ function ResultsView({
   onNewSession: () => void;
 }) {
   return (
-    <PageContainer variant="form">
+    <div className="space-y-6">
       <div className="text-center">
         <div
           className={cn(
@@ -591,7 +600,7 @@ function ResultsView({
         <RotateCcw className="mr-2 h-4 w-4" />
         Start New Session
       </Button>
-    </PageContainer>
+    </div>
   );
 }
 
@@ -662,13 +671,12 @@ export default function AssessmentPage() {
   });
 
   const handleStart = (
-    mode: "job_targeted" | "skill_based",
     skills: string[],
     difficulty: DifficultyLevel,
     count: number,
   ) => {
     startMutation.mutate({
-      mode,
+      mode: "skill_based",
       target_skills: skills,
       difficulty,
       question_count: count,
@@ -685,15 +693,11 @@ export default function AssessmentPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          Assessment Trainer
-        </h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Practice technical questions to prepare for interviews.
-        </p>
-      </div>
+    <PageContainer variant="form">
+      <PageHeader
+        title="Assessment Trainer"
+        subtitle="Practice technical questions to prepare for interviews."
+      />
 
       {view === "setup" && (
         <SetupView onStart={handleStart} onStartDISC={handleStartDISC} />
@@ -720,6 +724,6 @@ export default function AssessmentPage() {
       {view === "results" && session && (
         <ResultsView session={session} onNewSession={handleBack} />
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -9,7 +9,7 @@ import {
   Send,
   DollarSign,
   TrendingUp,
-  Briefcase,
+  Percent,
 } from "lucide-react";
 import { healthApi } from "@/lib/api/health";
 import { metricsApi } from "@/lib/api/metrics";
@@ -20,6 +20,9 @@ import { formatCurrency, formatDatetime } from "@/lib/utils/format";
 import { STATUS_COLORS } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/layout/EmptyState";
+import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
 import { useIsClient } from "@/lib/hooks/use-is-client";
 
 function HealthIcon({ status }: { status: string }) {
@@ -37,10 +40,9 @@ interface StatCardProps {
   value: string | number;
   sub?: string;
   icon: React.ReactNode;
-  iconBg: string;
 }
 
-function StatCard({ title, value, sub, icon, iconBg }: StatCardProps) {
+function StatCard({ title, value, sub, icon }: StatCardProps) {
   return (
     <div
       className={cn(
@@ -58,12 +60,7 @@ function StatCard({ title, value, sub, icon, iconBg }: StatCardProps) {
           </p>
           {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
         </div>
-        <div
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded border bg-card shadow-sm",
-            iconBg,
-          )}
-        >
+        <div className="flex h-8 w-8 items-center justify-center rounded border border-border bg-muted/40 text-muted-foreground shadow-sm">
           {icon}
         </div>
       </div>
@@ -107,23 +104,29 @@ export default function DashboardPage() {
 
   return (
     <PageContainer variant="full-bleed">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">
-          Dashboard
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Overview of your job application pipeline.
-        </p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Overview of your job application pipeline."
+      />
+
+      {ready && metrics.isError && (
+        <QueryErrorBanner
+          title="Metrics unavailable"
+          message={metrics.error.message}
+        />
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 stagger-in">
         <StatCard
           title="Applications"
           value={ready && m ? m.outcomes.total_applications : "—"}
-          sub={`${ready && m ? (m.outcomes.interview_rate * 100).toFixed(1) : "—"}% interview rate`}
-          icon={<Send className="h-5 w-5 text-white" />}
-          iconBg="bg-card/15"
+          sub={`${
+            ready && m
+              ? (m.outcomes.screening_rate * 100).toFixed(1)
+              : "—"
+          }% screening rate`}
+          icon={<Send className="h-4 w-4" />}
         />
         <StatCard
           title="API Cost"
@@ -133,22 +136,25 @@ export default function DashboardPage() {
               ? `${formatCurrency(m.cost.per_application)} / app`
               : undefined
           }
-          icon={<DollarSign className="h-5 w-5 text-white" />}
-          iconBg="bg-card/15"
+          icon={<DollarSign className="h-4 w-4" />}
         />
         <StatCard
           title="Local Usage"
           value={ready && m ? `${m.cost.local_usage_percent.toFixed(0)}%` : "—"}
           sub="Ollama vs API calls"
-          icon={<TrendingUp className="h-5 w-5 text-white" />}
-          iconBg="bg-card/15"
+          icon={<TrendingUp className="h-4 w-4" />}
         />
         <StatCard
-          title="Offers"
-          value={ready && m ? m.outcomes.offers : "—"}
-          sub="Received so far"
-          icon={<Briefcase className="h-5 w-5 text-white" />}
-          iconBg="bg-card/15"
+          title="Offer Rate"
+          value={
+            ready && m ? `${(m.outcomes.offer_rate * 100).toFixed(1)}%` : "—"
+          }
+          sub={
+            ready && m
+              ? `${(m.outcomes.acceptance_rate * 100).toFixed(1)}% acceptance`
+              : "Received so far"
+          }
+          icon={<Percent className="h-4 w-4" />}
         />
       </div>
 
@@ -166,7 +172,7 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground">Checking…</p>
             )}
             {ready && health.isError && (
-              <p className="text-sm text-red-500">Backend unreachable</p>
+              <QueryErrorBanner message="Backend unreachable" />
             )}
             {ready &&
               h?.checks?.map((c) => (
@@ -201,12 +207,15 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground">Loading…</p>
             )}
             {ready && history.isError && (
-              <p className="text-sm text-red-500">Could not load history</p>
+              <QueryErrorBanner message="Could not load history" />
             )}
             {ready && history.data?.runs.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No runs yet. Start a pipeline to begin.
-              </p>
+              <EmptyState
+                className="py-8"
+                title="No runs yet"
+                description="Start a pipeline to begin scraping and scoring jobs."
+                action={{ label: "Go to Pipeline", href: "/pipeline" }}
+              />
             )}
             {ready &&
               history.data?.runs.map((r) => (

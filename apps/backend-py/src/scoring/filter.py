@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional, Set
 
-from ..models.job_listing import JobListing, JobListingCollection
+from ..models.job_listing import ExperienceLevel, JobListing, JobListingCollection
 from ..models.user_profile import UserProfile
 from ..utils.location_normalizer import location_matches
 from ..utils.logger import Components, get_logger
@@ -26,6 +26,16 @@ class MatchReason(str, Enum):
     LOCATION = "location"
     EXPERIENCE = "experience"
     REMOTE = "remote"
+
+
+# Substrings that indicate an internship listing (title/description).
+_INTERNSHIP_TEXT_MARKERS = (
+    "internship",
+    "intern ",
+    " intern",
+    "summer intern",
+    "student intern",
+)
 
 
 @dataclass
@@ -228,7 +238,116 @@ class JobFilter:
                 if term not in self.keywords:
                     self.keywords.append(term)
 
-        return self.filter_collection(collection)
+        filtered = self.filter_collection(collection)
+        return self._apply_preference_constraints(filtered, profile)
+
+    def _apply_preference_constraints(
+        self,
+        collection: JobListingCollection,
+        profile: UserProfile,
+    ) -> JobListingCollection:
+        """
+        Apply experience-level and internship preference constraints.
+
+        Exclude-internships applies whenever enabled. Experience-level hard
+        filtering applies only when ``constraint_mode == "filter"`` and the
+        profile lists target levels. Unspecified job levels are kept.
+
+        Args:
+            collection: Already keyword-filtered listings.
+            profile: User profile with targets.
+
+        Returns:
+            Collection with preference constraints applied.
+        """
+        exclude_internships = bool(
+            getattr(profile.targets, "exclude_internships", False)
+        )
+        allowed_levels = list(profile.targets.experience_levels or [])
+        hard_level_filter = (
+            profile.targets.constraint_mode == "filter" and bool(allowed_levels)
+        )
+
+        if not exclude_internships and not hard_level_filter:
+            return collection
+
+        kept: List[JobListing] = []
+        for listing in collection.listings:
+            if exclude_internships and self._looks_like_internship(listing):
+                continue
+            if hard_level_filter and not self._experience_level_allowed(
+                listing, allowed_levels
+            ):
+                continue
+            kept.append(listing)
+
+        self.logger.info(
+            "Preference constraints %s -> %s listings "
+            "(exclude_internships=%s, hard_level_filter=%s)",
+            len(collection.listings),
+            len(kept),
+            exclude_internships,
+            hard_level_filter,
+        )
+
+        return JobListingCollection(
+            listings=kept,
+            source=collection.source,
+            metadata={
+                **collection.metadata,
+                "preference_constraints": {
+                    "exclude_internships": exclude_internships,
+                    "hard_level_filter": hard_level_filter,
+                    "allowed_levels": [
+                        level.value if hasattr(level, "value") else str(level)
+                        for level in allowed_levels
+                    ],
+                },
+            },
+        )
+
+    @staticmethod
+    def _looks_like_internship(listing: JobListing) -> bool:
+        """
+        Return True when a listing is internship-level or internship-worded.
+
+        Args:
+            listing: Job listing to inspect.
+
+        Returns:
+            Whether the listing should be treated as an internship.
+        """
+        if listing.experience_level == ExperienceLevel.INTERNSHIP:
+            return True
+        if getattr(listing, "job_type", None) is not None:
+            job_type = listing.job_type
+            job_type_value = (
+                job_type.value if hasattr(job_type, "value") else str(job_type)
+            )
+            if "internship" in job_type_value.lower():
+                return True
+        searchable = f"{listing.title} {listing.description or ''}".lower()
+        return any(marker in searchable for marker in _INTERNSHIP_TEXT_MARKERS)
+
+    @staticmethod
+    def _experience_level_allowed(
+        listing: JobListing,
+        allowed_levels: List[ExperienceLevel],
+    ) -> bool:
+        """
+        Return True when the listing's level is allowed or unspecified.
+
+        Args:
+            listing: Job listing to inspect.
+            allowed_levels: Target experience levels from the profile.
+
+        Returns:
+            Whether the listing passes a hard experience-level filter.
+        """
+        level = listing.experience_level
+        if level is None or level == ExperienceLevel.NOT_SPECIFIED:
+            return True
+        return level in allowed_levels
 
     def get_matching_keywords(
         self,

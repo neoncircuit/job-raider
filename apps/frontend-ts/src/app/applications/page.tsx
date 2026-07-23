@@ -30,6 +30,9 @@ import { formatDate } from "@/lib/utils/format";
 import { STATUS_COLORS } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/layout/EmptyState";
+import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
 
 // ── Application card ──────────────────────────────────────────────────────────
 
@@ -391,15 +394,22 @@ export default function ApplicationsPage() {
   });
 
   const summary = allQuery.data?.summary;
+  const dashboardError =
+    allQuery.error ?? savedQuery.error ?? hiddenQuery.error;
 
   return (
     <PageContainer variant="full-bleed">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Applications</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Track and manage your job applications.
-        </p>
-      </div>
+      <PageHeader
+        title="Applications"
+        subtitle="Track and manage your job applications."
+      />
+
+      {dashboardError && (
+        <QueryErrorBanner
+          title="Failed to load applications"
+          message={dashboardError.message}
+        />
+      )}
 
       {/* Summary tiles */}
       {summary && (
@@ -443,10 +453,13 @@ export default function ApplicationsPage() {
             <p className="text-sm text-muted-foreground">Loading…</p>
           )}
           {(allQuery.data?.applications ?? []).length === 0 &&
-            !allQuery.isLoading && (
-              <p className="text-sm text-muted-foreground">
-                No applications tracked yet.
-              </p>
+            !allQuery.isLoading &&
+            !allQuery.isError && (
+              <EmptyState
+                title="No applications tracked yet"
+                description="Search and apply to jobs, or track an external application above."
+                action={{ label: "Browse jobs", href: "/jobs" }}
+              />
             )}
           {(allQuery.data?.applications ?? []).map((app) => (
             <AppCard key={app.application_id} app={app} />
@@ -459,10 +472,13 @@ export default function ApplicationsPage() {
           )}
           {(savedQuery.data?.applications ?? []).filter((a) => a.is_bookmarked)
             .length === 0 &&
-            !savedQuery.isLoading && (
-              <p className="text-sm text-muted-foreground">
-                No saved jobs yet.
-              </p>
+            !savedQuery.isLoading &&
+            !savedQuery.isError && (
+              <EmptyState
+                title="No saved jobs yet"
+                description="Bookmark listings from the Jobs or Pipeline pages to revisit them here."
+                action={{ label: "Browse jobs", href: "/jobs" }}
+              />
             )}
           {(savedQuery.data?.applications ?? [])
             .filter((a) => a.is_bookmarked)
@@ -481,8 +497,13 @@ export default function ApplicationsPage() {
           )}
           {(hiddenQuery.data?.applications ?? []).filter((a) => a.is_hidden)
             .length === 0 &&
-            !hiddenQuery.isLoading && (
-              <p className="text-sm text-muted-foreground">No hidden jobs.</p>
+            !hiddenQuery.isLoading &&
+            !hiddenQuery.isError && (
+              <EmptyState
+                title="No hidden jobs"
+                description="Jobs you hide from the pipeline appear here so you can restore them later."
+                action={{ label: "Open pipeline", href: "/pipeline" }}
+              />
             )}
           {(hiddenQuery.data?.applications ?? [])
             .filter((a) => a.is_hidden)

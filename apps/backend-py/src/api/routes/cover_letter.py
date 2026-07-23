@@ -550,7 +550,9 @@ async def explain_job_fit(request: ManualCoverLetterRequest):
             f"Job description:\n{request.description[:4000]}\n\n"
             f"Candidate profile (JSON):\n{profile_summary}"
         )
-        return await _generate_explanation(system_prompt, user_prompt)
+        explanation = await _generate_explanation(system_prompt, user_prompt)
+        explanation.fit_score = int(match.total_score)
+        return explanation
     except Exception as exc:
         logger.error("Fit explanation failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Explanation failed: {exc}")
