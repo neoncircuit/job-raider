@@ -24,7 +24,7 @@ test.describe("Dashboard page", () => {
     await expect(main.getByText("Recent Pipeline Runs")).toBeVisible();
 
     // Mocked metrics populate a stat sub-text (unique to the fixture).
-    await expect(main.getByText("20.0% interview rate")).toBeVisible();
+    await expect(main.getByText("20.0% screening rate")).toBeVisible();
 
     // Mocked pipeline history renders a run row (unique to the fixture).
     await expect(main.getByText(/12 scraped/)).toBeVisible();

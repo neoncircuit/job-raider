@@ -23,7 +23,7 @@ from ..generation.selector import ResumeSelector
 from ..generation.validator import ResumeValidator
 from ..llm.embedding_client import EmbeddingClient
 from ..llm.router import LLMRouter
-from ..models.job_listing import JobListing, JobListingCollection
+from ..models.job_listing import JobListing, JobListingCollection, JobSource
 from ..models.user_profile import UserProfile
 from ..rag.bm25_retriever import BM25Retriever
 from ..rag.chunker import TextChunker
@@ -34,6 +34,7 @@ from ..rag.vector_store import ChromaStore
 from ..scoring.filter import JobFilter, QuickFilter
 from ..scoring.matcher import JobMatcher, MatchScore
 from ..scoring.scam_detector import JobScamDetector, ScamFilter
+from ..scrapers.base import SearchParams
 from ..scrapers.manager import ScraperManager
 from ..scrapers.storage import JobListingStorage
 from ..submission.applied_tracker import AppliedJobsTracker
@@ -143,12 +144,19 @@ class PipelineStages:
                 f"Starting scraping stage: keywords={keywords}, locations={locations}"
             )
 
-            # Perform scraping
-            listings = self.scraper_manager.search_all(
-                keywords=keywords,
-                locations=locations,
-                sources=sources,
+            # Perform scraping. SearchParams takes a single optional location
+            # (matches the convention in api/routes/jobs.py); multi-location
+            # search is not currently supported, so only the first is used.
+            source_map = {"linkedin": JobSource.LINKEDIN, "jsearch": JobSource.JSEARCH}
+            source_enums = (
+                [source_map[s] for s in sources if s in source_map] if sources else None
             )
+            params = SearchParams(
+                keywords=keywords,
+                location=locations[0] if locations else None,
+            )
+            collection = self.scraper_manager.search_all(params, sources=source_enums)
+            listings = collection.listings
 
             # Store raw results
             self.context.raw_listings = listings
@@ -207,7 +215,9 @@ class PipelineStages:
 
             # Store in context and persistent storage
             self.context.deduplicated_listings = deduplicated
-            self.context.storage.save_listings(deduplicated)
+            self.context.storage.save_collection(
+                JobListingCollection(listings=deduplicated)
+            )
 
             # Persist scraper-detected applied status to tracker
             applied_tracker = AppliedJobsTracker()
@@ -427,7 +437,7 @@ class PipelineStages:
 
             scored = []
             for job in listings:
-                score = self.job_matcher.match_and_score(
+                score = self.job_matcher.score_job(
                     job=job,
                     profile=self.context.user_profile,
                 )
@@ -711,7 +721,7 @@ class PipelineStages:
         try:
             self.logger.info(f"Generating resumes for {len(selected_listings)} jobs")
 
-            generated = []
+            generated: List[Dict[str, Any]] = []
             validation_results = []
 
             for job in selected_listings:
@@ -720,22 +730,23 @@ class PipelineStages:
                 try:
                     # Stage 1: Selection (small model)
                     selection_output = self.resume_selector.select(
-                        job_description=job.description or "",
-                        user_profile=self.context.user_profile,
+                        job=job,
+                        profile=self.context.user_profile,
                     )
 
                     # Stage 2: Write resume (large model)
                     generated_resume = self.resume_writer.write(
                         job=job,
-                        user_profile=self.context.user_profile,
-                        selection_output=selection_output,
+                        profile=self.context.user_profile,
+                        selection=selection_output,
                     )
 
                     # Stage 3: Validate
                     validation = self.resume_validator.validate(
-                        generated_resume=generated_resume,
-                        selection_output=selection_output,
-                        user_profile=self.context.user_profile,
+                        resume=generated_resume,
+                        job=job,
+                        profile=self.context.user_profile,
+                        selection=selection_output,
                     )
 
                     validation_results.append((job, validation))
@@ -780,15 +791,18 @@ class PipelineStages:
                     resume_dir = self.context.results_dir / "resumes"
                     resume_dir.mkdir(parents=True, exist_ok=True)
 
-                    pdf_path = self.resume_formatter.format_pdf(
+                    self.resume_formatter.output_dir = resume_dir
+                    formatted = self.resume_formatter.format_resume(
                         resume=generated_resume,
-                        output_path=resume_dir / f"{job.job_id}.pdf",
+                        filename=str(job.job_id),
+                        formats=["pdf", "docx"],
                     )
-
-                    docx_path = self.resume_formatter.format_docx(
-                        resume=generated_resume,
-                        output_path=resume_dir / f"{job.job_id}.docx",
-                    )
+                    if not formatted.success:
+                        raise RuntimeError(
+                            f"Resume formatting failed: {formatted.errors}"
+                        )
+                    pdf_path = formatted.pdf_path
+                    docx_path = formatted.docx_path
 
                     # Save cover letter to disk
                     cover_letter_dir = self.context.results_dir / "cover_letters"
@@ -810,7 +824,7 @@ class PipelineStages:
                     )
 
                     self.logger.info(
-                        f"Resume generated: {pdf_path} (validation: {validation.score}/100)"
+                        f"Resume generated: {pdf_path} (validation: {validation.overall_score}/100)"
                     )
 
                 except Exception as e:
@@ -820,7 +834,7 @@ class PipelineStages:
                     continue
 
             # Calculate validation statistics
-            scores = [r["validation"].score for r in generated]
+            scores = [r["validation"].overall_score for r in generated]
             metadata = {
                 "attempted_count": len(selected_listings),
                 "generated_count": len(generated),
@@ -872,7 +886,9 @@ class PipelineStages:
             self.logger.info(f"Submitting {len(generated_resumes)} applications")
 
             # Get submission info for selected jobs
-            info_map = {info.job.job_id: info for info in self.context.submission_info}
+            info_map = {
+                info.job.job_id: info for info in self.context.submission_info or []
+            }
 
             # Prepare submissions
             submissions_to_make = []

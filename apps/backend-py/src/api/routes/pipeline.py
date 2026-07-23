@@ -9,7 +9,7 @@ Date: 2026-04-21
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
@@ -166,13 +166,14 @@ async def start_pipeline(
         and profile_state.active_profile_id in profile_state.stored_profiles
     ):
         entry = profile_state.stored_profiles[profile_state.active_profile_id]
-        profile = entry.get("profile")
-        if not isinstance(profile, UserProfile):
+        maybe_profile = entry.get("profile")
+        if not isinstance(maybe_profile, UserProfile):
             pipeline_runs[run_id]["status"] = "failed"
             raise HTTPException(
                 status_code=400,
                 detail="Active profile is not loaded correctly. Re-upload your resume.",
             )
+        profile = maybe_profile
     else:
         pipeline_runs[run_id]["status"] = "failed"
         raise HTTPException(
@@ -303,7 +304,7 @@ async def cancel_pipeline(run_id: str):
 @router.get("/history")
 async def get_pipeline_history(
     limit: int = 20,
-    status: str = None,
+    status: Optional[str] = None,
 ):
     """
     Get history of pipeline runs.

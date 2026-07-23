@@ -34,8 +34,8 @@ try:
     MULTI_AGENT_AVAILABLE = True
 except ImportError:
     MULTI_AGENT_AVAILABLE = False
-    AgentCoordinator = None
-    CareerCoachAgent = None
+    AgentCoordinator = None  # type: ignore[assignment,misc]
+    CareerCoachAgent = None  # type: ignore[assignment,misc]
 
 
 class PipelineStage(str, Enum):
@@ -235,7 +235,7 @@ class PipelineOrchestrator:
             self.agent_coordinator = AgentCoordinator()
 
             # Initialize Career Coach Agent if enabled
-            if self.config.enable_career_coach and CareerCoachAgent:
+            if self.config.enable_career_coach and CareerCoachAgent is not None:
                 career_coach = CareerCoachAgent(llm_router=self.llm_router)
                 self.agent_coordinator.register_agent(career_coach)
                 self.logger.info("Career Coach Agent registered")
@@ -627,7 +627,7 @@ class PipelineOrchestrator:
         results_file = self.results_dir / f"pipeline_run_{timestamp_str}.json"
 
         # Serialize results
-        serialized = {
+        serialized: Dict[str, Any] = {
             "start_time": start_time.isoformat(),
             "end_time": end_time.isoformat(),
             "duration_seconds": (end_time - start_time).total_seconds(),
@@ -688,6 +688,8 @@ class PipelineOrchestrator:
                 ),
             },
             "storage": {
-                "total_listings": self.storage.count_total(),
+                "total_listings": self.storage.get_statistics().get(
+                    "total_listings", 0
+                ),
             },
         }
