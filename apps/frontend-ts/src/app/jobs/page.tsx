@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { Search, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { useAppState } from "@/app/providers";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -21,6 +28,11 @@ import {
   useMarkAppliedElsewhere,
   useApplyJob,
 } from "@/lib/hooks/use-jobs";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import type { JobListing } from "@/lib/types/api";
+
+/** Tailwind ``lg`` breakpoint: below this, job detail opens in a sheet. */
+const MOBILE_JOBS_QUERY = "(max-width: 1023px)";
 
 const logger = createLogger("JobsPage");
 
@@ -34,6 +46,7 @@ const logger = createLogger("JobsPage");
 export default function JobsPage() {
   const { selectedJobId, setSelectedJobId, jobsPage, setJobsPage } =
     useAppState();
+  const isCompact = useMediaQuery(MOBILE_JOBS_QUERY);
 
   const [searchParams, setSearchParams] = useState<JobSearchRequest | null>(
     null,
@@ -53,6 +66,33 @@ export default function JobsPage() {
 
   const isSaved = (id: string) => savedIds.has(id);
   const isAppliedExternally = (id: string) => externalIds.has(id);
+
+  /**
+   * Shared JobDetail actions for desktop panel and mobile sheet.
+   *
+   * @param job - Currently selected listing.
+   */
+  const renderJobDetail = (job: JobListing) => (
+    <JobDetail
+      job={job}
+      isSaved={isSaved(job.job_id)}
+      isAppliedExternally={isAppliedExternally(job.job_id)}
+      onSave={() =>
+        save.mutate({
+          id: job.job_id,
+          saved: isSaved(job.job_id),
+        })
+      }
+      onApply={() => apply.mutate(job.job_id)}
+      onMarkAppliedExternally={() =>
+        markApplied.mutate({
+          id: job.job_id,
+          title: job.title,
+          company: job.company,
+        })
+      }
+    />
+  );
 
   /**
    * Commit a structured job search and reset pagination/selection.
@@ -198,36 +238,45 @@ export default function JobsPage() {
             )}
           </div>
 
-          {/* Right panel — detail */}
-          <div className="flex-1 min-h-0">
-            {selectedJob ? (
-              <JobDetail
-                job={selectedJob}
-                isSaved={isSaved(selectedJob.job_id)}
-                isAppliedExternally={isAppliedExternally(selectedJob.job_id)}
-                onSave={() =>
-                  save.mutate({
-                    id: selectedJob.job_id,
-                    saved: isSaved(selectedJob.job_id),
-                  })
-                }
-                onApply={() => apply.mutate(selectedJob.job_id)}
-                onMarkAppliedExternally={() =>
-                  markApplied.mutate({
-                    id: selectedJob.job_id,
-                    title: selectedJob.title,
-                    company: selectedJob.company,
-                  })
-                }
-              />
-            ) : (
-              <EmptyState
-                title="Select a job"
-                description="Choose a listing from the left to see full details."
-                className="h-full"
-              />
-            )}
-          </div>
+          {/* Detail: side panel on desktop, bottom sheet on compact viewports.
+              Only one JobDetail mounts so actions and e2e locators stay unique. */}
+          {isCompact ? (
+            <Sheet
+              open={selectedJob != null}
+              onOpenChange={(open) => {
+                if (!open) setSelectedJobId(null);
+              }}
+            >
+              <SheetContent
+                side="bottom"
+                className="flex h-[90vh] max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
+              >
+                <SheetHeader className="shrink-0 border-b border-border pr-12">
+                  <SheetTitle className="truncate">
+                    {selectedJob?.title ?? "Job details"}
+                  </SheetTitle>
+                  <SheetDescription className="truncate">
+                    {selectedJob?.company ?? "Selected listing"}
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                  {selectedJob ? renderJobDetail(selectedJob) : null}
+                </div>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <div className="hidden min-h-0 flex-1 lg:block">
+              {selectedJob ? (
+                renderJobDetail(selectedJob)
+              ) : (
+                <EmptyState
+                  title="Select a job"
+                  description="Choose a listing from the left to see full details."
+                  className="h-full"
+                />
+              )}
+            </div>
+          )}
         </div>
       ) : null}
     </PageContainer>

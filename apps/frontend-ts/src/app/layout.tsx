@@ -1,10 +1,20 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { AppShell } from "@/components/layout/AppShell";
 
-const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const ibmPlexSans = IBM_Plex_Sans({
+  variable: "--font-ibm-plex-sans",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
 
 export const metadata: Metadata = {
   title: "Job Raider",
@@ -19,10 +29,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geist.variable} h-full antialiased`}
+      className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="h-full">
+      <body className="h-full font-sans">
         <Providers>
           <AppShell>{children}</AppShell>
         </Providers>

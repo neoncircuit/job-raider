@@ -159,7 +159,7 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Target className="h-4 w-4 text-indigo-600" />
+            <Target className="h-4 w-4 text-primary" />
             DISC Personality Assessment
           </CardTitle>
         </CardHeader>
@@ -181,7 +181,7 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
               </li>
               <li>Get job match recommendations based on your profile</li>
             </ul>
-            <div className="rounded-md bg-indigo-50 p-3 text-xs text-indigo-800">
+            <div className="rounded-md bg-primary/10 p-3 text-xs text-primary">
               <strong>Takes 5-8 minutes</strong> · Industry-standard format · No
               wrong answers
             </div>
@@ -213,7 +213,7 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
       <Card>
         <CardContent className="py-8">
           <div className="flex flex-col items-center justify-center space-y-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             <p className="text-sm text-muted-foreground">
               Loading assessment...
             </p>
@@ -235,7 +235,7 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Target className="h-4 w-4 text-indigo-600" />
+              <Target className="h-4 w-4 text-primary" />
               Question {currentQuestion + 1} of {questions.length}
             </CardTitle>
             <button
@@ -248,7 +248,7 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
           </div>
           <div className="h-1 w-full bg-muted rounded-full mt-2">
             <div
-              className="h-full bg-indigo-600 rounded-full transition-all"
+              className="h-full bg-primary rounded-full transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -365,8 +365,8 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
 
           {submitMutation.data && (
             <div className="space-y-3 mt-4">
-              <div className="rounded-md bg-indigo-50 p-4">
-                <h3 className="text-sm font-semibold text-indigo-900 mb-2">
+              <div className="rounded-md bg-primary/10 p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-2">
                   Your Profile
                 </h3>
                 <div className="grid grid-cols-2 gap-2 text-xs">
@@ -387,8 +387,8 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
                     {submitMutation.data.profile.C}%
                   </div>
                 </div>
-                <div className="mt-3 pt-3 border-t border-indigo-200">
-                  <p className="text-xs text-indigo-800">
+                <div className="mt-3 pt-3 border-t border-primary/30">
+                  <p className="text-xs text-primary">
                     <strong>Primary Type:</strong>{" "}
                     {submitMutation.data.primary_type}
                     {submitMutation.data.secondary_type && (

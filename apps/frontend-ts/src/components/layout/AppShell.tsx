@@ -4,20 +4,23 @@ import { MobileNav } from "./MobileNav";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { PageSkeleton } from "./PageSkeleton";
 
+/**
+ * Application chrome: sidebar (desktop), mobile nav, and main content.
+ *
+ * Applies a quiet raid atmosphere wash behind content; no neon/starfield.
+ *
+ * @param children - Page content rendered inside the scrollable main region.
+ */
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-background relative">
-      {/* Background effects */}
-      <div className="starfield" />
-      <div className="gradient-mesh" />
+      <div className="raid-atmosphere" aria-hidden />
 
-      {/* Desktop sidebar */}
       <div className="hidden md:flex relative z-10">
         <Sidebar />
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden relative z-10">
-        {/* Mobile top nav */}
         <div className="md:hidden">
           <MobileNav />
         </div>

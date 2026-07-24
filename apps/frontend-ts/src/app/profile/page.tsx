@@ -39,9 +39,9 @@ import { PageHeader } from "@/components/layout/PageHeader";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const PROFICIENCY_COLORS: Record<string, string> = {
-  Expert: "bg-indigo-100 dark:bg-primary/10 text-indigo-800 dark:text-primary",
-  Advanced: "bg-blue-100 dark:bg-info/10 text-blue-800 dark:text-info",
-  Intermediate: "bg-sky-100 dark:bg-info/10 text-sky-800 dark:text-info",
+  Expert: "bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary",
+  Advanced: "bg-info/10 text-info",
+  Intermediate: "bg-info/10 dark:bg-info/10 text-info dark:text-info",
   Beginner:
     "bg-muted dark:bg-muted text-muted-foreground dark:text-muted-foreground",
 };
@@ -97,14 +97,14 @@ function ResumeDropzone({ onUploaded }: { onUploaded: () => void }) {
       className={cn(
         "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors",
         isDragActive
-          ? "border-blue-500 dark:border-primary bg-blue-50 dark:bg-primary/10"
+          ? "border-primary bg-primary/10"
           : "border-border dark:border-border bg-muted dark:bg-muted hover:border-border dark:hover:border-muted-foreground/50",
       )}
     >
       <input {...getInputProps()} />
       <Upload className="mb-3 h-8 w-8 text-muted-foreground dark:text-muted-foreground" />
       {upload.isPending ? (
-        <p className="text-sm text-blue-600 dark:text-primary">
+        <p className="text-sm text-primary">
           Parsing resume… this may take 30–60 s
         </p>
       ) : (
@@ -150,90 +150,85 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
 
   return (
     <div className="space-y-3">
-      {/* ── Hero header ── */}
-      <Card>
-        <CardContent className="pt-4 pb-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            {/* Name + meta */}
-            <div className="space-y-1">
-              <h2 className="text-2xl font-bold text-foreground dark:text-foreground">
-                {c.name || "—"}
-              </h2>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground dark:text-muted-foreground">
-                {c.location && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {c.location}
-                  </span>
-                )}
-                {years_of_experience != null && years_of_experience > 0 && (
-                  <span className="flex items-center gap-1">
-                    <Briefcase className="h-3.5 w-3.5" />
-                    {years_of_experience} yrs exp
-                  </span>
-                )}
-                {c.email && (
-                  <span className="flex items-center gap-1">
-                    <Mail className="h-3.5 w-3.5" />
-                    {c.email}
-                  </span>
-                )}
-                {c.phone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="h-3.5 w-3.5" />
-                    {c.phone}
-                  </span>
-                )}
-              </div>
-              {/* External links */}
-              {(c.linkedin_url ||
-                c.github_url ||
-                c.portfolio_url ||
-                c.website_url) && (
-                <div className="flex flex-wrap gap-3 pt-1">
-                  {c.linkedin_url && (
-                    <a
-                      href={c.linkedin_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-600 dark:text-primary hover:underline"
-                    >
-                      <Link className="h-3 w-3" /> LinkedIn
-                    </a>
-                  )}
-                  {c.github_url && (
-                    <a
-                      href={c.github_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground hover:underline"
-                    >
-                      <Link className="h-3 w-3" /> GitHub
-                    </a>
-                  )}
-                  {(c.portfolio_url || c.website_url) && (
-                    <a
-                      href={c.portfolio_url ?? c.website_url ?? "#"}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground hover:underline"
-                    >
-                      <Globe className="h-3 w-3" /> Portfolio
-                    </a>
-                  )}
-                </div>
+      {/* ── Hero header (open section, not a card) ── */}
+      <section className="space-y-3 border-b border-border pb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground">
+              {c.name || "—"}
+            </h2>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              {c.location && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {c.location}
+                </span>
+              )}
+              {years_of_experience != null && years_of_experience > 0 && (
+                <span className="flex items-center gap-1">
+                  <Briefcase className="h-3.5 w-3.5" />
+                  {years_of_experience} yrs exp
+                </span>
+              )}
+              {c.email && (
+                <span className="flex items-center gap-1">
+                  <Mail className="h-3.5 w-3.5" />
+                  {c.email}
+                </span>
+              )}
+              {c.phone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" />
+                  {c.phone}
+                </span>
               )}
             </div>
+            {(c.linkedin_url ||
+              c.github_url ||
+              c.portfolio_url ||
+              c.website_url) && (
+              <div className="flex flex-wrap gap-3 pt-1">
+                {c.linkedin_url && (
+                  <a
+                    href={c.linkedin_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Link className="h-3 w-3" /> LinkedIn
+                  </a>
+                )}
+                {c.github_url && (
+                  <a
+                    href={c.github_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:underline"
+                  >
+                    <Link className="h-3 w-3" /> GitHub
+                  </a>
+                )}
+                {(c.portfolio_url || c.website_url) && (
+                  <a
+                    href={c.portfolio_url ?? c.website_url ?? "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:underline"
+                  >
+                    <Globe className="h-3 w-3" /> Portfolio
+                  </a>
+                )}
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* Summary */}
-          {summary && (
-            <p className="mt-4 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground border-t pt-4 italic">
-              {summary}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        {summary && (
+          <p className="text-sm italic leading-relaxed text-muted-foreground">
+            {summary}
+          </p>
+        )}
+      </section>
 
       {/* ── Visualizations ── */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
@@ -271,7 +266,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                       {core_skills!.map((s) => (
                         <Badge
                           key={s}
-                          className="bg-indigo-600 dark:bg-primary text-white dark:text-primary-foreground text-xs"
+                          className="bg-primary dark:bg-primary text-white dark:text-primary-foreground text-xs"
                         >
                           {s}
                         </Badge>
@@ -447,7 +442,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
               <CardContent className="space-y-5">
                 {work_experience.map((e, i) => (
                   <div key={i} className={cn("pl-4", i > 0 && "border-t pt-5")}>
-                    <div className="border-l-2 border-blue-300 dark:border-primary pl-3">
+                    <div className="border-l-2 border-primary/40 pl-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-semibold text-foreground dark:text-foreground">
@@ -479,7 +474,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                               key={j}
                               className="flex gap-2 text-sm text-foreground dark:text-muted-foreground"
                             >
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400 dark:bg-primary" />
+                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                               {h}
                             </li>
                           ))}
@@ -517,7 +512,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
               <CardContent className="space-y-5">
                 {projects.map((p, i) => (
                   <div key={i} className={cn("pl-4", i > 0 && "border-t pt-5")}>
-                    <div className="border-l-2 border-violet-300 dark:border-primary pl-3">
+                    <div className="border-l-2 border-primary/40 dark:border-primary pl-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-semibold text-foreground dark:text-foreground">
@@ -543,7 +538,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                               href={p.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-muted-foreground dark:text-muted-foreground hover:text-blue-600 dark:hover:text-primary"
+                              className="text-muted-foreground dark:text-muted-foreground hover:text-primary"
                             >
                               <ExternalLink className="h-4 w-4" />
                             </a>
@@ -562,7 +557,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                               key={j}
                               className="flex gap-2 text-sm text-foreground dark:text-muted-foreground"
                             >
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400 dark:bg-primary" />
+                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary dark:bg-primary" />
                               {h}
                             </li>
                           ))}

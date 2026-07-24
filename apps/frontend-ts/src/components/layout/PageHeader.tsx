@@ -16,8 +16,13 @@ interface PageHeaderProps {
 /**
  * Standard page title block used across all routes.
  *
- * Keeps title size, subtitle rhythm, and action alignment consistent so
- * individual pages do not reinvent header markup.
+ * Uses mono tracking for titles so page chrome matches the raid type system.
+ *
+ * @param title - Primary heading text.
+ * @param subtitle - Optional supporting sentence.
+ * @param actions - Optional trailing action nodes.
+ * @param icon - Optional leading icon.
+ * @param className - Optional wrapper classes.
  */
 export function PageHeader({
   title,
@@ -36,7 +41,9 @@ export function PageHeader({
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           {icon}
-          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
+            {title}
+          </h1>
         </div>
         {subtitle ? (
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>

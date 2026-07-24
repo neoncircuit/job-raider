@@ -37,7 +37,7 @@ export function JobClassificationDisplay({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Building2 className="h-4 w-4 text-indigo-500" />
+              <Building2 className="h-4 w-4 text-primary" />
               Industry
             </CardTitle>
           </CardHeader>
@@ -51,7 +51,7 @@ export function JobClassificationDisplay({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Briefcase className="h-4 w-4 text-indigo-500" />
+              <Briefcase className="h-4 w-4 text-primary" />
               Role Category
             </CardTitle>
           </CardHeader>
@@ -65,7 +65,7 @@ export function JobClassificationDisplay({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Users className="h-4 w-4 text-indigo-500" />
+              <Users className="h-4 w-4 text-primary" />
               Company Size
             </CardTitle>
           </CardHeader>
@@ -84,7 +84,7 @@ export function JobClassificationDisplay({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Gauge className="h-4 w-4 text-indigo-500" />
+              <Gauge className="h-4 w-4 text-primary" />
               Work Pace
             </CardTitle>
           </CardHeader>
@@ -100,7 +100,7 @@ export function JobClassificationDisplay({
                 classification.work_pace === "Relaxed" &&
                   "border-green-300 bg-green-50 text-green-800",
                 classification.work_pace === "Steady" &&
-                  "border-blue-300 bg-blue-50 text-blue-800",
+                  "border-info/30 bg-info/10 text-info",
               )}
             >
               {classification.work_pace}
@@ -117,7 +117,7 @@ export function JobClassificationDisplay({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Target className="h-4 w-4 text-indigo-500" />
+              <Target className="h-4 w-4 text-primary" />
               Role Scope
             </CardTitle>
           </CardHeader>
@@ -151,7 +151,7 @@ export function JobClassificationDisplay({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <TrendingUp className="h-4 w-4 text-indigo-500" />
+              <TrendingUp className="h-4 w-4 text-primary" />
               Skills Analysis
             </CardTitle>
           </CardHeader>
@@ -230,7 +230,7 @@ export function JobClassificationDisplay({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="h-4 w-4 text-indigo-500" />
+              <CheckCircle2 className="h-4 w-4 text-primary" />
               Experience Validation
             </CardTitle>
           </CardHeader>
@@ -257,7 +257,7 @@ export function JobClassificationDisplay({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Tag className="h-4 w-4 text-indigo-500" />
+              <Tag className="h-4 w-4 text-primary" />
               Tags
             </CardTitle>
           </CardHeader>

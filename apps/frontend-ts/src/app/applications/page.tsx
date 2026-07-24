@@ -108,7 +108,7 @@ function AppCard({
               {app.job_title}
             </p>
             {app.is_bookmarked && (
-              <Bookmark className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+              <Bookmark className="h-3.5 w-3.5 shrink-0 text-info" />
             )}
           </div>
           <p className="text-sm text-muted-foreground">{app.company}</p>
@@ -134,7 +134,7 @@ function AppCard({
               href={app.source_url}
               target="_blank"
               rel="noreferrer"
-              className="text-muted-foreground hover:text-blue-600"
+              className="text-muted-foreground hover:text-primary"
             >
               <ExternalLink className="h-4 w-4" />
             </a>

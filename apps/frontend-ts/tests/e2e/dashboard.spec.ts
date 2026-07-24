@@ -19,9 +19,12 @@ test.describe("Dashboard page", () => {
 
     const main = page.locator("main");
 
-    // Section headings render once the cards mount.
-    await expect(main.getByText("System Health")).toBeVisible();
-    await expect(main.getByText("Recent Pipeline Runs")).toBeVisible();
+    // Section headings render once the page mounts (brand mark + CTA sit above).
+    await expect(main.getByText("System health")).toBeVisible();
+    await expect(main.getByText("Recent pipeline runs")).toBeVisible();
+    await expect(
+      main.getByRole("link", { name: /Run pipeline/i }),
+    ).toBeVisible();
 
     // Mocked metrics populate a stat sub-text (unique to the fixture).
     await expect(main.getByText("20.0% screening rate")).toBeVisible();

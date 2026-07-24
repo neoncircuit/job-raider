@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -8,11 +7,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-fira-code);
-  --font-heading: var(--font-fira-code);
-  --font-display: var(--font-fira-code);
-  --font-body: var(--font-inter);
+  --font-sans: var(--font-ibm-plex-sans);
+  --font-mono: var(--font-ibm-plex-mono);
+  --font-heading: var(--font-ibm-plex-mono);
+  --font-display: var(--font-ibm-plex-mono);
+  --font-body: var(--font-ibm-plex-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -58,9 +57,9 @@
 }
 
 :root {
-  /* Fonts - Odysseus inspired typography */
-  --font-fira-code: "Fira Code", "Consolas", "Monaco", monospace;
-  --font-inter: "Inter", system-ui, -apple-system, sans-serif;
+  /* Fonts — set by next/font on <html>; fallbacks for SSR */
+  --font-ibm-plex-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-ibm-plex-mono: "IBM Plex Mono", ui-monospace, "Consolas", monospace;
 
   /* Typography sizes - px based */
   --font-size-xs: 12px;
@@ -71,11 +70,11 @@
   --font-size-2xl: 24px;
   --font-size-3xl: 30px;
 
-  /* Page surface - light theme */
-  --background: #fafafa;
+  /* Page surface - warm-neutral light theme */
+  --background: #f7f5f3;
   --foreground: #1a1a1a;
 
-  /* Cards - pure white for light theme */
+  /* Cards */
   --card: #ffffff;
   --card-foreground: #1a1a1a;
 
@@ -83,16 +82,16 @@
   --popover: #ffffff;
   --popover-foreground: #1a1a1a;
 
-  /* Primary — red accent (Odysseus CTA) */
+  /* Primary — red accent (raid CTA) */
   --primary: #e63946;
   --primary-foreground: #ffffff;
 
   /* Secondary */
-  --secondary: #f1f3f5;
+  --secondary: #efece8;
   --secondary-foreground: #1a1a1a;
 
   /* Muted */
-  --muted: #f0f0f0;
+  --muted: #ebe7e2;
   --muted-foreground: #6b7280;
 
   /* Accent */
@@ -111,55 +110,53 @@
   --info-foreground: #ffffff;
 
   /* Borders & inputs */
-  --border: #e0e0e0;
-  --input: #f5f5f5;
+  --border: #e0dcd6;
+  --input: #f0ece8;
   --ring: #e63946;
 
   /* Charts - red-accented palette */
   --chart-1: #e63946;
-  --chart-2: #f1f3f5;
+  --chart-2: #efece8;
   --chart-3: #6b7280;
   --chart-4: #9ca3af;
   --chart-5: #d1d5db;
 
-  /* Profile chart colors - preserve light-mode indigo accents */
-  --chart-grid: #e5e7eb;
+  /* Profile chart colors — primary-aligned */
+  --chart-grid: #e5e1db;
   --chart-axis: #6b7280;
-  --chart-radar-stroke: #6366f1;
-  --chart-radar-fill: #6366f1;
-  --chart-timeline-fill: #6366f1;
-  --chart-cursor: rgba(99, 102, 241, 0.1);
+  --chart-radar-stroke: #e63946;
+  --chart-radar-fill: #e63946;
+  --chart-timeline-fill: #e63946;
+  --chart-cursor: rgba(230, 57, 70, 0.1);
 
   --radius: 0.25rem;
 
   /* Layout */
-  --sidebar-width: 14rem; /* w-56 */
+  --sidebar-width: 14rem;
 
-  /* Sidebar - subtle dark for light theme */
-  --sidebar: #f5f5f5;
+  /* Sidebar */
+  --sidebar: #f0ece8;
   --sidebar-foreground: #1a1a1a;
   --sidebar-primary: #e63946;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #e63946;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #e0e0e0;
+  --sidebar-border: #e0dcd6;
   --sidebar-ring: #e63946;
 
-  /* Odysseus-inspired variables */
-  --border-subtle: #f0f0f0;
+  --border-subtle: #ebe7e2;
   --panel: #ffffff;
+  --raid-wash: rgba(230, 57, 70, 0.06);
 }
 
 .dark {
-  /* Deep space background */
+  /* Deep charcoal */
   --background: #0f0f0f;
   --foreground: #f0f0f0;
 
-  /* Cards with depth */
   --card: #1a1a1a;
   --card-foreground: #f0f0f0;
 
-  /* Popover */
   --popover: #1a1a1a;
   --popover-foreground: #f0f0f0;
 
@@ -167,22 +164,17 @@
   --primary: #ff6b6b;
   --primary-foreground: #0f0f0f;
 
-  /* Secondary */
   --secondary: #2a2a2a;
   --secondary-foreground: #f0f0f0;
 
-  /* Muted */
   --muted: #2a2a2a;
   --muted-foreground: #9ca3af;
 
-  /* Accent */
   --accent: #ff6b6b;
   --accent-foreground: #0f0f0f;
 
-  /* Destructive */
   --destructive: #ef4444;
 
-  /* Semantic states */
   --success: #4ade80;
   --success-foreground: #0f0f0f;
   --warning: #fbbf24;
@@ -190,51 +182,37 @@
   --info: #60a5fa;
   --info-foreground: #0f0f0f;
 
-  /* Borders & inputs */
   --border: #333333;
   --input: #1f1f1f;
   --ring: #ff6b6b;
 
-  /* Charts - dark theme palette */
   --chart-1: #ff6b6b;
   --chart-2: #2a2a2a;
   --chart-3: #9ca3af;
   --chart-4: #6b7280;
   --chart-5: #4b5563;
 
-  /* Profile chart colors - theme-aware for dark mode */
   --chart-grid: var(--border);
   --chart-axis: var(--muted-foreground);
   --chart-radar-stroke: var(--primary);
   --chart-radar-fill: var(--primary);
   --chart-timeline-fill: var(--primary);
-  --chart-cursor: var(--primary);
+  --chart-cursor: rgba(255, 107, 107, 0.12);
 
-  /* Sidebar - deepest */
   --sidebar: #0a0a0a;
   --sidebar-foreground: #f0f0f0;
   --sidebar-primary: #ff6b6b;
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary-foreground: #0f0f0f;
   --sidebar-accent: #ff6b6b;
-  --sidebar-accent-foreground: #ffffff;
+  --sidebar-accent-foreground: #0f0f0f;
   --sidebar-border: #333333;
   --sidebar-ring: #ff6b6b;
 
-  /* Odysseus-inspired variables */
   --border-subtle: #2a2a2a;
   --panel: #1a1a1a;
+  --raid-wash: rgba(255, 107, 107, 0.1);
 
-  /* Space theme variables - bolder glow */
-  --cosmic-glow: oklch(0.78 0.24 220 / 25%);
-  --neon-cyan: oklch(0.82 0.26 220);
-  --neon-magenta: oklch(0.84 0.28 330);
-  --neon-blue: oklch(0.8 0.26 250);
-  --neon-gold: oklch(0.86 0.22 80);
-  --glass-bg: oklch(0.14 0.018 260 / 75%);
-  --glass-border: oklch(0.78 0.24 220 / 40%);
-
-  /* Layout */
-  --sidebar-width: 14rem; /* w-56 */
+  --sidebar-width: 14rem;
 }
 
 @layer base {
@@ -265,263 +243,33 @@
   background: oklch(0.6 0.012 264);
 }
 
-/* ── Space Theme Animations ───────────────────────────────────────────────────── */
+/* ── Raid atmosphere (quiet wash, no neon) ─────────────────────────────────── */
 
-@keyframes cosmic-drift {
-  0%,
-  100% {
-    background-position: 0% 0%;
-  }
-  50% {
-    background-position: 100% 100%;
-  }
-}
-
-@keyframes neon-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 8px var(--cosmic-glow);
-  }
-  50% {
-    opacity: 0.85;
-    box-shadow: 0 0 12px var(--cosmic-glow);
-  }
-}
-
-@keyframes cosmic-float {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-2px);
-  }
-}
-
-/* Subtle glow effect for important elements */
-.cosmic-glow {
-  animation: neon-pulse 3s ease-in-out infinite;
-}
-
-/* Subtle floating effect */
-.cosmic-float {
-  animation: cosmic-float 4s ease-in-out infinite;
-}
-
-/* Apply cosmic glow to primary buttons in dark mode */
-.dark button.bg-primary {
-  animation: neon-pulse 3s ease-in-out infinite;
-}
-
-/* ── Star Field Background ───────────────────────────────────────────────────── */
-
-.starfield {
+.raid-atmosphere {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.4;
-  background-image:
-    radial-gradient(1px 1px at 20% 30%, white 50%, transparent 100%),
-    radial-gradient(1px 1px at 60% 70%, white 50%, transparent 100%),
-    radial-gradient(1px 1px at 50% 50%, white 50%, transparent 100%),
-    radial-gradient(
-      1.5px 1.5px at 80% 10%,
-      var(--neon-cyan) 60%,
-      transparent 100%
-    ),
-    radial-gradient(
-      1px 1px at 90% 60%,
-      var(--neon-magenta) 50%,
-      transparent 100%
-    ),
-    radial-gradient(
-      1.5px 1.5px at 40% 80%,
-      var(--neon-blue) 55%,
-      transparent 100%
-    ),
-    radial-gradient(1px 1px at 10% 40%, var(--neon-gold) 45%, transparent 100%);
-  background-size:
-    250px 250px,
-    350px 350px,
-    200px 200px,
-    400px 400px,
-    300px 300px,
-    280px 280px,
-    320px 320px;
-  background-position:
-    0 0,
-    0 0,
-    0 0,
-    0 0,
-    0 0,
-    0 0,
-    0 0;
-  animation: starfield-drift 120s linear infinite;
-}
-
-@keyframes starfield-drift {
-  0% {
-    background-position:
-      0% 0%,
-      0% 0%,
-      0% 0%,
-      0% 0%,
-      0% 0%,
-      0% 0%,
-      0% 0%;
-  }
-  100% {
-    background-position:
-      100% 100%,
-      50% 100%,
-      100% 50%,
-      50% 50%,
-      100% 0%,
-      0% 100%,
-      50% 50%;
-  }
-}
-
-/* ── Gradient Mesh Overlay ───────────────────────────────────────────────────────── */
-
-.gradient-mesh {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.15;
   background:
-    radial-gradient(circle at 20% 30%, var(--neon-cyan) 0%, transparent 40%),
-    radial-gradient(circle at 70% 10%, var(--neon-magenta) 0%, transparent 35%),
-    radial-gradient(circle at 30% 70%, var(--neon-blue) 0%, transparent 38%),
-    radial-gradient(circle at 80% 60%, var(--neon-gold) 0%, transparent 42%),
-    var(--background);
-  background-blend-mode: screen;
-  animation: mesh-shift 30s ease-in-out infinite alternate;
+    radial-gradient(
+      ellipse 80% 50% at 100% 0%,
+      var(--raid-wash) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 0% 100%,
+      var(--raid-wash) 0%,
+      transparent 50%
+    );
 }
 
-@keyframes mesh-shift {
-  0% {
-    opacity: 0.12;
-  }
-  100% {
-    opacity: 0.18;
-  }
-}
-
-/* ── Tier 1 Must-Have: Geometric Corner Accents ─────────────────────────────────────────────────────── */
-
-.card-corner-accent {
-  position: relative;
-}
-
-.card-corner-accent::before,
-.card-corner-accent::after {
-  content: "";
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
-  opacity: 0.25;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.card-corner-accent::before {
-  top: -2px;
-  left: -2px;
-  clip-path: polygon(100% 0, 0 0, 0 100%);
-}
-
-.card-corner-accent::after {
-  bottom: -2px;
-  right: -2px;
-  clip-path: polygon(100% 100%, 0 100%, 100% 0);
-}
-
-.card-corner-accent:hover::before,
-.card-corner-accent:hover::after {
-  opacity: 0.5;
-  animation: cornerPulse 2s ease-in-out infinite;
-}
-
-@keyframes cornerPulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-/* ── Tier 1 Must-Have: Angled Corners with Neon Borders ─────────────────────────────────────────────────── */
-
-.card-angled {
-  clip-path: polygon(
-    12px 0,
-    calc(100% - 12px) 0,
-    100% 12px,
-    100% calc(100% - 12px),
-    calc(100% - 12px) 100%,
-    12px 100%,
-    0 calc(100% - 12px),
-    0 12px
-  );
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.card-angled-neon {
-  position: relative;
-}
-
-.card-angled-neon::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  background: linear-gradient(
-    135deg,
-    var(--neon-cyan),
-    var(--neon-blue),
-    var(--neon-magenta),
-    var(--neon-cyan)
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: -1;
-  filter: blur(8px);
-  pointer-events: none;
-}
-
-.card-angled-neon:hover::before {
-  opacity: 0.6;
-}
-
-.card-angled-content {
-  clip-path: inherit;
-  background: var(--card);
-  border-radius: 0;
-  position: relative;
-  z-index: 1;
-}
-
-/* ── Tier 1 Must-Have: Staggered Page Load Animations ─────────────────────────────────────────────────── */
+/* ── Staggered page load ───────────────────────────────────────────────────── */
 
 .stagger-in {
   animation: fadeInUp 0.6s ease-out forwards;
   opacity: 0;
 }
 
-/* Stagger delays */
 .stagger-in:nth-child(1) {
   animation-delay: 0.05s;
 }
@@ -570,7 +318,6 @@
   }
 }
 
-/* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .stagger-in {
     animation: none;
@@ -579,96 +326,6 @@
   }
 }
 
-/* ========================================
-   O dysseus-Inspired Component Styles
-   ======================================== */
-
-/* Card styling - sharp borders, subtle shadows */
-.card-odysseus {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  background: var(--card);
-  padding: 16px;
-  transition: all 150ms ease-in-out;
-}
-
-.card-odysseus:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-color: var(--primary);
-}
-
-/* Button styling - red CTAs */
-.btn-primary-odysseus {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  padding: 8px 16px;
-  font-family: var(--font-fira-code);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  transition: all 150ms ease-in-out;
-}
-
-.btn-primary-odysseus:hover {
-  filter: brightness(0.9);
-  box-shadow: 0 2px 8px rgba(230, 57, 70, 0.3);
-}
-
-.btn-primary-odysseus:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--background),
-    0 0 0 4px var(--primary);
-}
-
-.btn-secondary-odysseus {
-  background: var(--secondary);
-  color: var(--secondary-foreground);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 16px;
-  font-family: var(--font-fira-code);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  transition: all 150ms ease-in-out;
-}
-
-.btn-secondary-odysseus:hover {
-  border-color: var(--primary);
-}
-
-/* Typography utilities */
-.text-odysseus {
-  font-family: var(--font-fira-code);
-}
-
-.text-body-odysseus {
-  font-family: var(--font-inter);
-}
-
-/* Grid layouts */
-.grid-odysseus-2 {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.grid-odysseus-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-@media (max-width: 768px) {
-  .grid-odysseus-2,
-  .grid-odysseus-3 {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Focus visible for accessibility */
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;

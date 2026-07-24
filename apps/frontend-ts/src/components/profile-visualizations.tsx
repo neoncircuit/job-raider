@@ -148,7 +148,7 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
       <CardContent>
         <div className="space-y-4">
           {/* Scoring explanation */}
-          <div className="rounded-md bg-blue-50 dark:bg-info/10 px-3 py-2 text-xs text-blue-800 dark:text-info">
+          <div className="rounded-md bg-info/10 px-3 py-2 text-xs text-info">
             <p className="font-medium">How scores are calculated:</p>
             <ul className="mt-1 ml-4 list-disc space-y-0.5">
               <li>
@@ -236,7 +236,7 @@ export function ExperienceTimeline({ experience }: ExperienceTimelineProps) {
         <CardContent>
           <div className="flex h-[180px] items-center justify-center text-center">
             <div>
-              <Sparkles className="mx-auto h-8 w-8 text-purple-400 dark:text-primary mb-2" />
+              <Sparkles className="mx-auto h-8 w-8 text-primary dark:text-primary mb-2" />
               <p className="text-sm font-medium text-foreground dark:text-muted-foreground">
                 Starting Your Journey
               </p>
@@ -394,7 +394,7 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
     if (score >= thresholds.moderate)
       return {
         level: "Moderate",
-        color: "text-blue-600 dark:text-info bg-blue-50 dark:bg-info/10",
+        color: "text-info bg-info/10",
         icon: Shield,
       };
     return {
@@ -437,14 +437,14 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
     } else if (projectScore === "moderate") {
       experienceLevel = {
         level: "Building Portfolio",
-        color: "text-blue-600 dark:text-info bg-blue-50 dark:bg-info/10",
+        color: "text-info bg-info/10",
         icon: Target,
       };
     } else {
       experienceLevel = {
         level: "Fresh Talent",
         color:
-          "text-purple-600 dark:text-primary bg-purple-50 dark:bg-primary/10",
+          "text-primary dark:text-primary bg-primary/10 dark:bg-primary/10",
         icon: Sparkles,
       };
     }
@@ -577,13 +577,13 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
       <CardContent className="space-y-3">
         {/* Fresh Grad Banner */}
         {isFreshGrad && (
-          <div className="flex items-start gap-3 rounded-lg border border-purple-200 dark:border-border bg-gradient-to-r from-purple-50 dark:from-muted to-indigo-50 dark:to-muted p-3">
-            <Sparkles className="h-5 w-5 text-purple-600 dark:text-primary flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 rounded-lg border border-primary/30 dark:border-border bg-gradient-to-r from-primary/5 dark:from-muted to-primary/10 dark:to-muted p-3">
+            <Sparkles className="h-5 w-5 text-primary dark:text-primary flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-purple-900 dark:text-foreground">
+              <p className="text-sm font-semibold text-foreground dark:text-foreground">
                 Fresh Graduate Profile
               </p>
-              <p className="mt-1 text-xs text-purple-700 dark:text-muted-foreground">
+              <p className="mt-1 text-xs text-primary dark:text-muted-foreground">
                 Everyone starts somewhere! Your potential matters more than
                 years of experience. Focus on your skills, projects, and
                 eagerness to learn.
@@ -657,7 +657,7 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
               {
                 label: "Conscientiousness",
                 value: discProfile.conscientiousness,
-                color: "bg-blue-400 dark:bg-info",
+                color: "bg-info",
                 desc: "Analytical, precise",
               },
             ].map((item) => (
@@ -681,7 +681,7 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
           </div>
           <button
             onClick={() => setShowDISCAssessment(true)}
-            className="mt-3 w-full rounded-md bg-indigo-50 dark:bg-secondary px-2 py-1.5 text-xs text-indigo-700 dark:text-secondary-foreground text-left hover:bg-indigo-100 dark:hover:bg-muted transition-colors"
+            className="mt-3 w-full rounded-md bg-primary/10 dark:bg-secondary px-2 py-1.5 text-xs text-primary dark:text-secondary-foreground text-left hover:bg-primary/10 dark:hover:bg-muted transition-colors"
           >
             <span className="font-medium">
               {discResult ? "Retake" : "Take"}
@@ -700,7 +700,7 @@ export function StrengthAssessment({ profile }: StrengthAssessmentProps) {
               {profile.core_skills!.slice(0, 6).map((skill) => (
                 <Badge
                   key={skill}
-                  className="bg-indigo-100 dark:bg-primary/10 text-indigo-800 dark:text-primary text-xs"
+                  className="bg-primary/10 dark:bg-primary/10 text-primary dark:text-primary text-xs"
                 >
                   {skill}
                 </Badge>

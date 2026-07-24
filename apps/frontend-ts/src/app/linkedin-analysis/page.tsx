@@ -62,7 +62,7 @@ function PriorityBadge({
     critical: "bg-red-100 text-red-700 border-red-200",
     high: "bg-orange-100 text-orange-700 border-orange-200",
     medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
-    low: "bg-blue-100 text-blue-700 border-blue-200",
+    low: "bg-info/10 text-info border-info/30",
   };
   return (
     <Badge
@@ -206,7 +206,7 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
         {(analysis.keyword_recommendations?.length ?? 0) > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-blue-700">
+              <CardTitle className="text-sm text-info">
                 Keyword Recommendations
               </CardTitle>
             </CardHeader>
@@ -216,7 +216,7 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
                   <Badge
                     key={k}
                     variant="outline"
-                    className="border-blue-200 text-blue-600 text-xs"
+                    className="border-info/30 text-info text-xs"
                   >
                     {k}
                   </Badge>
@@ -230,7 +230,7 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
         {(analysis.generated_headline_options?.length ?? 0) > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-purple-700">
+              <CardTitle className="text-sm text-primary">
                 Headline Options
               </CardTitle>
             </CardHeader>
@@ -258,7 +258,7 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
               <ol className="space-y-2">
                 {(analysis.summary_rewrite_suggestions ?? []).map((s, i) => (
                   <li key={i} className="flex gap-2 text-sm text-foreground">
-                    <span className="shrink-0 font-semibold text-blue-600">
+                    <span className="shrink-0 font-semibold text-primary">
                       {i + 1}.
                     </span>
                     {s}

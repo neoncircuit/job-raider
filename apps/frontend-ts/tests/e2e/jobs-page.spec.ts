@@ -45,17 +45,21 @@ test.describe("Jobs page", () => {
     });
 
     // Open the first job detail panel by clicking the row's overlay button.
+    // On narrow viewports the detail opens in a bottom sheet.
     await page
       .getByRole("button", { name: /View Senior Software Engineer/ })
       .first()
       .click();
 
-    // Generate a cover letter
-    await page.getByRole("button", { name: "Generate Cover Letter" }).click();
+    const generateButton = page.getByRole("button", {
+      name: "Generate Cover Letter",
+    });
+    await expect(generateButton).toBeVisible({ timeout: 10000 });
+    await generateButton.click();
 
     // The generated cover-letter content and proofread result should appear.
     await expect(page.getByText("I am excited about")).toBeVisible({
-      timeout: 10000,
+      timeout: 15000,
     });
     await expect(page.getByText("Proofread").first()).toBeVisible();
     await expect(page.getByText("Ready to send")).toBeVisible();

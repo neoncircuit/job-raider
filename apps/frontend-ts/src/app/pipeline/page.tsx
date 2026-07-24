@@ -333,7 +333,7 @@ function LiveMonitor({ runId }: { runId: string }) {
               "text-xs",
               isComplete
                 ? "bg-green-100 text-green-800"
-                : "bg-blue-100 text-blue-800",
+                : "bg-info/10 text-info",
             )}
           >
             {isComplete ? "Complete" : wsStatus}
@@ -366,9 +366,9 @@ function LiveMonitor({ runId }: { runId: string }) {
                     className={cn(
                       "h-2 w-2 rounded-full shrink-0",
                       completed
-                        ? "bg-green-500"
+                        ? "bg-success"
                         : active
-                          ? "bg-blue-500 animate-pulse"
+                          ? "bg-info animate-pulse"
                           : "bg-muted",
                     )}
                   />
@@ -376,9 +376,9 @@ function LiveMonitor({ runId }: { runId: string }) {
                     className={cn(
                       "text-sm",
                       completed
-                        ? "text-green-700 font-medium"
+                        ? "text-success font-medium"
                         : active
-                          ? "text-blue-700 font-medium"
+                          ? "text-info font-medium"
                           : "text-muted-foreground",
                     )}
                   >
@@ -395,7 +395,7 @@ function LiveMonitor({ runId }: { runId: string }) {
       <div className="lg:col-span-3">
         <div
           ref={logRef}
-          className="h-full min-h-[400px] overflow-y-auto rounded-lg border bg-gray-950 p-4 font-mono text-xs text-gray-300 space-y-0.5"
+          className="h-full min-h-[400px] overflow-y-auto rounded-lg border bg-card p-4 font-mono text-xs text-muted-foreground space-y-0.5"
         >
           {messages.map((m, i) => (
             <div key={i} className="flex gap-2">
@@ -406,10 +406,10 @@ function LiveMonitor({ runId }: { runId: string }) {
               </span>
               <span
                 className={cn(
-                  m.type === "pipeline_failed" && "text-red-400",
-                  m.type === "pipeline_complete" && "text-green-400",
-                  m.type === "stage_completed" && "text-blue-300",
-                  m.type === "stage_started" && "text-indigo-300",
+                  m.type === "pipeline_failed" && "text-destructive",
+                  m.type === "pipeline_complete" && "text-success",
+                  m.type === "stage_completed" && "text-info",
+                  m.type === "stage_started" && "text-primary",
                 )}
               >
                 <span className="text-muted-foreground">[{m.type}]</span>{" "}
@@ -552,7 +552,7 @@ export default function PipelinePage() {
           <TabsTrigger value="monitor" disabled={!activeRunId}>
             Live Monitor{" "}
             {activeRunId && (
-              <span className="ml-1.5 h-2 w-2 rounded-full bg-green-500 inline-block animate-pulse" />
+              <span className="ml-1.5 h-2 w-2 rounded-full bg-success inline-block animate-pulse" />
             )}
           </TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>

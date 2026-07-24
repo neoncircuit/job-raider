@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
@@ -10,12 +11,13 @@ import {
   DollarSign,
   TrendingUp,
   Percent,
+  Rocket,
 } from "lucide-react";
 import { healthApi } from "@/lib/api/health";
 import { metricsApi } from "@/lib/api/metrics";
 import { pipelineApi } from "@/lib/api/pipeline";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { formatCurrency, formatDatetime } from "@/lib/utils/format";
 import { STATUS_COLORS } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
@@ -23,15 +25,22 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
+import { BrandMark } from "@/components/layout/BrandMark";
 import { useIsClient } from "@/lib/hooks/use-is-client";
+import { Separator } from "@/components/ui/separator";
 
+/**
+ * Icon for a health check status string.
+ *
+ * @param status - Backend health status value.
+ */
 function HealthIcon({ status }: { status: string }) {
   if (status === "healthy")
-    return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+    return <CheckCircle2 className="h-4 w-4 text-success" />;
   if (status === "degraded")
-    return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+    return <AlertTriangle className="h-4 w-4 text-warning" />;
   if (status === "unhealthy")
-    return <XCircle className="h-4 w-4 text-red-500" />;
+    return <XCircle className="h-4 w-4 text-destructive" />;
   return <Activity className="h-4 w-4 text-muted-foreground" />;
 }
 
@@ -42,25 +51,33 @@ interface StatCardProps {
   icon: React.ReactNode;
 }
 
+/**
+ * Compact metric tile for secondary dashboard stats.
+ *
+ * @param title - Metric label.
+ * @param value - Primary display value.
+ * @param sub - Optional supporting line.
+ * @param icon - Leading icon.
+ */
 function StatCard({ title, value, sub, icon }: StatCardProps) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded border p-5 text-foreground shadow-sm transition-all duration-150 font-mono",
-        "bg-card hover:shadow-md hover:border-primary/30",
+        "relative overflow-hidden rounded border border-border bg-card p-4 font-mono text-foreground transition-colors duration-150",
+        "hover:border-primary/30",
       )}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {title}
           </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+          <p className="mt-1.5 text-xl font-bold tracking-tight text-foreground">
             {value}
           </p>
           {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
         </div>
-        <div className="flex h-8 w-8 items-center justify-center rounded border border-border bg-muted/40 text-muted-foreground shadow-sm">
+        <div className="flex h-7 w-7 items-center justify-center rounded border border-border bg-muted/40 text-muted-foreground">
           {icon}
         </div>
       </div>
@@ -68,6 +85,9 @@ function StatCard({ title, value, sub, icon }: StatCardProps) {
   );
 }
 
+/**
+ * Ops overview: primary pipeline CTA, compact health, then secondary metrics.
+ */
 export default function DashboardPage() {
   const isClient = useIsClient();
 
@@ -102,11 +122,31 @@ export default function DashboardPage() {
   // shows placeholders, triggering a React hydration mismatch.
   const ready = isClient;
 
+  const overallStatus =
+    ready && h?.status
+      ? h.status
+      : ready && health.isError
+        ? "unreachable"
+        : "…";
+
   return (
     <PageContainer variant="full-bleed">
       <PageHeader
+        icon={<BrandMark size={36} />}
         title="Dashboard"
-        subtitle="Overview of your job application pipeline."
+        subtitle="Automated job application pipeline — scrape, score, and apply."
+        actions={
+          <Link
+            href="/pipeline"
+            className={cn(
+              buttonVariants({ size: "lg" }),
+              "font-heading gap-1.5",
+            )}
+          >
+            <Rocket className="h-4 w-4" />
+            Run pipeline
+          </Link>
+        }
       />
 
       {ready && metrics.isError && (
@@ -116,8 +156,55 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 stagger-in">
+      {/* Compact health strip */}
+      <section className="rounded border border-border bg-card/80 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-muted-foreground" />
+            <h2 className="font-heading text-sm font-semibold text-foreground">
+              System health
+            </h2>
+            <Badge
+              variant="outline"
+              className={cn(
+                "capitalize text-xs",
+                overallStatus === "healthy" && "border-success/40 text-success",
+                overallStatus === "degraded" &&
+                  "border-warning/40 text-warning",
+                (overallStatus === "unhealthy" ||
+                  overallStatus === "unreachable") &&
+                  "border-destructive/40 text-destructive",
+              )}
+            >
+              {overallStatus}
+            </Badge>
+          </div>
+          {ready && health.isError && (
+            <p className="text-xs text-destructive">Backend unreachable</p>
+          )}
+        </div>
+        {ready && (health.isLoading || health.isPending) && (
+          <p className="mt-2 text-sm text-muted-foreground">Checking…</p>
+        )}
+        {ready && h?.checks && h.checks.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+            {h.checks.map((c) => (
+              <div key={c.name} className="flex max-w-xs items-center gap-2">
+                <HealthIcon status={c.status} />
+                <span className="text-xs font-medium capitalize text-foreground">
+                  {c.name.replace(/_/g, " ")}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {c.message}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Secondary stats */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 stagger-in">
         <StatCard
           title="Applications"
           value={ready && m ? m.outcomes.total_applications : "—"}
@@ -156,94 +243,52 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {/* System health */}
-        <Card className="shadow-sm border-border/60 backdrop-blur-sm bg-card/50">
-          <CardHeader className="pb-3 card-corner-accent">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Activity className="h-4 w-4 text-muted-foreground" />
-              System Health
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2.5">
-            {ready && (health.isLoading || health.isPending) && (
-              <p className="text-sm text-muted-foreground">Checking…</p>
-            )}
-            {ready && health.isError && (
-              <QueryErrorBanner message="Backend unreachable" />
-            )}
-            {ready &&
-              h?.checks?.map((c) => (
-                <div
-                  key={c.name}
-                  className="flex items-center justify-between py-1 border-b border-border/50 last:border-0"
-                >
-                  <div className="flex items-center gap-2">
-                    <HealthIcon status={c.status} />
-                    <span className="text-sm font-medium text-foreground capitalize">
-                      {c.name.replace(/_/g, " ")}
-                    </span>
-                  </div>
-                  <span className="text-xs text-muted-foreground truncate max-w-[180px] md:max-w-[240px] lg:max-w-xs">
-                    {c.message}
-                  </span>
-                </div>
-              ))}
-          </CardContent>
-        </Card>
+      <Separator />
 
-        {/* Recent runs */}
-        <Card className="shadow-sm border-border/60 backdrop-blur-sm bg-card/50">
-          <CardHeader className="pb-3 card-corner-accent">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Activity className="h-4 w-4 text-muted-foreground" />
-              Recent Pipeline Runs
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {ready && (history.isLoading || history.isPending) && (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            )}
-            {ready && history.isError && (
-              <QueryErrorBanner message="Could not load history" />
-            )}
-            {ready && history.data?.runs.length === 0 && (
-              <EmptyState
-                className="py-8"
-                title="No runs yet"
-                description="Start a pipeline to begin scraping and scoring jobs."
-                action={{ label: "Go to Pipeline", href: "/pipeline" }}
-              />
-            )}
-            {ready &&
-              history.data?.runs.map((r) => (
-                <div
-                  key={r.run_id}
-                  className="flex items-center justify-between py-1 border-b border-border/50 last:border-0"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0}{" "}
-                      applied
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDatetime(r.created_at)}
-                    </p>
-                  </div>
-                  <Badge
-                    className={cn(
-                      "text-xs font-medium",
-                      STATUS_COLORS[r.status] ??
-                        "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {r.status}
-                  </Badge>
-                </div>
-              ))}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Recent runs — open section, not a card chrome */}
+      <section className="space-y-3">
+        <h2 className="font-heading text-sm font-semibold text-foreground">
+          Recent pipeline runs
+        </h2>
+        {ready && (history.isLoading || history.isPending) && (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        )}
+        {ready && history.isError && (
+          <QueryErrorBanner message="Could not load history" />
+        )}
+        {ready && history.data?.runs.length === 0 && (
+          <EmptyState
+            className="py-8"
+            title="No runs yet"
+            description="Start a pipeline to begin scraping and scoring jobs."
+            action={{ label: "Go to Pipeline", href: "/pipeline" }}
+          />
+        )}
+        {ready &&
+          history.data?.runs.map((r) => (
+            <div
+              key={r.run_id}
+              className="flex items-center justify-between border-b border-border/50 py-2 last:border-0"
+            >
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0} applied
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDatetime(r.created_at)}
+                </p>
+              </div>
+              <Badge
+                className={cn(
+                  "text-xs font-medium",
+                  STATUS_COLORS[r.status] ?? "bg-muted text-muted-foreground",
+                )}
+              >
+                {r.status}
+              </Badge>
+            </div>
+          ))}
+      </section>
     </PageContainer>
   );
 }

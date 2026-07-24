@@ -14,7 +14,6 @@ import {
   Legend,
 } from "recharts";
 import { metricsApi } from "@/lib/api/metrics";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
@@ -114,7 +113,7 @@ export default function MetricsPage() {
             return (
               <>
                 <section>
-                  <h2 className="mb-3 text-sm font-semibold text-foreground uppercase tracking-wide">
+                  <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-foreground">
                     Cost
                   </h2>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -138,7 +137,7 @@ export default function MetricsPage() {
                 </section>
 
                 <section>
-                  <h2 className="mb-3 text-sm font-semibold text-foreground uppercase tracking-wide">
+                  <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-foreground">
                     Outcomes
                   </h2>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -150,79 +149,69 @@ export default function MetricsPage() {
                 </section>
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">
-                        Application Funnel
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={funnelData} layout="vertical">
-                          <XAxis type="number" tick={{ fontSize: 12 }} />
-                          <YAxis
-                            type="category"
-                            dataKey="name"
-                            width={80}
-                            tick={{ fontSize: 12 }}
-                          />
-                          <Tooltip formatter={(v) => [v, "Count"]} />
-                          <Bar
-                            dataKey="count"
-                            fill="var(--chart-1)"
-                            radius={[0, 4, 4, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">
-                        LLM Call Distribution
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {cost.total_calls > 0 ? (
-                        <ResponsiveContainer width="100%" height={280}>
-                          <PieChart>
-                            <Pie
-                              data={costPieData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={55}
-                              outerRadius={80}
-                              paddingAngle={3}
-                              dataKey="value"
-                            >
-                              {costPieData.map((_, i) => (
-                                <Cell
-                                  key={i}
-                                  fill={PIE_COLORS[i % PIE_COLORS.length]}
-                                />
-                              ))}
-                            </Pie>
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <EmptyState
-                          className="h-[280px] border-0 bg-transparent"
-                          title="No calls recorded yet"
+                  <section className="space-y-3">
+                    <h3 className="font-heading text-base font-semibold text-foreground">
+                      Application Funnel
+                    </h3>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={funnelData} layout="vertical">
+                        <XAxis type="number" tick={{ fontSize: 12 }} />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          width={80}
+                          tick={{ fontSize: 12 }}
                         />
-                      )}
-                    </CardContent>
-                  </Card>
+                        <Tooltip formatter={(v) => [v, "Count"]} />
+                        <Bar
+                          dataKey="count"
+                          fill="var(--chart-1)"
+                          radius={[0, 4, 4, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </section>
+
+                  <section className="space-y-3">
+                    <h3 className="font-heading text-base font-semibold text-foreground">
+                      LLM Call Distribution
+                    </h3>
+                    {cost.total_calls > 0 ? (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <PieChart>
+                          <Pie
+                            data={costPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={55}
+                            outerRadius={80}
+                            paddingAngle={3}
+                            dataKey="value"
+                          >
+                            {costPieData.map((_, i) => (
+                              <Cell
+                                key={i}
+                                fill={PIE_COLORS[i % PIE_COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <EmptyState
+                        className="h-[280px] border-0 bg-transparent"
+                        title="No calls recorded yet"
+                      />
+                    )}
+                  </section>
                 </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      Recent LLM Calls
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="overflow-x-auto">
+                <section className="space-y-3">
+                  <h3 className="font-heading text-base font-semibold text-foreground">
+                    Recent LLM Calls
+                  </h3>
+                  <div className="overflow-x-auto">
                     {recent_calls.length === 0 ? (
                       <EmptyState title="No calls recorded yet" />
                     ) : (
@@ -242,7 +231,7 @@ export default function MetricsPage() {
                               <td className="py-2 pr-4 text-foreground">
                                 {c.task_type}
                               </td>
-                              <td className="py-2 pr-4 text-muted-foreground capitalize">
+                              <td className="py-2 pr-4 capitalize text-muted-foreground">
                                 {c.provider}
                               </td>
                               <td className="py-2 pr-4 text-muted-foreground">
@@ -251,7 +240,7 @@ export default function MetricsPage() {
                               <td className="py-2 pr-4 text-foreground">
                                 {formatCurrency(c.cost_usd)}
                               </td>
-                              <td className="py-2 text-muted-foreground text-xs">
+                              <td className="py-2 text-xs text-muted-foreground">
                                 {formatDatetime(c.timestamp)}
                               </td>
                             </tr>
@@ -259,42 +248,34 @@ export default function MetricsPage() {
                         </tbody>
                       </table>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </section>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      System Health Summary
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-6">
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-emerald-600">
-                          {health.healthy}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Healthy</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-amber-600">
-                          {health.degraded}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Degraded
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-destructive">
-                          {health.unhealthy}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Unhealthy
-                        </p>
-                      </div>
+                <section className="space-y-3">
+                  <h3 className="font-heading text-base font-semibold text-foreground">
+                    System Health Summary
+                  </h3>
+                  <div className="flex gap-6">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-success">
+                        {health.healthy}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Healthy</p>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-warning">
+                        {health.degraded}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Degraded</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-destructive">
+                        {health.unhealthy}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Unhealthy</p>
+                    </div>
+                  </div>
+                </section>
               </>
             );
           })()}

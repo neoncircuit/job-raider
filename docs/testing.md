@@ -50,6 +50,9 @@ cd apps/frontend-ts
 # Run all E2E tests
 npm run test:e2e
 
+# If Docker (or another process) already owns :3000, point Playwright at a free port
+PLAYWRIGHT_PORT=3001 npm run test:e2e
+
 # Run E2E tests with UI
 npm run test:e2e:ui
 
@@ -60,6 +63,7 @@ npm run test:e2e:debug
 npx playwright test tests/e2e/basic.spec.ts
 ```
 
+Playwright starts `next dev` on `PLAYWRIGHT_PORT` (default `3000`) and uses that as `baseURL`. When a local Docker stack is already bound to `:3000`, reuse would hit the container instead of your working tree — set `PLAYWRIGHT_PORT` to avoid that.
 ### Backend Tests
 
 ```bash
@@ -285,6 +289,9 @@ pytest tests/test_example.py::test_function -v -s
 
 **Issue**: Browser not installed
 **Solution**: Run `npx playwright install chromium`
+
+**Issue**: Tests fail against unexpected UI (e.g. old headings) while local source looks correct
+**Solution**: Something else is already listening on `:3000` (often the Docker frontend). Playwright's `reuseExistingServer` will hit that stack instead of your working tree. Re-run with `PLAYWRIGHT_PORT=3001 npm run test:e2e`.
 
 **Issue**: Tests failing in CI but passing locally
 **Solution**: Check for timing issues - use `await expect().toBeVisible()` instead of `expect().toBeVisible()`

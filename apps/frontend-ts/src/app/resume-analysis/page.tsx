@@ -208,7 +208,7 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
               <ol className="space-y-2">
                 {(analysis.resume_improvements ?? []).map((r, i) => (
                   <li key={i} className="flex gap-2 text-sm text-foreground">
-                    <span className="shrink-0 font-semibold text-blue-600">
+                    <span className="shrink-0 font-semibold text-primary">
                       {i + 1}.
                     </span>
                     {r}
@@ -260,14 +260,14 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
         className={cn(
           "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors",
           isDragActive
-            ? "border-blue-500 bg-blue-50"
+            ? "border-primary bg-primary/10"
             : "border-border bg-muted hover:border-border",
         )}
       >
         <input {...getInputProps()} />
         <Upload className="mb-3 h-8 w-8 text-muted-foreground" />
         {file ? (
-          <p className="text-sm font-medium text-blue-600">{file.name}</p>
+          <p className="text-sm font-medium text-primary">{file.name}</p>
         ) : (
           <>
             <p className="text-sm font-medium text-foreground">

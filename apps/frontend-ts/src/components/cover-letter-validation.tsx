@@ -285,7 +285,7 @@ export function CoverLetterValidationDisplay({
           </Badge>
         )}
         {referencedProjects.map((project, i) => (
-          <Badge key={i} variant="outline" className="text-xs text-indigo-600">
+          <Badge key={i} variant="outline" className="text-xs text-primary">
             {project}
           </Badge>
         ))}
@@ -296,7 +296,7 @@ export function CoverLetterValidationDisplay({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Sparkles className="h-4 w-4 text-indigo-500" />
+              <Sparkles className="h-4 w-4 text-primary" />
               AI Feedback
             </CardTitle>
           </CardHeader>
@@ -307,7 +307,7 @@ export function CoverLetterValidationDisplay({
                   key={i}
                   className="flex items-start gap-2 text-xs text-foreground"
                 >
-                  <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
+                  <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                   {feedback}
                 </li>
               ))}
@@ -322,11 +322,11 @@ export function CoverLetterValidationDisplay({
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-sm">
-                <PenTool className="h-4 w-4 text-indigo-500" />
+                <PenTool className="h-4 w-4 text-primary" />
                 Reviewer Feedback
               </span>
               {reviewDetails.rewrite_count > 0 ? (
-                <Badge variant="outline" className="text-xs text-indigo-600">
+                <Badge variant="outline" className="text-xs text-primary">
                   Rewritten once
                 </Badge>
               ) : (

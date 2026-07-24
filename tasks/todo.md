@@ -3110,7 +3110,7 @@ npm run test -- --run
 
 ## Job Preference Targeting (2026-07-23)
 
-**Overview:** Additive experimental feature — editable Profile job targets + opt-in "Use profile targets" on Pipeline/Jobs (default off). Easy to keep or discard.
+**Overview:** Additive experimental feature ? editable Profile job targets + opt-in "Use profile targets" on Pipeline/Jobs (default off). Easy to keep or discard.
 
 ### Checklist
 
@@ -3178,3 +3178,40 @@ npm run test -- --run
 - Embedding route is preserved via merge (not wiped by partial settings).
 - `reload_routes_from_settings` must merge into `DEFAULT_ROUTES`, not replace the whole map.
 - Settings form remounts on `updated_at` to avoid `setState`-in-effect lint failures.
+
+## Raid Design Refresh (Identity + IA) (2026-07-24)
+
+**Overview:** Unify the frontend around a sharp red raid/ops visual system and regroup the dense sidebar. Drop neon/starfield chrome, IBM Plex type via next/font, brand mark, CTA-first dashboard, tokenized color drift, and mobile jobs detail sheet.
+
+### Checklist
+
+- [x] Tokens + shell: remove neon/starfield; raid atmosphere wash; IBM Plex Sans/Mono; primary-aligned charts
+- [x] Brand + IA: BrandMark, grouped Workflow / Analysis / System nav, solid active states (no glow)
+- [x] Tokenize indigo/purple/violet (and brand blues) across hotspot pages/components
+- [x] Dashboard CTA-first viewport; PageHeader mono tracking; card diet on Profile hero + Metrics sections
+- [x] Jobs detail Sheet on viewports below lg (useMediaQuery)
+- [x] Update e2e smoke/dashboard assertions for new dashboard heading and section copy
+
+### Review
+
+- Light and dark share one red-ops thesis; decorative cosmic CSS deleted from globals.css.
+- Nav sections inherit on mobile via shared SidebarContent.
+- Dashboard keeps the page title "Dashboard" with BrandMark + Run pipeline CTA (brand without renaming the route heading).
+- Local E2E against Docker on `:3000` was a false failure mode ? use `PLAYWRIGHT_PORT=3001` when the container owns 3000 (`docs/testing.md`).
+
+### Verification
+
+```bash
+cd apps/frontend-ts
+npm run lint
+npm run type-check
+npm run format:check
+npm run build
+npm test -- --run
+# 74 passed
+PLAYWRIGHT_PORT=3001 npm run test:e2e -- tests/e2e/smoke.spec.ts tests/e2e/dashboard.spec.ts
+# 30 passed
+CI=1 PLAYWRIGHT_PORT=3010 npm run test:e2e
+# 42 passed (full suite; avoid reusing Docker on :3000)
+```
+

@@ -108,8 +108,7 @@ function StatusBadge({ status }: { status?: string | null }) {
         "capitalize",
         normalized === "completed" && "border-green-200 text-green-700",
         normalized === "failed" && "border-red-200 text-red-700",
-        normalized === "pending" &&
-          "border-blue-200 text-blue-700 animate-pulse",
+        normalized === "pending" && "border-info/30 text-info animate-pulse",
       )}
     >
       {normalized}

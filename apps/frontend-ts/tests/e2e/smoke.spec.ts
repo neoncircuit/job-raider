@@ -8,13 +8,9 @@
  *  - Desktop renders the sidebar persistently.
  *  - Mobile hides nav behind a hamburger `<Sheet>` (aria-label "Open
  *    navigation"), opened before a link is clicked.
- *  - The Odysseus theme floats the desktop sidebar via an infinite CSS
- *    animation (`.cosmic-float`), so on desktop the link click uses `force` to
- *    bypass Playwright's actionability "stable" check; the mobile sheet's links
- *    are static and need no force.
- *
- * A single `navigateTo` helper centralises this, so each test runs unchanged on
- * both the chromium (desktop) and Mobile Chrome projects with no skips.
+ *  - Nav clicks are scoped to ``nav`` so the brand lockup link cannot collide
+ *    with route labels, and use ``force`` on desktop to avoid flaky
+ *    actionability checks against sticky sidebar chrome.
  */
 
 import type { Page } from "@playwright/test";
@@ -24,9 +20,8 @@ import { test, expect } from "./support/test";
  * Navigate to a primary route via whichever nav the current viewport exposes.
  *
  * On mobile, open the hamburger `<Sheet>` first; on desktop the sidebar is
- * persistent. Desktop sidebar links float (Odysseus `.cosmic-float`), so the
- * click bypasses the actionability "stable" check there; mobile sheet links are
- * static and use the default checks.
+ * persistent. Clicks are scoped to a ``nav`` landmark so brand/header links
+ * are never matched.
  *
  * @param page - The Playwright page to drive.
  * @param linkName - Accessible name of the nav link to click (e.g. "Jobs").
@@ -38,6 +33,7 @@ async function navigateTo(page: Page, linkName: string): Promise<void> {
     await page.getByLabel("Open navigation").click();
   }
   await page
+    .locator("nav")
     .getByRole("link", { name: linkName, exact: true })
     .click({ force: !isMobile });
 }

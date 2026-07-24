@@ -43,9 +43,9 @@ const TIER_CONFIG: Record<
   },
   low_risk: {
     label: "Low Risk",
-    color: "text-blue-700",
-    bg: "bg-blue-50",
-    border: "border-blue-200",
+    color: "text-info",
+    bg: "bg-info/10",
+    border: "border-info/30",
     icon: Shield,
   },
   moderate_risk: {
@@ -81,7 +81,7 @@ const CATEGORY_CONFIG = [
 
 function scoreColor(score: number): string {
   if (score === 0) return "text-green-600";
-  if (score <= 15) return "text-blue-600";
+  if (score <= 15) return "text-info";
   if (score <= 30) return "text-amber-600";
   if (score <= 50) return "text-orange-600";
   return "text-red-600";
@@ -89,7 +89,7 @@ function scoreColor(score: number): string {
 
 function scoreBarColor(score: number): string {
   if (score === 0) return "bg-green-500";
-  if (score <= 15) return "bg-blue-500";
+  if (score <= 15) return "bg-info/100";
   if (score <= 30) return "bg-amber-500";
   if (score <= 50) return "bg-orange-500";
   return "bg-red-500";
@@ -231,7 +231,7 @@ export function TrustAnalysisDisplay({ analysis }: TrustAnalysisDisplayProps) {
               onClick={() => setShowLlmSummary(!showLlmSummary)}
             >
               <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-indigo-500" />
+                <MessageSquare className="h-4 w-4 text-primary" />
                 AI Analysis
               </CardTitle>
               {showLlmSummary ? (

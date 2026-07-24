@@ -8,7 +8,6 @@ import {
   FileSearch,
   BarChart3,
   Settings,
-  Zap,
   GraduationCap,
   Link as LinkIcon,
   Mail,
@@ -18,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { SidebarNavLink } from "./SidebarNavLink";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandMark } from "./BrandMark";
 
 /** Profile is the heart of the app — pinned at the top, above the workflow nav. */
 const PROFILE_ITEM = {
@@ -26,38 +26,72 @@ const PROFILE_ITEM = {
   label: "Profile",
 };
 
-const NAV_ITEMS = [
+interface NavItem {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+}
+
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+const NAV_SECTIONS: NavSection[] = [
   {
-    href: "/dashboard",
-    icon: <LayoutDashboard size={16} />,
-    label: "Dashboard",
-  },
-  { href: "/pipeline", icon: <Rocket size={16} />, label: "Pipeline" },
-  { href: "/jobs", icon: <Briefcase size={16} />, label: "Jobs" },
-  { href: "/cover-letter", icon: <Mail size={16} />, label: "Cover Letter" },
-  { href: "/career-coach", icon: <Compass size={16} />, label: "Career Coach" },
-  {
-    href: "/applications",
-    icon: <ClipboardList size={16} />,
-    label: "Applications",
-  },
-  {
-    href: "/assessment",
-    icon: <GraduationCap size={16} />,
-    label: "Assessment",
+    label: "Workflow",
+    items: [
+      {
+        href: "/dashboard",
+        icon: <LayoutDashboard size={16} />,
+        label: "Dashboard",
+      },
+      { href: "/pipeline", icon: <Rocket size={16} />, label: "Pipeline" },
+      { href: "/jobs", icon: <Briefcase size={16} />, label: "Jobs" },
+      {
+        href: "/applications",
+        icon: <ClipboardList size={16} />,
+        label: "Applications",
+      },
+    ],
   },
   {
-    href: "/resume-analysis",
-    icon: <FileSearch size={16} />,
-    label: "Resume Analysis",
+    label: "Analysis",
+    items: [
+      {
+        href: "/cover-letter",
+        icon: <Mail size={16} />,
+        label: "Cover Letter",
+      },
+      {
+        href: "/career-coach",
+        icon: <Compass size={16} />,
+        label: "Career Coach",
+      },
+      {
+        href: "/assessment",
+        icon: <GraduationCap size={16} />,
+        label: "Assessment",
+      },
+      {
+        href: "/resume-analysis",
+        icon: <FileSearch size={16} />,
+        label: "Resume Analysis",
+      },
+      {
+        href: "/linkedin-analysis",
+        icon: <LinkIcon size={16} />,
+        label: "LinkedIn Analysis",
+      },
+    ],
   },
   {
-    href: "/linkedin-analysis",
-    icon: <LinkIcon size={16} />,
-    label: "LinkedIn Analysis",
+    label: "System",
+    items: [
+      { href: "/metrics", icon: <BarChart3 size={16} />, label: "Metrics" },
+      { href: "/settings", icon: <Settings size={16} />, label: "Settings" },
+    ],
   },
-  { href: "/metrics", icon: <BarChart3 size={16} />, label: "Metrics" },
-  { href: "/settings", icon: <Settings size={16} />, label: "Settings" },
 ];
 
 interface SidebarContentProps {
@@ -70,25 +104,24 @@ interface SidebarContentProps {
  *
  * Keeping the navigation items, logo, connection status, and footer in one
  * place prevents the desktop and mobile menus from drifting out of sync.
+ *
+ * @param onNavItemClick - Optional callback when a nav link is activated.
  */
 export function SidebarContent({ onNavItemClick }: SidebarContentProps) {
   return (
     <>
-      {/* Logo */}
       <div className="px-4 pt-5 pb-4">
         <Link
           href="/dashboard"
           onClick={onNavItemClick}
           className="flex items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-lg cosmic-glow">
-            <Zap size={15} className="text-primary-foreground" fill="current" />
-          </div>
+          <BrandMark size={32} />
           <div>
-            <p className="text-sm font-bold text-sidebar-foreground tracking-tight">
+            <p className="font-heading text-sm font-bold tracking-tight text-sidebar-foreground">
               Job Raider
             </p>
-            <p className="text-[10px] text-sidebar-accent-foreground leading-none">
+            <p className="text-[10px] leading-none text-muted-foreground">
               Automated Pipeline
             </p>
           </div>
@@ -100,24 +133,30 @@ export function SidebarContent({ onNavItemClick }: SidebarContentProps) {
       <Separator className="bg-sidebar-border" />
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">
-        {/* Profile — the heart of the app, pinned above the workflow nav */}
         <SidebarNavLink {...PROFILE_ITEM} onClick={onNavItemClick} />
         <Separator className="my-3 bg-sidebar-border" />
-        <div className="space-y-0.5">
-          {NAV_ITEMS.map((item) => (
-            <SidebarNavLink
-              key={item.href}
-              {...item}
-              onClick={onNavItemClick}
-            />
+        <div className="space-y-4">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.label} className="space-y-0.5">
+              <p className="px-3 pb-1 font-heading text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.label}
+              </p>
+              {section.items.map((item) => (
+                <SidebarNavLink
+                  key={item.href}
+                  {...item}
+                  onClick={onNavItemClick}
+                />
+              ))}
+            </div>
           ))}
         </div>
       </nav>
 
-      <div className="px-2 py-3 border-t border-sidebar-border space-y-1">
+      <div className="space-y-1 border-t border-sidebar-border px-2 py-3">
         <ThemeToggle />
         <div className="px-1">
-          <p className="text-[10px] text-sidebar-accent-foreground text-center">
+          <p className="text-center text-[10px] text-muted-foreground">
             v0.1.0
           </p>
         </div>

@@ -38,7 +38,7 @@ export function PrepSheetDisplay({ prep }: { prep: PrepSheetResponse }) {
       {prep.talking_points.length > 0 && (
         <div className="space-y-1.5">
           <p className="font-medium flex items-center gap-2">
-            <Lightbulb className="h-3.5 w-3.5 text-indigo-500" />
+            <Lightbulb className="h-3.5 w-3.5 text-primary" />
             Talking points
           </p>
           <ul className="list-disc pl-5 space-y-1 text-muted-foreground">

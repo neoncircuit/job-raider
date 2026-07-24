@@ -175,7 +175,7 @@ export function ApplicationSettingsModal({
                   className={cn(
                     "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
                     selectedVisaStatus === option.value
-                      ? "border-indigo-500 bg-indigo-50"
+                      ? "border-primary bg-primary/10"
                       : "border-border hover:bg-muted",
                   )}
                 >
@@ -183,7 +183,7 @@ export function ApplicationSettingsModal({
                     type="radio"
                     value={option.value}
                     {...register("visa_status")}
-                    className="mt-1 h-4 w-4 accent-indigo-600"
+                    className="mt-1 h-4 w-4 accent-primary"
                   />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">

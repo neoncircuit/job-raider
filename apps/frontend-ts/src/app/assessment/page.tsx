@@ -29,14 +29,14 @@ import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   beginner: "bg-green-100 text-green-800",
-  intermediate: "bg-blue-100 text-blue-800",
+  intermediate: "bg-info/10 text-info",
   advanced: "bg-orange-100 text-orange-800",
   expert: "bg-red-100 text-red-800",
 };
 
 const QUESTION_TYPE_COLORS: Record<string, string> = {
-  conceptual: "bg-purple-100 text-purple-800",
-  scenario: "bg-sky-100 text-sky-800",
+  conceptual: "bg-primary/10 text-primary",
+  scenario: "bg-info/10 text-info",
   coding: "bg-emerald-100 text-emerald-800",
   system_design: "bg-amber-100 text-amber-800",
 };
@@ -299,7 +299,7 @@ function SessionView({
           </div>
           <div className="h-1.5 bg-muted rounded-full">
             <div
-              className="h-full bg-indigo-500 rounded-full transition-all"
+              className="h-full bg-primary/100 rounded-full transition-all"
               style={{ width: `${(questionIdx / total) * 100}%` }}
             />
           </div>
@@ -402,7 +402,7 @@ function SessionView({
                       className={cn(
                         "w-full text-left rounded-lg border p-3 transition-colors",
                         selectedOption === opt.label
-                          ? "border-indigo-500 bg-indigo-50"
+                          ? "border-primary bg-primary/10"
                           : "border-border hover:border-border",
                       )}
                     >
@@ -418,7 +418,7 @@ function SessionView({
                 value={freeformAnswer}
                 onChange={(e) => setFreeformAnswer(e.target.value)}
                 placeholder="Type your answer here..."
-                className="w-full min-h-[120px] rounded-lg border border-border p-3 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-y"
+                className="w-full min-h-[120px] rounded-lg border border-border p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary resize-y"
               />
             )}
 
