@@ -217,10 +217,16 @@ ollama run qwen2.5:3b
 2. **Verify models:**
    ```bash
    ollama list
-   # Should show qwen2.5:3b and qwen2.5:7b
+   # Should show qwen2.5:3b and qwen2.5:7b (recommended defaults)
    ```
 
-3. **Test inference:**
+3. **Or pick any installed model in Settings:**
+   - Open `/settings` → Ollama Models
+   - Confirm **Ollama Host** points at your shared or local service
+   - Choose small/large models from the dropdown (or Use recommended 3b / 7b)
+   - Save Settings
+
+4. **Test inference:**
    ```bash
    ollama run qwen2.5:3b "Hello, world!"
    ```

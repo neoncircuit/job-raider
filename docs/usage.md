@@ -244,7 +244,7 @@ Filters out potential scam listings using 10 indicators.
 
 ### Stage 4: Filter by Profile
 
-Filters listings matching your profile preferences.
+Filters listings matching your profile preferences (keywords, locations, experience levels, and optional `exclude_internships`).
 
 ### Stage 5: Score and Rank
 
@@ -514,15 +514,17 @@ http://localhost:3000
 
 **Navigation Pages:**
 - **Dashboard** - System health, API costs, recent pipeline runs
-- **Pipeline** - Configure and run job application pipelines
-- **Jobs** - Search and browse job listings with location filtering
-- **Applications** - Track saved and applied jobs
-- **Profile** - Manage your profile, skills, and experience
-- **Assessment** - DISC personality assessment and technical interview practice
+- **Pipeline** - Configure and run job application pipelines; optional Use profile targets
+- **Jobs** - Search and browse job listings with location filtering; optional Use profile targets
+- **Applications** - Track saved and applied jobs (Simulate Apply for dry-run paths)
+- **Profile** - Manage profile, skills, experience, and Job Targets (keywords, locations, experience, exclude internships)
+- **Assessment** - DISC personality assessment and skill-based technical interview practice
 - **Resume Analysis** - AI-powered resume parsing and gap analysis
 - **LinkedIn Analysis** - Inbound-attraction scoring and recruiter-focused profile recommendations
+- **Cover Letter** - Paste a job description, generate/review, and export
+- **Career Coach** - Agent-backed career guidance (requires an active profile)
 - **Metrics** - Cost tracking and outcome statistics
-- **Settings** - Configure API keys, scraper sources, and preferences
+- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits
 
 **DISC Personality Assessment:**
 - Industry-standard Most/Least forced-choice format
@@ -535,7 +537,13 @@ http://localhost:3000
 - Source selection (LinkedIn, JSearch for 50+ boards)
 - Experience level filtering
 - Remote-only toggle
+- Opt-in **Use profile targets** (default off) to prefill from Profile Job Targets
 - Real-time job classification and trust analysis
+
+**Ollama model choice (Settings):**
+- Lists models from the configured Ollama host (including a shared desktop Ollama service)
+- Small (fast) and large (quality) tier pickers update task routing
+- Recommended defaults remain `qwen2.5:3b` and `qwen2.5:7b`; any installed model may be saved as your default
 
 ### Pulling Ollama Models
 

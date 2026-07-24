@@ -59,10 +59,10 @@ Job Raider combines an async Python backend, a local-first LLM strategy, and a m
 
 Job Raider uses a cost-optimized two-model approach:
 
-1. **Small Model (qwen2.5:3b)** - Selection and scoring
-2. **Large Model (qwen2.5:7b)** - Resume writing, analysis, and parsing
+1. **Small Model (recommended: qwen2.5:3b)** - Selection and scoring
+2. **Large Model (recommended: qwen2.5:7b)** - Resume writing, analysis, and parsing
 
-This reduces API costs by 80% while maintaining quality.
+This reduces API costs by 80% while maintaining quality. Settings can assign any installed Ollama models to these tiers (including models on a shared desktop Ollama service); documented recommendations remain 3b / 7b.
 
 ### Resume Analysis
 
@@ -71,6 +71,14 @@ The dashboard includes an AI-powered resume analysis feature that:
 - Builds structured skills, experience, and project data from parsed content
 - Provides qualitative scoring, summaries, and improvement recommendations
 - Supports both general analysis and job-specific gap analysis
+
+### Recent Updates (2026-07-23)
+
+**UI/UX polish:** Shared page chrome (`PageHeader`, empty/error banners), honest Simulate Apply / Request Cancel labels, metrics outcomes aligned to API rates, Assessment limited to skill-based + DISC.
+
+**Job preference targeting:** Editable Profile Job Targets (`experience_levels`, `exclude_internships`) with opt-in Use profile targets on Pipeline and Jobs (default off).
+
+**Ollama model freedom of choice:** Settings small/large pickers from live Ollama tags; `POST /api/settings/ollama-defaults`; `create_router()` applies saved routing. Shared Ollama host supported via Settings.
 
 ### Recent Updates (Phase 44 - 2026-06-27)
 

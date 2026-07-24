@@ -253,13 +253,17 @@ sequenceDiagram
 
 ### Model Selection for 8GB VRAM
 
+Recommended defaults (also shown in Settings as **Use recommended (3b / 7b)**):
+
 | Model | Parameters | VRAM Usage | Use Case | Cost |
 |-------|-----------|------------|----------|------|
-| qwen2.5:3b | 3B | ~2 GB | Selection, Scoring | Free (local) |
-| qwen2.5:7b | 7B | ~4 GB | Resume Writing | Free (local) |
+| qwen2.5:3b | 3B | ~2 GB | Selection, Scoring (small tier) | Free (local) |
+| qwen2.5:7b | 7B | ~4 GB | Resume Writing (large tier) | Free (local) |
 | gemma3:4b | 4B | ~2.5 GB | Alt. Selection | Free (local) |
 | gemma3:12b | 12B | ~7 GB | Alt. Writing | Free (local) |
 | claude-sonnet-4-6 | N/A | N/A | Fallback/API | ~$3/50 apps |
+
+Any model installed on the shared Ollama host may be selected in **Settings → Ollama Models** and saved as the small/large tier defaults. `create_router()` loads those choices from user settings on each use.
 
 ## Data Flow
 
@@ -572,15 +576,17 @@ graph LR
 | Route | Purpose |
 |-------|---------|
 | `/dashboard` | Health checks, quick stats, recent pipeline runs |
-| `/pipeline` | Start form, WebSocket live monitor, history |
-| `/jobs` | Search, split-panel list + detail, pagination, save/apply |
+| `/pipeline` | Start form, WebSocket live monitor, history; optional Use profile targets |
+| `/jobs` | Search, split-panel list + detail, pagination, save/apply; optional Use profile targets |
 | `/applications` | Tracker: All / Saved / Hidden tabs, track external |
-| `/profile` | Resume upload (dropzone), parsed profile display |
+| `/profile` | Resume upload (dropzone), parsed profile display, editable Job Targets |
 | `/resume-analysis` | Upload + optional JD → AI score, gaps, recommendations |
 | `/linkedin-analysis` | LinkedIn profile analyzer and inbound-attraction recommendations |
+| `/cover-letter` | Manual JD paste → generate/review/export cover letter |
+| `/career-coach` | Agent-backed career analysis (requires active profile) |
 | `/metrics` | Recharts funnel + pie, cost tiles, LLM call log |
-| `/settings` | Model params, API config, cost limits, validate/reset |
-| `/assessment` | Technical interview practice: skill-based or job-targeted, MC + freeform, adaptive difficulty |
+| `/settings` | Ollama host, small/large model pickers, model params, API config, cost limits |
+| `/assessment` | DISC personality assessment and skill-based technical interview practice |
 
 ## Security Considerations
 

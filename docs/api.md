@@ -332,9 +332,12 @@ profile = UserProfile(
         keywords=["python", "engineer"],
         locations=["remote", "san francisco"],
         experience_levels=[ExperienceLevel.MID, ExperienceLevel.SENIOR],
+        exclude_internships=True,
     ),
 )
 ```
+
+`TargetJob.exclude_internships` defaults to `false`. When `true`, preference filtering drops internship-level roles. The Profile UI exposes job targets; Pipeline and Jobs can opt in to **Use profile targets** (default off) to prefill keywords/locations from the active profile.
 
 #### MatchScore
 
@@ -1030,9 +1033,34 @@ Reset all settings to default values.
 
 **Response:** Default UserSettings object
 
+#### POST /api/settings/ollama-defaults
+
+Apply small/large Ollama model choices across all Ollama-primary task tiers and save.
+
+Recommended documented defaults remain `qwen2.5:3b` (small) and `qwen2.5:7b` (large). Any model installed on the configured Ollama host may be supplied (including a shared desktop Ollama service).
+
+**Request Body:**
+```json
+{
+  "small_model": "qwen2.5:3b",
+  "large_model": "qwen2.5:7b"
+}
+```
+
+**Response:** Updated UserSettings object with tier routing applied
+
+```mermaid
+flowchart LR
+    UI[Settings UI] -->|POST ollama-defaults or PUT settings| API[Settings API]
+    API --> Disk[user_settings.json]
+    API -->|live tags| Ollama[Shared Ollama /api/tags]
+    Router[create_router] -->|load on each use| Disk
+    Router --> Ollama
+```
+
 #### GET /api/settings/models
 
-Get list of available models by provider.
+Get available models by provider. Merges the YAML catalog with models installed on the live Ollama host (`api_config.ollama_host`). Includes recommended small/large defaults.
 
 **Response:**
 ```json
@@ -1043,17 +1071,26 @@ Get list of available models by provider.
     "claude-haiku-4-5-20251001"
   ],
   "ollama": [
-    "qwen2.5:3b",
-    "qwen2.5:7b",
+    "custom-local:1b",
     "gemma3:4b",
-    "gemma3:12b"
-  ]
+    "qwen2.5:3b",
+    "qwen2.5:7b"
+  ],
+  "ollama_installed": [
+    "custom-local:1b",
+    "qwen2.5:3b",
+    "qwen2.5:7b"
+  ],
+  "recommended": {
+    "small": "qwen2.5:3b",
+    "large": "qwen2.5:7b"
+  }
 }
 ```
 
 #### POST /api/settings/validate
 
-Validate settings without saving them.
+Validate settings without saving them. Ollama models may appear in the YAML catalog or as installed tags on the live host. Unreachable Ollama yields warnings rather than hard failures for Ollama-only checks.
 
 **Request Body:** UserSettings object
 
@@ -1071,6 +1108,8 @@ Validate settings without saving them.
 Get merged configuration (YAML defaults + user settings).
 
 **Response:** Merged configuration dictionary used by the application
+
+**Runtime note:** `create_router()` loads saved routing and `ollama_host` on each call so Settings changes apply to new LLM work without restarting the process.
 
 ### Settings Model Reference
 
@@ -1096,8 +1135,8 @@ Configuration for a single task type.
 | `task_type` | str | Task identifier (selection, scoring, etc.) |
 | `primary_provider` | Provider | Primary provider to use |
 | `primary_model` | str | Model name for primary |
-| `fallback_provider` | Provider | Fallback provider |
-| `fallback_model` | str | Model name for fallback |
+| `fallback_provider` | Provider \| null | Fallback provider (null for embedding-only routes) |
+| `fallback_model` | str \| null | Model name for fallback |
 
 #### APIConfig
 

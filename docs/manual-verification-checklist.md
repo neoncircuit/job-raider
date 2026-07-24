@@ -359,33 +359,50 @@ This checklist provides a comprehensive manual testing guide to verify all featu
 
 ### Settings Access
 - [ ] Settings page loads
-  - Navigate to: `/settings` or Settings modal
-  - Verify: Settings display
+  - Navigate to: `/settings`
+  - Verify: API Configuration, Ollama Models, Model Parameters, and Cost Limits cards display
 
-### Application Settings
-- [ ] Can update constraint mode
-  - Select: Boost or Filter
+### Ollama Host and Models
+- [ ] Can update Ollama host
+  - Set: Shared or local host (for example `localhost:11434` or `ollama:11434`)
+  - Click: Save Settings
   - Verify: Setting is saved
-- [ ] Can update minimum score
-  - Set: Minimum relevance score (0-100)
-  - Verify: Setting is saved
-- [ ] Can update scam threshold
-  - Set: Scam detection threshold (0.0-1.0)
-  - Verify: Setting is saved
-- [ ] Can update max jobs
-  - Set: Maximum jobs to present
-  - Verify: Setting is saved
+- [ ] Can choose small and large models from installed tags
+  - Open: Small model and Large model dropdowns
+  - Verify: Options include models from the live Ollama host when reachable
+  - Select: Any installed models (recommended labels mark `qwen2.5:3b` / `qwen2.5:7b`)
+  - Click: Save Settings
+  - Verify: Subsequent LLM work uses the saved tiers
+- [ ] Can apply recommended defaults
+  - Click: Use recommended (3b / 7b)
+  - Click: Save Settings
+  - Verify: Selection and writing tiers return to documented defaults
+- [ ] Can validate settings
+  - Click: Validate
+  - Verify: Success toast, or clear errors/warnings when Ollama is unreachable
 
-### Preferences
-- [ ] Can toggle notifications
-  - Click: Notification toggle
-  - Verify: Preference is saved
-- [ ] Can update theme preference
-  - Select: Light or Dark theme
-  - Verify: Theme changes immediately
+### Model Parameters and Cost Limits
+- [ ] Can update temperature, top_p, and max tokens
+  - Adjust: Sliders / inputs
+  - Click: Save Settings
+  - Verify: Values persist after reload
+- [ ] Can update max API cost and cache settings
+  - Adjust: Cost limits
+  - Click: Save Settings
+  - Verify: Values persist after reload
 - [ ] Can reset to defaults
   - Click: Reset to Defaults
-  - Verify: All settings reset
+  - Verify: Settings restore documented defaults
+
+### Profile Job Targets (related)
+- [ ] Can edit Job Targets on Profile
+  - Navigate to: `/profile`
+  - Edit: Keywords, locations, experience levels, exclude internships
+  - Verify: Targets save with the profile
+- [ ] Can opt in to Use profile targets
+  - Navigate to: `/pipeline` or `/jobs`
+  - Toggle: Use profile targets (default off)
+  - Verify: Keywords/locations prefill from profile when enabled
 
 ---
 

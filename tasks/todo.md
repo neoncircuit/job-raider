@@ -242,11 +242,11 @@
 - Confirmed the stale legacy `test-frontend` job has been removed from CI.
 - Prettier config files (`apps/frontend-ts/.prettierrc.json` and `apps/frontend-ts/.prettierignore`) are tracked and deterministic.
 - Local frontend quality gates pass:
-  - `npm run format:check` — all matched files use Prettier code style.
-  - `npm run lint` — 0 errors, 0 warnings.
-  - `npm run type-check` — `tsc --noEmit` passes.
-  - `npm run test -- --run` — 51 passed across 10 test files.
-  - `npx next build` — succeeds and generates 16 static pages, including `/career-coach`.
+  - `npm run format:check` ? all matched files use Prettier code style.
+  - `npm run lint` ? 0 errors, 0 warnings.
+  - `npm run type-check` ? `tsc --noEmit` passes.
+  - `npm run test -- --run` ? 51 passed across 10 test files.
+  - `npx next build` ? succeeds and generates 16 static pages, including `/career-coach`.
 
 ### Sub-phase 5 review
 
@@ -266,11 +266,11 @@
   - Added JSDoc docstrings (description, args, returns) to all helpers, result views, tab components, the page component, and the `mockResponse` test helper.
   - Replaced the unsafe `as unknown as GapAnalysisResult` cast in the Upskilling Roadmap tab with a runtime `gapAnalysisResultSchema` parsed by zod.
 - Final verification:
-  - `npm run format:check` — all matched files use Prettier code style.
-  - `npm run lint` — 0 errors, 0 warnings.
-  - `npm run type-check` — `tsc --noEmit` passes.
-  - `npm run test -- --run` — 51 passed across 10 test files.
-  - `npx next build` — succeeds and generates 16 static pages, including `/career-coach`.
+  - `npm run format:check` ? all matched files use Prettier code style.
+  - `npm run lint` ? 0 errors, 0 warnings.
+  - `npm run type-check` ? `tsc --noEmit` passes.
+  - `npm run test -- --run` ? 51 passed across 10 test files.
+  - `npx next build` ? succeeds and generates 16 static pages, including `/career-coach`.
   - Backend regression check: `apps/backend-py/.venv/bin/python -m pytest tests --tb=short` passes with **493 passed** in 38.78s.
 
 ### Sanity check
@@ -391,11 +391,11 @@ Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
 
 **Profile Upload & Parsing:**
 - [x] Fixed attribute name mismatches in `src/api/routes/profile.py`:
-  - `profile.work_experience` → `profile.experience`
-  - `profile.target_job` → `profile.targets`
-  - `s.years_experience` → `s.years_of_experience`
-  - `e.institution` → `e.school`
-  - `e.graduation_date` → `e.end_date`
+  - `profile.work_experience` ? `profile.experience`
+  - `profile.target_job` ? `profile.targets`
+  - `s.years_experience` ? `s.years_of_experience`
+  - `e.institution` ? `e.school`
+  - `e.graduation_date` ? `e.end_date`
 - [x] Added null check for `s.proficiency` to prevent AttributeError
 - [x] Fixed GET profile endpoint to return correct data structure
 
@@ -420,13 +420,13 @@ Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
 - [x] Created `frontend-py/src/pages/settings.py` - Settings UI page
 - [x] Updated `frontend-py/src/api/client.py` - Added settings API methods
 - [x] Created `frontend-py/src/utils/settings_state.py` - Settings persistence utilities
-- [x] Added Settings navigation item to sidebar with ⚙️ icon
+- [x] Added Settings navigation item to sidebar with ?? icon
 - [x] Settings configured per task type, API config, model parameters, cost limits
 
 **UI Improvements:**
 - [x] Updated navigation in `frontend-py/src/components/sidebar.py`:
   - Changed from radio buttons to button-based navigation
-  - Added icons for each page (🏠 Dashboard, 🚀 Pipeline, etc.)
+  - Added icons for each page (?? Dashboard, ?? Pipeline, etc.)
   - Added active tab highlighting with gradient blue background
   - Improved visual distinction between active and inactive tabs
 
@@ -901,29 +901,29 @@ Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
 - [x] All 142 backend tests still pass
 
 ### Phases 5-9: All 8 Frontend Pages (2026-04-28)
-- [x] Dashboard page — health checks, quick stats, recent pipeline runs
-- [x] Metrics page — Recharts funnel + pie charts, cost tiles, LLM call table
-- [x] Settings page — API config, model params sliders, cost limits, validate/reset
-- [x] Profile page — dropzone upload, parsed profile display (contact, skills, experience, education, projects)
-- [x] Resume Analysis page — dropzone + optional JD, score ring, strengths/gaps/recommendations
-- [x] Jobs page — search form, split-panel list + detail, pagination, save/apply actions
-- [x] Applications page — summary tiles, track external form, All/Saved/Hidden tabs
-- [x] Pipeline page — start form with validation, WebSocket live monitor + event log, history panel
+- [x] Dashboard page ? health checks, quick stats, recent pipeline runs
+- [x] Metrics page ? Recharts funnel + pie charts, cost tiles, LLM call table
+- [x] Settings page ? API config, model params sliders, cost limits, validate/reset
+- [x] Profile page ? dropzone upload, parsed profile display (contact, skills, experience, education, projects)
+- [x] Resume Analysis page ? dropzone + optional JD, score ring, strengths/gaps/recommendations
+- [x] Jobs page ? search form, split-panel list + detail, pagination, save/apply actions
+- [x] Applications page ? summary tiles, track external form, All/Saved/Hidden tabs
+- [x] Pipeline page ? start form with validation, WebSocket live monitor + event log, history panel
 - [x] TypeScript: 0 errors (`tsc --noEmit`)
 - [x] Next.js build: clean (all 12 routes compile)
 
 ### Polish & Infrastructure (2026-04-28)
 - [x] Replace Streamlit `frontend` service in `docker-compose.yml` with Next.js (port 3000)
-- [x] Rewrite `Makefile` — `make dev`, `make dev-api`, `make dev-frontend`, `make type-check`, `make install-frontend`
-- [x] Update `setup.sh` — `setup_frontend()` now installs Node deps via `npm ci`, checks Node 20+
-- [x] Create `PageSkeleton` component — shimmer fallback for Suspense boundaries
-- [x] Create `ErrorBoundary` component — catches render errors, shows "Try again" recovery UI
-- [x] Create `MobileNav` component — top bar + Sheet drawer for small screens
+- [x] Rewrite `Makefile` ? `make dev`, `make dev-api`, `make dev-frontend`, `make type-check`, `make install-frontend`
+- [x] Update `setup.sh` ? `setup_frontend()` now installs Node deps via `npm ci`, checks Node 20+
+- [x] Create `PageSkeleton` component ? shimmer fallback for Suspense boundaries
+- [x] Create `ErrorBoundary` component ? catches render errors, shows "Try again" recovery UI
+- [x] Create `MobileNav` component ? top bar + Sheet drawer for small screens
 - [x] Wire `ErrorBoundary` + `Suspense` into `AppShell` so every page is covered
 - [x] TypeScript: 0 errors. Next.js production build: all 12 routes clean.
 
 ### Backlog
-- [x] Initialize git repo and deploy frontend to Vercel — repo initialized; Vercel deploy deferred
+- [x] Initialize git repo and deploy frontend to Vercel ? repo initialized; Vercel deploy deferred
 
 ## Phase 28: Docker Volume Permissions Fix & Backend Reachability (2026-04-28) [COMPLETED]
 
@@ -935,24 +935,24 @@ Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
 
 ### Fix Applied
 - [x] Add `user: root` to backend service in `docker-compose.yml` to override `USER jobraider` from the Dockerfile
-- [x] Restart container — all 5 health checks pass (disk, ollama, data_dirs, config, mlflow)
+- [x] Restart container ? all 5 health checks pass (disk, ollama, data_dirs, config, mlflow)
 - [x] Frontend proxy `localhost:3000/api/proxy/*` confirmed working end-to-end
 
 ### Documentation Updates
-- [x] `tasks/lessons.md` — new lesson: WSL2 DrvFs bind mounts drop to root:root 755 inside containers
-- [x] `tasks/todo.md` — this phase entry
-- [x] `docs/index.md` — Phase 28 recent updates
-- [x] `docs/troubleshooting.md` — new section: backend unreachable / PermissionError on data directory
-- [x] `setup.sh` — fix `create_directories` to include all required data subdirectories
+- [x] `tasks/lessons.md` ? new lesson: WSL2 DrvFs bind mounts drop to root:root 755 inside containers
+- [x] `tasks/todo.md` ? this phase entry
+- [x] `docs/index.md` ? Phase 28 recent updates
+- [x] `docs/troubleshooting.md` ? new section: backend unreachable / PermissionError on data directory
+- [x] `setup.sh` ? fix `create_directories` to include all required data subdirectories
 
 ## Phase 29: LLM-Based Job Classification & UI Improvements (2026-04-30) [COMPLETED]
 
 ### Job Classification System
-- [x] Create `src/classifiers/job_classifier.py` — LLM-based job categorization service
+- [x] Create `src/classifiers/job_classifier.py` ? LLM-based job categorization service
 - [x] Add `JobClassification` model with rich metadata (industry, role_category, company_size, work_pace, team_structure, skills breakdown)
 - [x] Add `CLASSIFICATION` task type to LLM router with optimized routing (qwen2.5:7b primary, haiku fallback)
 - [x] Create `POST /jobs/{job_id}/classify` API endpoint
-- [x] Create `frontend-ts/src/components/job-classification.tsx` — visual display of classification data
+- [x] Create `frontend-ts/src/components/job-classification.tsx` ? visual display of classification data
 - [x] Add "Analyze with AI" button to job detail panel
 - [x] Update `JobListing` type to include optional `classification` field
 
@@ -964,41 +964,41 @@ Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
 - [x] Save fix to memory for future sessions
 
 ### Documentation Updates
-- [x] `tasks/lessons.md` — new lesson: WSL2 DrvFs aggressive caching causes stale code in containers
-- [x] `memory/feedback_wsl2_docker_fixes.md` — detailed fix documentation for future reference
-- [x] `docker-rebuild.sh` — helper script for proper container rebuilds (down + up vs restart)
+- [x] `tasks/lessons.md` ? new lesson: WSL2 DrvFs aggressive caching causes stale code in containers
+- [x] `memory/feedback_wsl2_docker_fixes.md` ? detailed fix documentation for future reference
+- [x] `docker-rebuild.sh` ? helper script for proper container rebuilds (down + up vs restart)
 
 ## Phase 30: LinkedIn Easy Apply Automation (2026-05-05) [COMPLETED]
 
 ### Already-Applied Detection
 - [x] Add `already_applied: bool` field to `JobListing` model
 - [x] Detect "Applied" badge during LinkedIn scraping in `_parse_job_card()`
-- [x] Create `backend-py/src/submission/applied_tracker.py` — JSON-based applied job ID tracking
+- [x] Create `backend-py/src/submission/applied_tracker.py` ? JSON-based applied job ID tracking
 - [x] Filter already-applied jobs in pipeline deduplicate stage
 - [x] Add `ALREADY_APPLIED` to `ApplyMethod` enum with early return in detector
 
 ### LinkedIn Authenticated Session
 - [x] Create `backend-py/src/linkedin/` package with `__init__.py`
-- [x] Create `backend-py/src/linkedin/session.py` — Playwright persistent context with cookie persistence, 2FA/CAPTCHA detection, anti-bot measures
+- [x] Create `backend-py/src/linkedin/session.py` ? Playwright persistent context with cookie persistence, 2FA/CAPTCHA detection, anti-bot measures
 - [x] Handle LinkedIn's `/checkpoint/lg/login` flow with multiple fallback selectors for email input
 - [x] Support JS injection fallback for hidden `session_key` inputs
-- [x] Create `backend-py/src/linkedin/applied_scraper.py` — scrape "My Jobs > Applied" page
+- [x] Create `backend-py/src/linkedin/applied_scraper.py` ? scrape "My Jobs > Applied" page
 - [x] Add `SUBMISSION` to `Components` logger enum
 
 ### Form Parser + Answer Engine
-- [x] Create `backend-py/src/linkedin/form_models.py` — Pydantic models (QuestionType, FormQuestion, FormStep, ParsedForm, AnswerConfidence, QuestionAnswer, FormFillResult)
-- [x] Create `backend-py/src/linkedin/form_parser.py` — parse Easy Apply modal into structured data with multiple fallback selectors
-- [x] Create `backend-py/src/linkedin/answer_engine.py` — 3-tier cascading answer strategy:
+- [x] Create `backend-py/src/linkedin/form_models.py` ? Pydantic models (QuestionType, FormQuestion, FormStep, ParsedForm, AnswerConfidence, QuestionAnswer, FormFillResult)
+- [x] Create `backend-py/src/linkedin/form_parser.py` ? parse Easy Apply modal into structured data with multiple fallback selectors
+- [x] Create `backend-py/src/linkedin/answer_engine.py` ? 3-tier cascading answer strategy:
   - Rule-based (HIGH confidence): visa, salary, relocation, notice period, phone, email, languages, education, years of experience, LinkedIn URL
   - Answer bank (HIGH confidence): YAML-based pre-configured answers
   - LLM fallback (MEDIUM/LOW): qwen2.5:3b with explicit "NEEDS_MANUAL_REVIEW" instruction
 - [x] Add `QUESTION_ANSWERING` task type to LLM router (qwen2.5:3b primary, claude-haiku fallback)
 - [x] Add `question_answering` prompt template to `config/prompt_templates.yaml`
-- [x] Create `backend-py/config/answer_bank.example.yaml` — example pre-configured answers
+- [x] Create `backend-py/config/answer_bank.example.yaml` ? example pre-configured answers
 
 ### Form Filler + Pipeline Integration
-- [x] Create `backend-py/src/linkedin/safety.py` — rate limiting (20/day, 5/hour, breaks every 5 apps)
-- [x] Create `backend-py/src/linkedin/form_filler.py` — Playwright automation for fill/submit with screenshot audit trail
+- [x] Create `backend-py/src/linkedin/safety.py` ? rate limiting (20/day, 5/hour, breaks every 5 apps)
+- [x] Create `backend-py/src/linkedin/form_filler.py` ? Playwright automation for fill/submit with screenshot audit trail
 - [x] Handle overlay dismissal (interop-shadowdom, cookie consent) with force click fallback
 - [x] Support both `<a>` and `<button>` Easy Apply elements (LinkedIn uses `<a>` tags)
 - [x] Replace `_submit_linkedin()` placeholder in `backend-py/src/submission/submitter.py` with full implementation
@@ -1072,7 +1072,7 @@ Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
 - [x] Component renders correctly at all tier levels
 
 ### Backlog
-- [ ] Handle non-Easy Apply jobs (external site redirect) — flag, surface in UI, pre-fill clipboard
+- [ ] Handle non-Easy Apply jobs (external site redirect) ? flag, surface in UI, pre-fill clipboard
 - [ ] Add resume upload handling in form filler
 - [ ] Add frontend UI for LinkedIn auto-apply configuration and monitoring
 
@@ -1443,14 +1443,14 @@ Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
 - [x] Dependencies installed (@vitejs/plugin-react, @vitest/ui, @vitest/coverage-v8)
 
 ### Backlog
-- [x] Run tests to verify infrastructure works correctly — superseded by Phase 40
-- [x] Create comprehensive component tests for Phase 39 — superseded by Phase 40
-- [x] Create E2E tests for critical user flows for Phase 40 — superseded by Phase 40
-- [x] Integrate tests into CI/CD pipeline — superseded by Phase 40
+- [x] Run tests to verify infrastructure works correctly ? superseded by Phase 40
+- [x] Create comprehensive component tests for Phase 39 ? superseded by Phase 40
+- [x] Create E2E tests for critical user flows for Phase 40 ? superseded by Phase 40
+- [x] Integrate tests into CI/CD pipeline ? superseded by Phase 40
 
 ## Phase 40: Testing Implementation Complete (2026-06-08) [COMPLETED]
 
-### Component Testing (Task #6) ✅
+### Component Testing (Task #6) ?
 - [x] Created `tests/components/theme-toggle.test.tsx`:
   - Tests for theme toggle component rendering and interaction
   - Tests for theme switching between light/dark modes
@@ -1470,7 +1470,7 @@ Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
   - Tests for disabled state and validation
   - Tests for placeholder text and className props
 
-### E2E Testing (Task #7) ✅
+### E2E Testing (Task #7) ?
 - [x] Created `tests/e2e/jobs-page.spec.ts`:
   - E2E tests for jobs page loading and functionality
   - Tests for search form, validation, and filters
@@ -1484,7 +1484,7 @@ Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
   - Tests for filtering and status breakdown
   - Tests for mobile responsiveness and empty states
 
-### Backend Testing (Task #8) ✅
+### Backend Testing (Task #8) ?
 - [x] Created `tests/unit/test_metrics_api.py`:
   - Tests for metrics API endpoint success responses
   - Tests for job statistics and application metrics
@@ -1496,27 +1496,27 @@ Ran a final project-guidelines sanity check after the TypeScript reviewer fixes:
   - Tests for invalid setting validation (mode, score)
   - Tests for settings reset to defaults
 
-### Manual Verification (Task #11) ✅
+### Manual Verification (Task #11) ?
 - [x] Created `docs/manual-verification-checklist.md`:
   - Comprehensive 17-section verification checklist
   - Covers: Application startup, authentication, job search, job details, application tracking, profile management, DISC assessment, pipeline automation, settings, navigation, error handling, performance, browser compatibility, data persistence, security, documentation, and logging
   - Includes step-by-step verification instructions
   - Provides completion summary section for tracking
 
-### Documentation Updates ✅
+### Documentation Updates ?
 - [x] Updated `tasks/todo.md` with Phase 40 completion status
 - [x] All tasks (#5, #6, #7, #8, #9, #10, #11) now marked complete
 - [x] Testing infrastructure fully implemented and documented
 
-### Final Status ✅
-- ✅ Test infrastructure complete (Vitest + Playwright + MSW)
-- ✅ Component tests created for critical UI components
-- ✅ E2E tests created for jobs and dashboard pages
-- ✅ Backend tests created for metrics and settings APIs
-- ✅ CI/CD pipeline integration complete with test jobs
-- ✅ Testing documentation complete (testing.md + checklist.md)
-- ✅ All TypeScript type errors resolved
-- ✅ All test files follow proper structure and conventions
+### Final Status ?
+- ? Test infrastructure complete (Vitest + Playwright + MSW)
+- ? Component tests created for critical UI components
+- ? E2E tests created for jobs and dashboard pages
+- ? Backend tests created for metrics and settings APIs
+- ? CI/CD pipeline integration complete with test jobs
+- ? Testing documentation complete (testing.md + checklist.md)
+- ? All TypeScript type errors resolved
+- ? All test files follow proper structure and conventions
 
 ### Project Testing Status
 The Job Raider project now has a comprehensive testing suite covering:
@@ -1571,10 +1571,10 @@ The testing infrastructure is production-ready and will help ensure code quality
 - [x] Testing documentation created
 
 ### Backlog
-- [x] Run tests locally to verify everything works — superseded by Phase 40 / CI reconciliation
-- [x] Create comprehensive component tests — superseded by Phase 40
-- [x] Create E2E tests for critical user flows — superseded by Phase 40
-- [x] Verify CI workflow passes on next push — superseded by Phase 40 / CI reconciliation
+- [x] Run tests locally to verify everything works ? superseded by Phase 40 / CI reconciliation
+- [x] Create comprehensive component tests ? superseded by Phase 40
+- [x] Create E2E tests for critical user flows ? superseded by Phase 40
+- [x] Verify CI workflow passes on next push ? superseded by Phase 40 / CI reconciliation
 
 ## Phase 41: Multi-Agent System (2026-06-16) [COMPLETED]
 
@@ -1587,7 +1587,7 @@ The testing infrastructure is production-ready and will help ensure code quality
 - [x] `routes/agents.py`: migrated request-model validators to Pydantic V2 (`@field_validator` + `@classmethod`, `min_items` -> `min_length`) to preserve the codebase's zero-deprecation-warning standard now that the module is imported on every startup
 
 ### Wiring
-- [x] Registered the agents router in `src/api/main.py` (`app.include_router(agents.router, tags=["Agents"], dependencies=_auth)`) — registered WITHOUT a prefix because the router declares its own `/api/agents` prefix
+- [x] Registered the agents router in `src/api/main.py` (`app.include_router(agents.router, tags=["Agents"], dependencies=_auth)`) ? registered WITHOUT a prefix because the router declares its own `/api/agents` prefix
 - [x] Added non-fatal startup initialization in `lifespan()`: `initialize_agent_system(LLMRouter())` wrapped in try/except (app boots even if the agent system cannot start; endpoints return 503 until ready)
 - [x] Retained the coordinator's background `asyncio.create_task` on `AgentSystemManager._background_task` to prevent garbage collection
 
@@ -1630,9 +1630,9 @@ The testing infrastructure is production-ready and will help ensure code quality
 - [x] `setup.sh` - Phase 41 features block in print_summary
 
 ### Backlog
-- [x] Repair the two Phase-40 placeholder API test files (`test_metrics_api.py`, `test_settings_api.py`) — DONE during CI reconciliation: rewrote against real routes (`/api/metrics/{costs,outcomes,health,summary}`, `/api/settings/`) and added shared `client` fixture to `conftest.py`. Confirmed by the 385-passing backend suite.
+- [x] Repair the two Phase-40 placeholder API test files (`test_metrics_api.py`, `test_settings_api.py`) ? DONE during CI reconciliation: rewrote against real routes (`/api/metrics/{costs,outcomes,health,summary}`, `/api/settings/`) and added shared `client` fixture to `conftest.py`. Confirmed by the 385-passing backend suite.
 - [ ] Frontend: add UI for the multi-agent endpoints (currently backend-only)
-- [x] Commit the multi-agent system + documentation work — DONE (Phase 41 commits landed on master).
+- [x] Commit the multi-agent system + documentation work ? DONE (Phase 41 commits landed on master).
 
 ## CI Reconciliation (2026-06-17)
 
@@ -1669,7 +1669,7 @@ The testing infrastructure is production-ready and will help ensure code quality
 - `playwright.config.ts` - restricted the browser matrix to Chromium-only (CI installs only Chromium via `npx playwright install --with-deps chromium`; firefox/webkit/mobile-safari projects failed because those binaries are never installed).
 
 ### Gates now GREEN (resolved 2026-06-22)
-- **test-frontend-e2e** (Playwright): GREEN locally — **18 passed, 2 skipped, 0 failed** via `CI=true npm run test:e2e`. The 27 prior failures were not purely backend-dependency: the specs had drifted from the real UI (asserted on `data-testid` hooks and inputs that do not exist, and targeted dashboard UI that was never built). Resolution: replaced the three speculative spec files (`smoke`, `jobs-page`, `dashboard`) with a small set of real smoke tests asserting against the actual UI, backed by a Playwright `page.route()` API mock (`frontend-ts/tests/e2e/support/mock-api.ts` + `support/test.ts`) so the suite needs no live backend. Also fixed a build-breaking `@import` ordering bug in `frontend-ts/src/app/globals.css` (the Google Fonts `@import url(...)` now precedes the Tailwind `@import`s — it had followed them, so after Tailwind expanded them Lightning CSS rejected it and `npm run dev` could not compile). CI-green to be confirmed on next push. (Local run also needed `npx playwright install chromium` for a Playwright 1.60 / browser-build 1223-vs-1208 mismatch; CI installs fresh, so not an issue there.)
+- **test-frontend-e2e** (Playwright): GREEN locally ? **18 passed, 2 skipped, 0 failed** via `CI=true npm run test:e2e`. The 27 prior failures were not purely backend-dependency: the specs had drifted from the real UI (asserted on `data-testid` hooks and inputs that do not exist, and targeted dashboard UI that was never built). Resolution: replaced the three speculative spec files (`smoke`, `jobs-page`, `dashboard`) with a small set of real smoke tests asserting against the actual UI, backed by a Playwright `page.route()` API mock (`frontend-ts/tests/e2e/support/mock-api.ts` + `support/test.ts`) so the suite needs no live backend. Also fixed a build-breaking `@import` ordering bug in `frontend-ts/src/app/globals.css` (the Google Fonts `@import url(...)` now precedes the Tailwind `@import`s ? it had followed them, so after Tailwind expanded them Lightning CSS rejected it and `npm run dev` could not compile). CI-green to be confirmed on next push. (Local run also needed `npx playwright install chromium` for a Playwright 1.60 / browser-build 1223-vs-1208 mismatch; CI installs fresh, so not an issue there.)
 - **test-frontend** (legacy `frontend-py` Streamlit): superseded by `frontend-ts`. VERIFIED GREEN locally (2026-06-21): `frontend-py/.venv` now exists and `PYTHONPATH=. pytest tests/ -v` passes **55 in 1.11s**. CI-green to be confirmed on next push (CI installs deps fresh from `requirements.txt`).
 
 ### Recommended next step
@@ -1847,10 +1847,10 @@ Both former-RED frontend gates are green locally (lint/type-check/unit also clea
 
 ### Layout Primitive
 - [x] Create `frontend-ts/src/components/layout/PageContainer.tsx` with four variants:
-  - `full-bleed` (default) — uses the entire main content area.
-  - `content` — `max-w-5xl mx-auto` for mixed text-and-card pages.
-  - `wide` — `max-w-7xl mx-auto` for dashboards and metrics.
-  - `form` — `max-w-3xl mx-auto` for long forms.
+  - `full-bleed` (default) ? uses the entire main content area.
+  - `content` ? `max-w-5xl mx-auto` for mixed text-and-card pages.
+  - `wide` ? `max-w-7xl mx-auto` for dashboards and metrics.
+  - `form` ? `max-w-3xl mx-auto` for long forms.
 - [x] Apply `space-y-6` vertical rhythm by default; pages with internal flex layouts override with `className="space-y-0"`.
 
 ### Shell Consistency
@@ -1859,17 +1859,17 @@ Both former-RED frontend gates are green locally (lint/type-check/unit also clea
 - [x] Update `Sidebar.tsx` and `MobileNav.tsx` to render `SidebarContent` and reference the sidebar-width token.
 
 ### Page-by-Page Changes
-- [x] `/assessment` — wrap setup and results views in `<PageContainer variant="form">`; keep active session view full-bleed.
-- [x] `/linkedin-analysis` — wrap the analysis form in `<PageContainer variant="form">`; wrap result display in `<PageContainer variant="wide">`.
-- [x] `/resume-analysis` — wrap upload form in `<PageContainer variant="form">`; wrap results in `<PageContainer variant="wide">`.
-- [x] `/jobs` — wrap page in `<PageContainer variant="full-bleed" className="h-full flex flex-col gap-4 space-y-0">`; widen keyword input to `min-w-[280px]`, location input to `w-56`, and left list panel to `w-96`.
-- [x] `/metrics` — wrap page in `<PageContainer variant="wide">`; increase funnel and distribution chart heights from `200` to `280`.
-- [x] `/dashboard` — wrap page in `<PageContainer variant="full-bleed">`; relax health-message truncation at larger breakpoints (`max-w-[180px] md:max-w-[240px] lg:max-w-xs`).
-- [x] `/pipeline` — wrap start-tab form in `<PageContainer variant="form">`; widen live monitor log to `lg:col-span-3` on a `lg:grid-cols-4` grid; wrap history panel in `<PageContainer variant="content">`.
-- [x] `/applications` — wrap page in `<PageContainer variant="full-bleed">`.
-- [x] `/profile` — wrap page in `<PageContainer variant="wide">`.
-- [x] `/settings` — wrap page in `<PageContainer variant="form">`.
-- [x] `/` — home route redirects to `/dashboard`, so no `PageContainer` is required.
+- [x] `/assessment` ? wrap setup and results views in `<PageContainer variant="form">`; keep active session view full-bleed.
+- [x] `/linkedin-analysis` ? wrap the analysis form in `<PageContainer variant="form">`; wrap result display in `<PageContainer variant="wide">`.
+- [x] `/resume-analysis` ? wrap upload form in `<PageContainer variant="form">`; wrap results in `<PageContainer variant="wide">`.
+- [x] `/jobs` ? wrap page in `<PageContainer variant="full-bleed" className="h-full flex flex-col gap-4 space-y-0">`; widen keyword input to `min-w-[280px]`, location input to `w-56`, and left list panel to `w-96`.
+- [x] `/metrics` ? wrap page in `<PageContainer variant="wide">`; increase funnel and distribution chart heights from `200` to `280`.
+- [x] `/dashboard` ? wrap page in `<PageContainer variant="full-bleed">`; relax health-message truncation at larger breakpoints (`max-w-[180px] md:max-w-[240px] lg:max-w-xs`).
+- [x] `/pipeline` ? wrap start-tab form in `<PageContainer variant="form">`; widen live monitor log to `lg:col-span-3` on a `lg:grid-cols-4` grid; wrap history panel in `<PageContainer variant="content">`.
+- [x] `/applications` ? wrap page in `<PageContainer variant="full-bleed">`.
+- [x] `/profile` ? wrap page in `<PageContainer variant="wide">`.
+- [x] `/settings` ? wrap page in `<PageContainer variant="form">`.
+- [x] `/` ? home route redirects to `/dashboard`, so no `PageContainer` is required.
 
 ### Verification
 - [x] `npm run type-check` passes with no errors.
@@ -2175,8 +2175,8 @@ npx playwright test tests/e2e/jobs-page.spec.ts
 - [x] Extract a shared `generate_cover_letter_for_profile` helper into `backend-py/src/generation/cover_letter_service.py` so both `POST /api/jobs/{job_id}/cover-letter` and the new manual endpoint reuse the same selector, writer, and validator.
 - [x] Refactor `backend-py/src/api/routes/jobs.py` to delegate generation to the shared service helper.
 - [x] Create `backend-py/src/api/routes/cover_letter.py` with:
-  - `POST /api/cover-letter/manual` — generate from a pasted job description.
-  - `POST /api/cover-letter/export` — export to DOCX/PDF via `CoverLetterFormatter` and return `FileResponse`.
+  - `POST /api/cover-letter/manual` ? generate from a pasted job description.
+  - `POST /api/cover-letter/export` ? export to DOCX/PDF via `CoverLetterFormatter` and return `FileResponse`.
 - [x] Register the new router under `/api/cover-letter` in `backend-py/src/api/main.py` with existing auth dependencies.
 - [x] Create `backend-py/src/generation/cover_letter_formatter.py` with `CoverLetterFormatter`, supporting DOCX (`python-docx`) and PDF (`reportlab`) output, optional sender block, subject line, and graceful fallback messages when libraries are unavailable.
 - [x] Add unit tests for the manual route (`tests/unit/test_cover_letter_manual.py`) and formatter (`tests/unit/test_cover_letter_formatter.py`).
@@ -2323,16 +2323,16 @@ npx playwright test tests/e2e/jobs-page.spec.ts
 
 ```text
 job-raider/
-├── apps/
-│   ├── backend-py/       # FastAPI backend (active)
-│   └── frontend-ts/      # Next.js dashboard (active)
-├── frontend-py/          # Legacy Streamlit dashboard (untouched)
-├── docker/
-├── .github/workflows/
-├── docker-compose.yml
-├── Makefile
-├── setup.sh
-└── docs/
+??? apps/
+?   ??? backend-py/       # FastAPI backend (active)
+?   ??? frontend-ts/      # Next.js dashboard (active)
+??? frontend-py/          # Legacy Streamlit dashboard (untouched)
+??? docker/
+??? .github/workflows/
+??? docker-compose.yml
+??? Makefile
+??? setup.sh
+??? docs/
 ```
 
 ### Checklist
@@ -2388,14 +2388,14 @@ job-raider/
 
 Resolved the two failing CI checks reported on `main`.
 
-### Lint Code — Black formatting
+### Lint Code ? Black formatting
 
 `black --check .` reported 10 files in `apps/backend-py` that needed reformatting. The failures were purely whitespace/formatting drift in recently modified files.
 
 - Ran `black .` inside `apps/backend-py`.
 - Verified with `black --check .` (0 files would be reformatted).
 
-### Test Frontend (ESE Tests) — Playwright E2E
+### Test Frontend (ESE Tests) ? Playwright E2E
 
 The E2E suite had three failure modes:
 
@@ -2429,7 +2429,7 @@ The E2E suite had three failure modes:
 - Frontend production build: `npm run build` succeeded.
 - Playwright E2E: `npm run test:e2e` passed (`22 passed`).
 
-## CI Failure Remediation — isort (2026-07-10) [COMPLETED]
+## CI Failure Remediation ? isort (2026-07-10) [COMPLETED]
 
 After the Black/E2E fixes cleared, the `Lint Code` job failed on the `Check import ordering with isort` step.
 
@@ -2506,13 +2506,13 @@ Added a consolidated Tech Stack section to all three documentation entry points 
 
 - `git status --short` shows only the expected documentation changes and the untracked `docs/designs/` directory (not part of this work).
 - Backend quality gates passed inside `apps/backend-py`:
-  - `black --check src/ tests/` — 166 files would be left unchanged.
-  - `isort --check-only src/ tests/` — no output (clean).
-  - `flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics` — 0 errors.
+  - `black --check src/ tests/` ? 166 files would be left unchanged.
+  - `isort --check-only src/ tests/` ? no output (clean).
+  - `flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics` ? 0 errors.
 - Frontend quality gates passed inside `apps/frontend-ts`:
-  - `npm run type-check` — `tsc --noEmit` passes.
-  - `npm run lint` — 0 errors, 0 warnings.
-  - `npm run format:check` — all matched files use Prettier code style.
+  - `npm run type-check` ? `tsc --noEmit` passes.
+  - `npm run lint` ? 0 errors, 0 warnings.
+  - `npm run format:check` ? all matched files use Prettier code style.
 
 ## End-to-End Verification and Edge-Case Hardening [COMPLETED]
 
@@ -2564,13 +2564,13 @@ Added a consolidated Tech Stack section to all three documentation entry points 
 - Next.js production build: successful, all 15 routes prerendered.
 - Backend pytest: `493 passed`.
 - Backend quality gates:
-  - `black --check src tests main.py` — clean.
-  - `isort --check-only src tests main.py` — clean.
-  - `flake8 src tests main.py` — 0 errors.
+  - `black --check src tests main.py` ? clean.
+  - `isort --check-only src tests main.py` ? clean.
+  - `flake8 src tests main.py` ? 0 errors.
 - Frontend quality gates:
-  - `npm run lint` — clean.
-  - `npm run type-check` — clean.
-  - `npm run format:check` — clean.
+  - `npm run lint` ? clean.
+  - `npm run type-check` ? clean.
+  - `npm run format:check` ? clean.
 
 ### Lessons
 
@@ -2626,12 +2626,12 @@ flowchart LR
 ### Verification Results
 
 - Backend quality gates (changed file):
-  - `black --check` — clean.
-  - `isort --check-only --profile black` — clean.
-  - `ruff check` — clean.
+  - `black --check` ? clean.
+  - `isort --check-only --profile black` ? clean.
+  - `ruff check` ? clean.
 - Frontend quality gates (changed files):
-  - `tsc --noEmit` — clean.
-  - `eslint` — clean.
+  - `tsc --noEmit` ? clean.
+  - `eslint` ? clean.
 - Container rebuild and end-to-end verification: see session notes.
 
 ### Lessons
@@ -2725,7 +2725,7 @@ path (latency). Keep the instant heuristic score, and add an on-demand
 ### Cover letter explanation
 
 - Fold into the `/cover-letter/validate` endpoint (#13): have it also return a
-  plain-language verdict summary — why-good / why-needs-work bullets — derived
+  plain-language verdict summary ? why-good / why-needs-work bullets ? derived
   from the LLM reviewer, not just issue codes. Surface prominently in
   `CoverLetterValidationDisplay` (a "Why this rating" section), and make it
   available in non-deep mode too (a lightweight explanation pass).
@@ -2855,7 +2855,7 @@ make test          # 534 passed
 
 **Constraint:** Do not call the LLM on every keystroke; only on explicit user action.
 
-**Outcome:** The cover-letter side (`POST /cover-letter/explain-fit`, `POST /cover-letter/explain-letter`) was already implemented and wired into the Cover Letter page as part of item 1's stabilization work. The remaining gap was the Jobs page, which had no explanation UI at all — see "Job-Fit Explanation on the Jobs Page" below. Reused the existing `/cover-letter/explain-fit` endpoint (it already accepts arbitrary job fields and needed no changes) rather than adding a duplicate `/jobs/{job_id}/explain-fit` route, since `GET /jobs/{job_id}` and `POST /jobs/{job_id}/score` remain 501 stubs with no server-side job storage by ID.
+**Outcome:** The cover-letter side (`POST /cover-letter/explain-fit`, `POST /cover-letter/explain-letter`) was already implemented and wired into the Cover Letter page as part of item 1's stabilization work. The remaining gap was the Jobs page, which had no explanation UI at all ? see "Job-Fit Explanation on the Jobs Page" below. Reused the existing `/cover-letter/explain-fit` endpoint (it already accepts arbitrary job fields and needed no changes) rather than adding a duplicate `/jobs/{job_id}/explain-fit` route, since `GET /jobs/{job_id}` and `POST /jobs/{job_id}/score` remain 501 stubs with no server-side job storage by ID.
 
 ### 4. Frontend E2E coverage for the audit area
 
@@ -3037,9 +3037,9 @@ Reused the existing `POST /cover-letter/explain-fit` endpoint directly from the 
 ### Changes
 
 - [x] Extracted the local `ExplanationBlock` function out of `apps/frontend-ts/src/app/cover-letter/page.tsx` into `apps/frontend-ts/src/components/score-explanation.tsx`, exported as `ScoreExplanationDisplay`, matching the naming convention of sibling display components (`CoverLetterValidationDisplay`, `TrustAnalysisDisplay`, `JobClassificationDisplay`). No behavior change to the Cover Letter page.
-- [x] Added `useExplainJobFit()` and `useCachedExplainFit()` to `apps/frontend-ts/src/lib/hooks/use-jobs.ts`, mirroring the existing `useClassifyJob()` / `useCachedClassification()` pair — calls `coverLetterApi.explainFit()` with the job's own fields and caches the result per job ID.
+- [x] Added `useExplainJobFit()` and `useCachedExplainFit()` to `apps/frontend-ts/src/lib/hooks/use-jobs.ts`, mirroring the existing `useClassifyJob()` / `useCachedClassification()` pair ? calls `coverLetterApi.explainFit()` with the job's own fields and caches the result per job ID.
 - [x] Wired `apps/frontend-ts/src/components/jobs/job-detail.tsx`: added a `relevance_score` badge to the header (previously absent from this panel) and an "Explain this match" button in the footer actions, disabled while pending or when `(job.description?.length ?? 0) < 50` (the backend's `ManualCoverLetterRequest.description` requires `min_length=50`). Renders `ScoreExplanationDisplay` once an explanation is cached.
-- [x] Added `apps/backend-py/tests/unit/test_cover_letter_explain.py` — `/explain-fit` and `/explain-letter` had zero prior test coverage. Covers happy path, missing active profile (fit only — letter has no profile dependency), short-description validation, and malformed-LLM-JSON handling, mocking `create_router` at its import site in `cover_letter.py`.
+- [x] Added `apps/backend-py/tests/unit/test_cover_letter_explain.py` ? `/explain-fit` and `/explain-letter` had zero prior test coverage. Covers happy path, missing active profile (fit only ? letter has no profile dependency), short-description validation, and malformed-LLM-JSON handling, mocking `create_router` at its import site in `cover_letter.py`.
 - [x] Added `apps/frontend-ts/tests/components/score-explanation.test.tsx` and `apps/frontend-ts/tests/components/job-detail.test.tsx` (job-detail had no prior test file at all).
 
 ### Verification Results
@@ -3099,25 +3099,26 @@ cd apps/frontend-ts
 npm install
 npm run type-check   # tsc --noEmit clean
 npm run test -- --run
-# 68 passed across 12 files
+# 68 passed across 12 files (later suite grew; see Ollama Model Freedom verification for 74)
 ```
 
 ### Follow-ons (explicitly deferred)
 
-1. Preference + profile driven job-hunt automation
+1. Full preference + profile driven job-hunt automation (preference targeting UI landed; auto-hunt still deferred)
 2. Theme / visual redesign
 3. Public multi-user deployment
 
 ## Job Preference Targeting (2026-07-23)
 
-**Overview:** Additive experimental feature � editable Profile job targets + opt-in "Use profile targets" on Pipeline/Jobs (default off). Easy to keep or discard.
+**Overview:** Additive experimental feature — editable Profile job targets + opt-in "Use profile targets" on Pipeline/Jobs (default off). Easy to keep or discard.
 
 ### Checklist
 
-- [x] Wire `target_experience` + `exclude_internships`; preference filters in `JobFilter.filter_by_profile`
+- [x] Wire `target_experience` / `experience_levels` + `exclude_internships`; preference filters in `JobFilter.filter_by_profile`
 - [x] `JobTargetsEditor` on Profile
 - [x] Opt-in toggles on Pipeline + Jobs search
 - [x] Backend + frontend tests
+- [x] Document results in this file and update `docs/`
 
 ### Verification
 
@@ -3133,9 +3134,15 @@ npm run type-check
 npm run test -- --run tests/components/job-targets-editor.test.tsx tests/components/search-bar-profile-targets.test.tsx
 ```
 
+### Review
+
+- Preference targeting is opt-in at search time (default off) so existing Pipeline/Jobs flows stay unchanged.
+- `exclude_internships` defaults to `false`; experience levels persist via profile update.
+- Full auto-hunt from prefs remains deferred.
+
 ## Ollama Model Freedom of Choice (2026-07-23)
 
-**Overview:** Settings UI to pick any installed Ollama model for small/large task tiers; documented recommended defaults remain `qwen2.5:3b` / `qwen2.5:7b`. Live `/api/tags` list merged into models endpoint; `create_router()` applies saved routing.
+**Overview:** Settings UI to pick any installed Ollama model for small/large task tiers; documented recommended defaults remain `qwen2.5:3b` / `qwen2.5:7b`. Live `/api/tags` list merged into models endpoint; `create_router()` applies saved routing. Shared Ollama host (desktop shared service) is supported via Settings `ollama_host`.
 
 ### Checklist
 
@@ -3144,8 +3151,30 @@ npm run test -- --run tests/components/job-targets-editor.test.tsx tests/compone
 - [x] `POST /settings/ollama-defaults` + Settings UI small/large pickers
 - [x] Validation accepts installed Ollama models
 - [x] Backend + frontend tests
+- [x] Containers rebuilt; commit `79d07d1` pushed to `main`
+- [x] Documentation (`docs/api.md`, architecture, usage, manual checklist, lessons)
+
+### Verification
+
+```bash
+# Backend (WSL)
+cd apps/backend-py
+.venv/bin/black --check src/ tests/
+.venv/bin/ruff check src/ tests/
+PYTHONPATH=. .venv/bin/python -m pytest tests/unit -q
+# 489 passed
+
+# Frontend (WSL nvm node 20)
+cd apps/frontend-ts
+npm run lint
+npm run type-check
+npm run test -- --run
+# 74 passed
+```
 
 ### Review
 
-- Recommended defaults stay documented as 3b/7b; users can save any available models as their personal defaults.
+- Recommended defaults stay documented as 3b/7b; users can save any available models as their personal defaults (including "first installed" on the shared Ollama container).
 - Embedding route is preserved via merge (not wiped by partial settings).
+- `reload_routes_from_settings` must merge into `DEFAULT_ROUTES`, not replace the whole map.
+- Settings form remounts on `updated_at` to avoid `setState`-in-effect lint failures.

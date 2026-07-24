@@ -2859,3 +2859,42 @@
 - Run the full verification suite before updating test counts in docs.
 - Grep docs for old directory names after any restructure.
 - Make documentation updates part of the same commit as the code changes they describe.
+
+## UI Polish, Preferences, and Ollama Choice (2026-07-23)
+
+### Remount forms instead of syncing props through useEffect
+
+**Lesson:** React Compiler / `eslint-plugin-react-hooks` rejects synchronous `setState` inside `useEffect` when hydrating local draft state from props (`react-hooks/set-state-in-effect`). Remounting the form with `key={data.updated_at}` resets draft state cleanly without an effect.
+
+**Why:**
+- Effects that only copy props into state cause cascading renders and fail lint.
+- After save/reset, query invalidation returns new `updated_at`, so the key remounts the form with fresh defaults.
+
+**How to apply:**
+- Prefer `key` remount or controlled components derived from server data.
+- Do not mirror props into `useState` via `useEffect` solely to "sync" draft fields.
+
+### Settings routing must merge into DEFAULT_ROUTES
+
+**Lesson:** `reload_routes_from_settings` used to replace `self.routes` with only the tasks present in saved settings. Partial settings (older files with five tasks) dropped embedding and other defaults. Merge into a copy of `DEFAULT_ROUTES` instead.
+
+**Why:**
+- User settings are often incomplete relative to the full `TaskType` set.
+- Embedding has no Anthropic fallback; wiping it breaks RAG silently.
+
+**How to apply:**
+- Start from `dict(DEFAULT_ROUTES)`, overlay valid user entries, then assign.
+- Accept both Pydantic models and dict-shaped JSON for each route.
+
+### Shared Ollama host drives model discovery
+
+**Lesson:** Model pickers and validation must call the configured `api_config.ollama_host` (shared desktop service), not assume a project-local Ollama container. Documented recommended defaults remain `qwen2.5:3b` / `qwen2.5:7b`; saved defaults may be any installed tag on that shared instance.
+
+**Why:**
+- One Ollama instance serves multiple projects on the same GPU.
+- Host forms vary (`localhost:11434`, `http://…`, `ollama:11434`); parse consistently before `/api/tags`.
+
+**How to apply:**
+- List installed models via `GET /api/settings/models` (`ollama_installed` + merged `ollama`).
+- Apply small/large tiers with `POST /api/settings/ollama-defaults` or the Settings UI.
+- Keep docs recommending 3b/7b while allowing free choice.
