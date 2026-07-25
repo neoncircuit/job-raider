@@ -51,6 +51,24 @@ export interface HealthResponse {
   summary: Record<string, number>;
 }
 
+/** Point-in-time host/container resource readings for the sidebar meter. */
+export interface SystemResourcesResponse {
+  cpu: { percent: number | null };
+  ram: {
+    used_mb: number | null;
+    total_mb: number | null;
+    percent: number | null;
+  };
+  gpu: {
+    name: string;
+    utilization_percent: number;
+    memory_used_mb: number;
+    memory_total_mb: number;
+    memory_percent: number;
+    temperature_celsius: number | null;
+  } | null;
+}
+
 // ── Pipeline ──────────────────────────────────────────────────────────────────
 
 export interface PipelineStartRequest {
@@ -516,6 +534,9 @@ export interface ModelRouting {
 
 export interface ApiConfig {
   anthropic_api_key?: string | null;
+  gemini_api_key?: string | null;
+  /** Cloud provider used when local Ollama fails. */
+  cloud_fallback_provider?: "anthropic" | "gemini";
   ollama_host: string;
 }
 
@@ -544,6 +565,7 @@ export interface AvailableModelsResponse {
   ollama?: string[];
   ollama_installed?: string[];
   anthropic?: string[];
+  gemini?: string[];
   recommended?: {
     small: string;
     large: string;

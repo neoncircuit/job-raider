@@ -107,6 +107,7 @@ async def apply_ollama_defaults(body: OllamaTierDefaults) -> UserSettings:
         settings.routing,
         body.small_model.strip(),
         body.large_model.strip(),
+        cloud_fallback=settings.api_config.cloud_fallback_provider,
     )
     storage.save_settings(settings)
     logger.info(

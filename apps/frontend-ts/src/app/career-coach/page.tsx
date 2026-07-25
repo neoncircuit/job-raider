@@ -888,7 +888,7 @@ export default function CareerCoachPage() {
   const hasProfile = !!profile?.contact_info?.name;
 
   return (
-    <PageContainer variant="wide">
+    <PageContainer variant="full-bleed">
       <PageHeader
         title="Career Coach"
         subtitle="Run AI-powered career analyses against your profile: career-path insights, skill gaps, upskilling roadmaps, and SMART goals."

@@ -17,19 +17,18 @@ services:
         mode: host
     volumes:
       - ./apps/backend-py/data:/app/backend-py/data
+    env_file:
+      - apps/backend-py/.env
     environment:
       - PYTHONPATH=/app/backend-py
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      # Ollama configuration with fallback chain:
-      # 1. User-specified OLLAMA_HOST
-      # 2. ollama:11434 for Docker Ollama service (production)
-      # 3. host.docker.internal:11434 for local Ollama (development)
-      # 4. localhost:11434 for local development without Docker
-      - OLLAMA_HOST=${OLLAMA_HOST:-ollama:11434}
+      # Compose-network default. Do not inherit a host OLLAMA_HOST of 0.0.0.0 /
+      # localhost from the shell or .env — those break in-container health checks.
+      # Runtime LLM + Settings discovery still use api_config.ollama_host
+      # (e.g. host.docker.internal:11434 for desktop Ollama).
+      - OLLAMA_HOST=ollama:11434
       - MLFLOW_TRACKING_URI=http://mlflow:5000
-    env_file:
-      - apps/backend-py/.env
     restart: unless-stopped
     networks:
       - job-raider-network

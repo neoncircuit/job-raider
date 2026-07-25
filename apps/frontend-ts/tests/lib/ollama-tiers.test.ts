@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   RECOMMENDED_OLLAMA_LARGE,
   RECOMMENDED_OLLAMA_SMALL,
+  applyCloudFallbackProvider,
   applyOllamaTierModelsLocally,
   deriveOllamaTierModels,
 } from "@/lib/ollama-tiers";
@@ -24,7 +25,10 @@ const baseSettings = (): AppSettings => ({
       fallback_model: "claude-sonnet-4-6",
     },
   },
-  api_config: { ollama_host: "localhost:11434" },
+  api_config: {
+    ollama_host: "localhost:11434",
+    cloud_fallback_provider: "anthropic",
+  },
   model_params: { temperature: 0.7, max_tokens: 4096, top_p: 0.9 },
   cost_limits: {
     max_api_cost_per_run: 5,
@@ -49,5 +53,12 @@ describe("ollama-tiers", () => {
     expect(next.routing.selection?.primary_model).toBe("gemma3:4b");
     expect(next.routing.resume_writing?.primary_model).toBe("qwen2.5:14b");
     expect(next.routing.scoring?.primary_model).toBe("gemma3:4b");
+  });
+
+  it("retargets cloud fallbacks to Gemini", () => {
+    const next = applyCloudFallbackProvider(baseSettings().routing, "gemini");
+    expect(next.selection?.fallback_provider).toBe("gemini");
+    expect(next.selection?.fallback_model).toBe("gemini-2.5-flash");
+    expect(next.resume_writing?.fallback_model).toBe("gemini-2.5-pro");
   });
 });

@@ -48,7 +48,7 @@ export default function MetricsPage() {
   });
 
   return (
-    <PageContainer variant="wide">
+    <PageContainer variant="full-bleed">
       <PageHeader
         title="Metrics"
         subtitle="Cost tracking, outcome funnel, and system health."

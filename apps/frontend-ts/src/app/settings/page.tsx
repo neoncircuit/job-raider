@@ -11,8 +11,10 @@ import type { AppSettings } from "@/lib/types/api";
 import {
   RECOMMENDED_OLLAMA_LARGE,
   RECOMMENDED_OLLAMA_SMALL,
+  applyCloudFallbackProvider,
   applyOllamaTierModelsLocally,
   deriveOllamaTierModels,
+  type CloudFallbackProvider,
 } from "@/lib/ollama-tiers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,15 +22,43 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
+
+/**
+ * Build a human-readable label for an Ollama model option.
+ *
+ * @param name - Model tag (e.g. ``qwen2.5:3b``).
+ * @param recommended - Recommended tag for this tier.
+ * @param installed - Tags currently reported by Ollama.
+ * @returns Display label with optional recommended / not-installed suffixes.
+ */
+function ollamaOptionLabel(
+  name: string,
+  recommended: string,
+  installed: string[],
+): string {
+  const notes: string[] = [];
+  if (name === recommended) notes.push("recommended");
+  if (!installed.includes(name)) notes.push("not installed");
+  return notes.length > 0 ? `${name} (${notes.join(", ")})` : name;
+}
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
 const schema = z.object({
   api_config: z.object({
     anthropic_api_key: z.string().optional(),
+    gemini_api_key: z.string().optional(),
+    cloud_fallback_provider: z.enum(["anthropic", "gemini"]),
     ollama_host: z.string().min(1, "Required"),
   }),
   model_params: z.object({
@@ -75,6 +105,11 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
     defaultValues: {
       api_config: {
         anthropic_api_key: initial.api_config.anthropic_api_key ?? "",
+        gemini_api_key: initial.api_config.gemini_api_key ?? "",
+        cloud_fallback_provider:
+          initial.api_config.cloud_fallback_provider === "gemini"
+            ? "gemini"
+            : "anthropic",
         ollama_host: initial.api_config.ollama_host,
       },
       model_params: initial.model_params,
@@ -89,17 +124,20 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
   });
 
   const installed = models?.ollama_installed ?? [];
-  const ollamaOptions = models?.ollama ?? [];
   const recommendedSmall =
     models?.recommended?.small ?? RECOMMENDED_OLLAMA_SMALL;
   const recommendedLarge =
     models?.recommended?.large ?? RECOMMENDED_OLLAMA_LARGE;
+  const recommendedInstalled =
+    installed.includes(recommendedSmall) &&
+    installed.includes(recommendedLarge);
 
   const ensureOption = (value: string, options: string[]) =>
     value && !options.includes(value) ? [value, ...options] : options;
 
-  const smallOptions = ensureOption(smallModel, ollamaOptions);
-  const largeOptions = ensureOption(largeModel, ollamaOptions);
+  // Dropdown lists installed tags only (catalog phantoms like gemma stay out).
+  const smallOptions = ensureOption(smallModel, installed);
+  const largeOptions = ensureOption(largeModel, installed);
 
   const applyTier = (small: string, large: string) => {
     const next = applyOllamaTierModelsLocally(
@@ -161,6 +199,21 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
   const temperature = useWatch({ control, name: "model_params.temperature" });
   const topP = useWatch({ control, name: "model_params.top_p" });
   const cacheEnabled = useWatch({ control, name: "cost_limits.enable_cache" });
+  const cloudProvider = useWatch({
+    control,
+    name: "api_config.cloud_fallback_provider",
+  }) as CloudFallbackProvider;
+
+  /**
+   * Switch cloud fallback provider and retarget routing fallbacks.
+   *
+   * @param next - Anthropic or Gemini.
+   */
+  const setCloudProvider = (next: CloudFallbackProvider) => {
+    setValue("api_config.cloud_fallback_provider", next, { shouldDirty: true });
+    setRouting(applyCloudFallbackProvider(routing, next));
+    setModelsDirty(true);
+  };
 
   return (
     <form onSubmit={handleSubmit((v) => save.mutate(v))} className="space-y-6">
@@ -176,7 +229,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 <Label htmlFor="ollama_host">Ollama Host</Label>
                 <Input
                   id="ollama_host"
-                  placeholder="localhost:11434"
+                  placeholder="ollama:11434"
                   {...register("api_config.ollama_host")}
                 />
                 {errors.api_config?.ollama_host && (
@@ -184,19 +237,74 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                     {errors.api_config.ollama_host.message}
                   </p>
                 )}
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="anthropic_key">Anthropic API Key</Label>
-                <Input
-                  id="anthropic_key"
-                  type="password"
-                  placeholder="sk-ant-…"
-                  {...register("api_config.anthropic_api_key")}
-                />
                 <p className="text-xs text-muted-foreground">
-                  Leave blank to use Ollama only.
+                  Docker Compose: use{" "}
+                  <span className="font-mono">ollama:11434</span>. Ollama on the
+                  host machine:{" "}
+                  <span className="font-mono">host.docker.internal:11434</span>.
+                  Native (no Docker):{" "}
+                  <span className="font-mono">localhost:11434</span>.
                 </p>
               </div>
+              <div className="space-y-1">
+                <Label htmlFor="cloud_provider">Cloud fallback provider</Label>
+                <Select
+                  value={cloudProvider}
+                  onValueChange={(value) => {
+                    if (value === "anthropic" || value === "gemini") {
+                      setCloudProvider(value);
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    id="cloud_provider"
+                    className="w-full bg-background dark:bg-input/30"
+                  >
+                    <SelectValue placeholder="Select provider" />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectItem value="anthropic">Anthropic</SelectItem>
+                    <SelectItem value="gemini">Google Gemini</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Used when local Ollama cannot complete a request. Pick the
+                  provider you subscribe to — only one is needed.
+                </p>
+              </div>
+              {cloudProvider === "anthropic" ? (
+                <div className="space-y-1">
+                  <Label htmlFor="anthropic_key">Anthropic API Key</Label>
+                  <Input
+                    id="anthropic_key"
+                    type="password"
+                    placeholder="sk-ant-…"
+                    autoComplete="off"
+                    {...register("api_config.anthropic_api_key")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Optional. Leave blank to rely on{" "}
+                    <span className="font-mono">ANTHROPIC_API_KEY</span> in the
+                    environment, or run Ollama-only.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Label htmlFor="gemini_key">Gemini API Key</Label>
+                  <Input
+                    id="gemini_key"
+                    type="password"
+                    placeholder="AIza…"
+                    autoComplete="off"
+                    {...register("api_config.gemini_api_key")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Optional. Leave blank to rely on{" "}
+                    <span className="font-mono">GEMINI_API_KEY</span> in the
+                    environment, or run Ollama-only.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -213,53 +321,110 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
               </p>
               {installed.length === 0 && (
                 <p className="text-xs text-amber-700 dark:text-amber-400">
-                  No models detected from Ollama yet. Start Ollama and pull a
-                  model, or type a model name and save anyway.
+                  No models detected at the configured Ollama host. Dropdowns
+                  may still show your last-saved choices (marked not installed)
+                  until the host is reachable. In Docker use{" "}
+                  <span className="font-mono">ollama:11434</span>, pull a model
+                  if needed, save the host, then refresh.
+                </p>
+              )}
+              {installed.length === 0 && (smallModel || largeModel) && (
+                <p className="text-xs text-muted-foreground">
+                  Last saved:{" "}
+                  <span className="font-mono">{smallModel || "—"}</span> /{" "}
+                  <span className="font-mono">{largeModel || "—"}</span>
                 </p>
               )}
               <div className="space-y-1">
                 <Label htmlFor="ollama_small">Small model (fast)</Label>
-                <select
-                  id="ollama_small"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                <Select
                   value={smallModel}
-                  onChange={(e) => applyTier(e.target.value, largeModel)}
+                  onValueChange={(value) => {
+                    if (typeof value === "string" && value) {
+                      applyTier(value, largeModel);
+                    }
+                  }}
                 >
-                  {smallOptions.length === 0 && (
-                    <option value={smallModel}>{smallModel}</option>
-                  )}
-                  {smallOptions.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                      {name === recommendedSmall ? " (recommended)" : ""}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="ollama_small"
+                    className="w-full bg-background dark:bg-input/30"
+                  >
+                    <SelectValue placeholder="Select a model">
+                      {smallModel
+                        ? ollamaOptionLabel(
+                            smallModel,
+                            recommendedSmall,
+                            installed,
+                          )
+                        : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    {smallOptions.length === 0 && smallModel && (
+                      <SelectItem value={smallModel}>
+                        {ollamaOptionLabel(
+                          smallModel,
+                          recommendedSmall,
+                          installed,
+                        )}
+                      </SelectItem>
+                    )}
+                    {smallOptions.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {ollamaOptionLabel(name, recommendedSmall, installed)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="ollama_large">Large model (quality)</Label>
-                <select
-                  id="ollama_large"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                <Select
                   value={largeModel}
-                  onChange={(e) => applyTier(smallModel, e.target.value)}
+                  onValueChange={(value) => {
+                    if (typeof value === "string" && value) {
+                      applyTier(smallModel, value);
+                    }
+                  }}
                 >
-                  {largeOptions.length === 0 && (
-                    <option value={largeModel}>{largeModel}</option>
-                  )}
-                  {largeOptions.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                      {name === recommendedLarge ? " (recommended)" : ""}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="ollama_large"
+                    className="w-full bg-background dark:bg-input/30"
+                  >
+                    <SelectValue placeholder="Select a model">
+                      {largeModel
+                        ? ollamaOptionLabel(
+                            largeModel,
+                            recommendedLarge,
+                            installed,
+                          )
+                        : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    {largeOptions.length === 0 && largeModel && (
+                      <SelectItem value={largeModel}>
+                        {ollamaOptionLabel(
+                          largeModel,
+                          recommendedLarge,
+                          installed,
+                        )}
+                      </SelectItem>
+                    )}
+                    {largeOptions.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {ollamaOptionLabel(name, recommendedLarge, installed)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={!recommendedInstalled}
                   onClick={() => applyTier(recommendedSmall, recommendedLarge)}
                 >
                   Use recommended (3b / 7b)
@@ -279,6 +444,15 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   </Button>
                 )}
               </div>
+              {!recommendedInstalled && (
+                <p className="text-xs text-muted-foreground">
+                  Recommended tags{" "}
+                  <span className="font-mono">{recommendedSmall}</span> /{" "}
+                  <span className="font-mono">{recommendedLarge}</span> are not
+                  both installed yet. Pull them with Ollama, or pick from the
+                  list above.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -444,7 +618,7 @@ export default function SettingsPage() {
   });
 
   return (
-    <PageContainer variant="form">
+    <PageContainer variant="wide">
       <PageHeader
         title="Settings"
         subtitle="Configure model routing, API keys, and cost limits."

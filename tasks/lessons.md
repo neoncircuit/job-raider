@@ -2898,3 +2898,26 @@
 - List installed models via `GET /api/settings/models` (`ollama_installed` + merged `ollama`).
 - Apply small/large tiers with `POST /api/settings/ollama-defaults` or the Settings UI.
 - Keep docs recommending 3b/7b while allowing free choice.
+
+## Health, Bind Mounts, and Settings Host (2026-07-25)
+
+### Bind mounts hide image-created data folders
+
+**Lesson:** Dockerfile `mkdir` under `/app/backend-py/data` is invisible once Compose bind-mounts `./apps/backend-py/data`. A partial host tree makes `data_directories` degraded even though the image looked fine at build time. Docker Desktop/WSL2 can also serve a stale mount view until the container is recreated.
+
+**Why:**
+- Bind mounts replace the directory contents entirely.
+- Health that only reports missing dirs does not recover without operator action.
+
+**How to apply:**
+- Ensure dirs in entrypoint and/or `DataDirectoryCheck` (create missing folders).
+- Document `docker compose up -d --force-recreate backend` when the mount looks incomplete.
+- Never treat `localhost:11434` as Ollama from inside the backend container.
+
+### Settings host must match the Ollama you intend
+
+**Lesson:** Compose `ollama:11434` and desktop `host.docker.internal:11434` are different inventories. Health and Settings should use the same resolved host (`ollama_base_url` + Settings preference).
+
+**How to apply:**
+- Prefer saved `api_config.ollama_host` for health/resources/model listing.
+- Document host choices next to the Settings Ollama Host field.

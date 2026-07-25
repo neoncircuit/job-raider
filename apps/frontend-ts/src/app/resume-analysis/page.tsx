@@ -255,44 +255,46 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
 
   return (
     <div className="space-y-4">
-      <div
-        {...getRootProps()}
-        className={cn(
-          "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors",
-          isDragActive
-            ? "border-primary bg-primary/10"
-            : "border-border bg-muted hover:border-border",
-        )}
-      >
-        <input {...getInputProps()} />
-        <Upload className="mb-3 h-8 w-8 text-muted-foreground" />
-        {file ? (
-          <p className="text-sm font-medium text-primary">{file.name}</p>
-        ) : (
-          <>
-            <p className="text-sm font-medium text-foreground">
-              Drop your resume here, or click to browse
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">PDF or DOCX</p>
-          </>
-        )}
-      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div
+          {...getRootProps()}
+          className={cn(
+            "flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors",
+            isDragActive
+              ? "border-primary bg-primary/10"
+              : "border-border bg-muted hover:border-border",
+          )}
+        >
+          <input {...getInputProps()} />
+          <Upload className="mb-3 h-8 w-8 text-muted-foreground" />
+          {file ? (
+            <p className="text-sm font-medium text-primary">{file.name}</p>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-foreground">
+                Drop your resume here, or click to browse
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">PDF or DOCX</p>
+            </>
+          )}
+        </div>
 
-      <div className="space-y-1">
-        <Label htmlFor="jd">Job Description (optional)</Label>
-        <Textarea
-          id="jd"
-          rows={5}
-          placeholder="Paste the job description to get a tailored gap analysis…"
-          value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
-        />
+        <div className="flex flex-col space-y-1">
+          <Label htmlFor="jd">Job Description (optional)</Label>
+          <Textarea
+            id="jd"
+            className="min-h-[220px] flex-1 resize-y"
+            placeholder="Paste the job description to get a tailored gap analysis…"
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+          />
+        </div>
       </div>
 
       <Button
         onClick={() => analyze.mutate()}
         disabled={!file || analyze.isPending}
-        className="w-full"
+        className="w-full sm:w-auto"
       >
         {analyze.isPending ? "Analyzing…" : "Analyze Resume"}
       </Button>
@@ -306,7 +308,7 @@ export default function ResumeAnalysisPage() {
   const [result, setResult] = useState<ResumeAnalysis | null>(null);
 
   return (
-    <PageContainer variant={result ? "wide" : "form"}>
+    <PageContainer variant="wide">
       <PageHeader
         title="Resume Analysis"
         subtitle="AI-powered feedback on your resume with optional job-specific gap analysis."

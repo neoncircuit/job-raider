@@ -72,6 +72,14 @@ The dashboard includes an AI-powered resume analysis feature that:
 - Provides qualitative scoring, summaries, and improvement recommendations
 - Supports both general analysis and job-specific gap analysis
 
+### Recent Updates (2026-07-25)
+
+**Settings and local ops:**
+- Theme-safe Ollama model pickers listing **installed** tags only; cloud fallback provider select (Anthropic / Gemini) with runtime-applied API keys
+- Sidebar resource meter (`GET /api/health/resources`) polling CPU / RAM / GPU every 5 seconds
+- Data-directory health self-heals missing bind-mount folders; entrypoint ensures `listings` / `cache` / `results` / …
+- Ollama health checks prefer the saved Settings host (Compose vs `host.docker.internal`)
+
 ### Recent Updates (2026-07-23)
 
 **UI/UX polish:** Shared page chrome (`PageHeader`, empty/error banners), honest Simulate Apply / Request Cancel labels, metrics outcomes aligned to API rates, Assessment limited to skill-based + DISC.

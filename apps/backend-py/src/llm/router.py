@@ -281,9 +281,10 @@ class LLMRouter:
 
     def apply_user_settings(self) -> None:
         """
-        Load persisted user settings and apply routing plus Ollama host.
+        Load persisted user settings and apply routing, Ollama host, and API keys.
 
-        Silently keeps constructor defaults when settings cannot be loaded.
+        Settings API keys override environment variables when set. Silently
+        keeps constructor defaults when settings cannot be loaded.
         """
         try:
             from ..api.ollama_models import parse_ollama_host_port
@@ -296,7 +297,12 @@ class LLMRouter:
                 host, port = parse_ollama_host_port(settings.api_config.ollama_host)
                 self.ollama_host = host
                 self.ollama_port = port
-                self._clients.clear()
+            if settings.api_config:
+                if settings.api_config.anthropic_api_key:
+                    self.api_key = settings.api_config.anthropic_api_key
+                if settings.api_config.gemini_api_key:
+                    self.gemini_api_key = settings.api_config.gemini_api_key
+            self._clients.clear()
         except Exception:
             pass
 

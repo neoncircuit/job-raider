@@ -314,16 +314,21 @@ data/
 ├── assessments/           # Assessment session data
 │   ├── {session_id}.json
 │   └── ...
-├── cache/                # LLM response cache
+├── profiles/              # Uploaded resumes and active profile store
+├── settings/              # Persisted user_settings.json
+├── cache/                 # LLM response cache
 │   └── responses.json
-└── results/              # Pipeline results
-    ├── resumes/          # Generated resumes
+├── metrics/               # Local metrics artifacts
+└── results/               # Pipeline results
+    ├── resumes/           # Generated resumes
     │   ├── {job_id}.pdf
     │   └── {job_id}.docx
-    ├── applications/     # Application data
+    ├── applications/      # Application data
     │   └── {app_id}.json
     └── pipeline_run_*.json
 ```
+
+Compose bind-mounts `apps/backend-py/data` into the backend container. The image pre-creates common folders, but an empty or partial host mount can hide them. The backend entrypoint and `DataDirectoryCheck` ensure expected directories exist on startup / health check.
 
 ## Scoring Heuristic
 
@@ -585,7 +590,8 @@ graph LR
 | `/cover-letter` | Manual JD paste → generate/review/export cover letter |
 | `/career-coach` | Agent-backed career analysis (requires active profile) |
 | `/metrics` | Recharts funnel + pie, cost tiles, LLM call log |
-| `/settings` | Ollama host, small/large model pickers, model params, API config, cost limits |
+| `/settings` | Ollama host, cloud fallback provider (Anthropic/Gemini) + API key, installed-only small/large model pickers, model params, cost limits |
+
 | `/assessment` | DISC personality assessment and skill-based technical interview practice |
 
 ## Security Considerations

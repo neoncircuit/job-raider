@@ -979,7 +979,9 @@ Get current user settings including model routing, API configuration, and parame
   },
   "api_config": {
     "anthropic_api_key": null,
-    "ollama_host": "localhost:11434"
+    "gemini_api_key": null,
+    "cloud_fallback_provider": "anthropic",
+    "ollama_host": "host.docker.internal:11434"
   },
   "model_params": {
     "temperature": 0.7,
@@ -1016,7 +1018,9 @@ Update user settings. Settings are persisted to `data/settings.json` and apply t
   },
   "api_config": {
     "anthropic_api_key": "sk-ant-xxx",
-    "ollama_host": "localhost:11434"
+    "gemini_api_key": null,
+    "cloud_fallback_provider": "anthropic",
+    "ollama_host": "host.docker.internal:11434"
   },
   "model_params": {
     "temperature": 0.8,
@@ -1060,7 +1064,7 @@ flowchart LR
 
 #### GET /api/settings/models
 
-Get available models by provider. Merges the YAML catalog with models installed on the live Ollama host (`api_config.ollama_host`). Includes recommended small/large defaults.
+Get available models by provider. Returns YAML catalog keys under `ollama` / `anthropic` / `gemini`, plus live tags in `ollama_installed` for the configured Ollama host. Includes recommended small/large defaults. The Settings UI dropdowns use **`ollama_installed` only** so catalog phantoms (for example uninstalled gemma tags) do not appear as choices.
 
 **Response:**
 ```json
@@ -1109,7 +1113,23 @@ Get merged configuration (YAML defaults + user settings).
 
 **Response:** Merged configuration dictionary used by the application
 
-**Runtime note:** `create_router()` loads saved routing and `ollama_host` on each call so Settings changes apply to new LLM work without restarting the process.
+**Runtime note:** `create_router()` loads saved routing, `ollama_host`, and cloud API keys (`anthropic_api_key` / `gemini_api_key`) on each call so Settings changes apply to new LLM work without restarting the process. Blank keys fall back to `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`. `cloud_fallback_provider` (`anthropic` or `gemini`) selects the cloud fallback when local Ollama fails.
+
+#### GET /api/health
+
+Public health report (no API key). Includes disk, Ollama, data directories, configuration, and optional ChromaDB / embedding / MLflow checks. Ollama and embedding checks prefer the saved Settings Ollama host.
+
+#### GET /api/health/resources
+
+Public lightweight CPU / RAM / GPU snapshot for the sidebar meter (about every 5 seconds). Reflects what the backend process or container observes. `gpu` is `null` when `nvidia-smi` is unavailable in that environment.
+
+```json
+{
+  "cpu": { "percent": 12.5 },
+  "ram": { "used_mb": 4096.0, "total_mb": 16384.0, "percent": 25.0 },
+  "gpu": null
+}
+```
 
 ### Settings Model Reference
 
@@ -1144,8 +1164,10 @@ API and service configuration.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `anthropic_api_key` | str \| null | Anthropic API key |
-| `ollama_host` | str | Ollama service host:port |
+| `anthropic_api_key` | str \| null | Anthropic API key (overrides env when set) |
+| `gemini_api_key` | str \| null | Gemini API key (overrides env when set) |
+| `cloud_fallback_provider` | `anthropic` \| `gemini` | Cloud provider used when Ollama fails |
+| `ollama_host` | str | Ollama service host:port (Docker examples: `ollama:11434`, `host.docker.internal:11434`) |
 
 #### ModelParameters
 

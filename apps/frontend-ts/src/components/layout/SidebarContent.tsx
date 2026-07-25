@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { SystemResourcesMeter } from "./SystemResourcesMeter";
 import { SidebarNavLink } from "./SidebarNavLink";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandMark } from "./BrandMark";
@@ -130,6 +131,7 @@ export function SidebarContent({ onNavItemClick }: SidebarContentProps) {
 
       <Separator className="bg-sidebar-border" />
       <ConnectionStatus />
+      <SystemResourcesMeter />
       <Separator className="bg-sidebar-border" />
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">

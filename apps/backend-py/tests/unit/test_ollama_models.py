@@ -5,12 +5,13 @@ Tests for Ollama model discovery helpers and tier default application.
 from src.api.ollama_models import (
     RECOMMENDED_OLLAMA_LARGE,
     RECOMMENDED_OLLAMA_SMALL,
+    apply_cloud_fallback_provider,
     apply_ollama_tier_models,
     derive_ollama_tier_models,
     ollama_base_url,
     parse_ollama_host_port,
 )
-from src.api.settings import ModelRouting, Provider
+from src.api.settings import CloudProvider, ModelRouting, Provider
 
 
 class TestParseOllamaHost:
@@ -57,6 +58,29 @@ class TestOllamaTierModels:
         updated = apply_ollama_tier_models(routing, "gemma3:4b", "qwen2.5:14b")
         assert updated["selection"].primary_model == "gemma3:4b"
         assert updated["resume_writing"].primary_model == "qwen2.5:14b"
+
+    def test_apply_cloud_fallback_switches_to_gemini(self):
+        """Cloud fallback retargets Anthropic fallbacks to Gemini models."""
+        routing = {
+            "selection": ModelRouting(
+                task_type="selection",
+                primary_provider=Provider.OLLAMA,
+                primary_model=RECOMMENDED_OLLAMA_SMALL,
+                fallback_provider=Provider.ANTHROPIC,
+                fallback_model="claude-haiku-4-5-20251001",
+            ),
+            "scoring": ModelRouting(
+                task_type="scoring",
+                primary_provider=Provider.OLLAMA,
+                primary_model=RECOMMENDED_OLLAMA_SMALL,
+                fallback_provider=Provider.OLLAMA,
+                fallback_model="gemma3:4b",
+            ),
+        }
+        updated = apply_cloud_fallback_provider(routing, CloudProvider.GEMINI)
+        assert updated["selection"].fallback_provider == Provider.GEMINI
+        assert updated["selection"].fallback_model == "gemini-2.5-flash"
+        assert updated["scoring"].fallback_provider == Provider.OLLAMA
 
     def test_derive_falls_back_to_recommended(self):
         """Empty routing yields documented recommended defaults."""

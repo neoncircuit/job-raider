@@ -339,6 +339,7 @@ async def root():
         "message": "Job Raider API",
         "docs": "/docs",
         "health": "/api/health",
+        "resources": "/api/health/resources",
     }
 
 
@@ -358,6 +359,22 @@ async def health_check():
         "checks": report["checks"],
         "summary": report["summary"],
     }
+
+
+@app.get("/api/health/resources")
+async def health_resources():
+    """
+    Lightweight CPU / RAM / GPU snapshot for the sidebar meter.
+
+    Reflects what the backend process (or container) can observe. No API key
+    required, matching ``GET /api/health``.
+
+    Returns:
+        Dict with ``cpu``, ``ram``, and optional ``gpu`` sections.
+    """
+    from src.health.system_resources import get_system_resources
+
+    return get_system_resources()
 
 
 @app.get("/api/version")

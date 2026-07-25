@@ -3215,3 +3215,66 @@ CI=1 PLAYWRIGHT_PORT=3010 npm run test:e2e
 # 42 passed (full suite; avoid reusing Docker on :3000)
 ```
 
+## Settings Select, Installed Models, Sidebar Resources (2026-07-24)
+
+**Overview:** Fix Settings Ollama pickers (dark-mode contrast + catalog phantoms), and add a compact sidebar CPU/RAM/GPU meter backed by `GET /api/health/resources`.
+
+### Checklist
+
+- [x] Replace native Ollama `<select>` with theme-safe shadcn Select
+- [x] Drive dropdown options from `ollama_installed` only; mark saved-but-missing; gate recommended button
+- [x] Add `psutil`, `system_resources.py`, and public `GET /api/health/resources`
+- [x] Sidebar `SystemResourcesMeter` under ConnectionStatus (5s poll)
+- [x] Unit tests for resources helper + endpoint; frontend type-check
+
+### Review
+
+- Catalog models (e.g. gemma) remain in YAML / `ollama` merge for validation docs; the Settings UI no longer lists them unless installed.
+- Resource meters show what the backend process or container observes, not necessarily the full Windows host.
+- Recommended (3b/7b) button stays disabled until both tags appear in `ollama_installed`.
+
+### Verification
+
+```bash
+# Backend (WSL)
+cd apps/backend-py
+.venv/bin/pip install 'psutil>=5.9.0'
+.venv/bin/python -m pytest tests/unit/test_system_resources.py tests/unit/test_settings_api.py -q
+# 9 passed
+
+# Frontend
+cd apps/frontend-ts
+node ./node_modules/typescript/bin/tsc --noEmit
+```
+
+## Cloud Fallback Provider Select (2026-07-24)
+
+**Overview:** Settings can choose Anthropic or Gemini as the cloud fallback (one provider at a time). Settings API keys are applied at router runtime. Gemini is included in the models catalog.
+
+### Checklist
+
+- [x] `APIConfig`: `gemini_api_key`, `cloud_fallback_provider`; blank keys normalize to unset
+- [x] `Provider.GEMINI`; cloud fallback helpers retarget Anthropic/Gemini routes
+- [x] `apply_user_settings` applies Anthropic + Gemini keys (override env when set)
+- [x] Models catalog includes Gemini; Settings UI provider select + matching key field
+- [x] Tests for router key wiring, cloud fallback retarget, frontend tiers
+
+### Review
+
+- Not a multi-key vault: one active cloud provider, one key field shown (other key still stored if previously set).
+- Local Ollama remains primary; cloud is fallback only.
+- Env vars remain the fallback when Settings keys are blank.
+
+## Health Data Directories + Docs Sync (2026-07-25)
+
+**Overview:** Fix degraded `data_directories` health (bind-mount hide), harden Ollama health URL resolution, document Settings/resources/Ollama host, then commit.
+
+### Checklist
+
+- [x] Diagnose: missing `listings`/`cache`/`results` on bind mount; stale mount until recreate
+- [x] `DataDirectoryCheck` creates missing dirs; entrypoint `mkdir -p`
+- [x] Ollama/embedding health uses `ollama_base_url` + Settings host preference
+- [x] Compose forces `OLLAMA_HOST=ollama:11434` (avoid `0.0.0.0` / localhost from host env)
+- [x] Docs: troubleshooting, api, architecture, index, lessons
+- [x] Unit test for data directory self-heal
+

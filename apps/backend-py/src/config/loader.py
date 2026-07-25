@@ -51,7 +51,7 @@ class ConfigLoader:
             Dict mapping provider names to lists of model names
         """
         config = self.load_model_config()
-        models = {"anthropic": [], "ollama": []}
+        models: Dict[str, List[str]] = {"anthropic": [], "ollama": [], "gemini": []}
 
         if "models" in config:
             for provider_name, provider_config in config["models"].items():
@@ -111,6 +111,12 @@ class ConfigLoader:
             merged["models"]["anthropic"][
                 "api_key"
             ] = settings.api_config.anthropic_api_key
+
+        # Update Gemini config with user API key
+        if "gemini" not in merged["models"]:
+            merged["models"]["gemini"] = {}
+        if settings.api_config.gemini_api_key:
+            merged["models"]["gemini"]["api_key"] = settings.api_config.gemini_api_key
 
         # Update Ollama config with user host
         if "ollama" not in merged["models"]:

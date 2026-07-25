@@ -37,6 +37,7 @@ toml>=0.10.2                  # TOML parsing (for pyproject.toml)
 tenacity>=8.2.0               # Retry logic with exponential backoff
 tqdm>=4.66.0                  # Progress bars
 rich>=13.7.0                  # Terminal formatting and tables
+psutil>=5.9.0                 # CPU / RAM snapshots for health resource meter
 
 # === Logging ===
 colorlog>=6.8.0               # Colored log output

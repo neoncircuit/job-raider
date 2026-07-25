@@ -905,7 +905,7 @@ export default function LinkedInAnalysisPage() {
   const [result, setResult] = useState<LinkedInProfileAnalysis | null>(null);
 
   return (
-    <PageContainer variant={result ? "wide" : "form"}>
+    <PageContainer variant="wide">
       <PageHeader
         title="LinkedIn Analysis"
         subtitle="AI-powered feedback on your LinkedIn profile to attract inbound opportunities."

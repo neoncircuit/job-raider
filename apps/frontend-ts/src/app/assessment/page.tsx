@@ -102,105 +102,109 @@ function SetupView({
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
-          <GraduationCap className="h-8 w-8 text-primary" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-primary/10">
+            <GraduationCap className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-heading text-lg font-semibold text-foreground">
+              Technical Assessment Trainer
+            </h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Practice technical questions tailored to your skills, or take a
+              DISC assessment.
+            </p>
+          </div>
         </div>
-        <h2 className="text-xl font-bold text-foreground">
-          Technical Assessment Trainer
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Practice technical questions tailored to your skills, or take a DISC
-          assessment.
-        </p>
-      </div>
-
-      {/* Mode actions: skill practice (primary) + DISC (secondary) */}
-      <div className="flex gap-3 justify-center flex-wrap">
-        <span className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground shadow-md">
-          Practice by Skill
-        </span>
-        <Button variant="outline" onClick={onStartDISC}>
-          DISC Assessment
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-flex items-center rounded border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
+            Practice by Skill
+          </span>
+          <Button variant="outline" size="sm" onClick={onStartDISC}>
+            DISC Assessment
+          </Button>
+        </div>
       </div>
 
       {skillsError && (
         <QueryErrorBanner title="Skills unavailable" message={skillsError} />
       )}
 
-      {/* Skill picker */}
-      <div>
-        <Label className="mb-2 block">Select skills to practice</Label>
-        <div className="flex flex-wrap gap-2">
-          {availableSkills.map((skill) => (
-            <button
-              key={skill}
-              type="button"
-              onClick={() => toggleSkill(skill)}
-              className={cn(
-                "px-3 py-1.5 rounded-full text-sm transition-colors",
-                selectedSkills.includes(skill)
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground hover:bg-muted",
-              )}
-            >
-              {skill}
-            </button>
-          ))}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-3 lg:col-span-2">
+          <Label className="block">Select skills to practice</Label>
+          <div className="flex flex-wrap gap-2">
+            {availableSkills.map((skill) => (
+              <button
+                key={skill}
+                type="button"
+                onClick={() => toggleSkill(skill)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm transition-colors",
+                  selectedSkills.includes(skill)
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-foreground hover:bg-muted/80",
+                )}
+              >
+                {skill}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <div>
+            <Label className="mb-2 block">Difficulty</Label>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  "beginner",
+                  "intermediate",
+                  "advanced",
+                  "expert",
+                ] as DifficultyLevel[]
+              ).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDifficulty(d)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm capitalize transition-colors",
+                    difficulty === d
+                      ? DIFFICULTY_COLORS[d]
+                      : "bg-muted text-muted-foreground hover:bg-muted/80",
+                  )}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2 block">Questions: {count}</Label>
+            <input
+              type="range"
+              min={3}
+              max={15}
+              value={count}
+              onChange={(e) => setCount(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
+          </div>
+
+          <Button
+            onClick={() => onStart(selectedSkills, difficulty, count)}
+            className="w-full"
+            size="lg"
+            disabled={selectedSkills.length === 0}
+          >
+            <Play className="mr-2 h-4 w-4" />
+            Start Assessment
+          </Button>
         </div>
       </div>
-
-      {/* Difficulty */}
-      <div>
-        <Label className="mb-2 block">Difficulty</Label>
-        <div className="flex gap-2">
-          {(
-            [
-              "beginner",
-              "intermediate",
-              "advanced",
-              "expert",
-            ] as DifficultyLevel[]
-          ).map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => setDifficulty(d)}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-sm capitalize transition-colors",
-                difficulty === d
-                  ? DIFFICULTY_COLORS[d]
-                  : "bg-muted text-muted-foreground hover:bg-muted",
-              )}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Question count */}
-      <div>
-        <Label className="mb-2 block">Questions: {count}</Label>
-        <input
-          type="range"
-          min={3}
-          max={15}
-          value={count}
-          onChange={(e) => setCount(Number(e.target.value))}
-          className="w-full accent-primary"
-        />
-      </div>
-
-      <Button
-        onClick={() => onStart(selectedSkills, difficulty, count)}
-        className="w-full"
-        size="lg"
-      >
-        <Play className="mr-2 h-4 w-4" />
-        Start Assessment
-      </Button>
     </div>
   );
 }
@@ -693,7 +697,7 @@ export default function AssessmentPage() {
   };
 
   return (
-    <PageContainer variant="form">
+    <PageContainer variant="wide">
       <PageHeader
         title="Assessment Trainer"
         subtitle="Practice technical questions to prepare for interviews."
@@ -703,9 +707,7 @@ export default function AssessmentPage() {
         <SetupView onStart={handleStart} onStartDISC={handleStartDISC} />
       )}
       {view === "disc" && (
-        <div className="flex justify-center">
-          <DISCAssessment onComplete={() => setView("setup")} />
-        </div>
+        <DISCAssessment onComplete={() => setView("setup")} />
       )}
       {view === "session" && session && (
         <SessionView

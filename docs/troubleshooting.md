@@ -39,6 +39,68 @@ curl -s http://127.0.0.1:8000/api/health | python3 -m json.tool
 
 **Note:** Using `localhost` instead of `127.0.0.1` can also cause "Connection reset by peer" in WSL2 because `localhost` resolves to `::1` (IPv6) while the server binds to `0.0.0.0` (IPv4). Always use `127.0.0.1` for direct health checks.
 
+### Degraded Health: Data Directories Missing
+
+**Symptoms:**
+- Dashboard shows overall status `degraded`
+- `GET /api/health` reports `data_directories` with a message such as:
+  `Issues found: listings does not exist, cache does not exist, results does not exist`
+
+**Root Cause:**
+
+Compose bind-mounts `./apps/backend-py/data` over the image path. Folders created in the Dockerfile exist only in the image layer. If the host mount never had those folders (or Docker Desktop/WSL2 is serving a stale mount view), the container sees an incomplete tree and health degrades.
+
+**Fix:**
+
+```bash
+# Prefer recreate so the bind mount refreshes and the entrypoint ensures dirs
+docker compose up -d --force-recreate backend
+```
+
+Or create the folders on the host (same mount):
+
+```bash
+mkdir -p apps/backend-py/data/{listings,cache,results,applications,metrics,profiles,assessments,settings}
+```
+
+Then verify:
+
+```bash
+curl -s http://127.0.0.1:8000/api/health | python3 -m json.tool
+```
+
+`data_directories` should be `healthy`. After rebuilding with the current entrypoint/health check, missing expected folders are also created automatically when the mount is writable.
+
+### Settings Shows Few Ollama Models / Wrong Host
+
+**Symptoms:**
+- Settings Ollama dropdowns only list models from the Compose `ollama` service
+- Extra models on desktop Ollama do not appear
+- Empty installed list while last-saved tags still show in the pickers
+
+**Root Cause:**
+
+Discovery uses `api_config.ollama_host` from saved settings. Inside Docker, `localhost:11434` is the backend container. `ollama:11434` is the Compose Ollama service. Desktop Ollama is typically `host.docker.internal:11434`.
+
+**Fix:**
+
+1. Open `/settings` and set **Ollama Host** appropriately:
+   - Compose service: `ollama:11434`
+   - Host desktop Ollama: `host.docker.internal:11434`
+   - Native backend (no Docker): `localhost:11434`
+2. Save, refresh Settings, then choose small/large from the live installed list
+
+The Settings UI lists installed tags only (`ollama_installed`), not the YAML catalog. Saved models missing from that host remain visible as not installed.
+
+### Sidebar GPU Meter Shows Em Dash
+
+**Symptoms:**
+- Sidebar Resources shows CPU/RAM but GPU is `—`
+
+**Root Cause:**
+
+`GET /api/health/resources` reads NVIDIA metrics via `nvidia-smi` inside the backend container. Without GPU passthrough on that service, `gpu` is `null`. Host Ollama may still use the GPU; the meter only reports what the backend process can see.
+
 ### WSL2 DrvFs Aggressive Caching - Stale Code in Containers
 
 **Symptoms:**

@@ -61,6 +61,8 @@ class TestCreateRouterAppliesSettings:
             )
         }
         mock_settings.api_config.ollama_host = "localhost:11434"
+        mock_settings.api_config.anthropic_api_key = "sk-ant-from-settings"
+        mock_settings.api_config.gemini_api_key = "gemini-from-settings"
 
         mock_storage = MagicMock()
         mock_storage.load_settings.return_value = mock_settings
@@ -69,3 +71,5 @@ class TestCreateRouterAppliesSettings:
             router = create_router()
 
         assert router.routes[TaskType.SELECTION].primary_model == "custom:3b"
+        assert router.api_key == "sk-ant-from-settings"
+        assert router.gemini_api_key == "gemini-from-settings"

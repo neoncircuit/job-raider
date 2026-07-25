@@ -24,6 +24,14 @@ class Provider(str, Enum):
 
     ANTHROPIC = "anthropic"
     OLLAMA = "ollama"
+    GEMINI = "gemini"
+
+
+class CloudProvider(str, Enum):
+    """Cloud API providers used as Ollama fallbacks."""
+
+    ANTHROPIC = "anthropic"
+    GEMINI = "gemini"
 
 
 class ModelRouting(BaseModel):
@@ -57,9 +65,26 @@ class APIConfig(BaseModel):
     anthropic_api_key: Optional[str] = Field(
         default=None, description="Anthropic API key"
     )
+    gemini_api_key: Optional[str] = Field(
+        default=None, description="Google Gemini API key"
+    )
+    cloud_fallback_provider: CloudProvider = Field(
+        default=CloudProvider.ANTHROPIC,
+        description="Cloud provider used when local Ollama fails",
+    )
     ollama_host: str = Field(
         default="localhost:11434", description="Ollama service host:port"
     )
+
+    @field_validator("anthropic_api_key", "gemini_api_key", mode="before")
+    @classmethod
+    def empty_key_to_none(cls, v: Optional[str]) -> Optional[str]:
+        """Treat blank API keys as unset so env vars can still apply."""
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v.strip() if isinstance(v, str) else v
 
     @field_validator("ollama_host")
     @classmethod

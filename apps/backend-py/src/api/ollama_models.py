@@ -11,11 +11,24 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 import requests
 
-from .settings import ModelRouting, Provider
+from .settings import CloudProvider, ModelRouting, Provider
 
 # Documented recommended defaults (user may override with any installed model).
 RECOMMENDED_OLLAMA_SMALL = "qwen2.5:3b"
 RECOMMENDED_OLLAMA_LARGE = "qwen2.5:7b"
+
+# Default cloud fallback models when local Ollama cannot serve a request.
+CLOUD_FALLBACK_SMALL = {
+    CloudProvider.ANTHROPIC: "claude-haiku-4-5-20251001",
+    CloudProvider.GEMINI: "gemini-2.5-flash",
+}
+CLOUD_FALLBACK_LARGE = {
+    CloudProvider.ANTHROPIC: "claude-sonnet-4-6",
+    CloudProvider.GEMINI: "gemini-2.5-pro",
+}
+
+# Cloud providers that Settings can select as the Ollama fallback.
+_CLOUD_FALLBACK_PROVIDERS = frozenset({Provider.ANTHROPIC, Provider.GEMINI})
 
 # Tasks that use the "small / fast" Ollama primary in DEFAULT_ROUTES.
 OLLAMA_SMALL_TASKS = frozenset(
@@ -114,6 +127,59 @@ def list_installed_ollama_models(ollama_host: str, timeout: float = 3.0) -> List
         return []
 
 
+def default_cloud_fallback_model(
+    cloud: CloudProvider, task_type: str
+) -> str:
+    """
+    Pick a default cloud fallback model for a task tier.
+
+    Args:
+        cloud: Selected cloud fallback provider.
+        task_type: Routing task key.
+
+    Returns:
+        Provider-specific model id for small or large tier work.
+    """
+    if task_type in OLLAMA_SMALL_TASKS:
+        return CLOUD_FALLBACK_SMALL[cloud]
+    return CLOUD_FALLBACK_LARGE[cloud]
+
+
+def apply_cloud_fallback_provider(
+    routing: Dict[str, ModelRouting],
+    cloud: CloudProvider,
+) -> Dict[str, ModelRouting]:
+    """
+    Retarget cloud fallbacks (Anthropic/Gemini) to the selected provider.
+
+    Local Ollama-to-Ollama fallbacks are left unchanged. Entries with no
+    fallback are skipped.
+
+    Args:
+        routing: Current per-task routing map.
+        cloud: Cloud provider to use when Ollama fails.
+
+    Returns:
+        New routing dict with cloud fallbacks updated.
+    """
+    cloud_provider = Provider(cloud.value)
+    updated: Dict[str, ModelRouting] = {}
+    for task_type, entry in routing.items():
+        if (
+            entry.fallback_provider is None
+            or entry.fallback_provider not in _CLOUD_FALLBACK_PROVIDERS
+        ):
+            updated[task_type] = entry
+            continue
+        updated[task_type] = entry.model_copy(
+            update={
+                "fallback_provider": cloud_provider,
+                "fallback_model": default_cloud_fallback_model(cloud, task_type),
+            }
+        )
+    return updated
+
+
 def apply_ollama_tier_models(
     routing: Dict[str, ModelRouting],
     small_model: str,
@@ -121,6 +187,7 @@ def apply_ollama_tier_models(
     *,
     small_tasks: Optional[Iterable[str]] = None,
     large_tasks: Optional[Iterable[str]] = None,
+    cloud_fallback: CloudProvider = CloudProvider.ANTHROPIC,
 ) -> Dict[str, ModelRouting]:
     """
     Set primary Ollama models for small/large task tiers.
@@ -135,6 +202,7 @@ def apply_ollama_tier_models(
         large_model: Model name for large/quality tasks.
         small_tasks: Optional override of small-tier task keys.
         large_tasks: Optional override of large-tier task keys.
+        cloud_fallback: Cloud provider for newly created fallbacks.
 
     Returns:
         New routing dict with tier models applied.
@@ -142,6 +210,7 @@ def apply_ollama_tier_models(
     small = frozenset(small_tasks) if small_tasks is not None else OLLAMA_SMALL_TASKS
     large = frozenset(large_tasks) if large_tasks is not None else OLLAMA_LARGE_TASKS
     updated: Dict[str, ModelRouting] = dict(routing)
+    cloud_provider = Provider(cloud_fallback.value)
 
     for task_type, model in (
         *((t, small_model) for t in small),
@@ -153,15 +222,15 @@ def apply_ollama_tier_models(
                 task_type=task_type,
                 primary_provider=Provider.OLLAMA,
                 primary_model=model,
-                fallback_provider=Provider.ANTHROPIC,
-                fallback_model="claude-haiku-4-5-20251001",
+                fallback_provider=cloud_provider,
+                fallback_model=default_cloud_fallback_model(cloud_fallback, task_type),
             )
             continue
         if existing.primary_provider != Provider.OLLAMA:
             continue
         updated[task_type] = existing.model_copy(update={"primary_model": model})
 
-    return updated
+    return apply_cloud_fallback_provider(updated, cloud_fallback)
 
 
 def derive_ollama_tier_models(

@@ -226,16 +226,45 @@ class GPUMemoryCheck(HealthCheck):
             )
 
 
+def _resolve_ollama_base_url(explicit: str | None = None) -> str:
+    """
+    Resolve the Ollama HTTP base URL for health checks.
+
+    Preference order: explicit argument, saved Settings host, then
+    ``OLLAMA_HOST`` env, then localhost.
+
+    Args:
+        explicit: Optional host or URL override.
+
+    Returns:
+        Base URL such as ``http://ollama:11434``.
+    """
+    from ..api.ollama_models import ollama_base_url
+
+    if explicit:
+        return ollama_base_url(explicit)
+
+    try:
+        from ..api.settings import get_storage
+
+        host = get_storage().load_settings().api_config.ollama_host
+        if host:
+            return ollama_base_url(host)
+    except Exception:
+        pass
+
+    import os
+
+    return ollama_base_url(os.getenv("OLLAMA_HOST") or "localhost:11434")
+
+
 class OllamaHealthCheck(HealthCheck):
     """Check Ollama service availability."""
 
     def __init__(self, base_url: str | None = None):
         super().__init__("ollama")
-        import os
-
-        self.base_url = (
-            base_url or f"http://{os.getenv('OLLAMA_HOST', 'localhost:11434')}"
-        )
+        self._explicit_base = base_url
+        self.base_url = _resolve_ollama_base_url(base_url)
 
     def check(self) -> HealthCheckResult:
         start = datetime.now()
@@ -243,6 +272,8 @@ class OllamaHealthCheck(HealthCheck):
         try:
             import requests
 
+            # Re-resolve each check so Settings host changes apply without restart.
+            self.base_url = _resolve_ollama_base_url(self._explicit_base)
             response = requests.get(f"{self.base_url}/api/tags", timeout=5)
 
             if response.status_code == 200:
@@ -311,42 +342,66 @@ class OllamaHealthCheck(HealthCheck):
 
 
 class DataDirectoryCheck(HealthCheck):
-    """Check data directories exist and are writable."""
+    """Check data directories exist and are writable.
+
+    Bind-mounting ``./apps/backend-py/data`` over the image can hide
+    directories that were created at build time. Missing expected folders
+    are created on check so health recovers without a manual mkdir.
+    """
 
     def __init__(self, base_dir: str = "data"):
         super().__init__("data_directories")
         self.base_dir = Path(base_dir)
 
-        # Expected subdirectories
+        # Expected subdirectories used by pipeline, cache, and trackers
         self.expected_dirs = [
             "listings",
             "cache",
             "results",
             "applications",
             "metrics",
+            "profiles",
+            "assessments",
+            "settings",
         ]
 
     def check(self) -> HealthCheckResult:
+        """
+        Verify required data directories exist and are writable.
+
+        Creates any missing expected directories under ``base_dir``.
+
+        Returns:
+            HealthCheckResult with status, message, and directory metadata.
+        """
         start = datetime.now()
 
         try:
             issues = []
             existing_dirs = []
+            created_dirs = []
 
-            # Check base directory
             if not self.base_dir.exists():
-                issues.append(f"Base directory {self.base_dir} does not exist")
-            else:
-                # Check subdirectories
+                try:
+                    self.base_dir.mkdir(parents=True, exist_ok=True)
+                    created_dirs.append(str(self.base_dir))
+                except OSError as exc:
+                    issues.append(f"Base directory {self.base_dir} cannot be created: {exc}")
+
+            if self.base_dir.exists():
                 for dir_name in self.expected_dirs:
                     dir_path = self.base_dir / dir_name
+                    if not dir_path.exists():
+                        try:
+                            dir_path.mkdir(parents=True, exist_ok=True)
+                            created_dirs.append(dir_name)
+                        except OSError as exc:
+                            issues.append(f"{dir_name} cannot be created: {exc}")
+                            continue
                     if dir_path.exists():
                         existing_dirs.append(dir_name)
-                        # Check if writable
                         if not os.access(dir_path, os.W_OK):
                             issues.append(f"{dir_name} is not writable")
-                    else:
-                        issues.append(f"{dir_name} does not exist")
 
             if issues:
                 status = (
@@ -355,6 +410,12 @@ class DataDirectoryCheck(HealthCheck):
                     else HealthStatus.UNHEALTHY
                 )
                 message = f"Issues found: {', '.join(issues[:3])}"
+            elif created_dirs:
+                status = HealthStatus.HEALTHY
+                message = (
+                    f"All {len(self.expected_dirs)} directories ready "
+                    f"(created: {', '.join(created_dirs[:5])})"
+                )
             else:
                 status = HealthStatus.HEALTHY
                 message = (
@@ -371,6 +432,7 @@ class DataDirectoryCheck(HealthCheck):
                 metadata={
                     "base_dir": str(self.base_dir),
                     "existing_dirs": existing_dirs,
+                    "created_dirs": created_dirs,
                     "issues": issues,
                 },
                 timestamp=datetime.now(),
@@ -516,11 +578,8 @@ class EmbeddingModelHealthCheck(HealthCheck):
     def __init__(self, model: str = "nomic-embed-text", base_url: str | None = None):
         super().__init__("embedding_model")
         self.model = model
-        import os
-
-        self.base_url = (
-            base_url or f"http://{os.getenv('OLLAMA_HOST', 'localhost:11434')}"
-        )
+        self._explicit_base = base_url
+        self.base_url = _resolve_ollama_base_url(base_url)
 
     def check(self) -> HealthCheckResult:
         start = datetime.now()
@@ -528,6 +587,7 @@ class EmbeddingModelHealthCheck(HealthCheck):
         try:
             import requests
 
+            self.base_url = _resolve_ollama_base_url(self._explicit_base)
             response = requests.get(f"{self.base_url}/api/tags", timeout=5)
             response.raise_for_status()
             models = [m["name"] for m in response.json().get("models", [])]

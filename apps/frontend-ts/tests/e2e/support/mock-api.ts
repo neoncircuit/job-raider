@@ -19,7 +19,20 @@ import {
   sampleCoverLetterValidation,
 } from "../../setup/fixtures";
 
-/** Synthetic health payload (shape consumed by `src/app/dashboard/page.tsx`). */
+/** Synthetic resource snapshot for the sidebar meter. */
+const mockResources = {
+  cpu: { percent: 18.0 },
+  ram: { used_mb: 4096.0, total_mb: 16384.0, percent: 25.0 },
+  gpu: {
+    name: "Mock GPU",
+    utilization_percent: 12.0,
+    memory_used_mb: 1024,
+    memory_total_mb: 8192,
+    memory_percent: 12.5,
+    temperature_celsius: 45.0,
+  },
+};
+
 const mockHealth = {
   status: "healthy",
   checks: [{ name: "backend", status: "healthy", message: "ok" }],
@@ -55,6 +68,8 @@ const mockSettings = {
   },
   api_config: {
     anthropic_api_key: null,
+    gemini_api_key: null,
+    cloud_fallback_provider: "anthropic",
     ollama_host: "http://localhost:11434",
   },
   model_params: {
@@ -118,6 +133,8 @@ export async function mockApi(page: Page): Promise<void> {
         });
       case "GET /health":
         return route.fulfill({ status: 200, json: mockHealth });
+      case "GET /health/resources":
+        return route.fulfill({ status: 200, json: mockResources });
       case "GET /metrics/summary":
         return route.fulfill({ status: 200, json: mockMetricsSummary });
       case "GET /pipeline/history":

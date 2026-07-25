@@ -25,6 +25,25 @@ done
 
 echo "Import fixes complete."
 
+# Ensure runtime data directories exist on the bind-mounted volume.
+# Image build creates these under /app/backend-py/data, but Compose mounts
+# ./apps/backend-py/data over that path, so empty/missing host folders would
+# otherwise leave health checks degraded.
+DATA_ROOT="/app/backend-py/data"
+mkdir -p \
+  "${DATA_ROOT}/listings" \
+  "${DATA_ROOT}/cache" \
+  "${DATA_ROOT}/results" \
+  "${DATA_ROOT}/applications" \
+  "${DATA_ROOT}/metrics" \
+  "${DATA_ROOT}/profiles" \
+  "${DATA_ROOT}/assessments" \
+  "${DATA_ROOT}/settings" \
+  "${DATA_ROOT}/experiments" \
+  "${DATA_ROOT}/logs" \
+  "${DATA_ROOT}/outputs"
+echo "Data directories ready under ${DATA_ROOT}."
+
 # Install Playwright browsers if not already installed
 if [ ! -d "/home/jobraider/.cache/ms-playwright/chromium-1208" ]; then
     echo "Playwright browsers not found. Installing..."

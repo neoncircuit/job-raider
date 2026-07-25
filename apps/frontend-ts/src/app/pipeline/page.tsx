@@ -10,7 +10,6 @@ import { Play, Square, Wifi, WifiOff } from "lucide-react";
 import { pipelineApi } from "@/lib/api/pipeline";
 import { jobsApi } from "@/lib/api/jobs";
 import type { WSMessage } from "@/lib/types/websocket";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -179,7 +178,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1">
           <Label>Keywords *</Label>
           <Input
@@ -527,7 +526,7 @@ export default function PipelinePage() {
   });
 
   return (
-    <PageContainer variant="content">
+    <PageContainer variant="full-bleed">
       <PageHeader
         title="Pipeline"
         subtitle="Start, monitor, and review pipeline runs."
@@ -559,18 +558,12 @@ export default function PipelinePage() {
         </TabsList>
 
         <TabsContent value="start" className="mt-6">
-          <div className="mx-auto w-full max-w-3xl">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Configure Pipeline Run
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StartForm onStarted={handleStarted} />
-              </CardContent>
-            </Card>
-          </div>
+          <section className="space-y-3">
+            <h2 className="font-heading text-sm font-semibold text-foreground">
+              Configure pipeline run
+            </h2>
+            <StartForm onStarted={handleStarted} />
+          </section>
         </TabsContent>
 
         <TabsContent value="monitor" className="mt-6">

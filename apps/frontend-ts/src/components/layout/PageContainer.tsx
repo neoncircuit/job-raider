@@ -21,10 +21,19 @@ const variantClasses: Record<PageContainerVariant, string> = {
 /**
  * Consistent outer wrapper for page-level content.
  *
- * Provides four width presets so data-dense pages can use the full viewport
- * while forms and long prose stay within a comfortable reading measure. It
- * also applies a standard vertical rhythm (`space-y-6`) between major
- * sections.
+ * Width presets:
+ * - ``full-bleed``: ops/dashboard surfaces that should use the full main pane
+ * - ``wide``: multi-column forms and analysis results (``max-w-7xl``)
+ * - ``content``: medium reading layouts (``max-w-5xl``)
+ * - ``form``: single-column short forms only (``max-w-3xl``)
+ *
+ * Prefer ``wide`` / ``full-bleed`` when the page uses multi-column grids so
+ * content is not squeezed inside a narrow measure. Also applies a standard
+ * vertical rhythm (``space-y-6``) between major sections.
+ *
+ * @param variant - Width strategy for the page content.
+ * @param className - Optional extra classes.
+ * @param children - Page content.
  */
 export function PageContainer({
   variant = "full-bleed",
