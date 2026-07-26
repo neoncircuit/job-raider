@@ -46,6 +46,26 @@ make dev-frontend     # Next.js dashboard on :3000
 
 Open http://localhost:3000 in your browser.
 
+## Discover then review on Jobs
+
+Default Pipeline mode is **Discover**: scrape through score/RAG, persist a shortlist, and stop. Apply is never the silent default.
+
+```mermaid
+flowchart LR
+  Pipeline["Pipeline Discover"] --> Score["Scrape to score/RAG"]
+  Score --> Shortlist["Persist shortlist"]
+  Shortlist --> Jobs["Jobs review"]
+  Jobs --> Save["Save / skip"]
+  Jobs --> Apply["Apply selected or one-by-one"]
+```
+
+1. On **Pipeline**, leave mode as Discover (recommended). Start the run.
+2. When complete, open **Review on Jobs** (or go to Jobs). The feed shows the latest shortlist with a run banner (counts and run id).
+3. Review listings, Save, or Apply one-by-one (dry-run by default). No automatic submit after discover.
+4. Optional: switch Pipeline to **Full pipeline (advanced)** for detect/generate/submit stages (still defaults to dry-run).
+
+OCR / vision models are not used in this flow — job listings are text scraped from boards.
+
 ### Basic Usage
 
 #### Interactive Mode
@@ -514,8 +534,8 @@ http://localhost:3000
 
 **Navigation Pages:**
 - **Dashboard** - System health, API costs, recent pipeline runs
-- **Pipeline** - Configure and run job application pipelines; optional Use profile targets
-- **Jobs** - Search and browse job listings with location filtering; optional Use profile targets
+- **Pipeline** - Discover (default: scrape and score) or advanced full pipeline; optional Use profile targets
+- **Jobs** - Review latest discover shortlist, or live search; optional Use profile targets; apply is explicit
 - **Applications** - Track saved and applied jobs (Simulate Apply for dry-run paths)
 - **Profile** - Manage profile, skills, experience, and Job Targets (keywords, locations, experience, exclude internships)
 - **Assessment** - DISC personality assessment and skill-based technical interview practice
@@ -533,12 +553,14 @@ http://localhost:3000
 - Practice for real job assessments
 
 **Jobs Search Features:**
+- Default feed: latest Pipeline discover shortlist (`GET /api/pipeline/shortlist/latest`)
 - Location filtering with post-processing to ensure accuracy
 - Source selection (LinkedIn, JSearch for 50+ boards)
 - Experience level filtering
 - Remote-only toggle
 - Opt-in **Use profile targets** (default off) to prefill from Profile Job Targets
 - Real-time job classification and trust analysis
+- Apply and Save are per-job actions (no auto-apply after discover)
 
 **Ollama model choice (Settings):**
 - Lists models from the configured Ollama host (including a shared desktop Ollama service)

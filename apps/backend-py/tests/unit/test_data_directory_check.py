@@ -48,6 +48,4 @@ class TestDataDirectoryCheck:
 
         assert result.status == HealthStatus.HEALTHY
         assert result.metadata.get("created_dirs") == []
-        assert set(result.metadata.get("existing_dirs", [])) == set(
-            check.expected_dirs
-        )
+        assert set(result.metadata.get("existing_dirs", [])) == set(check.expected_dirs)

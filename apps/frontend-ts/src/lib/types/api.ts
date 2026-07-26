@@ -77,6 +77,8 @@ export interface PipelineStartRequest {
   sources?: string[] | null;
   dry_run: boolean;
   skip_submission?: boolean;
+  /** discover = scrape through score/RAG; full = include apply stages */
+  mode?: "discover" | "full";
   min_score: number;
   scam_threshold: number;
   max_jobs: number;
@@ -102,7 +104,9 @@ export interface PipelineRun {
   created_at: string;
   completed_at?: string | null;
   jobs_scraped?: number;
+  jobs_scored?: number;
   jobs_applied?: number;
+  mode?: string | null;
   stages_completed?: string[];
 }
 
@@ -217,6 +221,17 @@ export interface TrustAnalysis {
 }
 
 export interface JobSearchResponse {
+  total: number;
+  jobs: JobListing[];
+}
+
+export interface DiscoverShortlistResponse {
+  run_id: string | null;
+  mode: string | null;
+  created_at: string | null;
+  keywords: string[];
+  locations: string[];
+  jobs_scraped: number;
   total: number;
   jobs: JobListing[];
 }

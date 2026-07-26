@@ -66,6 +66,8 @@ class PipelineConfig:
     # Pipeline behavior
     dry_run: bool = True
     skip_submission: bool = False
+    # discover = stop after RAG_RANK; full = continue toward apply stages
+    mode: str = "discover"
 
     # Scoring thresholds
     min_score: int = 60
@@ -122,6 +124,27 @@ class PipelineResult:
                 timestamp=datetime.now(),
             ),
         ).metadata.get("listings_count", 0)
+
+    @property
+    def jobs_scored(self) -> int:
+        """Get number of jobs kept after scoring (or RAG if present)."""
+        rag = self.stage_results.get("rag_rank")
+        if rag and rag.success:
+            count = rag.metadata.get("output_count")
+            if count is None:
+                count = rag.metadata.get("input_count")
+            if isinstance(count, int):
+                return count
+        return self.stage_results.get(
+            "score_and_rank",
+            StageResult(
+                stage_name="score_and_rank",
+                success=False,
+                data=[],
+                metadata={},
+                timestamp=datetime.now(),
+            ),
+        ).metadata.get("scored_count", 0)
 
     @property
     def jobs_applied(self) -> int:

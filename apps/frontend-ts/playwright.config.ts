@@ -80,6 +80,8 @@ export default defineConfig({
     command: `npm run dev -- --port ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    // Bind mounts (e.g. Docker Desktop on Windows) can make Next cold-start
+    // exceed two minutes; keep CI runners comfortable with five minutes.
+    timeout: 300000,
   },
 });

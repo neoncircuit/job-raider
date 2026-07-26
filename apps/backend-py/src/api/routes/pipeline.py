@@ -14,7 +14,13 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ...models.user_profile import UserProfile
-from ...pipeline.orchestrator import PipelineConfig, PipelineOrchestrator
+from ...pipeline.orchestrator import PipelineConfig, PipelineOrchestrator, PipelineStage
+from ...pipeline.shortlist import (
+    enrich_shortlist_descriptions,
+    enrich_shortlist_payload_descriptions,
+    load_latest_shortlist,
+    save_latest_shortlist,
+)
 from ...utils.logger import Components, get_logger
 from ..models.requests import PipelineStartRequest
 from ..models.responses import (
@@ -64,8 +70,45 @@ async def run_pipeline_async(
             user_profile=profile,
         )
 
-        # Run pipeline
-        result = orchestrator.run()
+        stop_at: Optional[PipelineStage] = None
+        if getattr(config, "mode", "discover") == "discover":
+            stop_at = PipelineStage.RAG_RANK
+
+        # Run pipeline (discover stops after score/RAG)
+        result = orchestrator.run(stop_at=stop_at)
+
+        # Prefer RAG-ranked shortlist when present; else heuristic scores.
+        shortlist_src = (
+            orchestrator.context.rag_ranked_listings
+            or orchestrator.context.scored_listings
+        )
+        try:
+            filled = enrich_shortlist_descriptions(shortlist_src)
+            if filled:
+                logger.info(
+                    "Backfilled descriptions for %d shortlisted job(s)",
+                    filled,
+                )
+            save_latest_shortlist(
+                run_id=run_id,
+                mode=getattr(config, "mode", "discover"),
+                keywords=list(config.keywords),
+                locations=list(config.locations),
+                scored_listings=shortlist_src,
+                results_dir=config.results_dir,
+                jobs_scraped=result.jobs_scraped,
+            )
+        except Exception as shortlist_err:
+            logger.warning(
+                "Failed to persist discover shortlist for %s: %s",
+                run_id,
+                shortlist_err,
+            )
+
+        pipeline_runs[run_id]["jobs_scraped"] = result.jobs_scraped
+        pipeline_runs[run_id]["jobs_scored"] = result.jobs_scored
+        pipeline_runs[run_id]["jobs_selected"] = len(shortlist_src or [])
+        pipeline_runs[run_id]["applications_submitted"] = result.jobs_applied
 
         # Preserve an explicit user cancel; soft-cancel cannot stop the
         # orchestrator mid-flight, but the final status must stay cancelled.
@@ -86,8 +129,10 @@ async def run_pipeline_async(
                 "success": result.success,
                 "duration_seconds": result.duration_seconds,
                 "jobs_scraped": result.jobs_scraped,
+                "jobs_scored": result.jobs_scored,
                 "jobs_applied": result.jobs_applied,
                 "stages_completed": len(result.stages_completed),
+                "mode": getattr(config, "mode", "discover"),
             },
         )
 
@@ -137,6 +182,7 @@ async def start_pipeline(
         sources=request.sources,
         dry_run=request.dry_run,
         skip_submission=request.skip_submission,
+        mode=request.mode,
         min_score=request.min_score,
         scam_threshold=request.scam_threshold,
         max_jobs_to_present=request.max_jobs,
@@ -204,16 +250,29 @@ async def get_pipeline_status(run_id: str):
         raise HTTPException(status_code=404, detail="Pipeline run not found")
 
     run = pipeline_runs[run_id]
+    result = run.get("result")
+
+    jobs_scraped = run.get("jobs_scraped", 0)
+    jobs_scored = run.get("jobs_scored", 0)
+    jobs_selected = run.get("jobs_selected", 0)
+    applications_submitted = run.get("applications_submitted", 0)
+    if result is not None:
+        jobs_scraped = getattr(result, "jobs_scraped", jobs_scraped) or jobs_scraped
+        jobs_scored = getattr(result, "jobs_scored", jobs_scored) or jobs_scored
+        applications_submitted = (
+            getattr(result, "jobs_applied", applications_submitted)
+            or applications_submitted
+        )
 
     return PipelineStatusResponse(
         run_id=run_id,
         status=run["status"],
         current_stage=run.get("current_stage"),
         stage_progress=run.get("stage_progress", 0),
-        jobs_scraped=run.get("jobs_scraped", 0),
-        jobs_scored=run.get("jobs_scored", 0),
-        jobs_selected=run.get("jobs_selected", 0),
-        applications_submitted=run.get("applications_submitted", 0),
+        jobs_scraped=jobs_scraped,
+        jobs_scored=jobs_scored,
+        jobs_selected=jobs_selected,
+        applications_submitted=applications_submitted,
         started_at=run.get("started_at"),
         error_message=run.get("error"),
     )
@@ -301,6 +360,37 @@ async def cancel_pipeline(run_id: str):
     return {"run_id": run_id, "status": "cancelled"}
 
 
+@router.get("/shortlist/latest")
+async def get_latest_discover_shortlist():
+    """
+    Return the latest discover shortlist for Jobs review.
+
+    Written when a pipeline run completes (discover or full). Empty when no
+    discover run has finished yet.
+
+    Returns:
+        Shortlist payload with jobs in the Jobs search response shape.
+    """
+    data = load_latest_shortlist()
+    if data is None:
+        return {
+            "run_id": None,
+            "mode": None,
+            "created_at": None,
+            "keywords": [],
+            "locations": [],
+            "jobs_scraped": 0,
+            "total": 0,
+            "jobs": [],
+        }
+    # One-shot backfill for shortlists saved before description enrich.
+    try:
+        data = enrich_shortlist_payload_descriptions(data)
+    except Exception as enrich_err:
+        logger.warning("Shortlist description backfill failed: %s", enrich_err)
+    return data
+
+
 @router.get("/history")
 async def get_pipeline_history(
     limit: int = 20,
@@ -335,6 +425,25 @@ async def get_pipeline_history(
                 "created_at": r["created_at"],
                 "started_at": r.get("started_at"),
                 "completed_at": r.get("completed_at"),
+                "jobs_scraped": (
+                    getattr(r.get("result"), "jobs_scraped", None)
+                    if r.get("result") is not None
+                    else r.get("jobs_scraped", 0)
+                )
+                or r.get("jobs_scraped", 0),
+                "jobs_scored": (
+                    getattr(r.get("result"), "jobs_scored", None)
+                    if r.get("result") is not None
+                    else r.get("jobs_scored", 0)
+                )
+                or r.get("jobs_scored", 0),
+                "jobs_applied": (
+                    getattr(r.get("result"), "jobs_applied", None)
+                    if r.get("result") is not None
+                    else r.get("applications_submitted", 0)
+                )
+                or r.get("applications_submitted", 0),
+                "mode": getattr(r.get("config"), "mode", None),
             }
             for r in runs
         ],

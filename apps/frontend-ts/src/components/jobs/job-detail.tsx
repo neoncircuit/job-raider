@@ -278,7 +278,7 @@ export function JobDetail({
         )}
 
         {/* Description */}
-        {job.description && (
+        {job.description?.trim() ? (
           <div className="flex-1 overflow-y-auto">
             <p className="text-xs font-semibold uppercase tracking-wide text-foreground mb-4 border-b border-border pb-2">
               Job Description
@@ -319,6 +319,30 @@ export function JobDetail({
                 </div>
               ))}
             </div>
+          </div>
+        ) : (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-foreground mb-2 border-b border-border pb-2">
+              Job Description
+            </p>
+            <p className="text-sm text-muted-foreground">
+              No description was captured for this listing
+              {job.source_url ? (
+                <>
+                  {" "}
+                  —{" "}
+                  <a
+                    href={job.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline underline-offset-2 text-foreground"
+                  >
+                    open the original posting
+                  </a>
+                </>
+              ) : null}
+              .
+            </p>
           </div>
         )}
       </div>

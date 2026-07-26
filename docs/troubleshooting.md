@@ -137,6 +137,87 @@ WSL2 uses the Windows file system (DrvFs) for bind mounts, which has aggressive 
 - Never use `docker compose restart` when you've modified Python/TypeScript code
 - The entrypoint script will catch many issues automatically, but cache invalidation is still needed
 
+### Docker Hub Credential Error Pulling CUDA Base
+
+**Symptoms:**
+
+```
+failed to solve: error getting credentials - err: exit status 1
+ERROR [internal] load metadata for docker.io/nvidia/cuda:12.4.0-runtime-ubuntu22.04
+```
+
+**Root Cause:**
+
+Docker Desktop’s credential helper (`credsStore`) can fail even for public images. A full backend rebuild always resolves the NVIDIA CUDA base from Hub.
+
+**Fixes:**
+
+1. Confirm whether the base is already local:
+
+```bash
+docker image inspect nvidia/cuda:12.4.0-runtime-ubuntu22.04
+```
+
+2. If Hub auth is broken but `job-raider-backend:latest` exists, use a **code-only overlay** (no CUDA pull):
+
+```bash
+docker tag job-raider-backend:latest job-raider-backend:pre-overlay
+docker build --network=none -t job-raider-backend:latest -f docker/Dockerfile.overlay .
+docker compose up -d --no-build --force-recreate backend
+```
+
+3. Prefer a normal full rebuild once Docker Desktop login / `credsStore` works again:
+
+```bash
+docker compose up -d --build --force-recreate backend
+```
+
+```mermaid
+flowchart LR
+  HubOk[Hub auth OK] --> FullBuild[Full Dockerfile rebuild]
+  HubFail[Hub credentials fail] --> HasImage{Local backend image?}
+  HasImage -->|yes| Overlay[Dockerfile.overlay]
+  HasImage -->|no| FixAuth[Fix Docker Desktop login]
+  Overlay --> Recreate[compose --no-build recreate]
+  FullBuild --> Recreate
+```
+
+### Empty Job Description on Jobs Shortlist
+
+**Symptoms:**
+
+- Shortlist shows title, company, score, and URL, but no description (or “No description captured”).
+- Empty descriptions are almost always LinkedIn; JSearch listings usually include a JD.
+
+**Root Cause:**
+
+LinkedIn search cards often lack a full JD. Detail enrichment can fail (CSS selector drift or auth wall). Search-time enrichment is also capped, so scored jobs beyond that window may never get a description.
+
+**What the product does:**
+
+- Prefers JSON-LD `JobPosting.description` before CSS selectors.
+- Re-enriches LinkedIn jobs on the shortlist before writing `data/results/latest_shortlist.json`.
+- Backfills empty descriptions once on `GET /api/pipeline/shortlist/latest`.
+- UI shows an explicit empty state with a link to the original posting when still missing.
+
+**Operator tip:** Refresh Jobs after backend deploy so backfill can run. If LinkedIn blocks the container, use the original posting link.
+
+### Applied Elsewhere Appears To Do Nothing
+
+**Symptoms:**
+
+- Toast may succeed or fail inconsistently; Jobs badge / Applications list does not update.
+
+**Root Cause:**
+
+Uvicorn can run multiple workers (`UVICORN_WORKERS`). Each process had its own in-memory `OutcomeTracker` cache while files live on the shared `data/applications` mount. A write on worker A was invisible to a read on worker B.
+
+**Fix (shipped):**
+
+Readers and mutators reload from disk (`_reload_cache`) so multi-worker processes stay coherent. Marking Applied Elsewhere updates an existing saved job instead of replacing it.
+
+If symptoms persist after rebuild, confirm the backend image includes the reload fix and that `data/applications` is writable on the bind mount.
+
 ---
 
 ## Installation Issues

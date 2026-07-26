@@ -4,6 +4,7 @@ import type {
   PipelineStatusResponse,
   PipelineResultResponse,
   PipelineHistoryResponse,
+  DiscoverShortlistResponse,
 } from "@/lib/types/api";
 
 export const pipelineApi = {
@@ -27,5 +28,16 @@ export const pipelineApi = {
   getHistory: (limit = 20) =>
     request<PipelineHistoryResponse>("GET", "/pipeline/history", {
       params: { limit },
+    }),
+
+  /**
+   * Load the latest discover shortlist for Jobs review.
+   *
+   * @param signal - Optional AbortSignal for cancellation.
+   * @returns Shortlist payload (empty jobs when none persisted yet).
+   */
+  getLatestShortlist: (signal?: AbortSignal) =>
+    request<DiscoverShortlistResponse>("GET", "/pipeline/shortlist/latest", {
+      signal,
     }),
 };

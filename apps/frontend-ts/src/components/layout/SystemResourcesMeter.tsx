@@ -55,7 +55,10 @@ function ResourceBar({
             "h-full rounded-sm transition-[width] duration-500 ease-out",
             clamped == null && "w-0 bg-transparent",
             clamped != null && clamped < 70 && "bg-emerald-500/80",
-            clamped != null && clamped >= 70 && clamped < 90 && "bg-amber-500/80",
+            clamped != null &&
+              clamped >= 70 &&
+              clamped < 90 &&
+              "bg-amber-500/80",
             clamped != null && clamped >= 90 && "bg-red-500/80",
           )}
           style={clamped != null ? { width: `${clamped}%` } : undefined}

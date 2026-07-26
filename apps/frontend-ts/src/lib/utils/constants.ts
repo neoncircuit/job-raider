@@ -10,6 +10,18 @@ export const PIPELINE_STAGES = [
   { key: "submit_applications", label: "Submit Applications" },
 ] as const;
 
+/** Stages shown for the default discover-only pipeline mode. */
+export const DISCOVER_PIPELINE_STAGES = PIPELINE_STAGES.filter((s) =>
+  [
+    "scrape",
+    "deduplicate",
+    "filter_scams",
+    "filter_by_profile",
+    "score_and_rank",
+    "rag_rank",
+  ].includes(s.key),
+);
+
 /**
  * Theme-aware Tailwind classes for job-source badges.
  *

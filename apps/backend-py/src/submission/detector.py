@@ -103,7 +103,7 @@ class AutoSubmitDetector:
 
         # Check source URL for clues
         if job.source_url:
-            if self._is_external_application(job.source_url):
+            if self._is_external_application(str(job.source_url)):
                 return SubmissionInfo(
                     job=job,
                     can_auto_submit=False,
@@ -126,12 +126,12 @@ class AutoSubmitDetector:
         Check if URL points to external application.
 
         Args:
-            url: URL to check
+            url: URL to check (string or stringable, e.g. pydantic HttpUrl).
 
         Returns:
             True if external application detected
         """
-        url_lower = url.lower()
+        url_lower = str(url).lower()
 
         # External domain indicators
         if "greenhouse.io" in url_lower or "lever.co" in url_lower:

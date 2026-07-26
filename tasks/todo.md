@@ -3278,3 +3278,56 @@ node ./node_modules/typescript/bin/tsc --noEmit
 - [x] Docs: troubleshooting, api, architecture, index, lessons
 - [x] Unit test for data directory self-heal
 
+## Discover then Review on Jobs (2026-07-25)
+
+**Overview:** Default Pipeline to discover-only (scrape through RAG), persist shortlist for Jobs review, keep apply explicit; fix HttpUrl `.lower()` crash on full path.
+
+### Checklist
+
+- [x] Coerce HttpUrl to str in AutoSubmitDetector; unit test
+- [x] `PipelineStartRequest.mode` default `discover`; orchestrator `stop_at=RAG_RANK`
+- [x] Persist/load `data/results/latest_shortlist.json`; `GET /api/pipeline/shortlist/latest`
+- [x] Status/history expose scraped/scored counts from stage metadata
+- [x] Pipeline UI: Discover default, Full advanced, honest counters, Review on Jobs CTA
+- [x] Jobs UI: load latest shortlist with run banner; apply remains per-job
+- [x] Docs: usage/architecture/api discover flow (mermaid)
+
+### Review
+
+- Discover never enters detect-auto-submit; HttpUrl fix still protects full mode.
+- Shortlist is overwritten each completed run (latest only) — fine for v1.
+- Backend image rebuild required for Docker (source not bind-mounted except `data/`).
+
+## LinkedIn Description Enrich + Applied Elsewhere (2026-07-25)
+
+**Overview:** Fix empty LinkedIn JDs on the Jobs shortlist; fix Applied Elsewhere appearing to no-op under multi-worker uvicorn.
+
+### Checklist
+
+- [x] JSON-LD JobPosting description extraction; shortlist re-enrich + GET backfill
+- [x] Jobs UI empty-description state with link to original posting
+- [x] OutcomeTracker `_reload_cache` on list/get/mutate paths
+- [x] Applied Elsewhere updates existing saved outcomes (preserves bookmark)
+- [x] Unit tests for description extractors and multi-instance tracker visibility
+- [x] Docs: troubleshooting, deployment overlay, architecture storage note
+
+### Review
+
+- Overlay rebuild (`docker/Dockerfile.overlay`) remains the Hub-auth workaround until CUDA pulls work again.
+- Empty JD after backfill usually means LinkedIn blocked the container fetch.
+
+## Backlog (low priority)
+
+### Pipeline duration / progress honesty
+
+**Status:** Deferred — do after Discover → Jobs is stable.
+
+**Idea:** Improve scrape/run feedback beyond the existing stage progress bar.
+
+- [ ] Elapsed timer on live monitor while a run is active
+- [ ] Final `duration_seconds` surfaced clearly on complete + history rows
+- [ ] Optional: per-stage timings (scrape usually dominates)
+- [ ] Optional later: ETA from prior runs (stage-weighted; avoid fake global %)
+
+**Note:** A smoother 0–100% bar alone is lower value than elapsed + stage timings for network-bound scraping.
+

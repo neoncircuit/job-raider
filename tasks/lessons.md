@@ -2921,3 +2921,42 @@
 **How to apply:**
 - Prefer saved `api_config.ollama_host` for health/resources/model listing.
 - Document host choices next to the Settings Ollama Host field.
+
+## Discover Mode and HttpUrl (2026-07-25)
+
+### Pipeline UI counts must come from stage metadata
+
+**Lesson:** Do not show "0 scraped / 0 applied" from empty top-level fields when stage metadata already has `listings_count` / `scored_count`. Prefer `PipelineResult.jobs_scraped` / `jobs_scored` (and persist them on run state).
+
+**Why:** Users stopped trusting the product when a run scraped 70 jobs but the UI said zero, then failed later on apply detection.
+
+**How to apply:**
+- Status and history endpoints read counts from result properties / run state.
+- Default mode is discover (`stop_at=RAG_RANK`); apply only from Jobs.
+
+### Coerce HttpUrl before string methods
+
+**Lesson:** Pydantic `HttpUrl` has no `.lower()`. Always `str(url)` before case-folding or substring checks in detectors.
+
+**How to apply:**
+- `AutoSubmitDetector._is_external_application(str(url))` and similar call sites.
+- Unit-test with `HttpUrl(...)` constructed listings.
+
+### LinkedIn shortlist jobs can lack descriptions
+
+**Lesson:** Search-card scrape has title/company/URL but often no JD. Enrichment is capped (`_MAX_ENRICH`) and CSS selectors fail when LinkedIn changes markup; failures were silent. Jobs UI hid the whole Description block when empty, which looked like a bug.
+
+**How to apply:**
+- Prefer JSON-LD `JobPosting.description` before CSS selectors.
+- Re-enrich only the shortlist (post score/RAG) before `latest_shortlist.json`.
+- Backfill on `GET /pipeline/shortlist/latest` once for older artifacts.
+- Show an explicit “No description captured” state with link to the posting.
+
+### Multi-worker OutcomeTracker cache hides Applied Elsewhere
+
+**Lesson:** With ``UVICORN_WORKERS>1``, each worker has its own in-memory ``OutcomeTracker``. Writes go to ``data/applications/*.json``, but reads that only consult memory look like “Applied Elsewhere did nothing” when the next request hits another worker.
+
+**How to apply:**
+- Reload from disk (``_reload_cache``) on list/get and before mutate-by-id.
+- Update existing outcomes for external apply instead of blindly replacing (preserve bookmarks).
+- Same class of bug as profile file-backed state — keep worker caches coherent with the mount.

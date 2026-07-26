@@ -402,12 +402,15 @@ class OutcomeTracker:
         """
         Get application outcome by ID.
 
+        Reloads from disk first so multi-worker API processes see peer writes.
+
         Args:
             application_id: Application ID
 
         Returns:
             ApplicationOutcome or None if not found
         """
+        self._reload_cache()
         return self._outcomes.get(application_id)
 
     def get_all_applications(
@@ -419,6 +422,8 @@ class OutcomeTracker:
         """
         Get applications with optional filtering.
 
+        Reloads from disk first so multi-worker API processes see peer writes.
+
         Args:
             status: Filter by status
             company: Filter by company
@@ -427,6 +432,7 @@ class OutcomeTracker:
         Returns:
             List of ApplicationOutcome objects
         """
+        self._reload_cache()
         outcomes = list(self._outcomes.values())
 
         # Filter by status
@@ -841,6 +847,23 @@ class OutcomeTracker:
         Returns:
             ApplicationOutcome object
         """
+        self._reload_cache()
+        existing = self._outcomes.get(job_id)
+        if existing and existing.is_bookmarked:
+            # Refresh title/company/url but keep bookmark flags.
+            existing.job_title = job_title or existing.job_title
+            existing.company = company or existing.company
+            if source_url:
+                existing.metadata["source_url"] = source_url
+            if metadata:
+                existing.metadata.update(metadata)
+            existing.current_status = ApplicationStatus.SAVED_BOOKMARKED
+            existing.is_bookmarked = True
+            existing.bookmark_date = existing.bookmark_date or datetime.now()
+            self._save_outcome(existing)
+            self.logger.info(f"Updated saved job: {job_id} - {job_title} at {company}")
+            return existing
+
         outcome = ApplicationOutcome(
             application_id=job_id,
             job_title=job_title,
@@ -878,6 +901,7 @@ class OutcomeTracker:
         Returns:
             True if successful
         """
+        self._reload_cache()
         outcome = self._outcomes.get(job_id)
         if not outcome:
             return False
@@ -923,6 +947,27 @@ class OutcomeTracker:
         Returns:
             ApplicationOutcome object
         """
+        # Pick up any record saved by another API worker (e.g. prior Save).
+        self._reload_cache()
+        details = {
+            "application_method": application_method,
+            "tracked_at": datetime.now().isoformat(),
+        }
+        existing = self._outcomes.get(job_id)
+        if existing:
+            existing.job_title = job_title or existing.job_title
+            existing.company = company or existing.company
+            existing.current_status = ApplicationStatus.APPLIED_ELSEWHERE
+            existing.applied_date = application_date or existing.applied_date
+            existing.external_application_details = details
+            if metadata:
+                existing.metadata.update(metadata)
+            self._save_outcome(existing)
+            self.logger.info(
+                f"Updated external application: {job_id} - {job_title} at {company}"
+            )
+            return existing
+
         outcome = ApplicationOutcome(
             application_id=job_id,
             job_title=job_title,
@@ -931,10 +976,7 @@ class OutcomeTracker:
             current_status=ApplicationStatus.APPLIED_ELSEWHERE,
             final_outcome=Outcome.PENDING,
             metadata=metadata or {},
-            external_application_details={
-                "application_method": application_method,
-                "tracked_at": datetime.now().isoformat(),
-            },
+            external_application_details=details,
         )
 
         self._outcomes[job_id] = outcome
@@ -963,6 +1005,7 @@ class OutcomeTracker:
         Returns:
             True if successful
         """
+        self._reload_cache()
         outcome = self._outcomes.get(job_id)
         if not outcome:
             return False
@@ -995,6 +1038,7 @@ class OutcomeTracker:
         Returns:
             List of ApplicationOutcome objects
         """
+        self._reload_cache()
         return [o for o in self._outcomes.values() if o.is_bookmarked]
 
     def get_hidden_jobs(self) -> List[ApplicationOutcome]:
@@ -1004,6 +1048,7 @@ class OutcomeTracker:
         Returns:
             List of ApplicationOutcome objects
         """
+        self._reload_cache()
         return [o for o in self._outcomes.values() if o.is_hidden]
 
     def get_external_applications(self) -> List[ApplicationOutcome]:
@@ -1013,6 +1058,7 @@ class OutcomeTracker:
         Returns:
             List of ApplicationOutcome objects
         """
+        self._reload_cache()
         return [
             o
             for o in self._outcomes.values()
@@ -1029,6 +1075,7 @@ class OutcomeTracker:
         Returns:
             True if successful
         """
+        self._reload_cache()
         outcome = self._outcomes.get(job_id)
         if not outcome:
             return False
@@ -1054,6 +1101,7 @@ class OutcomeTracker:
         Returns:
             True if successful
         """
+        self._reload_cache()
         outcome = self._outcomes.get(job_id)
         if not outcome:
             return False
@@ -1068,6 +1116,16 @@ class OutcomeTracker:
         self.logger.info(f"Unhid job: {job_id}")
 
         return True
+
+    def _reload_cache(self) -> None:
+        """
+        Rebuild in-memory outcomes from disk.
+
+        Required when uvicorn runs multiple workers: each process has its own
+        OutcomeTracker cache, but all share ``data/applications/*.json``.
+        """
+        self._outcomes.clear()
+        self._load_cache()
 
     def _load_cache(self) -> None:
         """Load outcomes from storage into cache."""

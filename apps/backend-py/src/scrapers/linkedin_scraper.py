@@ -319,7 +319,10 @@ class LinkedInScraper(BaseScraper):
         "div.jobs-description__content",
         "div.jobs-description-content__text",
         "div.description__text",
+        "div.decorated-job-posting__details",
+        "article.jobs-description__container",
         "section.description div",
+        "div#job-details",
     ]
 
     _TITLE_SELECTORS = [
@@ -340,12 +343,55 @@ class LinkedInScraper(BaseScraper):
         "span.top-card-layout__second-subline span:nth-child(1)",
     ]
 
+    def _extract_description_from_json_ld(self, soup: BeautifulSoup) -> Optional[str]:
+        """
+        Extract JobPosting description from JSON-LD on the page.
+
+        Guest LinkedIn pages often expose the full JD in structured data
+        even when CSS description selectors fail.
+
+        Args:
+            soup: Parsed HTML of the job detail page.
+
+        Returns:
+            Cleaned description text, or None if not found.
+        """
+        import json
+
+        for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
+            raw = script.string or script.get_text() or ""
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            candidates = payload if isinstance(payload, list) else [payload]
+            for item in candidates:
+                if not isinstance(item, dict):
+                    continue
+                types = item.get("@type")
+                type_names = (
+                    types if isinstance(types, list) else [types] if types else []
+                )
+                if "JobPosting" not in type_names:
+                    continue
+                description = item.get("description")
+                if isinstance(description, str) and len(description.strip()) > 50:
+                    # JSON-LD descriptions are often HTML fragments.
+                    html_soup = BeautifulSoup(description, "html.parser")
+                    text = html_soup.get_text(separator="\n", strip=True)
+                    if len(text) > 50:
+                        return self._clean_description(text)
+        return None
+
     def _extract_description(self, soup: BeautifulSoup) -> Optional[str]:
         """
         Extract job description from a LinkedIn detail page.
 
-        Tries multiple CSS selectors used across LinkedIn page
-        versions.
+        Prefers JSON-LD JobPosting data, then falls back to CSS selectors
+        used across LinkedIn page versions.
 
         Args:
             soup: Parsed HTML of the job detail page.
@@ -353,6 +399,10 @@ class LinkedInScraper(BaseScraper):
         Returns:
             Description text, or None if not found.
         """
+        from_json_ld = self._extract_description_from_json_ld(soup)
+        if from_json_ld:
+            return from_json_ld
+
         for selector in self._DESC_SELECTORS:
             elem = soup.select_one(selector)
             if elem:
@@ -360,6 +410,34 @@ class LinkedInScraper(BaseScraper):
                 if len(text) > 50:
                     return self._clean_description(text)
         return None
+
+    def fill_missing_descriptions(self, listings: List[JobListing]) -> int:
+        """
+        Fetch detail pages for listings that still lack a description.
+
+        Used after scoring/RAG so only shortlisted jobs are enriched,
+        instead of relying solely on the first ``_MAX_ENRICH`` search hits.
+
+        Args:
+            listings: Job listings to enrich in place.
+
+        Returns:
+            Number of listings that gained a description.
+        """
+        filled = 0
+        for listing in listings:
+            if listing.description and len(listing.description.strip()) > 50:
+                continue
+            if listing.source != JobSource.LINKEDIN:
+                continue
+            try:
+                detailed = self.get_job_details(listing.job_id)
+            except Exception:
+                continue
+            if detailed and detailed.description:
+                listing.description = detailed.description
+                filled += 1
+        return filled
 
     def _extract_detail_title(self, soup: BeautifulSoup) -> str:
         """

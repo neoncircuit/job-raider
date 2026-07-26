@@ -47,6 +47,7 @@ result = orchestrator.run()
 | `sources` | `Optional[List[str]]` | `None` | Job sources (linkedin, jsearch) |
 | `dry_run` | `bool` | `True` | Simulate submissions |
 | `skip_submission` | `bool` | `False` | Skip submission stage |
+| `mode` | `str` | `"discover"` | `discover` = scrape through RAG only; `full` = include apply stages |
 | `min_score` | `int` | `60` | Minimum relevance score (0-100) |
 | `scam_threshold` | `float` | `0.7` | Scam detection threshold (0-1) |
 | `max_jobs_to_present` | `int` | `20` | Max jobs to present for selection |
@@ -60,6 +61,11 @@ result = orchestrator.run()
 #### PipelineResult
 
 Result of pipeline execution.
+
+Discover mode (API default `mode="discover"`) stops after `rag_rank`, writes
+`data/results/latest_shortlist.json`, and exposes the shortlist at
+`GET /api/pipeline/shortlist/latest` for Jobs review. Full mode continues
+through detect / generate / submit.
 
 ```python
 result = orchestrator.run()

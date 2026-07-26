@@ -26,6 +26,10 @@ class PipelineStartRequest(BaseModel):
     # Pipeline options
     dry_run: bool = Field(default=True, description="Run in dry-run mode")
     skip_submission: bool = Field(default=False, description="Skip submission stage")
+    mode: str = Field(
+        default="discover",
+        description="discover = scrape through score/RAG only; full = include apply stages",
+    )
     min_score: int = Field(
         default=60, ge=0, le=100, description="Minimum relevance score"
     )
@@ -66,6 +70,15 @@ class PipelineStartRequest(BaseModel):
                 raise ValueError(f"Invalid sources: {invalid}")
         return v
 
+    @field_validator("mode")
+    @classmethod
+    def validate_mode(cls, v: str) -> str:
+        """Validate pipeline mode."""
+        allowed = {"discover", "full"}
+        if v not in allowed:
+            raise ValueError(f"Invalid mode: {v}. Must be one of {allowed}")
+        return v
+
     @field_validator("start_from", "stop_at")
     @classmethod
     def validate_stages(cls, v: Optional[str]) -> Optional[str]:
@@ -78,6 +91,7 @@ class PipelineStartRequest(BaseModel):
             "score_and_rank",
             "rag_rank",
             "detect_auto_submit",
+            "linkedin_auth",
             "present_selection",
             "generate_resumes",
             "submit_applications",

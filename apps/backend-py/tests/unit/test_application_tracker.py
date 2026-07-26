@@ -157,6 +157,33 @@ class TestApplicationTracker:
         assert external[0].application_id == "ext_1"
         assert external[0].current_status == ApplicationStatus.APPLIED_ELSEWHERE
 
+    def test_external_visible_across_tracker_instances(self, temp_data_dir):
+        """Disk-backed state must be visible to a second tracker (multi-worker)."""
+        writer = OutcomeTracker(storage_dir=str(temp_data_dir))
+        writer.track_external_application(
+            "ext_peer",
+            "Software Engineer",
+            "Peer Co",
+            application_method="External site",
+        )
+
+        reader = OutcomeTracker(storage_dir=str(temp_data_dir))
+        external = reader.get_external_applications()
+        assert any(o.application_id == "ext_peer" for o in external)
+
+        apps = reader.get_all_applications()
+        assert any(o.application_id == "ext_peer" for o in apps)
+
+    def test_external_preserves_bookmark(self, temp_data_dir):
+        """Marking applied elsewhere should not drop an existing bookmark."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.save_job("job_saved", "Engineer", "Acme")
+        outcome = tracker.track_external_application(
+            "job_saved", "Engineer", "Acme", application_method="External site"
+        )
+        assert outcome.current_status == ApplicationStatus.APPLIED_ELSEWHERE
+        assert outcome.is_bookmarked is True
+
     def test_unsave_job(self, temp_data_dir):
         """Test unsaving a job."""
         tracker = OutcomeTracker(storage_dir=str(temp_data_dir))

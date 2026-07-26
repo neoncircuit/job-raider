@@ -21,6 +21,7 @@ import { useAppState } from "@/app/providers";
 import { formatDatetime } from "@/lib/utils/format";
 import {
   PIPELINE_STAGES,
+  DISCOVER_PIPELINE_STAGES,
   STATUS_COLORS,
   DEFAULT_SOURCES,
 } from "@/lib/utils/constants";
@@ -82,6 +83,7 @@ const schema = z.object({
   minScore: z.number().int().min(0).max(100),
   maxJobs: z.number().int().min(1).max(500),
   scamThreshold: z.number().min(0).max(1),
+  mode: z.enum(["discover", "full"]),
   dryRun: z.boolean(),
   skipSubmission: z.boolean(),
 });
@@ -119,8 +121,9 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
       minScore: 60,
       maxJobs: 50,
       scamThreshold: 0.7,
+      mode: "discover",
       dryRun: true,
-      skipSubmission: false,
+      skipSubmission: true,
     },
   });
 
@@ -143,8 +146,9 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
         min_score: v.minScore,
         max_jobs: v.maxJobs,
         scam_threshold: v.scamThreshold,
-        dry_run: v.dryRun,
-        skip_submission: v.skipSubmission,
+        mode: v.mode,
+        dry_run: v.mode === "discover" ? true : v.dryRun,
+        skip_submission: v.mode === "discover" ? true : v.skipSubmission,
       }),
     onSuccess: (data) => onStarted(data.run_id),
     onError: () =>
@@ -152,9 +156,55 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
   });
 
   const dryRun = useWatch({ control, name: "dryRun" });
+  const mode = useWatch({ control, name: "mode" });
+  const skipSubmission = useWatch({ control, name: "skipSubmission" });
 
   return (
     <form onSubmit={handleSubmit((v) => start.mutate(v))} className="space-y-5">
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <div>
+          <Label className="text-sm font-medium">Run mode</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Discover scrapes and scores only. Review the shortlist on Jobs, then
+            apply explicitly.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="radio"
+              className="mt-1"
+              checked={mode === "discover"}
+              onChange={() => setValue("mode", "discover")}
+            />
+            <span>
+              <span className="text-sm font-medium text-foreground">
+                Discover (recommended)
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Scrape through score / RAG — no auto-apply
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="radio"
+              className="mt-1"
+              checked={mode === "full"}
+              onChange={() => setValue("mode", "full")}
+            />
+            <span>
+              <span className="text-sm font-medium text-foreground">
+                Full pipeline (advanced)
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Includes detect / generate / submit stages
+              </span>
+            </span>
+          </label>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Switch
@@ -244,25 +294,29 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
       </div>
 
       <div className="flex flex-wrap gap-6">
-        <div className="flex items-center gap-2">
-          <Switch
-            id="dry_run"
-            checked={dryRun}
-            onCheckedChange={(v) => setValue("dryRun", v)}
-          />
-          <Label htmlFor="dry_run">Dry Run (recommended)</Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch
-            id="skip_sub"
-            checked={useWatch({ control, name: "skipSubmission" })}
-            onCheckedChange={(v) => setValue("skipSubmission", v)}
-          />
-          <Label htmlFor="skip_sub">Skip Submission Stage</Label>
-        </div>
+        {mode === "full" && (
+          <>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="dry_run"
+                checked={dryRun}
+                onCheckedChange={(v) => setValue("dryRun", v)}
+              />
+              <Label htmlFor="dry_run">Dry Run (recommended)</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="skip_sub"
+                checked={skipSubmission}
+                onCheckedChange={(v) => setValue("skipSubmission", v)}
+              />
+              <Label htmlFor="skip_sub">Skip Submission Stage</Label>
+            </div>
+          </>
+        )}
       </div>
 
-      {!dryRun && (
+      {mode === "full" && !dryRun && (
         <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
           Dry Run is OFF. Real submissions are best-effort and limited (for
           example LinkedIn Easy Apply only when credentials are configured).
@@ -276,7 +330,11 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
         className="w-full sm:w-auto"
       >
         <Play className="mr-1.5 h-4 w-4" />
-        {start.isPending ? "Starting…" : "Start Pipeline"}
+        {start.isPending
+          ? "Starting…"
+          : mode === "discover"
+            ? "Start Discover"
+            : "Start Full Pipeline"}
       </Button>
     </form>
   );
@@ -287,6 +345,17 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
 function LiveMonitor({ runId }: { runId: string }) {
   const { messages, wsStatus } = usePipelineWS(runId);
   const logRef = useRef<HTMLDivElement>(null);
+
+  const status = useQuery({
+    queryKey: ["pipeline-status", runId],
+    queryFn: ({ signal }) => pipelineApi.getStatus(runId, signal),
+    refetchInterval: (q) => {
+      const s = q.state.data?.status;
+      return s === "completed" || s === "failed" || s === "cancelled"
+        ? false
+        : 2000;
+    },
+  });
 
   useEffect(() => {
     if (logRef.current) {
@@ -300,9 +369,29 @@ function LiveMonitor({ runId }: { runId: string }) {
   const progressPct =
     lastProgress?.type === "stage_progress" ? lastProgress.progress : 0;
 
-  const isComplete = messages.some(
-    (m) => m.type === "pipeline_complete" || m.type === "pipeline_failed",
-  );
+  const completeMsg = [...messages]
+    .reverse()
+    .find(
+      (m) => m.type === "pipeline_complete" || m.type === "pipeline_failed",
+    );
+  const isComplete =
+    Boolean(completeMsg) ||
+    status.data?.status === "completed" ||
+    status.data?.status === "failed" ||
+    status.data?.status === "cancelled";
+
+  const summaryMode =
+    completeMsg?.type === "pipeline_complete" &&
+    completeMsg.summary &&
+    typeof completeMsg.summary.mode === "string"
+      ? completeMsg.summary.mode
+      : null;
+  const stageList =
+    summaryMode === "full" ? PIPELINE_STAGES : DISCOVER_PIPELINE_STAGES;
+
+  const jobsScraped = status.data?.jobs_scraped ?? 0;
+  const jobsScored = status.data?.jobs_scored ?? 0;
+  const jobsSelected = status.data?.jobs_selected ?? 0;
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
@@ -339,6 +428,27 @@ function LiveMonitor({ runId }: { runId: string }) {
           </Badge>
         </div>
 
+        <div className="rounded-lg border bg-card p-3 space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Counts
+          </p>
+          <p className="text-sm text-foreground">
+            {jobsScraped} scraped · {jobsScored} scored
+            {jobsSelected > 0 ? ` · ${jobsSelected} shortlisted` : ""}
+          </p>
+        </div>
+
+        {isComplete && status.data?.status === "completed" && (
+          <Link
+            href="/jobs"
+            className={cn(
+              "inline-flex h-8 w-full items-center justify-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/80",
+            )}
+          >
+            Review on Jobs
+          </Link>
+        )}
+
         {/* Progress bar */}
         <Progress
           value={isComplete ? 100 : progressPct * 100}
@@ -351,7 +461,7 @@ function LiveMonitor({ runId }: { runId: string }) {
             Stages
           </p>
           <div className="flex flex-col gap-1.5">
-            {PIPELINE_STAGES.map((s) => {
+            {stageList.map((s) => {
               const completed = messages.some(
                 (m) => m.type === "stage_completed" && m.stage === s.key,
               );
@@ -471,7 +581,9 @@ function HistoryPanel({ onResume }: { onResume: (id: string) => void }) {
               {formatDatetime(r.created_at)}
             </p>
             <p className="text-xs text-muted-foreground">
-              {r.jobs_scraped ?? 0} scraped · {r.jobs_applied ?? 0} applied
+              {r.jobs_scraped ?? 0} scraped · {r.jobs_scored ?? 0} scored
+              {(r.jobs_applied ?? 0) > 0 ? ` · ${r.jobs_applied} applied` : ""}
+              {r.mode ? ` · ${r.mode}` : ""}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -529,7 +641,7 @@ export default function PipelinePage() {
     <PageContainer variant="full-bleed">
       <PageHeader
         title="Pipeline"
-        subtitle="Start, monitor, and review pipeline runs."
+        subtitle="Discover jobs (scrape and score), then review on Jobs before applying."
         actions={
           activeRunId && tab === "monitor" ? (
             <Button

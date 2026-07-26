@@ -386,7 +386,9 @@ class DataDirectoryCheck(HealthCheck):
                     self.base_dir.mkdir(parents=True, exist_ok=True)
                     created_dirs.append(str(self.base_dir))
                 except OSError as exc:
-                    issues.append(f"Base directory {self.base_dir} cannot be created: {exc}")
+                    issues.append(
+                        f"Base directory {self.base_dir} cannot be created: {exc}"
+                    )
 
             if self.base_dir.exists():
                 for dir_name in self.expected_dirs:

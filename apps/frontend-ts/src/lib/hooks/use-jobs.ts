@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { jobsApi } from "@/lib/api/jobs";
+import { pipelineApi } from "@/lib/api/pipeline";
 import { applicationsApi } from "@/lib/api/applications";
 import { coverLetterApi } from "@/lib/api/coverLetter";
 import type { JobSearchRequest } from "@/lib/api/jobs";
@@ -13,6 +14,7 @@ import type {
   JobClassification,
   TrustAnalysis,
   CoverLetterValidation,
+  DiscoverShortlistResponse,
 } from "@/lib/types/api";
 
 const DASHBOARD_QUERY_KEY = ["applications", "dashboard"] as const;
@@ -46,6 +48,40 @@ export function useJobSearch(
   });
 
   return { data, isLoading, error };
+}
+
+interface UseLatestShortlistResult {
+  /** Latest discover shortlist payload, or undefined while loading. */
+  data: DiscoverShortlistResponse | undefined;
+  /** True during the first fetch. */
+  isLoading: boolean;
+  /** Truthy if the query encountered an error. */
+  error: Error | null;
+  /** Refetch the shortlist (e.g. after a new discover run). */
+  refetch: () => void;
+}
+
+/**
+ * Load the latest pipeline discover shortlist for Jobs review.
+ *
+ * @returns Query result for ``GET /pipeline/shortlist/latest``.
+ */
+export function useLatestShortlist(): UseLatestShortlistResult {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["pipeline", "shortlist", "latest"],
+    queryFn: ({ signal }) => pipelineApi.getLatestShortlist(signal),
+    staleTime: 30_000,
+  });
+
+  return {
+    data,
+    isLoading,
+    error:
+      error instanceof Error ? error : error ? new Error(String(error)) : null,
+    refetch: () => {
+      void refetch();
+    },
+  };
 }
 
 interface UseSavedAndExternalJobIdsResult {
@@ -131,10 +167,14 @@ export function useMarkAppliedElsewhere() {
     }) => applicationsApi.markAppliedExternally(id, title, company),
     onSuccess: () => {
       toast.success("Marked as applied externally");
-      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      void queryClient.invalidateQueries({ queryKey: ["applications"] });
     },
-    onError: () => {
-      toast.error("Failed to mark as applied externally");
+    onError: (error: Error) => {
+      toast.error(
+        error.message
+          ? `Failed to mark as applied externally: ${error.message}`
+          : "Failed to mark as applied externally",
+      );
     },
   });
 }

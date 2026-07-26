@@ -60,10 +60,16 @@ graph TB
         FilterScam[Filter Scams]
         FilterProfile[Filter by Profile]
         Score[Score & Rank]
+        RagRank[Semantic Re-rank]
         DetectAuto[Detect Auto-Submit]
         Select[Present & Select]
         Generate[Generate Resumes]
         Submit[Submit Applications]
+    end
+
+    subgraph "Review Layer"
+        Shortlist[Latest Shortlist]
+        JobsUI[Jobs Page Review]
     end
 
     subgraph "Output Layer"
@@ -91,7 +97,11 @@ graph TB
     Dedupe --> FilterScam
     FilterScam --> FilterProfile
     FilterProfile --> Score
-    Score --> DetectAuto
+    Score --> RagRank
+    RagRank -->|discover mode default| Shortlist
+    Shortlist --> JobsUI
+    JobsUI -->|explicit apply| DetectAuto
+    RagRank -->|full mode| DetectAuto
     DetectAuto --> Select
     Select --> Generate
     Generate --> Ollama & Anthropic
@@ -99,6 +109,8 @@ graph TB
     Resumes --> Submit
     Submit --> Tracking & Reports
 ```
+
+Default **discover** mode stops after semantic re-rank, writes `data/results/latest_shortlist.json`, and expects review on the Jobs page before any apply. Full mode continues through detect / generate / submit (dry-run by default).
 
 ## Component Architecture
 
@@ -303,12 +315,14 @@ flowchart TD
 
 ### Storage Architecture
 
+Application outcomes under `data/applications/` are the source of truth for Save / Applied Elsewhere / tracker UI. With multi-worker uvicorn, each worker reloads that directory before reads and ID-based mutations so peer writes are visible (same pattern as file-backed profile state).
+
 ```
 data/
 ├── listings/              # Scraped job listings
 │   ├── 20260421_120000.json
 │   └── 20260421_130000.json
-├── applications/          # Application tracking
+├── applications/          # Application tracking (OutcomeTracker JSON files)
 │   ├── {app_id}.json
 │   └── ...
 ├── assessments/           # Assessment session data
@@ -581,8 +595,8 @@ graph LR
 | Route | Purpose |
 |-------|---------|
 | `/dashboard` | Health checks, quick stats, recent pipeline runs |
-| `/pipeline` | Start form, WebSocket live monitor, history; optional Use profile targets |
-| `/jobs` | Search, split-panel list + detail, pagination, save/apply; optional Use profile targets |
+| `/pipeline` | Discover (default) or full pipeline; live monitor; history; Review on Jobs CTA |
+| `/jobs` | Latest discover shortlist, live search, split-panel list + detail; save/apply; optional Use profile targets |
 | `/applications` | Tracker: All / Saved / Hidden tabs, track external |
 | `/profile` | Resume upload (dropzone), parsed profile display, editable Job Targets |
 | `/resume-analysis` | Upload + optional JD → AI score, gaps, recommendations |

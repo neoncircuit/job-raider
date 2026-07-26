@@ -1,0 +1,20 @@
+# Temporary code-only overlay on an already-built backend image.
+# Avoids re-pulling nvidia/cuda when Docker Hub auth is broken.
+#
+# Usage (from repo root):
+#   docker tag job-raider-backend:latest job-raider-backend:pre-overlay
+#   docker build -t job-raider-backend:latest -f docker/Dockerfile.overlay .
+#   docker compose up -d --no-build --force-recreate backend
+#
+# After Hub credentials work again, prefer a normal full rebuild from docker/Dockerfile.
+
+FROM job-raider-backend:pre-overlay
+
+USER root
+WORKDIR /app/backend-py
+
+COPY --chown=jobraider:jobraider apps/backend-py/config/ ./config/
+COPY --chown=jobraider:jobraider apps/backend-py/src/ ./src/
+COPY --chown=jobraider:jobraider apps/backend-py/main.py .
+
+USER jobraider

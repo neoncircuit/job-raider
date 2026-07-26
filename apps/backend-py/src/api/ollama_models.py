@@ -127,9 +127,7 @@ def list_installed_ollama_models(ollama_host: str, timeout: float = 3.0) -> List
         return []
 
 
-def default_cloud_fallback_model(
-    cloud: CloudProvider, task_type: str
-) -> str:
+def default_cloud_fallback_model(cloud: CloudProvider, task_type: str) -> str:
     """
     Pick a default cloud fallback model for a task tier.
 

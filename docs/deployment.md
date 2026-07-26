@@ -209,6 +209,18 @@ docker compose up -d --force-recreate
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
+### Code-only backend overlay (Hub auth blocked)
+
+When `docker compose build backend` fails pulling `nvidia/cuda` with a credentials error, but a prior `job-raider-backend:latest` exists locally, apply source changes without Hub:
+
+```bash
+docker tag job-raider-backend:latest job-raider-backend:pre-overlay
+docker build --network=none -t job-raider-backend:latest -f docker/Dockerfile.overlay .
+docker compose up -d --no-build --force-recreate backend
+```
+
+This path is temporary ops glue ([`docker/Dockerfile.overlay`](../docker/Dockerfile.overlay)). Prefer a full rebuild from [`docker/Dockerfile`](../docker/Dockerfile) once Docker Hub credentials work again.
+
 ---
 
 ## Security Considerations
