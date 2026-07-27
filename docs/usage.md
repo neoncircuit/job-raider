@@ -544,7 +544,7 @@ http://localhost:3000
 - **Cover Letter** - Paste a job description, generate/review, and export
 - **Career Coach** - Agent-backed career guidance (requires an active profile)
 - **Metrics** - Cost tracking and outcome statistics
-- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits
+- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits; optional **Cinematic atmosphere** (local, off by default) softens Dashboard and Pipeline and adds a light brand-mark pulse
 
 **DISC Personality Assessment:**
 - Industry-standard Most/Least forced-choice format

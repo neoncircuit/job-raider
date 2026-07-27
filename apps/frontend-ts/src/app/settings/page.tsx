@@ -32,6 +32,7 @@ import {
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
+import { CinematicAtmosphereToggle } from "@/components/settings/cinematic-atmosphere-toggle";
 
 /**
  * Build a human-readable label for an Ollama model option.
@@ -623,6 +624,7 @@ export default function SettingsPage() {
         title="Settings"
         subtitle="Configure model routing, API keys, and cost limits."
       />
+      <CinematicAtmosphereToggle />
       {isLoading && (
         <p className="text-sm text-muted-foreground">Loading settings…</p>
       )}

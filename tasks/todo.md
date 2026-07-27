@@ -3331,3 +3331,33 @@ node ./node_modules/typescript/bin/tsc --noEmit
 
 **Note:** A smoother 0–100% bar alone is lower value than elapsed + stage timings for network-bound scraping.
 
+### Optional cinematic atmosphere (CSS spike)
+
+**Status:** Shipped minimal — Settings toggle, default off; Dashboard + Pipeline only; no WebGL. Brand combo included.
+
+- [x] localStorage preference + `data-cinematic`
+- [x] Soft wash / grain deepen when enabled
+- [x] `prefers-reduced-motion` disables wash animation
+- [x] Raid chevron `BrandMark` + `BrandLockup` wordmark + `app/icon.svg`
+- [x] Soft mark pulse when cinematic is on (CSS-only)
+- [ ] Abandon if idle CPU / main-thread cost is noticeable; do not add Three.js
+
+## Brand lockup combo (2026-07-27)
+
+**Overview:** Combine raid-chevron mark, spaced wordmark lockup, and optional cinematic pulse; favicon from the same mark.
+
+### Checklist
+
+- [x] Redesign `BrandMark` (geometric J + NE chevron); `brand-mark` CSS hook
+- [x] Add `BrandLockup`; wire Sidebar + MobileNav
+- [x] `app/icon.svg` favicon
+- [x] Cinematic pulse + chevron opacity; reduced-motion safe
+- [x] Local CI (frontend lint/type/format/test/build; backend if dirty)
+- [x] Rebuild/recreate frontend container
+- [x] Commit
+
+### Review
+
+- Frontend CI in Node 20 Docker: format, lint, type-check, vitest 75/75, build green.
+- Backend image left untouched (no Python changes); frontend recreated healthy on :3000.
+- Brand pulse only when cinematic is on; reduced-motion disables it.

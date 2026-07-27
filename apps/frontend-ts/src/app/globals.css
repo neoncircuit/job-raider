@@ -263,6 +263,110 @@
     );
 }
 
+/* Optional cinematic deepen — Settings toggle, default off */
+[data-cinematic="on"] .raid-atmosphere {
+  background:
+    radial-gradient(
+      ellipse 85% 55% at 100% 0%,
+      var(--raid-wash) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 65% 45% at 0% 100%,
+      var(--raid-wash) 0%,
+      transparent 52%
+    ),
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in oklab, var(--background) 92%, transparent) 100%
+    );
+}
+
+[data-cinematic="on"] .raid-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+[data-cinematic="on"] .cinematic-surface {
+  position: relative;
+}
+
+[data-cinematic="on"] .cinematic-surface::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: -0.5rem;
+  z-index: -1;
+  border-radius: var(--radius-lg);
+  background: radial-gradient(
+    ellipse 70% 40% at 50% 0%,
+    var(--raid-wash) 0%,
+    transparent 70%
+  );
+  animation: cinematicWash 18s ease-in-out infinite alternate;
+}
+
+@keyframes cinematicWash {
+  from {
+    opacity: 0.55;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(6px);
+  }
+}
+
+/* Soft mark pulse when cinematic is on (CSS-only; no layout shift) */
+[data-cinematic="on"] .brand-mark {
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 35%, transparent);
+  animation: brandMarkPulse 4.5s ease-in-out infinite;
+}
+
+[data-cinematic="on"] .brand-mark .brand-mark-chevron {
+  animation: brandChevronNudge 4.5s ease-in-out infinite;
+}
+
+@keyframes brandMarkPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 28%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 12px 1px
+      color-mix(in oklab, var(--primary) 42%, transparent);
+  }
+}
+
+@keyframes brandChevronNudge {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-cinematic="on"] .cinematic-surface::before,
+  [data-reduced-motion="on"] .cinematic-surface::before {
+    animation: none;
+  }
+
+  [data-cinematic="on"] .brand-mark,
+  [data-reduced-motion="on"] .brand-mark,
+  [data-cinematic="on"] .brand-mark .brand-mark-chevron,
+  [data-reduced-motion="on"] .brand-mark .brand-mark-chevron {
+    animation: none;
+  }
+}
+
 /* ── Staggered page load ───────────────────────────────────────────────────── */
 
 .stagger-in {

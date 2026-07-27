@@ -638,7 +638,7 @@ export default function PipelinePage() {
   });
 
   return (
-    <PageContainer variant="full-bleed">
+    <PageContainer variant="full-bleed" cinematic>
       <PageHeader
         title="Pipeline"
         subtitle="Discover jobs (scrape and score), then review on Jobs before applying."

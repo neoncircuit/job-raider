@@ -130,7 +130,7 @@ export default function DashboardPage() {
         : "…";
 
   return (
-    <PageContainer variant="full-bleed">
+    <PageContainer variant="full-bleed" cinematic>
       <PageHeader
         icon={<BrandMark size={36} />}
         title="Dashboard"

@@ -5,6 +5,11 @@ export type PageContainerVariant = "full-bleed" | "content" | "wide" | "form";
 interface PageContainerProps {
   /** Width strategy for the page content. */
   variant?: PageContainerVariant;
+  /**
+   * Opt this page into cinematic atmosphere when the Settings toggle is on.
+   * Has no visual effect while ``data-cinematic`` is unset.
+   */
+  cinematic?: boolean;
   /** Additional classes. */
   className?: string;
   /** Page content. */
@@ -32,16 +37,25 @@ const variantClasses: Record<PageContainerVariant, string> = {
  * vertical rhythm (``space-y-6``) between major sections.
  *
  * @param variant - Width strategy for the page content.
+ * @param cinematic - When true, mark the page as a cinematic surface.
  * @param className - Optional extra classes.
  * @param children - Page content.
  */
 export function PageContainer({
   variant = "full-bleed",
+  cinematic = false,
   className,
   children,
 }: PageContainerProps) {
   return (
-    <div className={cn("space-y-6", variantClasses[variant], className)}>
+    <div
+      className={cn(
+        "space-y-6",
+        variantClasses[variant],
+        cinematic && "cinematic-surface",
+        className,
+      )}
+    >
       {children}
     </div>
   );

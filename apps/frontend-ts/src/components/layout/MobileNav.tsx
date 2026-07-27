@@ -4,22 +4,17 @@ import { useState } from "react";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarContent } from "./SidebarContent";
-import { BrandMark } from "./BrandMark";
+import { BrandLockup } from "./BrandLockup";
 
 /**
- * Mobile top bar with brand mark and a sheet drawer for navigation.
+ * Mobile top bar with brand lockup and a sheet drawer for navigation.
  */
 export function MobileNav() {
   const [open, setOpen] = useState(false);
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-sidebar-border bg-sidebar px-4">
-      <div className="flex items-center gap-2">
-        <BrandMark size={28} />
-        <p className="font-heading text-sm font-bold tracking-tight text-sidebar-foreground">
-          Job Raider
-        </p>
-      </div>
+      <BrandLockup size={28} showTagline={false} />
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger

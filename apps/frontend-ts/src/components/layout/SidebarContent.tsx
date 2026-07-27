@@ -18,7 +18,7 @@ import { ConnectionStatus } from "./ConnectionStatus";
 import { SystemResourcesMeter } from "./SystemResourcesMeter";
 import { SidebarNavLink } from "./SidebarNavLink";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { BrandMark } from "./BrandMark";
+import { BrandLockup } from "./BrandLockup";
 
 /** Profile is the heart of the app — pinned at the top, above the workflow nav. */
 const PROFILE_ITEM = {
@@ -117,15 +117,7 @@ export function SidebarContent({ onNavItemClick }: SidebarContentProps) {
           onClick={onNavItemClick}
           className="flex items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
-          <BrandMark size={32} />
-          <div>
-            <p className="font-heading text-sm font-bold tracking-tight text-sidebar-foreground">
-              Job Raider
-            </p>
-            <p className="text-[10px] leading-none text-muted-foreground">
-              Automated Pipeline
-            </p>
-          </div>
+          <BrandLockup size={32} />
         </Link>
       </div>
 
