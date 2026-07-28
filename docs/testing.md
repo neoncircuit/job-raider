@@ -124,6 +124,7 @@ apps/backend-py/tests/
 │   ├── test_assessment_storage.py
 │   ├── test_bm25_retriever.py
 │   ├── test_chunker.py
+│   ├── test_cover_letter_grounding.py  # Overlap + severity-weighted penalties
 │   ├── test_cross_encoder.py
 │   ├── test_deduplicate_applied_sync.py
 │   ├── test_embedding_client.py
@@ -142,6 +143,14 @@ apps/backend-py/tests/
     ├── test_application_api.py
     ├── test_pipeline.py
     └── test_rag_pipeline.py
+```
+
+Cover-letter grounding tests verify soft versus hard penalties, double-count avoidance, and the max grounding cap. Run:
+
+```bash
+cd apps/backend-py
+source .venv/bin/activate
+pytest tests/unit/test_cover_letter_grounding.py tests/test_cover_letter_validator.py -q
 ```
 
 ## Writing Tests

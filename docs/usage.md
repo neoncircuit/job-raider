@@ -541,7 +541,7 @@ http://localhost:3000
 - **Assessment** - DISC personality assessment and skill-based technical interview practice
 - **Resume Analysis** - AI-powered resume parsing and gap analysis
 - **LinkedIn Analysis** - Inbound-attraction scoring and recruiter-focused profile recommendations
-- **Cover Letter** - Paste a job description, generate/review, and export
+- **Cover Letter** - Paste a job description, generate/review, and export. Proofread scores use severity-weighted grounding: vague wording costs less than fabricated scope or technique mismatches. The UI shows flagged sentences and the grounding deduction breakdown before you send.
 - **Career Coach** - Agent-backed career guidance (requires an active profile)
 - **Metrics** - Cost tracking and outcome statistics
 - **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits; optional **Cinematic atmosphere** (local, off by default) softens Dashboard and Pipeline and adds a light brand-mark pulse
@@ -563,8 +563,9 @@ http://localhost:3000
 - Apply and Save are per-job actions (no auto-apply after discover)
 
 **Ollama model choice (Settings):**
-- Lists models from the configured Ollama host (including a shared desktop Ollama service)
-- Small (fast) and large (quality) tier pickers update task routing
+- Lists models from the configured Ollama host (Compose `ollama:11434` or desktop `host.docker.internal:11434`)
+- **Small (fast / high volume):** job scoring, project and keyword selection, validation, quick Q&A, trust checks, cover-letter review
+- **Large (quality / writing):** JD extraction, resume parsing/writing/analysis, LinkedIn analysis, classification, cover-letter drafting, assessment generation and evaluation
 - Recommended defaults remain `qwen2.5:3b` and `qwen2.5:7b`; any installed model may be saved as your default
 
 ### Pulling Ollama Models

@@ -28,6 +28,8 @@ Job Raider combines an async Python backend, a local-first LLM strategy, and a m
 - **[Tech Stack](architecture.md#tech-stack)** - Languages, frameworks, and key dependencies
 - **[API Reference](api.md)** - Complete API documentation
 - **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
+- **[Conventions](conventions.md)** - Documentation style and local CI quality gate
+- **[Decision Log](decision-log.md)** - Recorded design decisions and consequences
 
 ## Quick Links
 

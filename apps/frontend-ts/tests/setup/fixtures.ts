@@ -176,6 +176,14 @@ export const sampleCoverLetter: CoverLetter = {
   highlighted_experiences: [
     { name: "Job Raider", reason: "Relevant full-stack project" },
   ],
+  timing: {
+    selection_ms: 120.5,
+    generation_ms: 8420.0,
+    review_ms: 910.2,
+    rewrite_ms: 4510.0,
+    validation_ms: 12.0,
+    total_ms: 13972.7,
+  },
 };
 
 /**

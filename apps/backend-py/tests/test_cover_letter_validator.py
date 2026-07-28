@@ -316,6 +316,10 @@ class TestCoverLetterValidator:
         assert "company_mentioned" in result.details
         assert "job_title_mentioned" in result.details
         assert "referenced_projects" in result.details
+        assert "ungrounded_sentences" in result.details
+        assert isinstance(result.details["ungrounded_sentences"], list)
+        assert "claim_overclaims" in result.details
+        assert isinstance(result.details["claim_overclaims"], list)
 
     def test_strict_mode_blocks_needs_revision(
         self, sample_job, sample_profile, sample_selection

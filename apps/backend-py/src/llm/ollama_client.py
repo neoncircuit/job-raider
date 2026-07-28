@@ -25,6 +25,24 @@ from .base import (
 )
 
 
+def extract_ollama_chat_content(message: Dict[str, Any]) -> str:
+    """
+    Extract usable assistant text from an Ollama ``/api/chat`` message.
+
+    Returns only ``content``. Callers that need thinking disabled for a
+    specific task (for example cover-letter writing with Gemma 4) should
+    pass ``think=False`` on that generate call; this helper does not change
+    Ollama defaults for other users of the client.
+
+    Args:
+        message: The ``message`` object from an Ollama chat response.
+
+    Returns:
+        Stripped ``content`` text, or an empty string when missing.
+    """
+    return (message.get("content") or "").strip()
+
+
 class OllamaClient(BaseLLMClient):
     """
     Ollama client for local model inference.
@@ -150,7 +168,11 @@ class OllamaClient(BaseLLMClient):
 
         Args:
             messages: List of messages in the conversation
-            **kwargs: Additional generation parameters
+            **kwargs: Additional generation parameters. Notable keys:
+                ``temperature``, ``max_tokens``, ``top_p``, ``timeout``,
+                ``stop_sequences``, and optional ``think`` (passed through to
+                Ollama ``/api/chat`` only when explicitly provided so other
+                callers keep Ollama's default thinking behavior).
 
         Returns:
             LLMResponse with generated content and metadata
@@ -160,7 +182,8 @@ class OllamaClient(BaseLLMClient):
         # Check VRAM before inference
         self._check_vram_before_inference()
 
-        # Build request payload
+        # Build request payload. Do not set ``think`` unless the caller asked;
+        # cover-letter writing passes think=False for Gemma 4 blank-output.
         payload = {
             "model": self.config.model,
             "messages": [
@@ -173,6 +196,8 @@ class OllamaClient(BaseLLMClient):
                 "top_p": kwargs.get("top_p", self.config.top_p),
             },
         }
+        if "think" in kwargs:
+            payload["think"] = bool(kwargs["think"])
 
         # Add stop sequences if provided
         stop_seqs = kwargs.get("stop_sequences", self.config.stop_sequences)
@@ -196,7 +221,17 @@ class OllamaClient(BaseLLMClient):
 
                 # Parse response (/api/chat returns message.content)
                 data = response.json()
-                content = data.get("message", {}).get("content", "")
+                message = data.get("message", {}) or {}
+                content = extract_ollama_chat_content(message)
+                if not content:
+                    thinking_len = len((message.get("thinking") or "").strip())
+                    raise LLMClientError(
+                        "Ollama returned empty content"
+                        f" (model={self.config.model},"
+                        f" done_reason={data.get('done_reason')},"
+                        f" eval_count={data.get('eval_count')},"
+                        f" thinking_chars={thinking_len})"
+                    )
 
                 # Count tokens (Ollama doesn't return token count)
                 prompt_tokens = sum(self.count_tokens(msg.content) for msg in messages)
@@ -228,6 +263,14 @@ class OllamaClient(BaseLLMClient):
 
             except requests.RequestException as e:
                 last_error = LLMClientError(f"Request failed: {e}")
+                if attempt < self.config.max_retries:
+                    time.sleep(self.config.retry_delay * (2**attempt))
+                    continue
+                else:
+                    raise last_error
+
+            except LLMClientError as e:
+                last_error = e
                 if attempt < self.config.max_retries:
                     time.sleep(self.config.retry_delay * (2**attempt))
                     continue

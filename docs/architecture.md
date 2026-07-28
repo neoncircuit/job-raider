@@ -605,8 +605,42 @@ graph LR
 | `/career-coach` | Agent-backed career analysis (requires active profile) |
 | `/metrics` | Recharts funnel + pie, cost tiles, LLM call log |
 | `/settings` | Ollama host, cloud fallback provider (Anthropic/Gemini) + API key, installed-only small/large model pickers, model params, cost limits |
-
 | `/assessment` | DISC personality assessment and skill-based technical interview practice |
+
+### Cover Letter Generation And Grounding
+
+Cover letters use a local-first draft path, then deterministic proofreading. The grader must not treat vague wording the same as fabricated scope.
+
+```mermaid
+flowchart TD
+  Profile["User profile + selection"] --> Writer["CoverLetterWriter"]
+  Job["Job listing / pasted JD"] --> Writer
+  Writer --> Draft["Draft letter"]
+  Draft --> Reviewer["Optional reviewer + one rewrite"]
+  Reviewer --> Validator["CoverLetterValidator"]
+  Draft --> Validator
+  Profile --> Grounding["Grounding checks"]
+  Validator --> Grounding
+  Grounding --> Soft["Soft ungrounded: weak overlap"]
+  Grounding --> Hard["Hard ungrounded: overclaim verbs"]
+  Grounding --> Scope["Scope inflation"]
+  Grounding --> Tech["Technique mismatch"]
+  Soft --> Penalty["Severity-weighted content penalty"]
+  Hard --> Penalty
+  Scope --> Penalty
+  Tech --> Penalty
+  Penalty --> Scores["Structure / content / tone scores"]
+  Scores --> UI["Proofread UI + review-before-send"]
+```
+
+| Finding | Typical meaning | Content penalty per hit |
+|---------|-----------------|-------------------------|
+| Soft ungrounded | Weak resume/JD lexical overlap | 3 |
+| Hard ungrounded | Capability verbs such as deployed / production / shipped without resume support | 10 |
+| Scope inflation | Leadership phrasing beyond IC bullets | 12 |
+| Technique mismatch | Named technique not verified for the referenced project | 10 |
+
+The grounding bucket is capped at 50 so other content checks remain visible. Issue enums still flag findings for review; only the numeric content score uses severity weights. Implementation lives in `apps/backend-py/src/generation/cover_letter_grounding.py` and `cover_letter_validator.py`.
 
 ## Security Considerations
 

@@ -28,6 +28,7 @@ import type {
   ScoreExplanation,
 } from "@/lib/api/coverLetter";
 import { profileApi } from "@/lib/api/profile";
+import { formatDurationMs } from "@/lib/utils/format";
 import { applicationsApi } from "@/lib/api/applications";
 import type {
   CoverLetterResponse,
@@ -742,6 +743,51 @@ export default function CoverLetterPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {(result.cover_letter.model_used ||
+                    result.cover_letter.timing) && (
+                    <p className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
+                      {result.cover_letter.model_used ? (
+                        <span>
+                          Model:{" "}
+                          <span className="font-mono">
+                            {result.cover_letter.model_used}
+                          </span>
+                        </span>
+                      ) : null}
+                      {result.cover_letter.timing ? (
+                        <>
+                          <span>
+                            Draft:{" "}
+                            {formatDurationMs(
+                              result.cover_letter.timing.generation_ms,
+                            )}
+                          </span>
+                          {result.cover_letter.timing.rewrite_ms != null ? (
+                            <span>
+                              Rewrite:{" "}
+                              {formatDurationMs(
+                                result.cover_letter.timing.rewrite_ms,
+                              )}
+                            </span>
+                          ) : null}
+                          {result.cover_letter.timing.review_ms != null ? (
+                            <span>
+                              Review:{" "}
+                              {formatDurationMs(
+                                result.cover_letter.timing.review_ms,
+                              )}
+                            </span>
+                          ) : null}
+                          <span>
+                            Total:{" "}
+                            {formatDurationMs(
+                              result.cover_letter.timing.total_ms,
+                            )}
+                          </span>
+                        </>
+                      ) : null}
+                    </p>
+                  )}
                   <Textarea
                     value={editedContent}
                     onChange={(e) => {

@@ -18,6 +18,20 @@ export function formatDuration(seconds: number): string {
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
+/**
+ * Format a millisecond duration for UI metrics (cover letter timing, etc.).
+ *
+ * @param ms - Elapsed time in milliseconds.
+ * @returns Human-readable duration such as ``843 ms`` or ``12.4 s``.
+ */
+export function formatDurationMs(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)} s`;
+  return formatDuration(seconds);
+}
+
 export function formatDatetime(isoString: string | null | undefined): string {
   if (!isoString) return "N/A";
   return new Date(isoString).toLocaleString("en-US", {

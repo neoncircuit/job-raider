@@ -268,8 +268,17 @@ export type CoverLetterIssue =
   | "too_short"
   | "too_long"
   | "generic_opening"
+  | "no_call_to_action"
   | "missing_call_to_action"
   | "missing_experience_match"
+  | "fabricated_experience"
+  | "missing_selected_project"
+  | "few_paragraphs"
+  | "low_jd_coverage"
+  | "ungrounded_claims"
+  | "scope_inflation"
+  | "technique_mismatch"
+  | "poor_structure"
   | "tone_too_informal"
   | "tone_too_formal"
   | "grammar_errors"
@@ -289,6 +298,19 @@ export interface CoverLetterReviewDetails {
   rewrite_count: number;
   model_used: string;
   error?: string | null;
+  /** Reviewer LLM duration in milliseconds, when measured. */
+  review_ms?: number | null;
+  /** Rewrite LLM duration in milliseconds, when a rewrite ran. */
+  rewrite_ms?: number | null;
+}
+
+export interface CoverLetterTiming {
+  selection_ms: number;
+  generation_ms: number;
+  review_ms?: number | null;
+  rewrite_ms?: number | null;
+  validation_ms: number;
+  total_ms: number;
 }
 
 export interface CoverLetterValidation {
@@ -308,6 +330,8 @@ export interface CoverLetter {
   word_count: number;
   model_used: string;
   highlighted_experiences: HighlightedExperience[];
+  /** Stage timings for the last generate request, when present. */
+  timing?: CoverLetterTiming;
 }
 
 export interface CoverLetterResponse {

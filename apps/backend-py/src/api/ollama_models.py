@@ -100,6 +100,73 @@ def ollama_base_url(ollama_host: str) -> str:
     return f"http://{name}:{port}"
 
 
+def is_loopback_ollama_host(ollama_host: str) -> bool:
+    """
+    Return True when the host targets the local loopback interface.
+
+    Args:
+        ollama_host: Host string from settings or env.
+
+    Returns:
+        True for localhost / 127.0.0.1 / ::1 / 0.0.0.0 (any port).
+    """
+    name, _port = parse_ollama_host_port(ollama_host)
+    return name.lower() in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+
+
+def running_in_docker() -> bool:
+    """
+    Detect whether the process is running inside a Docker container.
+
+    Returns:
+        True when ``/.dockerenv`` is present.
+    """
+    from pathlib import Path
+
+    return Path("/.dockerenv").exists()
+
+
+def resolve_effective_ollama_host(
+    settings_host: str | None = None,
+    *,
+    env_host: str | None = None,
+    in_docker: bool | None = None,
+) -> str:
+    """
+    Choose the Ollama host string for runtime / health checks.
+
+    Preference: non-loopback Settings host, then ``OLLAMA_HOST`` when Settings
+    is loopback inside Docker (``localhost`` inside a container is not the
+    shared Ollama service), then Settings, then env, then localhost.
+
+    Args:
+        settings_host: Host from ``api_config.ollama_host``.
+        env_host: Optional override of ``OLLAMA_HOST`` (for tests).
+        in_docker: Optional override of Docker detection (for tests).
+
+    Returns:
+        Effective host:port string.
+    """
+    import os
+
+    settings = (settings_host or "").strip()
+    env = (env_host if env_host is not None else os.getenv("OLLAMA_HOST") or "").strip()
+    docker = running_in_docker() if in_docker is None else in_docker
+
+    if settings and not (
+        docker
+        and is_loopback_ollama_host(settings)
+        and env
+        and not is_loopback_ollama_host(env)
+    ):
+        return settings
+    if env:
+        return env
+    if settings:
+        return settings
+    return "localhost:11434"
+
+
 def list_installed_ollama_models(ollama_host: str, timeout: float = 3.0) -> List[str]:
     """
     List model names currently installed in a running Ollama instance.

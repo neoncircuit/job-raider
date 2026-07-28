@@ -267,6 +267,29 @@ class TestGenerateCoverLetterService:
             response.validation.details["review"]["critique"]
             == "Add stronger call to action."
         )
+        timing = response.cover_letter["timing"]
+        assert timing["generation_ms"] >= 0
+        assert timing["rewrite_ms"] is not None and timing["rewrite_ms"] >= 0
+        assert timing["review_ms"] is not None and timing["review_ms"] >= 0
+        assert timing["total_ms"] >= timing["generation_ms"]
+        assert (
+            response.validation.details["review"]["rewrite_ms"] == timing["rewrite_ms"]
+        )
+
+    def test_generate_without_review_includes_timing_without_rewrite(
+        self, sample_job, sample_profile, patch_dependencies
+    ):
+        """Timing always includes generation; rewrite_ms is null when unused."""
+        response = asyncio.run(
+            generate_cover_letter_for_profile(
+                sample_job, sample_profile, deep=False, review=False
+            )
+        )
+        timing = response.cover_letter["timing"]
+        assert timing["generation_ms"] >= 0
+        assert timing["rewrite_ms"] is None
+        assert timing["review_ms"] is None
+        assert timing["total_ms"] >= timing["generation_ms"]
 
     def test_generate_with_review_failure_continues_with_draft(
         self, sample_job, sample_profile, patch_dependencies, mock_writer

@@ -8,8 +8,10 @@ from src.api.ollama_models import (
     apply_cloud_fallback_provider,
     apply_ollama_tier_models,
     derive_ollama_tier_models,
+    is_loopback_ollama_host,
     ollama_base_url,
     parse_ollama_host_port,
+    resolve_effective_ollama_host,
 )
 from src.api.settings import CloudProvider, ModelRouting, Provider
 
@@ -32,6 +34,49 @@ class TestParseOllamaHost:
     def test_bare_host(self):
         """Bare hostname uses default port 11434."""
         assert parse_ollama_host_port("ollama") == ("ollama", 11434)
+
+    def test_loopback_detection(self):
+        """Loopback hosts are identified for Docker remapping."""
+        assert is_loopback_ollama_host("localhost:11434")
+        assert is_loopback_ollama_host("127.0.0.1")
+        assert not is_loopback_ollama_host("ollama:11434")
+
+
+class TestResolveEffectiveOllamaHost:
+    """Docker-aware host selection when Settings still say localhost."""
+
+    def test_settings_non_loopback_wins(self):
+        """Explicit compose/desktop host is kept."""
+        assert (
+            resolve_effective_ollama_host(
+                "host.docker.internal:11434",
+                env_host="ollama:11434",
+                in_docker=True,
+            )
+            == "host.docker.internal:11434"
+        )
+
+    def test_docker_loopback_falls_back_to_env(self):
+        """Inside Docker, localhost Settings yield to OLLAMA_HOST."""
+        assert (
+            resolve_effective_ollama_host(
+                "localhost:11434",
+                env_host="ollama:11434",
+                in_docker=True,
+            )
+            == "ollama:11434"
+        )
+
+    def test_non_docker_keeps_localhost(self):
+        """On the host, localhost Settings remain valid."""
+        assert (
+            resolve_effective_ollama_host(
+                "localhost:11434",
+                env_host="ollama:11434",
+                in_docker=False,
+            )
+            == "localhost:11434"
+        )
 
 
 class TestOllamaTierModels:

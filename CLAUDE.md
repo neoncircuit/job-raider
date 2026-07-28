@@ -52,12 +52,14 @@
 - **Copy Pastable**: All terminal commands inside documentation are to be inside a code snippet of its own, with its label stated before the snippet.
 - **Flow Diagrams**: All documentation is required to have flow diagrams to provide a visual example of how the flow of the project works, preferably in the form of mermaid code snippets but drawio is fine as well.
 - **Professionalism**: All documentation is to be strictly professional while at the same time, easy to understand. Do not use Emojis at all.
+- **Documentation Style**: When writing plans or documentation use: ASD-STE100 Simplified Technical English (STE for short).
 - **Auto .venv**: All virtual environments are to be named `.venv` and located within backend-specific directories (e.g., `apps/backend-py/.venv`), set up in such a way that they are auto activated upon entering the project root via WSL.
 - **Up to date .venv**: In our startup script, we should ensure that each backend's .venv is up to date with its libraries listed in requirements.txt, and if there isn't a .venv, create a new one or update it.
 - **Setup Ready**: Setup script Eg. `setup.sh` should be up to date in such a way that when pulled from a fresh system, it is as if it has everything needed for deployment.
 - **CICD DataOps**: CI/CD Pipelines are important to ensure that code quality is not compromised, so we need to run checks locally until they all clear before pushing.
 - **MLOps MLFlow**: All performances of tested available models are to be accessed via MLFlow.
 - **Monorepo Structure**: Project follows a monorepo pattern where each backend implementation has its own isolated environment, tests, notebooks, and dependencies within its directory.
+- **Properly structured folders**: Frontend and Backend codes are to be designated to the apps folder. Eg. When working on python backend scripts, ensure they are all within "project-root/apps/backend-py". When working on Typescript frontend scripts, ensure they are all within "project-root/apps/frontend-ts".
 
 ## Core Principles
 

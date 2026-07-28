@@ -18,6 +18,12 @@ from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
+from .cover_letter_grounding import (
+    calc_grounding_penalty,
+    collect_resume_bullets,
+    flag_claim_overclaims,
+    flag_ungrounded_sentences,
+)
 from .cover_letter_writer import GeneratedCoverLetter
 from .selector import SelectionOutput
 
@@ -36,6 +42,9 @@ class CoverLetterIssue(str, Enum):
     MISSING_SELECTED_PROJECT = "missing_selected_project"
     FEW_PARAGRAPHS = "few_paragraphs"
     LOW_JD_COVERAGE = "low_jd_coverage"
+    UNGROUNDED_CLAIMS = "ungrounded_claims"
+    SCOPE_INFLATION = "scope_inflation"
+    TECHNIQUE_MISMATCH = "technique_mismatch"
 
 
 @dataclass
@@ -141,9 +150,52 @@ class CoverLetterValidator:
         jd_issues, jd_coverage = self._check_jd_coverage(content_lower, job, profile)
         issues.extend(jd_issues)
 
+        grounding_terms = list(jd_coverage.get("matched", [])) + list(
+            jd_coverage.get("missing", [])
+        )
+        if job.title:
+            grounding_terms.append(job.title)
+        if job.company:
+            grounding_terms.append(job.company)
+        if job.description:
+            grounding_terms.append(job.description)
+
+        resume_bullets = collect_resume_bullets(profile, selection)
+        ungrounded_sentences = flag_ungrounded_sentences(
+            content,
+            resume_bullets,
+            jd_terms=grounding_terms,
+        )
+        claim_overclaims = flag_claim_overclaims(
+            content,
+            profile,
+            resume_bullets=resume_bullets,
+        )
+        grounding_issues: List[CoverLetterIssue] = []
+        if ungrounded_sentences:
+            grounding_issues.append(CoverLetterIssue.UNGROUNDED_CLAIMS)
+        if any(
+            any(flag.lower().startswith("scope inflation") for flag in item["flags"])
+            for item in claim_overclaims
+        ):
+            grounding_issues.append(CoverLetterIssue.SCOPE_INFLATION)
+        if any(
+            any(flag.lower().startswith("technique mismatch") for flag in item["flags"])
+            for item in claim_overclaims
+        ):
+            grounding_issues.append(CoverLetterIssue.TECHNIQUE_MISMATCH)
+        issues.extend(grounding_issues)
+
+        grounding_penalty, grounding_penalty_breakdown = calc_grounding_penalty(
+            ungrounded_sentences,
+            claim_overclaims,
+        )
+
         structure_score = self._calc_structure_score(content, structure_issues)
         content_score = self._calc_content_score(
-            content_issues + jd_issues, accuracy_issues
+            content_issues + jd_issues,
+            accuracy_issues,
+            grounding_penalty=grounding_penalty,
         )
         tone_score = self._calc_tone_score(tone_issues)
 
@@ -179,6 +231,9 @@ class CoverLetterValidator:
                 if p["name"].lower() in content_lower
             ],
             "jd_coverage": jd_coverage,
+            "ungrounded_sentences": ungrounded_sentences,
+            "claim_overclaims": claim_overclaims,
+            "grounding_penalty": grounding_penalty_breakdown,
         }
 
         return CoverLetterValidationResult(
@@ -438,13 +493,21 @@ class CoverLetterValidator:
         self,
         content_issues: List[CoverLetterIssue],
         accuracy_issues: List[CoverLetterIssue],
+        *,
+        grounding_penalty: int = 0,
     ) -> int:
         """
         Calculate content quality score.
 
+        Grounding findings are severity-weighted via ``grounding_penalty``
+        (soft vague overlap vs hard overclaim / scope / technique). Flat
+        per-issue grounding deductions are intentionally not used.
+
         Args:
-            content_issues: Content completeness issues
+            content_issues: Content completeness / JD coverage issues
             accuracy_issues: Factual accuracy issues
+            grounding_penalty: Points to subtract from severity-weighted
+                grounding findings (already capped by the grounding module)
 
         Returns:
             Score from 0-100
@@ -459,6 +522,8 @@ class CoverLetterValidator:
             score -= 15
         if CoverLetterIssue.LOW_JD_COVERAGE in content_issues:
             score -= 15
+        if grounding_penalty:
+            score -= grounding_penalty
         if CoverLetterIssue.FABRICATED_EXPERIENCE in accuracy_issues:
             score -= 30
 

@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { formatDurationMs } from "@/lib/utils/format";
 
 interface CoverLetterValidationDisplayProps {
   validation: CoverLetterValidation;
@@ -144,6 +145,37 @@ export function CoverLetterValidationDisplay({
   const llmFeedback = Array.isArray(details?.llm_feedback)
     ? (details.llm_feedback as string[])
     : [];
+  const ungroundedSentences = Array.isArray(details?.ungrounded_sentences)
+    ? (details.ungrounded_sentences as string[])
+    : [];
+  const claimOverclaims = Array.isArray(details?.claim_overclaims)
+    ? (
+        details.claim_overclaims as Array<{
+          sentence?: string;
+          flags?: string[];
+        }>
+      ).filter(
+        (item) => item && (item.sentence || (item.flags?.length ?? 0) > 0),
+      )
+    : [];
+  const groundingPenalty =
+    details?.grounding_penalty &&
+    typeof details.grounding_penalty === "object" &&
+    !Array.isArray(details.grounding_penalty)
+      ? (details.grounding_penalty as {
+          soft_ungrounded?: number;
+          hard_ungrounded?: number;
+          scope_inflation?: number;
+          technique_mismatch?: number;
+          capped_penalty?: number;
+          weights?: {
+            soft_ungrounded?: number;
+            hard_ungrounded?: number;
+            scope_inflation?: number;
+            technique_mismatch?: number;
+          };
+        })
+      : null;
 
   const reviewDetails = details?.review as CoverLetterReviewDetails | undefined;
 
@@ -252,6 +284,90 @@ export function CoverLetterValidationDisplay({
         </Card>
       )}
 
+      {/* Ungrounded / overclaim review — deterministic resume grounding */}
+      {(ungroundedSentences.length > 0 || claimOverclaims.length > 0) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Review before sending
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {groundingPenalty != null &&
+              typeof groundingPenalty.capped_penalty === "number" &&
+              groundingPenalty.capped_penalty > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Content score deducted {groundingPenalty.capped_penalty} by
+                  severity
+                  {groundingPenalty.soft_ungrounded
+                    ? ` · ${groundingPenalty.soft_ungrounded} soft (−${groundingPenalty.weights?.soft_ungrounded ?? 3} each)`
+                    : ""}
+                  {groundingPenalty.hard_ungrounded
+                    ? ` · ${groundingPenalty.hard_ungrounded} hard overclaim (−${groundingPenalty.weights?.hard_ungrounded ?? 10} each)`
+                    : ""}
+                  {groundingPenalty.scope_inflation
+                    ? ` · ${groundingPenalty.scope_inflation} scope (−${groundingPenalty.weights?.scope_inflation ?? 12} each)`
+                    : ""}
+                  {groundingPenalty.technique_mismatch
+                    ? ` · ${groundingPenalty.technique_mismatch} technique (−${groundingPenalty.weights?.technique_mismatch ?? 10} each)`
+                    : ""}
+                  . Penalties scale by severity (soft wording vs hard
+                  overclaims).
+                </p>
+              )}
+            {ungroundedSentences.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  These sentences have weak overlap with your resume (or
+                  introduce capability claims like deployed / production /
+                  launched that are not in your profile).
+                </p>
+                <ul className="space-y-1.5">
+                  {ungroundedSentences.map((sentence, i) => (
+                    <li
+                      key={`ungrounded-${i}-${sentence.slice(0, 24)}`}
+                      className="flex items-start gap-2 text-xs text-foreground"
+                    >
+                      <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                      {sentence}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {claimOverclaims.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Scope inflation or technique mismatch: a misleading phrase
+                  inside an otherwise grounded sentence (for example
+                  &quot;leading&quot; when bullets only say Built/Designed, or
+                  &quot;retrieval&quot; on a project that does not use it).
+                </p>
+                <ul className="space-y-2">
+                  {claimOverclaims.map((item, i) => (
+                    <li
+                      key={`claim-${i}-${(item.sentence || "").slice(0, 24)}`}
+                      className="space-y-1 text-xs text-foreground"
+                    >
+                      <p className="flex items-start gap-2">
+                        <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                        <span>{item.sentence}</span>
+                      </p>
+                      {(item.flags || []).map((flag) => (
+                        <p key={flag} className="pl-3.5 text-muted-foreground">
+                          {flag}
+                        </p>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Detail chips */}
       <div className="flex flex-wrap gap-1.5">
         {companyMentioned === true && (
@@ -352,6 +468,16 @@ export function CoverLetterValidationDisplay({
                   Model: {reviewDetails.model_used}
                 </span>
               }
+              {reviewDetails.review_ms != null && (
+                <span className="text-xs text-muted-foreground">
+                  Review: {formatDurationMs(reviewDetails.review_ms)}
+                </span>
+              )}
+              {reviewDetails.rewrite_ms != null && (
+                <span className="text-xs text-muted-foreground">
+                  Rewrite: {formatDurationMs(reviewDetails.rewrite_ms)}
+                </span>
+              )}
             </div>
             {reviewDetails.error && (
               <p className="text-xs text-red-600">{reviewDetails.error}</p>
@@ -363,6 +489,8 @@ export function CoverLetterValidationDisplay({
       {/* No issues message */}
       {validation.issues.length === 0 &&
         llmFeedback.length === 0 &&
+        ungroundedSentences.length === 0 &&
+        claimOverclaims.length === 0 &&
         !reviewDetails && (
           <p className="text-xs text-muted-foreground">
             No issues detected. The cover letter looks good.

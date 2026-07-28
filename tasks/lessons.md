@@ -2960,3 +2960,16 @@
 - Reload from disk (``_reload_cache``) on list/get and before mutate-by-id.
 - Update existing outcomes for external apply instead of blindly replacing (preserve bookmarks).
 - Same class of bug as profile file-backed state — keep worker caches coherent with the mount.
+
+## Cover letter grounding scores (2026-07-28)
+
+### Weight grounding findings by severity
+
+**Lesson:** Do not apply a flat content penalty per grounding issue type. Soft vague wording and fabricated scope are different failures.
+
+**Why:** Flat -20/-15 hits keep scores confusing even when writing improves. Users cannot tell whether the grader saw weak CTA overlap or invented leadership.
+
+**How to apply:**
+- Classify soft ungrounded, hard overclaim verbs, scope inflation, and technique mismatch.
+- Scale by finding count with a capped bucket.
+- Keep issue enums for review UI; put numeric severity in `calc_grounding_penalty`.

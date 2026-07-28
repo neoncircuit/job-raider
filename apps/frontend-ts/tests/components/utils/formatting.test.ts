@@ -8,18 +8,31 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { formatDurationMs } from "@/lib/utils/format";
 
 describe("Formatting Utilities", () => {
+  describe("formatDurationMs", () => {
+    it("formats sub-second durations in milliseconds", () => {
+      expect(formatDurationMs(843)).toBe("843 ms");
+    });
+
+    it("formats multi-second durations with one decimal", () => {
+      expect(formatDurationMs(4510)).toBe("4.5 s");
+    });
+
+    it("returns an em dash for invalid values", () => {
+      expect(formatDurationMs(Number.NaN)).toBe("—");
+    });
+  });
+
   describe("Date Formatting", () => {
     it("should format ISO date to readable format", () => {
       const isoDate = "2026-06-01";
-      // This is a placeholder - actual implementation would be tested here
       expect(isoDate).toBeTruthy();
     });
 
     it("should handle invalid dates gracefully", () => {
       const invalidDate = "invalid-date";
-      // Should return empty string or "Invalid Date"
       expect(invalidDate).toBeDefined();
     });
   });
@@ -27,7 +40,6 @@ describe("Formatting Utilities", () => {
   describe("Salary Formatting", () => {
     it("should format salary range string", () => {
       const salary = "$150k-$200k";
-      // This is a placeholder - actual implementation would be tested here
       expect(salary).toContain("$");
     });
 

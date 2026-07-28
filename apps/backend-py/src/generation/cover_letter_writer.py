@@ -22,6 +22,43 @@ from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
 from .selector import SelectionOutput
 
+# Shared drafting rules for write + rewrite so grounding constraints stay aligned.
+_COVER_LETTER_RULES = (
+    "RULES:\n"
+    "1. The letter MUST be between 200 and 300 words\n"
+    "2. Connect 2-3 specific experiences from the candidate's "
+    "background to the job requirements\n"
+    "3. Mention the company and role by name\n"
+    "4. Do NOT use generic phrases or templates\n"
+    "5. Be direct and confident in tone\n"
+    "6. Do NOT include headers, addresses, or date lines\n"
+    "7. Open with a specific hook: lead with the candidate's "
+    "most relevant concrete achievement or a specific detail "
+    "about the company's product, mission, or tech stack. "
+    "NEVER open with cliches like 'I am writing to express "
+    "my interest' or 'I am excited to apply'\n"
+    "8. Include at least one quantified result (numbers, "
+    "percentages, scale) from the candidate's background "
+    "when one is available\n"
+    "9. Avoid stock phrases such as 'team player', 'fast "
+    "learner', 'passionate about', and 'proven track record'\n"
+    "10. End with a brief, confident call to action. The closing "
+    "pitch MUST restate facts already used earlier in the same "
+    "letter or explicitly listed in the candidate profile / "
+    "selection strategy — do NOT invent new capability claims. "
+    "Do not use words like deployed, production, launched, or "
+    "shipped unless those exact claims appear in the profile\n"
+    "11. Every sentence must be traceable to either a specific "
+    "resume bullet/achievement or a specific job requirement "
+    "being addressed. Prefer restating concrete profile facts "
+    "over persuasive synthesis. Do not inflate scope with verbs "
+    "like led, leading, spearheaded, or owned unless the profile "
+    "uses that phrasing. Do not attach techniques (retrieval, "
+    "RAG, fine-tuning, distributed, real-time, containerized) "
+    "to a project unless that project's own bullets list them\n"
+    "12. Return ONLY the letter body as plain text, no JSON"
+)
+
 
 @dataclass
 class GeneratedCoverLetter:
@@ -79,26 +116,7 @@ class CoverLetterWriter:
                 content=(
                     "You are a professional cover letter writer. Write a concise, "
                     "tailored cover letter for a job application.\n\n"
-                    "RULES:\n"
-                    "1. The letter MUST be between 200 and 300 words\n"
-                    "2. Connect 2-3 specific experiences from the candidate's "
-                    "background to the job requirements\n"
-                    "3. Mention the company and role by name\n"
-                    "4. Do NOT use generic phrases or templates\n"
-                    "5. Be direct and confident in tone\n"
-                    "6. Do NOT include headers, addresses, or date lines\n"
-                    "7. Open with a specific hook: lead with the candidate's "
-                    "most relevant concrete achievement or a specific detail "
-                    "about the company's product, mission, or tech stack. "
-                    "NEVER open with cliches like 'I am writing to express "
-                    "my interest' or 'I am excited to apply'\n"
-                    "8. Include at least one quantified result (numbers, "
-                    "percentages, scale) from the candidate's background "
-                    "when one is available\n"
-                    "9. Avoid stock phrases such as 'team player', 'fast "
-                    "learner', 'passionate about', and 'proven track record'\n"
-                    "10. End with a brief, confident call to action\n"
-                    "11. Return ONLY the letter body as plain text, no JSON"
+                    f"{_COVER_LETTER_RULES}"
                 ),
             ),
             Message(
@@ -119,10 +137,17 @@ class CoverLetterWriter:
                 # Slightly higher than default creative temp: more varied
                 # phrasing between letters without sacrificing coherence.
                 temperature=0.8,
-                max_tokens=600,
+                max_tokens=1200,
+                # Opt-in for this call only: thinking models (e.g. gemma4:e4b)
+                # otherwise spend the token budget on reasoning and return a
+                # blank letter body. Does not change the shared Ollama client
+                # default for other tasks.
+                think=False,
             )
 
             content = response.content.strip()
+            if not content:
+                raise ValueError("Cover letter model returned empty content")
             word_count = len(content.split())
             model_used = self.llm_router.routes[
                 TaskType.COVER_LETTER_WRITING
@@ -179,26 +204,7 @@ class CoverLetterWriter:
                     "You are a professional cover letter writer. Rewrite the "
                     "draft cover letter based on the editor's critique."
                     "\n\n"
-                    "RULES:\n"
-                    "1. The letter MUST be between 200 and 300 words\n"
-                    "2. Connect 2-3 specific experiences from the candidate's "
-                    "background to the job requirements\n"
-                    "3. Mention the company and role by name\n"
-                    "4. Do NOT use generic phrases or templates\n"
-                    "5. Be direct and confident in tone\n"
-                    "6. Do NOT include headers, addresses, or date lines\n"
-                    "7. Open with a specific hook: lead with the candidate's "
-                    "most relevant concrete achievement or a specific detail "
-                    "about the company's product, mission, or tech stack. "
-                    "NEVER open with cliches like 'I am writing to express "
-                    "my interest' or 'I am excited to apply'\n"
-                    "8. Include at least one quantified result (numbers, "
-                    "percentages, scale) from the candidate's background "
-                    "when one is available\n"
-                    "9. Avoid stock phrases such as 'team player', 'fast "
-                    "learner', 'passionate about', and 'proven track record'\n"
-                    "10. End with a brief, confident call to action\n"
-                    "11. Return ONLY the letter body as plain text, no JSON"
+                    f"{_COVER_LETTER_RULES}"
                 ),
             ),
             Message(
@@ -221,10 +227,17 @@ class CoverLetterWriter:
                 # Slightly higher than default creative temp: more varied
                 # phrasing between letters without sacrificing coherence.
                 temperature=0.8,
-                max_tokens=600,
+                max_tokens=1200,
+                # Opt-in for this call only: thinking models (e.g. gemma4:e4b)
+                # otherwise spend the token budget on reasoning and return a
+                # blank letter body. Does not change the shared Ollama client
+                # default for other tasks.
+                think=False,
             )
 
             content = response.content.strip()
+            if not content:
+                raise ValueError("Cover letter rewrite returned empty content")
             word_count = len(content.split())
             model_used = self.llm_router.routes[
                 TaskType.COVER_LETTER_WRITING

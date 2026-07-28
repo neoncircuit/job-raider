@@ -112,6 +112,8 @@ describe("CoverLetterValidationDisplay", () => {
           rewrite_needed: true,
           rewrite_count: 1,
           model_used: "qwen2.5:3b",
+          review_ms: 820.4,
+          rewrite_ms: 4510.0,
         },
       },
     };
@@ -123,6 +125,8 @@ describe("CoverLetterValidationDisplay", () => {
     expect(screen.getByText("Rewritten once")).toBeInTheDocument();
     expect(screen.getByText("Rewrite requested")).toBeInTheDocument();
     expect(screen.getByText(/Model: qwen2\.5:3b/)).toBeInTheDocument();
+    expect(screen.getByText(/Review: 820 ms/)).toBeInTheDocument();
+    expect(screen.getByText(/Rewrite: 4\.5 s/)).toBeInTheDocument();
   });
 
   it("hides the no-issues message when LLM feedback is present", () => {

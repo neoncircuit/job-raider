@@ -11,7 +11,8 @@ Author: Job Raider
 Date: 2026-06-29
 """
 
-from typing import Any, Dict
+import time
+from typing import Any, Dict, Optional
 
 from ..api.models.responses import CoverLetterResponse, CoverLetterValidationResponse
 from ..llm.router import create_router
@@ -24,6 +25,19 @@ from .cover_letter_writer import CoverLetterWriter
 from .selector import ResumeSelector
 
 logger = get_logger(Components.GENERATION)
+
+
+def _elapsed_ms(started: float) -> float:
+    """
+    Return milliseconds since ``started`` (from ``time.perf_counter``).
+
+    Args:
+        started: Perf-counter timestamp from the start of a timed section.
+
+    Returns:
+        Elapsed duration in milliseconds, rounded to one decimal place.
+    """
+    return round((time.perf_counter() - started) * 1000, 1)
 
 
 def _build_fallback_validation(result: Any) -> CoverLetterValidationResult:
@@ -101,19 +115,29 @@ async def generate_cover_letter_for_profile(
             convert this into an appropriate HTTP response.
     """
     llm_router = create_router(prefer_local=True)
+    total_started = time.perf_counter()
 
     selector = ResumeSelector(llm_router=llm_router)
+    selection_started = time.perf_counter()
     selection = selector.select(job_listing, user_profile)
+    selection_ms = _elapsed_ms(selection_started)
 
     writer = CoverLetterWriter(llm_router=llm_router)
+    generation_started = time.perf_counter()
     result = writer.write(job_listing, user_profile, selection)
+    generation_ms = _elapsed_ms(generation_started)
 
     review_metadata: Dict[str, Any] = {}
+    review_ms: Optional[float] = None
+    rewrite_ms: Optional[float] = None
     if review:
         reviewer = CoverLetterReviewer(llm_router=llm_router)
+        review_started = time.perf_counter()
         review_result = reviewer.review(result, job_listing, user_profile, selection)
+        review_ms = _elapsed_ms(review_started)
         rewrite_count = 0
         if review_result.rewrite_needed:
+            rewrite_started = time.perf_counter()
             result = writer.rewrite(
                 job_listing,
                 user_profile,
@@ -121,6 +145,7 @@ async def generate_cover_letter_for_profile(
                 result,
                 review_result.critique,
             )
+            rewrite_ms = _elapsed_ms(rewrite_started)
             rewrite_count = 1
 
         review_metadata = {
@@ -128,11 +153,14 @@ async def generate_cover_letter_for_profile(
             "rewrite_needed": review_result.rewrite_needed,
             "rewrite_count": rewrite_count,
             "model_used": review_result.model_used,
+            "review_ms": review_ms,
+            "rewrite_ms": rewrite_ms,
         }
         if review_result.error:
             review_metadata["error"] = review_result.error
 
     validator = CoverLetterValidator(llm_router=llm_router, strict_mode=False)
+    validation_started = time.perf_counter()
     try:
         if deep:
             validation = validator.validate_with_llm(
@@ -145,9 +173,27 @@ async def generate_cover_letter_for_profile(
     except Exception as exc:
         logger.error("Cover letter validation failed: %s", exc, exc_info=True)
         validation = _build_fallback_validation(result)
+    validation_ms = _elapsed_ms(validation_started)
 
     if review_metadata:
         validation.details["review"] = review_metadata
+
+    total_ms = _elapsed_ms(total_started)
+    timing = {
+        "selection_ms": selection_ms,
+        "generation_ms": generation_ms,
+        "review_ms": review_ms,
+        "rewrite_ms": rewrite_ms,
+        "validation_ms": validation_ms,
+        "total_ms": total_ms,
+    }
+    logger.info(
+        "Cover letter timing job_id=%s generation_ms=%.1f rewrite_ms=%s total_ms=%.1f",
+        job_listing.job_id,
+        generation_ms,
+        rewrite_ms,
+        total_ms,
+    )
 
     return CoverLetterResponse(
         success=True,
@@ -157,6 +203,7 @@ async def generate_cover_letter_for_profile(
             "word_count": result.word_count,
             "model_used": result.model_used,
             "highlighted_experiences": result.highlighted_experiences,
+            "timing": timing,
         },
         validation=_adapt_validation_response(validation),
     )

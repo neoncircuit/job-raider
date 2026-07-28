@@ -230,8 +230,9 @@ def _resolve_ollama_base_url(explicit: str | None = None) -> str:
     """
     Resolve the Ollama HTTP base URL for health checks.
 
-    Preference order: explicit argument, saved Settings host, then
-    ``OLLAMA_HOST`` env, then localhost.
+    Preference order: explicit argument, then
+    :func:`~src.api.ollama_models.resolve_effective_ollama_host` (Settings with
+    Docker-aware loopback fallback to ``OLLAMA_HOST``).
 
     Args:
         explicit: Optional host or URL override.
@@ -239,23 +240,20 @@ def _resolve_ollama_base_url(explicit: str | None = None) -> str:
     Returns:
         Base URL such as ``http://ollama:11434``.
     """
-    from ..api.ollama_models import ollama_base_url
+    from ..api.ollama_models import ollama_base_url, resolve_effective_ollama_host
 
     if explicit:
         return ollama_base_url(explicit)
 
+    settings_host: str | None = None
     try:
         from ..api.settings import get_storage
 
-        host = get_storage().load_settings().api_config.ollama_host
-        if host:
-            return ollama_base_url(host)
+        settings_host = get_storage().load_settings().api_config.ollama_host
     except Exception:
-        pass
+        settings_host = None
 
-    import os
-
-    return ollama_base_url(os.getenv("OLLAMA_HOST") or "localhost:11434")
+    return ollama_base_url(resolve_effective_ollama_host(settings_host))
 
 
 class OllamaHealthCheck(HealthCheck):

@@ -315,18 +315,28 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-xs text-muted-foreground">
-                Choose any installed Ollama model for small (fast) and large
-                (quality) tasks. Documented recommended defaults are{" "}
+                Job Raider routes work through two local Ollama tiers: a{" "}
+                <span className="font-medium text-foreground">small</span> model
+                for frequent, lower-stakes steps, and a{" "}
+                <span className="font-medium text-foreground">large</span> model
+                for writing and deeper analysis. Prefer a faster/cheaper tag for
+                small and a stronger tag for large. Recommended defaults are{" "}
                 <span className="font-mono">{recommendedSmall}</span> and{" "}
-                <span className="font-mono">{recommendedLarge}</span>.
+                <span className="font-mono">{recommendedLarge}</span>. Thinking
+                models (for example Gemma 4) can leave letter bodies blank if
+                they spend their token budget on internal reasoning;
+                cover-letter generation opts out of thinking for that call only.
               </p>
               {installed.length === 0 && (
                 <p className="text-xs text-amber-700 dark:text-amber-400">
                   No models detected at the configured Ollama host. Dropdowns
                   may still show your last-saved choices (marked not installed)
                   until the host is reachable. In Docker use{" "}
-                  <span className="font-mono">ollama:11434</span>, pull a model
-                  if needed, save the host, then refresh.
+                  <span className="font-mono">ollama:11434</span> for the
+                  Compose service or{" "}
+                  <span className="font-mono">host.docker.internal:11434</span>{" "}
+                  for desktop Ollama, pull a model if needed, save the host,
+                  then refresh.
                 </p>
               )}
               {installed.length === 0 && (smallModel || largeModel) && (
@@ -337,7 +347,15 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 </p>
               )}
               <div className="space-y-1">
-                <Label htmlFor="ollama_small">Small model (fast)</Label>
+                <Label htmlFor="ollama_small">
+                  Small model (fast / high volume)
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Used for job scoring, project and keyword selection, output
+                  validation, quick Q&amp;A, trust checks, and cover-letter
+                  review. Optimize for speed and cost; quality slips here are
+                  easier to recover from than in writing tasks.
+                </p>
                 <Select
                   value={smallModel}
                   onValueChange={(value) => {
@@ -379,7 +397,16 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ollama_large">Large model (quality)</Label>
+                <Label htmlFor="ollama_large">
+                  Large model (quality / writing)
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Used for job-description extraction, resume parsing, writing,
+                  and analysis, LinkedIn analysis, classification, cover-letter
+                  drafting, and assessment generation or evaluation. Prefer a
+                  stronger model here; these outputs are user-facing and harder
+                  to fix with a second pass.
+                </p>
                 <Select
                   value={largeModel}
                   onValueChange={(value) => {

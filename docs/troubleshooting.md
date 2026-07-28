@@ -82,6 +82,8 @@ curl -s http://127.0.0.1:8000/api/health | python3 -m json.tool
 
 Discovery uses `api_config.ollama_host` from saved settings. Inside Docker, `localhost:11434` is the backend container. `ollama:11434` is the Compose Ollama service. Desktop Ollama is typically `host.docker.internal:11434`.
 
+If Dashboard health shows **Ollama unhealthy** with `base_url` `http://localhost:11434` while the shared `ollama` container is up, Settings still point at loopback. Set **Ollama Host** to `ollama:11434` (or `host.docker.internal:11434` for desktop Ollama) and save. Health checks also prefer Compose `OLLAMA_HOST` when Settings are loopback inside Docker.
+
 **Fix:**
 
 1. Open `/settings` and set **Ollama Host** appropriately:
@@ -318,6 +320,34 @@ pip install -r requirements.txt
    source .venv/bin/activate
    playwright install chromium
    ```
+
+### Issue: Cover letter blank with Gemma 4 / thinking models
+
+**Symptom:** Cover letter generate returns 200 but the letter body is empty when the large model is a thinking tag such as `gemma4:e4b`.
+
+**Cause:** Ollama spends the `num_predict` budget on the `thinking` field and leaves `message.content` empty. Job Raider previously only read `content`.
+
+**Fix:** Cover-letter generation passes ``think=false`` on that Ollama call only (shared client defaults are unchanged). Empty content is treated as a generation failure with a template fallback. Redeploy/overlay the backend after pulling this change, then regenerate.
+
+```bash
+docker tag job-raider-backend:latest job-raider-backend:pre-overlay
+docker build --network=none -t job-raider-backend:latest -f docker/Dockerfile.overlay .
+docker compose up -d --no-build --force-recreate backend
+```
+
+### Issue: Cover letter score stays low after writing improves
+
+**Symptom:** The letter body is mostly grounded, but content or overall score still looks harsh. Soft CTA phrasing seems to cost as much as leadership inflation.
+
+**Cause:** Older validators applied a flat content penalty per grounding issue type. Any ungrounded flag deducted the same amount regardless of severity or count.
+
+**Fix:** Current scoring uses severity-weighted penalties (`calc_grounding_penalty`): soft overlap is cheap; hard overclaim verbs, scope inflation, and technique mismatches cost more. Check `details.grounding_penalty` in the validation response or the Proofread "Review before sending" panel. Redeploy/overlay the backend if the running container predates this change.
+
+```bash
+docker tag job-raider-backend:latest job-raider-backend:pre-overlay
+docker build --network=none -t job-raider-backend:latest -f docker/Dockerfile.overlay .
+docker compose up -d --no-build --force-recreate backend
+```
 
 ## Ollama Issues
 

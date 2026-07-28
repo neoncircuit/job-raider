@@ -3361,3 +3361,24 @@ node ./node_modules/typescript/bin/tsc --noEmit
 - Frontend CI in Node 20 Docker: format, lint, type-check, vitest 75/75, build green.
 - Backend image left untouched (no Python changes); frontend recreated healthy on :3000.
 - Brand pulse only when cinematic is on; reduced-motion disables it.
+
+## Cover letter grounding severity scoring (2026-07-28)
+
+**Overview:** Replace flat per-issue grounding deductions with severity- and count-weighted content penalties. Soft vague wording must not equal fabricated scope. Document the grader behaviour and keep local CI green before commit.
+
+### Checklist
+
+- [x] Add `calc_grounding_penalty` with soft/hard/scope/technique weights and cap
+- [x] Wire validator content score to weighted penalty; expose `details.grounding_penalty`
+- [x] Surface breakdown in Proofread UI
+- [x] Unit tests for penalty weights, double-count avoidance, and cap
+- [x] Backend black / ruff / related pytest via Docker image venv
+- [x] Frontend lint / type-check / format / unit tests via Node 20 Docker
+- [x] Update architecture, usage, troubleshooting, testing, decision-log, conventions
+- [x] Commit
+
+### Review
+
+- Backend (mounted src/tests against `job-raider-backend`): black clean, ruff clean, 51 related tests passed; full non-integration suite 568 passed / 1 skipped.
+- Frontend (Node 20 Docker): lint and type-check green; Prettier fixed `settings/page.tsx`; 24 targeted unit tests passed; `npm run build` green.
+- Docs: severity table + Mermaid flow in architecture; troubleshooting for confusing scores; decision log and conventions entries.
