@@ -538,19 +538,19 @@ http://localhost:3000
 - **Jobs** - Review latest discover shortlist, or live search; optional Use profile targets; apply is explicit
 - **Applications** - Track saved and applied jobs (Simulate Apply for dry-run paths)
 - **Profile** - Manage profile, skills, experience, and Job Targets (keywords, locations, experience, exclude internships)
-- **Assessment** - DISC personality assessment and skill-based technical interview practice
+- **Assessment** - DISC work-style assessment and skill-based technical interview practice
 - **Resume Analysis** - AI-powered resume parsing and gap analysis
 - **LinkedIn Analysis** - Inbound-attraction scoring and recruiter-focused profile recommendations
 - **Cover Letter** - Paste a job description, generate/review, and export. Proofread scores use severity-weighted grounding: vague wording costs less than fabricated scope or technique mismatches. The UI shows flagged sentences and the grounding deduction breakdown before you send.
 - **Career Coach** - Agent-backed career guidance (requires an active profile)
 - **Metrics** - Cost tracking and outcome statistics
-- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits; optional **Cinematic atmosphere** (local, off by default) softens Dashboard and Pipeline and adds a light brand-mark pulse
+- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits; optional **color scheme** (Raid default, Neon, Retrowave) and **Cinematic atmosphere** (local, off by default)
 
-**DISC Personality Assessment:**
-- Industry-standard Most/Least forced-choice format
+**DISC Work Style Assessment:**
+- Employer-style Most/Least forced-choice practice (not a full personality inventory)
 - 24 questions across 4 categories (Leadership, Communication, Work Style, Problem Solving)
-- Job matching recommendations based on your personality profile
-- Practice for real job assessments
+- Relative D/I/S/C profile for this attempt, plus heuristic job-type match suggestions
+- Practice for real DISC-style workplace screens
 
 **Jobs Search Features:**
 - Default feed: latest Pipeline discover shortlist (`GET /api/pipeline/shortlist/latest`)

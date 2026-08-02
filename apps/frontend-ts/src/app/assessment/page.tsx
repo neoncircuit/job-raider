@@ -113,7 +113,8 @@ function SetupView({
             </h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
               Practice technical questions tailored to your skills, or take a
-              DISC assessment.
+              DISC work-style assessment (employer-style practice, not a full
+              personality inventory).
             </p>
           </div>
         </div>
@@ -122,7 +123,7 @@ function SetupView({
             Practice by Skill
           </span>
           <Button variant="outline" size="sm" onClick={onStartDISC}>
-            DISC Assessment
+            DISC Work Style
           </Button>
         </div>
       </div>

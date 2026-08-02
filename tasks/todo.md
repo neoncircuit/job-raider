@@ -3362,7 +3362,55 @@ node ./node_modules/typescript/bin/tsc --noEmit
 - Backend image left untouched (no Python changes); frontend recreated healthy on :3000.
 - Brand pulse only when cinematic is on; reduced-motion disables it.
 
-## Cover letter grounding severity scoring (2026-07-28)
+## Neon and Retrowave color schemes (2026-08-01)
+
+**Overview:** Add opt-in Neon and Retrowave color schemes on top of light/dark and cinematic atmosphere. Persist locally, remap CSS tokens via ``data-scheme``, and clear frontend CI.
+
+### Checklist
+
+- [x] ``use-color-scheme`` hook + document sync
+- [x] CSS token packs for neon / retrowave (light + dark)
+- [x] Settings Appearance picker
+- [x] Unit tests for scheme validation, persistence, and ``data-scheme``
+- [x] Frontend CI (lint, type-check, format, unit tests, build)
+- [x] Docs (usage + architecture)
+- [x] Commit when CI is green
+
+### Review
+
+- Frontend CI (Node 20 Docker): lint, type-check, format, scheme unit tests, and build passed.
+- Schemes: Raid (default), Neon, Retrowave via ``data-scheme``; orthogonal to light/dark and cinematic.
+
+### Standby (not scheduled)
+
+- **Stained glass scheme:** optional later ``data-scheme`` with frosted/translucent cards, jewel-tone accents, dark-first; glass on cards/sidebar only. Parked until Neon/Retrowave have been used in daily UI.
+- **Gunmetal scheme:** cool steel/graphite surfaces, brushed-metal neutrals, restrained chrome or muted blue-steel accents; dark-first ops look that stays closer to Raid than Neon/Retrowave. Parked with stained glass.
+
+## DISC assessment improvements (standby)
+
+**Priority:** Perfect the current DISC flow and framing first. Extra visualizations and richer job recommendations come later.
+
+### In progress / done (current-state polish)
+
+- [x] Clearer work-style framing (not full personality inventory)
+- [x] Backend answer validation (full coverage, Most != Least)
+- [x] UUID ``session_id`` validation before result save (path-safe)
+- [x] Correct raw-score documentation
+- [x] Results: trait labels, simple % bars, match descriptions, theme-safe colors
+- [x] Unit tests for DISC engine + intro framing test
+
+### Sanity check (2026-08-02)
+
+- [x] Security review on uncommitted diff: no medium+ findings in changed code
+- [x] Backend: black, ruff, 572 unit tests passed (1 skipped); DISC suite 5/5 after session harden
+- [x] Frontend: lint, type-check, format, 87 unit tests, production build
+- [x] Docs: architecture, usage, decision-log updated
+- [x] Commit
+
+### Standby (not scheduled)
+
+- Extra results visualizations (radar on results, bars toggle, match-gap charts, view toggle)
+- Richer role recommendations aligned to AI Eng / SWE+AI / DA ladder with trait-driven explanations
 
 **Overview:** Replace flat per-issue grounding deductions with severity- and count-weighted content penalties. Soft vague wording must not equal fabricated scope. Document the grader behaviour and keep local CI green before commit.
 

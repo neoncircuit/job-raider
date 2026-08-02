@@ -435,7 +435,7 @@ async def delete_session(session_id: str):
 
 @router.post("/disc/start")
 async def start_disc_session():
-    """Start a new DISC personality assessment session.
+    """Start a new DISC workplace-style assessment session.
 
     Returns a new session with 24 questions in Most/Least format.
 
@@ -451,8 +451,8 @@ async def start_disc_session():
 async def submit_disc_answers(request: DISCSubmitRequest):
     """Submit all DISC assessment answers and receive results.
 
-    Calculates trait scores, determines personality profile, and
-    returns job match recommendations.
+    Calculates trait scores, determines the D/I/S/C work-style profile, and
+    returns heuristic job-type match recommendations.
 
     Args:
         request: DISC submission with session_id and answers.
@@ -462,6 +462,12 @@ async def submit_disc_answers(request: DISCSubmitRequest):
     """
     engine = DISCEngine()
     matcher = DISCJobMatcher()
+
+    try:
+        engine.validate_session_id(request.session_id)
+        engine.validate_answers(request.answers)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # Calculate scores
     scores = engine.calculate_scores(request.answers)

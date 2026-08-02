@@ -604,8 +604,30 @@ graph LR
 | `/cover-letter` | Manual JD paste → generate/review/export cover letter |
 | `/career-coach` | Agent-backed career analysis (requires active profile) |
 | `/metrics` | Recharts funnel + pie, cost tiles, LLM call log |
-| `/settings` | Ollama host, cloud fallback provider (Anthropic/Gemini) + API key, installed-only small/large model pickers, model params, cost limits |
-| `/assessment` | DISC personality assessment and skill-based technical interview practice |
+| `/settings` | Ollama host, cloud fallback provider (Anthropic/Gemini) + API key, installed-only small/large model pickers, model params, cost limits; local color scheme (Raid / Neon / Retrowave) and cinematic atmosphere |
+| `/assessment` | DISC work-style assessment and skill-based technical interview practice |
+
+### Appearance Color Schemes
+
+Light/dark mode stays on the sidebar toggle. Color schemes are a separate local preference (`data-scheme` on the document root):
+
+```mermaid
+flowchart LR
+  Settings["Settings Appearance"] --> Store["localStorage scheme"]
+  Store --> Sync["ColorSchemeDocumentSync"]
+  Sync --> Attr["html data-scheme"]
+  Attr --> Tokens["CSS token remap"]
+  Tokens --> UI["Background / primary / wash"]
+  Mode["Light or dark class"] --> Tokens
+```
+
+| Scheme | Intent |
+|--------|--------|
+| Raid (default) | Current red-accent ops look |
+| Neon | Cyan primary, magenta accent, cool wash |
+| Retrowave | Hot pink primary, electric blue accent, dusk purple surfaces |
+
+Schemes remap design tokens only. They do not replace light/dark or cinematic atmosphere.
 
 ### Cover Letter Generation And Grounding
 

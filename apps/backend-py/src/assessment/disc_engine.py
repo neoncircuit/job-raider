@@ -9,15 +9,21 @@ Date: 2026-06-05
 """
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from src.models.assessment import DISCAnswer, DISCResult, DISCScore, DISCTrait
 
 from ..utils.logger import Components, get_logger
 
 logger = get_logger(Components.GENERATION)
+
+# Session ids from /disc/start are UUIDs; reject path-unsafe client values on save.
+_SESSION_ID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 
 
 class DISCEngine:
@@ -110,12 +116,84 @@ class DISCEngine:
             "questions": frontend_questions,
         }
 
+    @staticmethod
+    def validate_session_id(session_id: str) -> None:
+        """
+        Ensure a session id is a UUID string safe for result filenames.
+
+        Args:
+            session_id: Client-supplied or engine-generated session id.
+
+        Raises:
+            ValueError: When the id is empty, not a UUID, or path-unsafe.
+        """
+        if not session_id or not isinstance(session_id, str):
+            raise ValueError("session_id is required")
+        if ".." in session_id or "/" in session_id or "\\" in session_id:
+            raise ValueError("session_id contains path separators")
+        if not _SESSION_ID_RE.match(session_id):
+            raise ValueError("session_id must be a UUID")
+        try:
+            UUID(session_id)
+        except ValueError as exc:
+            raise ValueError("session_id must be a UUID") from exc
+
+    def validate_answers(self, answers: List[DISCAnswer]) -> None:
+        """
+        Validate that answers cover every question and obey Most/Least rules.
+
+        Args:
+            answers: Submitted DISC answers.
+
+        Raises:
+            ValueError: When answers are incomplete, duplicated, or invalid.
+        """
+        if not answers:
+            raise ValueError("At least one answer is required")
+
+        expected_ids = {q["id"] for q in self.questions}
+        seen_ids: set[str] = set()
+        valid_labels = {"A", "B", "C", "D"}
+
+        for answer in answers:
+            if answer.question_id not in expected_ids:
+                raise ValueError(f"Unknown question_id: {answer.question_id}")
+            if answer.question_id in seen_ids:
+                raise ValueError(
+                    f"Duplicate answer for question_id: {answer.question_id}"
+                )
+            seen_ids.add(answer.question_id)
+
+            if answer.most_like not in valid_labels:
+                raise ValueError(
+                    f"Invalid most_like '{answer.most_like}' for {answer.question_id}"
+                )
+            if answer.least_like not in valid_labels:
+                raise ValueError(
+                    f"Invalid least_like '{answer.least_like}' for {answer.question_id}"
+                )
+            if answer.most_like == answer.least_like:
+                raise ValueError(
+                    f"most_like and least_like must differ for {answer.question_id}"
+                )
+
+        missing = expected_ids - seen_ids
+        if missing:
+            raise ValueError(
+                f"Missing answers for {len(missing)} question(s): "
+                f"{', '.join(sorted(missing)[:5])}"
+                + ("..." if len(missing) > 5 else "")
+            )
+
     def calculate_scores(self, answers: List[DISCAnswer]) -> List[DISCScore]:
         """Calculate DISC trait scores from Most/Least answers.
 
         Scoring:
-        - Most like: +3 points for that trait
-        - Least like: -3 points for that trait
+        - Most like: +``option_score * 3`` for that option's traits
+        - Least like: -``option_score * 3`` for that option's traits
+
+        Percentages are min-max normalized across the four traits for this
+        attempt (relative, not population norms).
 
         Args:
             answers: List of DISC answers with most_like and least_like selections.
@@ -149,8 +227,9 @@ class DISCEngine:
                 for trait, score in least_scores.items():
                     raw_scores[trait] -= score * 3
 
-        # Calculate percentages (normalized to 0-100)
-        # Range of raw scores is roughly -18 to +18
+        # Min-max normalize within this attempt (not published norms).
+        # Theoretical raw bounds with option_score=3 and 24 questions are
+        # about -216 to +216 if one trait is always Least or always Most.
         min_score = min(raw_scores.values())
         max_score = max(raw_scores.values())
         score_range = max_score - min_score if max_score != min_score else 1
@@ -236,8 +315,19 @@ class DISCEngine:
 
         Args:
             result: DISC result to save.
+
+        Raises:
+            ValueError: When ``session_id`` is not a safe UUID filename.
         """
-        result_path = self.results_path / f"{result.session_id}.json"
+        self.validate_session_id(result.session_id)
+        results_root = self.results_path.resolve()
+        result_path = (self.results_path / f"{result.session_id}.json").resolve()
+        try:
+            result_path.relative_to(results_root)
+        except ValueError as exc:
+            raise ValueError(
+                "session_id resolves outside the results directory"
+            ) from exc
 
         result_data = result.model_dump(mode="json")
         with open(result_path, "w", encoding="utf-8") as f:

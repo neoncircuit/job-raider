@@ -1,19 +1,60 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Target, CheckCircle2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { discApi } from "@/lib/api/assessment";
-import type { DISCQuestion, DISCAnswer, DISCResult } from "@/lib/types/api";
+import type {
+  DISCAnswer,
+  DISCQuestion,
+  DISCResult,
+  DISCTrait,
+} from "@/lib/types/api";
+import { cn } from "@/lib/utils/cn";
 
 interface DISCAssessmentProps {
   onComplete?: (result: DISCResult) => void;
 }
 
+const TRAIT_LABELS: Record<DISCTrait, string> = {
+  D: "Dominance",
+  I: "Influence",
+  S: "Steadiness",
+  C: "Conscientiousness",
+};
+
+const TRAIT_ORDER: DISCTrait[] = ["D", "I", "S", "C"];
+
+/**
+ * Format a DISC category slug for display.
+ *
+ * @param category - Category id such as ``work_style``.
+ * @returns Human-readable category label.
+ */
+function formatCategory(category: string): string {
+  return category.replaceAll("_", " ");
+}
+
+/**
+ * Format a primary/secondary trait letter for results.
+ *
+ * @param trait - DISC letter code.
+ * @returns Label like ``Dominance (D)``.
+ */
+function formatTrait(trait: DISCTrait): string {
+  return `${TRAIT_LABELS[trait]} (${trait})`;
+}
+
+/**
+ * DISC workplace-style assessment flow (intro → questions → results).
+ *
+ * @param onComplete - Optional callback after a successful submit.
+ */
 export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState<
     "intro" | "loading" | "assessment" | "submitting" | "complete"
   >("intro");
@@ -21,30 +62,26 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<DISCQuestion[]>([]);
 
-  // Track answers: question_id -> { most_like: "A"|"B"|"C"|"D", least_like: "A"|"B"|"C"|"D" }
+  // Track answers: question_id -> { most_like, least_like }
   const [answers, setAnswers] = useState<
     Record<string, { most_like?: string; least_like?: string }>
   >({});
 
-  // Load existing profile query
   const { data: existingProfile } = useQuery({
     queryKey: ["disc-profile"],
     queryFn: async () => {
       try {
         return await discApi.getProfile();
       } catch {
-        // 404 is expected if no profile exists yet
         return null;
       }
     },
   });
 
-  // Start session mutation
   const startMutation = useMutation({
     mutationFn: async () => {
       setCurrentStep("loading");
-      const session = await discApi.start();
-      return session;
+      return await discApi.start();
     },
     onSuccess: (session) => {
       setSessionId(session.session_id);
@@ -57,12 +94,10 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
     },
   });
 
-  // Submit mutation
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!sessionId) throw new Error("No active session");
 
-      // Convert answers to backend format
       const discAnswers: DISCAnswer[] = questions.map((q) => {
         const answer = answers[q.id];
         if (!answer?.most_like || !answer?.least_like) {
@@ -84,8 +119,9 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
     },
     onSuccess: (result) => {
       setCurrentStep("complete");
+      void queryClient.invalidateQueries({ queryKey: ["disc-profile"] });
       onComplete?.(result);
-      toast.success("DISC assessment completed!");
+      toast.success("DISC assessment completed");
     },
     onError: (error: Error) => {
       toast.error(`Failed to submit assessment: ${error.message}`);
@@ -102,7 +138,6 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
     type: "most_like" | "least_like",
     label: string,
   ) => {
-    // Validate: can't select same option for both most and least
     const currentAnswer = answers[questionId] || {};
     const otherType = type === "most_like" ? "least_like" : "most_like";
 
@@ -131,7 +166,6 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
       return;
     }
 
-    // Move to next question or submit
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
@@ -148,10 +182,11 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
   const handleRetake = () => {
     setAnswers({});
     setCurrentQuestion(0);
+    setSessionId(null);
+    setQuestions([]);
     setCurrentStep("intro");
   };
 
-  // Intro screen
   if (currentStep === "intro") {
     const hasExistingProfile = !!existingProfile;
 
@@ -160,34 +195,37 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Target className="h-4 w-4 text-primary" />
-            DISC Personality Assessment
+            DISC Work Style Assessment
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <p className="text-sm text-foreground">
-              Discover your work style with our DISC personality assessment.
-              Many job applications include similar assessments, so this helps
-              you practice and understand your results.
+              Practice a workplace DISC-style screen: Dominance, Influence,
+              Steadiness, and Conscientiousness. Many employers use similar
+              Most/Least formats. This is work-style practice, not a full
+              personality inventory.
             </p>
             <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
               <li>
-                24 questions covering leadership, communication, work style, and
+                24 questions across leadership, communication, work style, and
                 problem-solving
               </li>
               <li>
-                Most/Least format: choose which options are most and least like
-                you
+                Most/Least format: pick which option is most and least like you
               </li>
-              <li>Get job match recommendations based on your profile</li>
+              <li>
+                See your D/I/S/C mix and heuristic job-type match suggestions
+              </li>
             </ul>
-            <div className="rounded-md bg-primary/10 p-3 text-xs text-primary">
-              <strong>Takes 5-8 minutes</strong> · Industry-standard format · No
-              wrong answers
+            <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
+              <strong className="text-foreground">Takes 5-8 minutes</strong> ·
+              Fixed question bank · No wrong answers · Results are relative to
+              this attempt
             </div>
             {hasExistingProfile && (
-              <div className="rounded-md bg-green-50 p-3 text-xs text-green-800">
-                ✓ You have a completed profile. Retake to update your results.
+              <div className="rounded-md border border-border bg-card p-3 text-xs text-foreground">
+                You already have a saved profile. Retake to update your results.
               </div>
             )}
             <Button
@@ -207,7 +245,6 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
     );
   }
 
-  // Loading screen
   if (currentStep === "loading") {
     return (
       <Card>
@@ -223,12 +260,14 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
     );
   }
 
-  // Assessment screen
   if (currentStep === "assessment" || currentStep === "submitting") {
     const question = questions[currentQuestion];
     const answer = answers[question.id] || {};
     const progress = ((currentQuestion + 1) / questions.length) * 100;
     const isLastQuestion = currentQuestion === questions.length - 1;
+    const answeredCount = Object.values(answers).filter(
+      (a) => a.most_like && a.least_like,
+    ).length;
 
     return (
       <Card>
@@ -239,8 +278,9 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
               Question {currentQuestion + 1} of {questions.length}
             </CardTitle>
             <button
+              type="button"
               onClick={handleRetake}
-              className="text-xs text-muted-foreground hover:text-muted-foreground"
+              className="text-xs text-muted-foreground hover:text-foreground"
               disabled={currentStep === "submitting"}
             >
               Cancel
@@ -252,8 +292,13 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
               style={{ width: `${progress}%` }}
             />
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {question.category.replace("_", " ")}
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span className="capitalize">
+              {formatCategory(question.category)}
+            </span>
+            <span>
+              {answeredCount} of {questions.length} answered
+            </span>
           </div>
         </CardHeader>
         <CardContent>
@@ -263,23 +308,24 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Most Like column */}
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-green-700 bg-green-50 px-3 py-1.5 rounded">
+                <div className="text-xs font-semibold text-foreground bg-muted px-3 py-1.5 rounded border border-border">
                   MOST like you
                 </div>
                 {question.options.map((option) => (
                   <button
-                    key={option.label}
+                    key={`most-${option.label}`}
+                    type="button"
                     onClick={() =>
                       handleSelection(question.id, "most_like", option.label)
                     }
                     disabled={currentStep === "submitting"}
-                    className={`w-full text-left rounded-lg border px-4 py-3 text-sm transition-all ${
+                    className={cn(
+                      "w-full text-left rounded-lg border px-4 py-3 text-sm transition-all",
                       answer.most_like === option.label
-                        ? "border-green-500 bg-green-50 text-green-900"
-                        : "border-border text-foreground hover:border-green-300 hover:bg-green-50"
-                    }`}
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border text-foreground hover:border-primary/50 hover:bg-muted/60",
+                    )}
                   >
                     <span className="font-medium mr-2">{option.label}.</span>
                     {option.text}
@@ -287,23 +333,24 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
                 ))}
               </div>
 
-              {/* Least Like column */}
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-red-700 bg-red-50 px-3 py-1.5 rounded">
+                <div className="text-xs font-semibold text-foreground bg-muted px-3 py-1.5 rounded border border-border">
                   LEAST like you
                 </div>
                 {question.options.map((option) => (
                   <button
-                    key={option.label}
+                    key={`least-${option.label}`}
+                    type="button"
                     onClick={() =>
                       handleSelection(question.id, "least_like", option.label)
                     }
                     disabled={currentStep === "submitting"}
-                    className={`w-full text-left rounded-lg border px-4 py-3 text-sm transition-all ${
+                    className={cn(
+                      "w-full text-left rounded-lg border px-4 py-3 text-sm transition-all",
                       answer.least_like === option.label
-                        ? "border-red-500 bg-red-50 text-red-900"
-                        : "border-border text-foreground hover:border-red-300 hover:bg-red-50"
-                    }`}
+                        ? "border-destructive bg-destructive/10 text-foreground"
+                        : "border-border text-foreground hover:border-destructive/40 hover:bg-muted/60",
+                    )}
                   >
                     <span className="font-medium mr-2">{option.label}.</span>
                     {option.text}
@@ -348,76 +395,92 @@ export function DISCAssessment({ onComplete }: DISCAssessmentProps) {
     );
   }
 
-  // Complete screen
+  const result = submitMutation.data;
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <CheckCircle2 className="h-4 w-4 text-primary" />
           Assessment Complete
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           <p className="text-sm text-foreground">
-            Your DISC personality profile has been calculated and saved.
+            Your DISC work-style profile is saved. Percentages are relative to
+            this attempt and are for practice, not a clinical reading.
           </p>
 
-          {submitMutation.data && (
+          {result && (
             <div className="space-y-3 mt-4">
-              <div className="rounded-md bg-primary/10 p-4">
-                <h3 className="text-sm font-semibold text-foreground mb-2">
+              <div className="rounded-md border border-border bg-muted/40 p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-3">
                   Your Profile
                 </h3>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="font-medium">Dominance (D):</span>{" "}
-                    {submitMutation.data.profile.D}%
-                  </div>
-                  <div>
-                    <span className="font-medium">Influence (I):</span>{" "}
-                    {submitMutation.data.profile.I}%
-                  </div>
-                  <div>
-                    <span className="font-medium">Steadiness (S):</span>{" "}
-                    {submitMutation.data.profile.S}%
-                  </div>
-                  <div>
-                    <span className="font-medium">Conscientiousness (C):</span>{" "}
-                    {submitMutation.data.profile.C}%
-                  </div>
+                <div className="space-y-2">
+                  {TRAIT_ORDER.map((trait) => {
+                    const value = result.profile[trait] ?? 0;
+                    return (
+                      <div key={trait} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="font-medium text-foreground">
+                            {TRAIT_LABELS[trait]} ({trait})
+                          </span>
+                          <span className="text-muted-foreground">
+                            {value}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-muted">
+                          <div
+                            className="h-1.5 rounded-full bg-primary transition-all"
+                            style={{
+                              width: `${Math.min(Math.max(value, 0), 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="mt-3 pt-3 border-t border-primary/30">
-                  <p className="text-xs text-primary">
-                    <strong>Primary Type:</strong>{" "}
-                    {submitMutation.data.primary_type}
-                    {submitMutation.data.secondary_type && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-xs text-foreground">
+                    <strong>Primary:</strong> {formatTrait(result.primary_type)}
+                    {result.secondary_type ? (
                       <span>
                         {" "}
                         · <strong>Secondary:</strong>{" "}
-                        {submitMutation.data.secondary_type}
+                        {formatTrait(result.secondary_type)}
                       </span>
-                    )}
+                    ) : null}
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-md bg-green-50 p-4">
-                <h3 className="text-sm font-semibold text-green-900 mb-2">
-                  Top Job Matches
+              <div className="rounded-md border border-border bg-card p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-1">
+                  Suggested job-type matches
                 </h3>
-                <div className="space-y-2">
-                  {submitMutation.data.job_matches.slice(0, 3).map((match) => (
-                    <div
-                      key={match.job_type}
-                      className="flex justify-between items-center"
-                    >
-                      <span className="text-xs text-green-800">
-                        {match.job_type}
-                      </span>
-                      <span className="text-xs font-semibold text-green-700">
-                        {match.match_score}%
-                      </span>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Heuristic fits against static role archetypes — directional,
+                  not live job rankings.
+                </p>
+                <div className="space-y-3">
+                  {result.job_matches.slice(0, 3).map((match) => (
+                    <div key={match.job_type} className="space-y-0.5">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-xs font-medium text-foreground">
+                          {match.job_type}
+                        </span>
+                        <span className="text-xs font-semibold text-primary shrink-0">
+                          {match.match_score}%
+                        </span>
+                      </div>
+                      {match.description ? (
+                        <p className="text-xs text-muted-foreground">
+                          {match.description}
+                        </p>
+                      ) : null}
                     </div>
                   ))}
                 </div>

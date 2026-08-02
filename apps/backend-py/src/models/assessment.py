@@ -226,12 +226,17 @@ class DISCScore(BaseModel):
 
     Attributes:
         trait: The DISC trait (D, I, S, or C).
-        raw_score: Raw score accumulated across all questions (-9 to +9).
-        percentage: Normalized percentage (0-100).
+        raw_score: Accumulated Most/Least score. Each Most adds
+            ``option_score * 3`` and each Least subtracts the same
+            (option_score is typically 3). With 24 questions the
+            theoretical bounds are about -216 to +216.
+        percentage: Relative share after min-max normalization across
+            the four traits for this attempt (0-100 before profile
+            renormalization).
     """
 
     trait: DISCTrait
-    raw_score: int  # Range: -9 to +9 after 24 questions
+    raw_score: int
     percentage: float = Field(ge=0, le=100)  # Normalized to 0-100
 
 

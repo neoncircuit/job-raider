@@ -4,12 +4,13 @@ import { MobileNav } from "./MobileNav";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { PageSkeleton } from "./PageSkeleton";
 import { CinematicDocumentSync } from "@/lib/hooks/use-cinematic";
+import { ColorSchemeDocumentSync } from "@/lib/hooks/use-color-scheme";
 
 /**
  * Application chrome: sidebar (desktop), mobile nav, and main content.
  *
- * Applies a quiet raid atmosphere wash behind content; no neon/starfield.
- * Optional cinematic deepening is gated by Settings (``data-cinematic``).
+ * Applies a quiet raid atmosphere wash behind content. Optional cinematic
+ * deepening and color schemes (neon / retrowave) are gated by Settings.
  *
  * @param children - Page content rendered inside the scrollable main region.
  */
@@ -17,6 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-background relative">
       <CinematicDocumentSync />
+      <ColorSchemeDocumentSync />
       <div className="raid-atmosphere" aria-hidden />
 
       <div className="hidden md:flex relative z-10">

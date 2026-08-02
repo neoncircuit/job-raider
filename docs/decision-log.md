@@ -33,3 +33,36 @@ flowchart LR
   Weight --> Cap["Cap at 50"]
   Cap --> Content["Subtract from content score"]
 ```
+
+## 2026-08-01 — Neon and Retrowave local color schemes
+
+### Context
+
+Users want optional playful palettes without replacing the default Raid ops look or the light/dark toggle.
+
+### Decision
+
+Add a third appearance layer: `data-scheme` with `default` (Raid), `neon`, and `retrowave`. Persist in localStorage. Remap CSS design tokens for both light and dark. Keep cinematic atmosphere independent.
+
+### Consequences
+
+- Settings Appearance gains a color-scheme picker.
+- New schemes require only CSS token packs plus labels; no page rewrites.
+- Avoid shipping many schemes until these two are stable in daily use.
+
+## 2026-08-02 — DISC current-state polish and session safety
+
+### Context
+
+DISC needed clearer work-style framing and tighter submit validation before adding more visualizations. A pre-existing risk allowed client ``session_id`` values to influence result filenames.
+
+### Decision
+
+- Frame DISC as workplace-style practice, not a full personality inventory.
+- Validate answers (full coverage, Most != Least) and require UUID ``session_id`` before save.
+- Keep richer charts and ladder-based recommendations on standby.
+
+### Consequences
+
+- Invalid DISC submits return HTTP 400.
+- Result files stay under ``data/disc_results/`` for UUID session ids only.
