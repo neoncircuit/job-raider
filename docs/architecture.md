@@ -604,12 +604,12 @@ graph LR
 | `/cover-letter` | Manual JD paste → generate/review/export cover letter |
 | `/career-coach` | Agent-backed career analysis (requires active profile) |
 | `/metrics` | Recharts funnel + pie, cost tiles, LLM call log |
-| `/settings` | Ollama host, cloud fallback provider (Anthropic/Gemini) + API key, installed-only small/large model pickers, model params, cost limits; local color scheme (Raid / Neon / Retrowave) and cinematic atmosphere |
+| `/settings` | Ollama host, cloud fallback provider (Anthropic/Gemini) + API key, installed-only small/large model pickers, model params, cost limits; local color schemes and cinematic atmosphere |
 | `/assessment` | DISC work-style assessment and skill-based technical interview practice |
 
 ### Appearance Color Schemes
 
-Light/dark mode stays on the sidebar toggle. Color schemes are a separate local preference (`data-scheme` on the document root):
+Light/dark mode stays on the sidebar toggle. Color schemes are a separate local preference (`data-scheme` on the document root). Settings Appearance shows an Odysseus-inspired swatch-card grid for curated presets. A Customize panel stays on the roadmap.
 
 ```mermaid
 flowchart LR
@@ -626,6 +626,15 @@ flowchart LR
 | Raid (default) | Current red-accent ops look |
 | Neon | Cyan primary, magenta accent, cool wash |
 | Retrowave | Hot pink primary, electric blue accent, dusk purple surfaces |
+| Gunmetal | Steel / graphite neutrals, muted blue-steel accents |
+| Terminal | Console green on dark surfaces |
+| Hackerman | Black / neon-green matrix ops (punchier than Terminal) |
+| Midnight | Calm deep-blue surfaces |
+| Paper | Print-like cream / ink (light-first) |
+| Forest | Nature greens |
+| Ocean | Deep teal / cyan |
+| Copper | Warm metal accents |
+| Stained glass | Jewel gold / violet (token remap; optional frost later) |
 
 Schemes remap design tokens only. They do not replace light/dark or cinematic atmosphere.
 

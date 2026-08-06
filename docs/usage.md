@@ -544,7 +544,7 @@ http://localhost:3000
 - **Cover Letter** - Paste a job description, generate/review, and export. Proofread scores use severity-weighted grounding: vague wording costs less than fabricated scope or technique mismatches. The UI shows flagged sentences and the grounding deduction breakdown before you send.
 - **Career Coach** - Agent-backed career guidance (requires an active profile)
 - **Metrics** - Cost tracking and outcome statistics
-- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits; optional **color scheme** (Raid default, Neon, Retrowave) and **Cinematic atmosphere** (local, off by default)
+- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits; optional **color scheme** swatch grid (Raid through Stained glass) and **Cinematic atmosphere** (local, off by default)
 
 **DISC Work Style Assessment:**
 - Employer-style Most/Least forced-choice practice (not a full personality inventory)

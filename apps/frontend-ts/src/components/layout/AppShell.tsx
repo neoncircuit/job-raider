@@ -10,7 +10,7 @@ import { ColorSchemeDocumentSync } from "@/lib/hooks/use-color-scheme";
  * Application chrome: sidebar (desktop), mobile nav, and main content.
  *
  * Applies a quiet raid atmosphere wash behind content. Optional cinematic
- * deepening and color schemes (neon / retrowave) are gated by Settings.
+ * deepening and color schemes (via data-scheme) are gated by Settings.
  *
  * @param children - Page content rendered inside the scrollable main region.
  */

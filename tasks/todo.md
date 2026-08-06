@@ -3295,7 +3295,7 @@ node ./node_modules/typescript/bin/tsc --noEmit
 ### Review
 
 - Discover never enters detect-auto-submit; HttpUrl fix still protects full mode.
-- Shortlist is overwritten each completed run (latest only) — fine for v1.
+- Shortlist is overwritten each completed run (latest only) ? fine for v1.
 - Backend image rebuild required for Docker (source not bind-mounted except `data/`).
 
 ## LinkedIn Description Enrich + Applied Elsewhere (2026-07-25)
@@ -3320,7 +3320,7 @@ node ./node_modules/typescript/bin/tsc --noEmit
 
 ### Pipeline duration / progress honesty
 
-**Status:** Deferred — do after Discover → Jobs is stable.
+**Status:** Deferred ? do after Discover ? Jobs is stable.
 
 **Idea:** Improve scrape/run feedback beyond the existing stage progress bar.
 
@@ -3329,11 +3329,11 @@ node ./node_modules/typescript/bin/tsc --noEmit
 - [ ] Optional: per-stage timings (scrape usually dominates)
 - [ ] Optional later: ETA from prior runs (stage-weighted; avoid fake global %)
 
-**Note:** A smoother 0–100% bar alone is lower value than elapsed + stage timings for network-bound scraping.
+**Note:** A smoother 0?100% bar alone is lower value than elapsed + stage timings for network-bound scraping.
 
 ### Optional cinematic atmosphere (CSS spike)
 
-**Status:** Shipped minimal — Settings toggle, default off; Dashboard + Pipeline only; no WebGL. Brand combo included.
+**Status:** Shipped minimal ? Settings toggle, default off; Dashboard + Pipeline only; no WebGL. Brand combo included.
 
 - [x] localStorage preference + `data-cinematic`
 - [x] Soft wash / grain deepen when enabled
@@ -3383,8 +3383,54 @@ node ./node_modules/typescript/bin/tsc --noEmit
 
 ### Standby (not scheduled)
 
-- **Stained glass scheme:** optional later ``data-scheme`` with frosted/translucent cards, jewel-tone accents, dark-first; glass on cards/sidebar only. Parked until Neon/Retrowave have been used in daily UI.
-- **Gunmetal scheme:** cool steel/graphite surfaces, brushed-metal neutrals, restrained chrome or muted blue-steel accents; dark-first ops look that stays closer to Raid than Neon/Retrowave. Parked with stained glass.
+- Customize Appearance panel (token pickers / harmony / density).
+- Optional frosted glass treatment for Stained glass (cards/sidebar backdrop-filter only).
+
+## Appearance presets UX (Odysseus-inspired, Settings-housed)
+
+**Status:** Roadmap only ? keep themes inside Settings (not a separate Theme mini-window).
+
+**Inspired by Odysseus (display / structure, not a clone):**
+- Themes tab: grid of preset cards with 3 overlapping color swatches + name; clear selected border
+- Customize tab (later): Colors (bg/panel/border/text/sidebar/accent), Color harmony (accent + complementary/etc.), Font & layout (font, density, optional frost), Reset / save-export optional
+
+**Job Raider differences:**
+- Live under Settings ? Appearance (same place as cinematic), not a popped Theme window
+- Curated Raid-branded catalog (include our own presets Odysseus does not have)
+- Still remap CSS tokens via ``data-scheme`` (+ optional overrides later)
+
+### Preset catalog (curated)
+
+| Preset | Status | Notes |
+|--------|--------|-------|
+| Raid (default) | Shipped | Current red ops look |
+| Neon | Shipped | Cyan / magenta |
+| Retrowave | Shipped | Hot pink / electric blue |
+| Gunmetal | Shipped | Steel ops (ours) |
+| Terminal | Shipped | Console green |
+| Hackerman | Shipped | Black / neon-green matrix ops |
+| Midnight | Shipped | Calm dark blue |
+| Paper | Shipped | Light print-like |
+| Forest | Shipped | Nature green |
+| Ocean | Shipped | Teal / deep blue |
+| Copper | Shipped | Warm metal |
+| Stained glass | Shipped | Jewel gold / violet (token remap; frost later) |
+| Skip / deprioritize | - | gpt, claude, cute, organs, lavender unless novelty pack wanted |
+
+### Phased checklist
+
+- [x] Replace Appearance scheme Select with swatch-card grid (Raid / Neon / Retrowave first)
+- [x] Add remaining curated presets (Gunmetal through Stained glass)
+- [ ] Settings Appearance sub-tabs: Themes | Customize (Customize behind feature completeness)
+- [ ] Customize: token color pickers writing CSS variables; Reset to preset
+- [ ] Optional later: harmony generate, density, frost (cinematic already covers motion wash)
+- [ ] Stained glass frost: optional backdrop-filter on cards/sidebar only
+
+### Review (2026-08-06)
+
+- Curated catalog shipped: Raid, Neon, Retrowave, Gunmetal, Terminal, Hackerman, Midnight, Paper, Forest, Ocean, Copper, Stained glass.
+- Light + dark CSS token packs via ``data-scheme``; Settings swatch-card grid (3?4 cols).
+- Frontend CI (Node 20 Docker): lint, type-check, format, scheme tests (8), build passed.
 
 ## DISC assessment improvements (standby)
 
@@ -3430,3 +3476,28 @@ node ./node_modules/typescript/bin/tsc --noEmit
 - Backend (mounted src/tests against `job-raider-backend`): black clean, ruff clean, 51 related tests passed; full non-integration suite 568 passed / 1 skipped.
 - Frontend (Node 20 Docker): lint and type-check green; Prettier fixed `settings/page.tsx`; 24 targeted unit tests passed; `npm run build` green.
 - Docs: severity table + Mermaid flow in architecture; troubleshooting for confusing scores; decision log and conventions entries.
+
+## ScrapeGraphAI / LLM detail enricher (standby)
+
+**Status:** Considerations captured; **not implementing yet**.
+
+**Problem to solve (only):** empty LinkedIn (etc.) job descriptions after selector/JSON-LD enrich fails.
+
+### Coupling rules (required if ever built)
+
+- [ ] `JobDetailEnricher` (or equivalent) port ? not imports of scrapegraphai inside scrapers
+- [ ] Fallback-only after CSS/JSON-LD; never default for every listing
+- [ ] Soft/optional dependency; feature flag + per-run cap
+- [ ] Keep `JobListing.description` contract for score/RAG/shortlist
+- [ ] Leave JSearch and search-card scrape unchanged
+
+### Go / no-go before any PR
+
+- [ ] Measured win on empty-JD rate vs current enrich
+- [ ] Latency/VRAM acceptable under Ollama load
+- [ ] Session/auth story clear (reuse Playwright context or document out of scope)
+- [ ] Schema-constrained output (no invented fields)
+
+### Notes
+
+See `docs/decision-log.md` (2026-08-05). Stars are not a go signal; loose coupling is the firebreak.
