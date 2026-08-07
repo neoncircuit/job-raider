@@ -117,7 +117,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
     resolver: zodResolver(schema),
     defaultValues: {
       keywords: "",
-      locations: "",
+      locations: "Singapore",
       minScore: 60,
       maxJobs: 50,
       scamThreshold: 0.7,

@@ -42,7 +42,12 @@ interface SearchBarProps {
  */
 export function SearchBar({ onSearch, onGoogleSearch }: SearchBarProps) {
   const { register, handleSubmit, control, setValue } = useForm<SearchValues>({
-    defaultValues: { keywords: "", location: "", remoteOnly: false, limit: 50 },
+    defaultValues: {
+      keywords: "",
+      location: "Singapore",
+      remoteOnly: false,
+      limit: 50,
+    },
   });
 
   const { targets, hasKeywords } = useProfileTargets();

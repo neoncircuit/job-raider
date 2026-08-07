@@ -3707,3 +3707,9 @@ Ship recommended optional follow-ons after JD paste polish landed on main.
 - [x] Cache Phase 4: Ollama `keep_alive` behind settings (default unset)
 - [x] Docs + decision-log
 - [x] Checks / containers / commit
+
+## Default location Singapore (2026-08-08)
+
+- [x] ``search_config.yaml`` / ``scoring_config.yaml`` / ``prompt_templates.yaml`` job_scraping locations prefer Singapore
+- [x] Jobs search bar and pipeline form default location ``Singapore``
+- [x] Application settings location placeholder updated

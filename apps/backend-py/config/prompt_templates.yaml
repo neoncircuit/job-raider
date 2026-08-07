@@ -598,10 +598,8 @@ job_scraping:
 
   locations:
     default:
+      - "Singapore"
       - "Remote"
-      - "San Francisco"
-      - "New York"
-      - "Seattle"
 
   experience_levels:
     - "Entry Level"

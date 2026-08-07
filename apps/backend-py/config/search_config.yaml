@@ -12,12 +12,10 @@ keywords:
   - "python"
   - "javascript"
 
-# Default locations
+# Default locations (primary: Singapore)
 locations:
+  - "Singapore"
   - "Remote"
-  - "San Francisco"
-  - "New York"
-  - "Seattle"
 
 # Experience levels to target
 experience_levels:

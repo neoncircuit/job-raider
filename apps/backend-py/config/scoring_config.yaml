@@ -79,12 +79,10 @@ default_keywords:
   - "python"
   - "javascript"
 
-# Default target locations
+# Default target locations (primary: Singapore)
 default_locations:
+  - "Singapore"
   - "Remote"
-  - "San Francisco"
-  - "New York"
-  - "Seattle"
 
 # Experience level mappings
 experience_levels:

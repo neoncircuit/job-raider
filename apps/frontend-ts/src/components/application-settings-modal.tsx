@@ -316,7 +316,7 @@ export function ApplicationSettingsModal({
               </Label>
               <Input
                 id="preferred_locations"
-                placeholder="San Francisco, New York, London, Remote..."
+                placeholder="Singapore, Remote..."
                 {...register("preferred_work_locations")}
               />
               <p className="text-xs text-muted-foreground">

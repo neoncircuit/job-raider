@@ -220,3 +220,18 @@ Move those templates back under ``prompts`` and leave ``job_scraping`` with keyw
 
 - Assessment generation loads templates correctly again.
 - Phase 2 nonce placement is preserved for future Anthropic prefix cache.
+
+## 2026-08-08 - Default search location Singapore
+
+### Context
+
+The operator is based in Singapore. Config and UI defaults still preferred US metros (San Francisco, New York, Seattle).
+
+### Decision
+
+Set default locations to ``Singapore`` then ``Remote`` in ``search_config.yaml``, ``scoring_config.yaml``, and ``job_scraping`` defaults. Prefill Jobs search and Pipeline location fields with ``Singapore``.
+
+### Consequences
+
+- Fresh searches and pipeline runs target Singapore without profile prefill.
+- Profile target locations still override when the user enables profile-target prefill.
