@@ -3672,3 +3672,12 @@ flowchart TD
 
 - [x] Expand paste helper API (``clean_pasted_job_description``, ``build_job_listing_from_job_data``)
 - [x] Wire remaining JD paste surfaces above
+- [x] Messy fixture pack (LinkedIn chrome, Greenhouse HTML, mid-cut, prose-only) + golden tests
+- [x] Harden normalizer (LinkedIn UI chrome, trailing highlight cut)
+- [x] Harden extractor (whole-line section headers; broader skill lexicon; safer salary parse)
+
+### Remaining JD paste polish (optional later)
+
+- [ ] Expand fixtures from real pastes during job hunt (keep PII out)
+- [ ] Optional LLM ``JD_EXTRACTION`` fallback when rules leave skills empty
+- [ ] Frontend soft hint when paste looks like LinkedIn chrome / HTML

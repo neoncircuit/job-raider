@@ -1,0 +1,116 @@
+{
+  "fixtures": [
+    {
+      "id": "linkedin_highlight",
+      "file": "linkedin_highlight.txt",
+      "title": "Senior Machine Learning Engineer",
+      "company": "Acme AI",
+      "must_contain_in_description": [
+        "Python",
+        "Docker",
+        "Kubernetes",
+        "PyTorch"
+      ],
+      "must_not_contain_in_description": [
+        "Show more",
+        "See more",
+        "Easy Apply",
+        "applicants",
+        "equal opportunity",
+        "<div"
+      ],
+      "required_skills": [
+        "python",
+        "docker",
+        "kubernetes",
+        "pytorch",
+        "tensorflow",
+        "postgresql",
+        "redis",
+        "fastapi"
+      ],
+      "min_requirements": 2
+    },
+    {
+      "id": "html_greenhouse_crumbs",
+      "file": "html_greenhouse_crumbs.txt",
+      "title": "Backend Engineer",
+      "company": "Northwind Labs",
+      "must_contain_in_description": [
+        "FastAPI",
+        "TypeScript",
+        "PostgreSQL"
+      ],
+      "must_not_contain_in_description": [
+        "<div",
+        "<ul",
+        "&nbsp;",
+        "&#39;",
+        "Click here to apply",
+        "equal opportunity"
+      ],
+      "required_skills": [
+        "fastapi",
+        "typescript",
+        "aws",
+        "docker",
+        "python",
+        "go",
+        "postgresql",
+        "sql"
+      ],
+      "min_requirements": 1
+    },
+    {
+      "id": "greenhouse_midcut",
+      "file": "greenhouse_midcut.txt",
+      "title": "Staff Platform Engineer",
+      "company": "Contoso Cloud",
+      "must_contain_in_description": [
+        "Kubernetes",
+        "Terraform",
+        "Kafka"
+      ],
+      "must_not_contain_in_description": [
+        "equal opportunity",
+        "Reasonable accommodation"
+      ],
+      "required_skills": [
+        "kubernetes",
+        "docker",
+        "linux",
+        "go",
+        "rust",
+        "terraform",
+        "aws",
+        "kafka",
+        "redis"
+      ],
+      "min_requirements": 2,
+      "allow_trailing_truncation": true
+    },
+    {
+      "id": "prose_no_headers",
+      "file": "prose_no_headers.txt",
+      "title": "AI Engineer",
+      "company": "SearchCo",
+      "must_contain_in_description": [
+        "Python",
+        "FastAPI",
+        "Docker",
+        "PostgreSQL"
+      ],
+      "must_not_contain_in_description": [
+        "<div"
+      ],
+      "required_skills": [
+        "python",
+        "fastapi",
+        "typescript",
+        "docker",
+        "postgresql"
+      ],
+      "min_requirements": 0
+    }
+  ]
+}

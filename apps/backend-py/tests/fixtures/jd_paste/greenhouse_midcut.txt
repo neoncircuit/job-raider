@@ -1,0 +1,22 @@
+Staff Platform Engineer — Contoso Cloud
+
+About the role
+You will lead reliability work across our multi-region Kubernetes platform and mentor engineers on incident response.
+
+Qualifications
+- 7+ years building distributed systems
+- Deep experience with Kubernetes, Docker, and Linux
+- Strong Go or Rust
+- Working knowledge of Terraform and AWS
+- Experience with Kafka and Redis preferred
+
+Basic Qualifications
+- Bachelor's degree or equivalent experience
+- Comfortable on-call for production services
+
+Compensation and benefits
+Competitive salary, equity, and health coverage.
+
+We celebrate diversity and are an equal opportunity employer. Reasonable accommodation is available for applicants with disabilities.
+
+Must have authorization to work. Candidates should demonstrate ownership of-

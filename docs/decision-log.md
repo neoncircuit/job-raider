@@ -168,3 +168,21 @@ Paste is not limited to the cover-letter tab. Users also drag-copy full JDs into
 - One module owns paste hygiene for JD text.
 - Interview prep from tracked external apps receives cleaned stored descriptions.
 - New paste features should import the helper rather than building ``JobListing`` ad hoc.
+
+## 2026-08-07 - Messy JD paste fixtures drive normalizer/extractor hardening
+
+### Context
+
+Highlight-drag pastes routinely include LinkedIn UI chrome, HTML crumbs, mid-sentence cuts, and prose with no section headers. Rules-only structuring must stay honest on those shapes without LLM cost on every paste.
+
+### Decision
+
+- Keep a fixture pack under ``tests/fixtures/jd_paste/`` with golden expectations for clean text, skills, and requirements.
+- Harden ``normalize_job_description`` for LinkedIn chrome and trailing highlight cuts.
+- Harden ``JDExtractor`` for whole-line section headers, broader skills, and salary patterns that ignore experience years.
+- Defer optional LLM ``JD_EXTRACTION`` fallback and frontend paste hints until real-hunt fixtures show rules are thin.
+
+### Consequences
+
+- Paste regressions are caught in unit CI before matcher/LLM paths see bad structure.
+- Real job-hunt pastes (PII-stripped) can extend the pack without changing the paste helper API.

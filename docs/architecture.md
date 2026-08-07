@@ -308,6 +308,8 @@ Any user-supplied job description is treated as paste input and cleaned before s
 
 Scraped listings already normalize at ingest. Matcher scores empty structured skills from description overlap instead of awarding full skills weight.
 
+Messy paste regressions are guarded by golden fixtures under ``tests/fixtures/jd_paste/`` (LinkedIn UI chrome, Greenhouse HTML crumbs, mid-cut highlight, prose without section headers). Normalizer strips LinkedIn chrome and trailing hyphen cuts; extractor matches whole-line section headers only and uses a broader skill lexicon.
+
 ```mermaid
 flowchart TD
   Paste["User paste / job_data description"] --> Helper["paste_job helpers"]
@@ -318,6 +320,8 @@ flowchart TD
   Listing --> Writer["Cover letter / classify / trust / analysis"]
   Helper --> Meta["clean_pasted_job_description"]
   Meta --> Apps["Applications metadata"]
+  Fixtures["jd_paste golden fixtures"] -.-> Norm
+  Fixtures -.-> Rules
 ```
 
 ## Data Flow

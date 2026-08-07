@@ -64,9 +64,27 @@ _BOILERPLATE_PATTERNS: List[Tuple[re.Pattern, str]] = [
         re.compile(r"(?i)(apply now at https?://\S+)"),
         "",
     ),
-    # LinkedIn-specific boilerplate
+    # LinkedIn-specific boilerplate / UI chrome copied with highlight-drag
     (
         re.compile(r"(?i)(see how we're matching job seekers to opportunities)"),
+        "",
+    ),
+    (
+        re.compile(r"(?im)^\s*(show more|see more|show less|easy apply)\s*$"),
+        "",
+    ),
+    (
+        re.compile(r"(?im)^\s*\d+\s*(applicants?|people clicked apply)\s*$"),
+        "",
+    ),
+    (
+        re.compile(r"(?im)^\s*(promoted|actively reviewing applicants?)\s*$"),
+        "",
+    ),
+    (
+        re.compile(
+            r"(?im)^\s*.+?\s·\s+.+\s·\s+\d+\s+(?:day|days|week|weeks|hour|hours)\s+ago.*$"
+        ),
         "",
     ),
 ]
@@ -88,12 +106,15 @@ _SECTION_KEYWORDS = [
     "nice to have",
     "required experience",
     "preferred experience",
+    "basic qualifications",
+    "minimum qualifications",
     "education",
     "benefits",
     "what we offer",
     "compensation",
     "about us",
     "about the company",
+    "about the job",
     "who we are",
     "our mission",
 ]
@@ -142,12 +163,38 @@ def normalize_job_description(raw_text: str) -> str:
         text = pattern.sub(replacement, text)
     text = _EXCESSIVE_NEWLINES_RE.sub("\n\n", text)
 
-    # 6. Final cleanup
+    # 6. Drop a trailing mid-cut fragment (highlight ended mid-word/hyphen)
+    text = _strip_trailing_highlight_cut(text)
+
+    # 7. Final cleanup
     text = text.strip()
     while text.endswith("\n"):
         text = text[:-1].rstrip("\n")
 
     return text
+
+
+def _strip_trailing_highlight_cut(text: str) -> str:
+    """
+    Remove a short final line that looks like a mid-sentence highlight cut.
+
+    Drag-copy often ends on a hanging hyphen (``ownership of-``). Longer
+    legitimate bullets ending in a hyphen are left alone.
+
+    Args:
+        text: Partially cleaned job description.
+
+    Returns:
+        Text with an obvious trailing cut removed when present.
+    """
+    lines = text.rstrip().split("\n")
+    if not lines:
+        return text
+    last = lines[-1].strip()
+    if len(last) <= 80 and re.search(r"\b[\w']+-\s*$", last):
+        lines = lines[:-1]
+        return "\n".join(lines).rstrip()
+    return text.rstrip()
 
 
 def _separate_sections(text: str) -> str:

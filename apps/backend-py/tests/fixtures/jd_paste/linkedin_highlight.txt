@@ -1,0 +1,24 @@
+Senior Machine Learning Engineer - Acme AI
+Acme AI · Singapore · 3 days ago · 47 applicants
+
+Show more
+
+About the job
+We are looking for a Senior Machine Learning Engineer to join our platform team.
+
+Responsibilities
+• Design and ship ML training pipelines in Python
+• Own model serving with Docker and Kubernetes
+• Partner with product on FastAPI services
+
+Requirements
+• 5+ years Python experience
+• Strong Docker and Kubernetes skills
+• Experience with PyTorch or TensorFlow
+• Familiarity with PostgreSQL and Redis
+
+See more
+
+Easy Apply
+
+We are an equal opportunity employer and celebrate diversity in our workplace.

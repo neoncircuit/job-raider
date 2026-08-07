@@ -1,0 +1,18 @@
+<div class="job__description body">
+<p>Backend Engineer&nbsp;&nbsp;at&nbsp;Northwind Labs</p>
+<p>Location: Remote (APAC)</p>
+<br/>
+<h2>What you&#39;ll do</h2>
+<ul>
+<li>Build APIs with FastAPI and TypeScript</li>
+<li>Operate services on AWS with Docker</li>
+</ul>
+<h2>What we&#39;re looking for</h2>
+<ul>
+<li>3+ years backend experience</li>
+<li>Python or Go</li>
+<li>SQL / PostgreSQL</li>
+</ul>
+<p>Click here to apply now at https://boards.greenhouse.io/example/jobs/123</p>
+<p>Northwind Labs is an equal opportunity employer.</p>
+</div>

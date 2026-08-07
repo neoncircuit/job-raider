@@ -52,6 +52,8 @@ class JDExtractor:
         "requirements": [
             r"requirements?",
             r"qualifications?",
+            r"basic qualifications?",
+            r"minimum qualifications?",
             r"what you'll need",
             r"what we're looking for",
             r"must have",
@@ -62,6 +64,7 @@ class JDExtractor:
             r"you will",
             r"role overview",
             r"about the role",
+            r"about the job",
         ],
         "skills": [
             r"skills?",
@@ -107,11 +110,12 @@ class JDExtractor:
         ],
     }
 
-    # Salary patterns
+    # Salary patterns (require $ or thousands grouping / k-suffix to avoid
+    # matching experience like "5+ years")
     SALARY_PATTERNS = [
-        r"\$?(\d{1,3}(?:,\d{3})*(?:\.\d+)?[kK]?)\s*[-–to]\s*\$?(\d{1,3}(?:,\d{3})*(?:\.\d+)?[kK]?)",
-        r"\$?(\d{1,3}(?:,\d{3})*(?:\.\d+)?[kK]?)\s*\+\s*",
-        r"(\d{1,3}(?:,\d{3})*)(?:\.\d{2})?",
+        r"\$(\d{1,3}(?:,\d{3})*(?:\.\d+)?[kK]?)\s*[-–to]\s*\$?(\d{1,3}(?:,\d{3})*(?:\.\d+)?[kK]?)",
+        r"\$(\d{1,3}(?:,\d{3})*(?:\.\d+)?[kK]?)\s*\+",
+        r"(\d{1,3}(?:,\d{3})+|\d{2,3}[kK])\s*[-–to]\s*(\d{1,3}(?:,\d{3})+|\d{2,3}[kK])",
     ]
 
     def __init__(self, llm_router: Optional[LLMRouter] = None):
@@ -416,27 +420,16 @@ Return a JSON object with these exact fields:
 
         for line in lines:
             line_stripped = line.strip()
+            matched_section = self._match_section_header(line_stripped)
 
-            # Check if this line looks like a section header
-            is_header = False
-            for section_name, patterns in self.SECTION_PATTERNS.items():
-                for pattern in patterns:
-                    if re.search(pattern, line_stripped, re.IGNORECASE):
-                        # Save previous section
-                        if current_content:
-                            sections[current_section] = "\n".join(current_content)
+            if matched_section is not None:
+                if current_content:
+                    sections[current_section] = "\n".join(current_content)
+                current_section = matched_section
+                current_content = []
+                continue
 
-                        # Start new section
-                        current_section = section_name
-                        current_content = []
-                        is_header = True
-                        break
-
-                if is_header:
-                    break
-
-            if not is_header:
-                current_content.append(line)
+            current_content.append(line)
 
         # Save last section
         if current_content:
@@ -444,6 +437,30 @@ Return a JSON object with these exact fields:
 
         sections["full"] = text
         return sections
+
+    def _match_section_header(self, line_stripped: str) -> Optional[str]:
+        """
+        Return a section name when the line is a whole-line section header.
+
+        Rejects bullet lines and long prose so phrases like "Kubernetes skills"
+        are not treated as a Skills header mid-list.
+
+        Args:
+            line_stripped: A single stripped line from the JD text.
+
+        Returns:
+            Section key (``requirements``, ``responsibilities``, ...) or None.
+        """
+        if not line_stripped or len(line_stripped) > 60:
+            return None
+        if re.match(r"^[-*•◦▪▸►]\s+", line_stripped):
+            return None
+
+        for section_name, patterns in self.SECTION_PATTERNS.items():
+            for pattern in patterns:
+                if re.match(rf"^{pattern}\s*:?\s*$", line_stripped, re.IGNORECASE):
+                    return section_name
+        return None
 
     def _extract_title(self, text: str, sections: Dict[str, str]) -> Optional[str]:
         """Extract job title from text or sections."""
@@ -527,7 +544,13 @@ Return a JSON object with these exact fields:
         # Look for common programming languages, frameworks, tools
         # This is a simplified version - in production, use a more comprehensive list
         skill_patterns = [
-            r"\b(Python|JavaScript|Java|C\+\+|Go|Rust|TypeScript|SQL|HTML|CSS|React|Angular|Vue|Django|Flask|Node\.js|Docker|AWS|Azure|GCP|Kubernetes|Git|Linux)\b",
+            r"\b("
+            r"Python|JavaScript|Java|C\+\+|Go|Rust|TypeScript|SQL|HTML|CSS|"
+            r"React|Angular|Vue|Django|Flask|FastAPI|Node\.js|"
+            r"Docker|AWS|Azure|GCP|Kubernetes|Git|Linux|"
+            r"PostgreSQL|MySQL|MongoDB|Redis|Kafka|GraphQL|Terraform|"
+            r"PyTorch|TensorFlow|Pandas|NumPy"
+            r")\b",
         ]
 
         all_text = sections.get("full", "")
@@ -569,6 +592,10 @@ Return a JSON object with these exact fields:
                         .replace("K", "000")
                     )
                     min_amount = float(min_str)
+
+                    # Ignore tiny numbers that are almost certainly years/counts
+                    if min_amount < 1000 and "k" not in match.group(1).lower():
+                        continue
 
                     if match.lastindex >= 2:
                         max_str = (
