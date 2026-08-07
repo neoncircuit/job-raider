@@ -186,3 +186,37 @@ Highlight-drag pastes routinely include LinkedIn UI chrome, HTML crumbs, mid-sen
 
 - Paste regressions are caught in unit CI before matcher/LLM paths see bad structure.
 - Real job-hunt pastes (PII-stripped) can extend the pack without changing the paste helper API.
+
+## 2026-08-07 - LinkedIn profile normalize and LLM cache flags B/C
+
+### Context
+
+LinkedIn profile paste and URL fetch text included UI chrome (Show more, Connect, follower counts). Assessment freeform and cover-letter bodies lacked bounds. Optional JD LLM extract, Anthropic prompt-prefix cache, and Ollama keep_alive needed settings-backed toggles.
+
+### Decision
+
+- Add ``normalize_linkedin_profile_text`` and ``normalize_user_prose`` in ``text_normalizer.py``; wire LinkedIn analyze/fetch and prose fields.
+- Scope Playwright ``fetch_profile_text`` to ``main`` / card selectors before ``body`` fallback.
+- Add ``CostLimits.enable_jd_llm_extract``, ``enable_prompt_cache``, ``ollama_keep_alive`` (defaults off/unset).
+- Router passes prompt cache and keep_alive into Claude/Ollama clients; cover-letter manual paste may opt into LLM JD extract.
+
+### Consequences
+
+- Profile analysis prompts are cleaner without LinkedIn button noise.
+- Three cache kinds are distinct in settings UI: response (A), Anthropic prompt (B), Ollama keep_alive (C).
+- JD paste LLM fallback remains opt-in to control API cost.
+
+## 2026-08-07 - Assessment prompt templates restored under prompts
+
+### Context
+
+``question_answering`` and assessment generation/evaluation templates were nested under top-level ``job_scraping`` in ``prompt_templates.yaml``, so ``AssessmentEngine`` could not load ``prompts["assessment_generation"]``.
+
+### Decision
+
+Move those templates back under ``prompts`` and leave ``job_scraping`` with keywords/locations/experience levels only. Keep assessment ``SESSION NONCE`` at the end of the user template for prefix stability.
+
+### Consequences
+
+- Assessment generation loads templates correctly again.
+- Phase 2 nonce placement is preserved for future Anthropic prefix cache.

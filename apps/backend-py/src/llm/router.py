@@ -236,6 +236,10 @@ class LLMRouter:
         # the router so enabled/ttl can change without a sticky singleton.
         self._response_cache = ResponseCache(enabled=True, ttl=3600, backend="memory")
 
+        # Kind-B Anthropic prompt cache and Ollama keep_alive (from settings).
+        self._enable_prompt_cache = False
+        self._ollama_keep_alive: Optional[str] = None
+
         # Statistics
         self._total_requests = 0
         self._primary_used = 0
@@ -322,6 +326,15 @@ class LLMRouter:
             if settings.cost_limits is not None:
                 self._response_cache.enabled = bool(settings.cost_limits.enable_cache)
                 self._response_cache.ttl = int(settings.cost_limits.cache_ttl)
+                self._enable_prompt_cache = bool(
+                    settings.cost_limits.enable_prompt_cache
+                )
+                keep_alive = settings.cost_limits.ollama_keep_alive
+                self._ollama_keep_alive = (
+                    keep_alive.strip()
+                    if isinstance(keep_alive, str) and keep_alive.strip()
+                    else None
+                )
             self._clients.clear()
         except Exception:
             pass
@@ -485,6 +498,7 @@ class LLMRouter:
             client = ClaudeClient(
                 config=config or LLMConfig(model=model),
                 api_key=self.api_key,
+                enable_prompt_cache=self._enable_prompt_cache,
             )
         elif provider == "ollama":
             client = OllamaClient(
@@ -492,6 +506,7 @@ class LLMRouter:
                 host=self.ollama_host,
                 port=self.ollama_port,
                 gpu_monitor=self.gpu_monitor,
+                keep_alive=self._ollama_keep_alive,
             )
         elif provider == "gemini":
             client = GeminiClient(

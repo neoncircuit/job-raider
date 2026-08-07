@@ -457,33 +457,6 @@ prompts:
         }
       }
 
-# === Job-Specific Templates ===
-job_scraping:
-  keywords:
-    default:
-      - "fintech"
-      - "AI"
-      - "SWE"
-      - "software engineer"
-      - "machine learning"
-      - "data science"
-      - "python"
-      - "javascript"
-
-  locations:
-    default:
-      - "Remote"
-      - "San Francisco"
-      - "New York"
-      - "Seattle"
-
-  experience_levels:
-    - "Entry Level"
-    - "Mid Level"
-    - "Senior"
-    - "Lead"
-    - "Principal"
-
   # === Stage: Question Answering (Easy Apply) ===
   question_answering:
     system: |
@@ -532,7 +505,6 @@ job_scraping:
       8. Do NOT use any topics listed in the "avoid topics" section
 
     user: |
-      SESSION NONCE: {{session_nonce}}
       TOPIC SEED: {{topic_seed}}
       CANDIDATE LEVEL: {{candidate_level}}
       DIFFICULTY: {{difficulty}}
@@ -557,6 +529,8 @@ job_scraping:
       }
 
       Ensure questions are varied, original, and test genuine understanding.
+
+      SESSION NONCE: {{session_nonce}}
 
   # === Assessment Evaluation (Freeform) ===
   assessment_evaluation_freeform:
@@ -608,3 +582,30 @@ job_scraping:
         "improvements": ["what to study if wrong"],
         "model_answer": "explanation of the correct answer"
       }
+
+# === Job-Specific Templates ===
+job_scraping:
+  keywords:
+    default:
+      - "fintech"
+      - "AI"
+      - "SWE"
+      - "software engineer"
+      - "machine learning"
+      - "data science"
+      - "python"
+      - "javascript"
+
+  locations:
+    default:
+      - "Remote"
+      - "San Francisco"
+      - "New York"
+      - "Seattle"
+
+  experience_levels:
+    - "Entry Level"
+    - "Mid Level"
+    - "Senior"
+    - "Lead"
+    - "Principal"

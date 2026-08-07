@@ -589,6 +589,9 @@ export interface CostLimits {
   max_api_cost_per_run: number;
   enable_cache: boolean;
   cache_ttl: number;
+  enable_jd_llm_extract?: boolean;
+  enable_prompt_cache?: boolean;
+  ollama_keep_alive?: string | null;
 }
 
 export interface AppSettings {

@@ -70,6 +70,8 @@ class OllamaClient(BaseLLMClient):
         """
         super().__init__(config, provider="ollama", **kwargs)
 
+        self.keep_alive = kwargs.get("keep_alive")
+
         raw_host = host or os.getenv("OLLAMA_HOST", "localhost")
         if ":" in raw_host:
             self.host, port_str = raw_host.rsplit(":", 1)
@@ -198,6 +200,10 @@ class OllamaClient(BaseLLMClient):
         }
         if "think" in kwargs:
             payload["think"] = bool(kwargs["think"])
+
+        keep_alive = kwargs.get("keep_alive", self.keep_alive)
+        if keep_alive is not None:
+            payload["keep_alive"] = keep_alive
 
         # Add stop sequences if provided
         stop_seqs = kwargs.get("stop_sequences", self.config.stop_sequences)

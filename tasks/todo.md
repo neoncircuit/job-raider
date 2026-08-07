@@ -3681,3 +3681,29 @@ flowchart TD
 - [ ] Expand fixtures from real pastes during job hunt (keep PII out)
 - [ ] Optional LLM ``JD_EXTRACTION`` fallback when rules leave skills empty
 - [ ] Frontend soft hint when paste looks like LinkedIn chrome / HTML
+
+## Follow-on backlog (2026-08-07 evening)
+
+Ship recommended optional follow-ons after JD paste polish landed on main.
+
+### Order
+
+1. LinkedIn profile text normalize (paste + URL fetch) + scope Playwright to main content
+2. Other wall-of-text paste hygiene (assessment freeform, cover-letter body bounds)
+3. JD nice-to-haves (optional LLM extract when skills empty; frontend paste hint)
+4. LLM cache Phase 2 (prompt hygiene) then Phase 3 (`enable_prompt_cache`) then Phase 4 (`ollama_keep_alive`)
+5. Checks, containers, prune, commit
+
+### Checklist
+
+- [x] LinkedIn profile text cleaner + wire analyze/manual fields
+- [x] `fetch_profile_text` scoped to main; light fallback when empty
+- [x] Assessment freeform max length + normalize
+- [x] Cover-letter body light normalize/bounds on validate/explain/export
+- [x] Optional JD LLM extract fallback when rules leave skills empty
+- [x] Frontend soft hint for LinkedIn chrome / HTML in JD paste
+- [x] Cache Phase 2: unify cover-letter system; assessment nonce to end
+- [x] Cache Phase 3: Anthropic `cache_control` behind `enable_prompt_cache` (default off)
+- [x] Cache Phase 4: Ollama `keep_alive` behind settings (default unset)
+- [x] Docs + decision-log
+- [x] Checks / containers / commit

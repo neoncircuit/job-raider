@@ -34,6 +34,9 @@ const baseSettings = (): AppSettings => ({
     max_api_cost_per_run: 5,
     enable_cache: true,
     cache_ttl: 3600,
+    enable_jd_llm_extract: false,
+    enable_prompt_cache: false,
+    ollama_keep_alive: null,
   },
 });
 

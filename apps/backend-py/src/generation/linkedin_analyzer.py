@@ -25,6 +25,10 @@ from ..models.linkedin_analysis import (
     ProfileSectionScore,
 )
 from ..utils.logger import Components, get_logger
+from ..utils.text_normalizer import (
+    normalize_linkedin_profile_text,
+    normalize_user_prose,
+)
 
 
 class LinkedInAnalyzer:
@@ -162,23 +166,26 @@ class LinkedInAnalyzer:
             Formatted profile string
         """
         parts = []
+        prose_max = 8000
 
         if input_data.raw_text:
             parts.append("RAW PROFILE TEXT:")
-            parts.append(input_data.raw_text)
+            parts.append(normalize_linkedin_profile_text(input_data.raw_text))
             parts.append("")
 
         if input_data.headline:
             parts.append(f"Headline: {input_data.headline}")
 
         if input_data.summary:
-            parts.append(f"Summary/About: {input_data.summary}")
+            summary = normalize_user_prose(input_data.summary, max_chars=prose_max)
+            parts.append(f"Summary/About: {summary}")
 
         if input_data.industry:
             parts.append(f"Industry: {input_data.industry}")
 
         if input_data.career_goals:
-            parts.append(f"Career Goals: {input_data.career_goals}")
+            goals = normalize_user_prose(input_data.career_goals, max_chars=prose_max)
+            parts.append(f"Career Goals: {goals}")
 
         if input_data.target_roles:
             parts.append(f"Target Roles: {', '.join(input_data.target_roles)}")
@@ -191,7 +198,10 @@ class LinkedInAnalyzer:
                 dates = entry.get("dates", "")
                 parts.append(f"- {title} at {company} ({dates})")
                 if entry.get("description"):
-                    parts.append(f"  Description: {entry['description']}")
+                    desc = normalize_user_prose(
+                        entry["description"], max_chars=prose_max
+                    )
+                    parts.append(f"  Description: {desc}")
 
         if input_data.education_entries:
             parts.append("\nEducation:")

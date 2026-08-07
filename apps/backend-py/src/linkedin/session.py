@@ -390,11 +390,30 @@ class LinkedInSession:
         page = self.navigate_to_url(profile_url)
         try:
             page.wait_for_selector(
-                "main.scaffold-layout__main, section.artdeco-card",
+                "main.scaffold-layout__main, main, section.artdeco-card",
                 timeout=10000,
             )
         except Exception:
             pass
+
+        selectors = [
+            "main.scaffold-layout__main",
+            "main",
+            "section.artdeco-card",
+        ]
+        for selector in selectors:
+            try:
+                elements = page.query_selector_all(selector)
+            except Exception:
+                continue
+            for element in elements:
+                try:
+                    text = (element.inner_text() or "").strip()
+                except Exception:
+                    continue
+                if text:
+                    return text
+
         return page.inner_text("body") or ""
 
     def search_people(

@@ -31,6 +31,7 @@ from ...models.linkedin_analysis import (
 )
 from ...models.user_profile import ApprenticeshipContract, UserProfile
 from ...utils.logger import Components, get_logger
+from ...utils.text_normalizer import normalize_linkedin_profile_text
 from ..models.requests import ProfileUpdateRequest
 from ..profile_storage import ProfileStorage
 
@@ -789,6 +790,9 @@ async def analyze_linkedin(input_data: LinkedInProfileInput):
     try:
         analyzer = _get_linkedin_analyzer()
 
+        if input_data.raw_text and input_data.raw_text.strip():
+            input_data.raw_text = normalize_linkedin_profile_text(input_data.raw_text)
+
         if input_data.profile_url and input_data.profile_url.strip():
             # Sync Playwright cannot run inside the asyncio event loop, so
             # the whole session lifecycle happens in a worker thread.
@@ -796,6 +800,7 @@ async def analyze_linkedin(input_data: LinkedInProfileInput):
                 _fetch_linkedin_profile_text_sync, input_data.profile_url.strip()
             )
             if fetched_text:
+                fetched_text = normalize_linkedin_profile_text(fetched_text)
                 existing_raw = input_data.raw_text or ""
                 input_data.raw_text = (
                     f"FETCHED LINKEDIN PROFILE ({input_data.profile_url}):\n"

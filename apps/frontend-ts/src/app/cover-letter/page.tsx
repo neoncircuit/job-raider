@@ -41,6 +41,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { getJdPasteHint } from "@/lib/utils/jd-paste-hint";
 import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -295,6 +296,7 @@ export default function CoverLetterPage() {
   });
 
   const { title, company, location, description } = form;
+  const jdPasteHint = getJdPasteHint(description);
 
   // Auto-assess job fit while the user fills in the form, debounced and
   // aborting any in-flight request that has gone stale. All state updates
@@ -513,6 +515,11 @@ export default function CoverLetterPage() {
                   setForm((f) => ({ ...f, description: e.target.value }))
                 }
               />
+              {jdPasteHint && (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  {jdPasteHint}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Minimum 50 characters required for meaningful generation.
               </p>

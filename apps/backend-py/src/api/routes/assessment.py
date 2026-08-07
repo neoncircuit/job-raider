@@ -27,6 +27,7 @@ from ...models.assessment import (
     DISCResult,
 )
 from ...utils.logger import Components, get_logger
+from ...utils.text_normalizer import normalize_user_prose
 
 router = APIRouter()
 logger = get_logger(Components.GENERATION)
@@ -68,7 +69,7 @@ class SubmitAnswerRequest(BaseModel):
 
     question_id: str
     selected_option: Optional[str] = None
-    freeform_text: Optional[str] = None
+    freeform_text: Optional[str] = Field(default=None, max_length=8000)
     time_taken_seconds: Optional[int] = None
 
 
@@ -365,10 +366,16 @@ async def submit_answer(session_id: str, request: SubmitAnswerRequest):
     if any(a.question_id == request.question_id for a in session.answers):
         raise HTTPException(status_code=400, detail="Question already answered")
 
+    freeform_text = request.freeform_text
+    if freeform_text is not None and freeform_text.strip():
+        original_freeform = freeform_text.strip()
+        cleaned = normalize_user_prose(original_freeform, max_chars=8000)
+        freeform_text = cleaned if cleaned else original_freeform
+
     answer = Answer(
         question_id=request.question_id,
         selected_option=request.selected_option,
-        freeform_text=request.freeform_text,
+        freeform_text=freeform_text,
         time_taken_seconds=request.time_taken_seconds,
     )
 

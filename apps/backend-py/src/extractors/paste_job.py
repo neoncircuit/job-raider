@@ -47,6 +47,8 @@ def build_job_listing_from_paste(
     location: Optional[str] = None,
     job_id: Optional[str] = None,
     source: JobSource = JobSource.MANUAL,
+    llm_router=None,
+    allow_llm_extract: bool = False,
 ) -> JobListing:
     """
     Normalize pasted JD text and fill structured fields via rule-based extract.
@@ -62,6 +64,8 @@ def build_job_listing_from_paste(
         location: Optional location from the form.
         job_id: Optional stable id; generated when omitted.
         source: Listing source (defaults to MANUAL for paste).
+        llm_router: Optional LLM router for fallback extraction.
+        allow_llm_extract: When True and skills are empty after rules, try LLM.
 
     Returns:
         A ``JobListing`` with normalized description and any
@@ -98,6 +102,32 @@ def build_job_listing_from_paste(
         salary_range = listing.salary_range
         if not inferred_location and listing.location:
             inferred_location = listing.location
+
+    if allow_llm_extract and llm_router is not None and not skills and cleaned.strip():
+        try:
+            llm_extractor = JDExtractor(llm_router=llm_router)
+            llm_result = llm_extractor.extract_from_text(
+                cleaned,
+                url=None,
+                source=source,
+            )
+            if llm_result.success and llm_result.job_listing is not None:
+                llm_listing = llm_result.job_listing
+                skills = list(llm_listing.skills)
+                requirements = list(llm_listing.requirements)
+                responsibilities = list(llm_listing.responsibilities)
+                if experience_level is None:
+                    experience_level = llm_listing.experience_level
+                if work_mode is None:
+                    work_mode = llm_listing.work_mode
+                if job_type is None:
+                    job_type = llm_listing.job_type
+                if salary_range is None:
+                    salary_range = llm_listing.salary_range
+                if not inferred_location and llm_listing.location:
+                    inferred_location = llm_listing.location
+        except Exception:
+            pass
 
     kwargs: Dict[str, Any] = {
         "title": title.strip() or "Unknown",

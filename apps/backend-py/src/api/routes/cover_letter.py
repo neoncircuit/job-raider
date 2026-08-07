@@ -66,11 +66,25 @@ def _manual_job_listing(request: ManualCoverLetterRequest):
         Normalized ``JobListing`` with rule-extracted skills/requirements when
         present in the paste.
     """
+    from ..settings import get_storage
+
+    llm_router = None
+    allow_llm_extract = False
+    try:
+        settings = get_storage().load_settings()
+        if settings.cost_limits.enable_jd_llm_extract:
+            allow_llm_extract = True
+            llm_router = create_router(prefer_local=True)
+    except Exception:
+        pass
+
     return build_job_listing_from_paste(
         title=request.title,
         company=request.company,
         description=request.description,
         location=request.location,
+        llm_router=llm_router,
+        allow_llm_extract=allow_llm_extract,
     )
 
 

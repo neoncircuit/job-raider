@@ -71,6 +71,9 @@ const schema = z.object({
     max_api_cost_per_run: z.number().min(0),
     enable_cache: z.boolean(),
     cache_ttl: z.number().int().min(0),
+    enable_jd_llm_extract: z.boolean(),
+    enable_prompt_cache: z.boolean(),
+    ollama_keep_alive: z.string().optional(),
   }),
 });
 
@@ -114,7 +117,12 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
         ollama_host: initial.api_config.ollama_host,
       },
       model_params: initial.model_params,
-      cost_limits: initial.cost_limits,
+      cost_limits: {
+        ...initial.cost_limits,
+        enable_jd_llm_extract: initial.cost_limits.enable_jd_llm_extract ?? false,
+        enable_prompt_cache: initial.cost_limits.enable_prompt_cache ?? false,
+        ollama_keep_alive: initial.cost_limits.ollama_keep_alive ?? "",
+      },
     },
   });
 
@@ -200,6 +208,10 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
   const temperature = useWatch({ control, name: "model_params.temperature" });
   const topP = useWatch({ control, name: "model_params.top_p" });
   const cacheEnabled = useWatch({ control, name: "cost_limits.enable_cache" });
+  const promptCacheEnabled = useWatch({
+    control,
+    name: "cost_limits.enable_prompt_cache",
+  });
   const cloudProvider = useWatch({
     control,
     name: "api_config.cloud_fallback_provider",
@@ -515,7 +527,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
               </div>
               {cacheEnabled && (
                 <div className="space-y-1">
-                  <Label htmlFor="cache_ttl">Cache TTL (seconds)</Label>
+                  <Label htmlFor="cache_ttl">Response Cache TTL (seconds)</Label>
                   <Input
                     id="cache_ttl"
                     type="number"
@@ -526,6 +538,55 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   />
                 </div>
               )}
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="enable_prompt_cache"
+                  checked={promptCacheEnabled}
+                  onCheckedChange={(v) =>
+                    setValue("cost_limits.enable_prompt_cache", v, {
+                      shouldDirty: true,
+                    })
+                  }
+                />
+                <Label htmlFor="enable_prompt_cache">
+                  Enable Anthropic Prompt Cache
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Response cache (above) reuses full LLM outputs for allowlisted
+                tasks. Prompt cache sends Anthropic system prompts with
+                ephemeral prefix caching (kind B). Ollama keep-alive (below)
+                keeps local models loaded between requests (kind C).
+              </p>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="enable_jd_llm_extract"
+                  checked={useWatch({
+                    control,
+                    name: "cost_limits.enable_jd_llm_extract",
+                  })}
+                  onCheckedChange={(v) =>
+                    setValue("cost_limits.enable_jd_llm_extract", v, {
+                      shouldDirty: true,
+                    })
+                  }
+                />
+                <Label htmlFor="enable_jd_llm_extract">
+                  LLM JD extract on paste (when rules find no skills)
+                </Label>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ollama_keep_alive">Ollama keep_alive</Label>
+                <Input
+                  id="ollama_keep_alive"
+                  placeholder="e.g. 5m, 30m, -1 (blank = Ollama default)"
+                  {...register("cost_limits.ollama_keep_alive")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional duration to keep Ollama models loaded after each
+                  chat request. Leave blank to use Ollama defaults.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -294,6 +294,18 @@ flowchart LR
 
 Allowlisted TaskTypes: ``validation``, ``jd_extraction``, ``resume_parsing``. Creative paths (cover-letter write/rewrite, assessment generation) never use the response cache.
 
+### Anthropic prompt cache (kind B)
+
+When ``CostLimits.enable_prompt_cache`` is true, ``ClaudeClient`` sends leading system messages in the Anthropic ``system`` parameter with ephemeral ``cache_control``. Default is off. This is separate from kind-A response reuse.
+
+### Ollama keep_alive (kind C)
+
+When ``CostLimits.ollama_keep_alive`` is set (for example ``5m``, ``30m``, ``-1``), ``OllamaClient`` includes ``keep_alive`` on ``/api/chat`` requests so loaded models stay in memory between calls. Blank means Ollama default behavior.
+
+### LinkedIn profile text normalize
+
+Profile paste and Playwright fetch text use ``normalize_linkedin_profile_text`` (HTML strip, bullet/whitespace cleanup, UI chrome removal). Structured fields (summary, goals, experience descriptions) use ``normalize_user_prose``. Playwright ``fetch_profile_text`` prefers ``main.scaffold-layout__main``, then ``main``, then ``section.artdeco-card``, before ``body`` fallback.
+
 ### Paste JD structuring
 
 Any user-supplied job description is treated as paste input and cleaned before scoring, generation, or storage.

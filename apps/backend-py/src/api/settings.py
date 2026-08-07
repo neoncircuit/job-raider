@@ -127,6 +127,23 @@ class CostLimits(BaseModel):
     max_concurrent_requests: int = Field(
         default=2, ge=1, le=10, description="Max concurrent LLM requests"
     )
+    enable_jd_llm_extract: bool = Field(
+        default=False,
+        description=(
+            "When rule-based JD paste extraction finds no skills, optionally "
+            "run LLM JD_EXTRACTION (cover-letter manual paste only)"
+        ),
+    )
+    enable_prompt_cache: bool = Field(
+        default=False,
+        description=(
+            "Enable Anthropic prompt-prefix caching (kind B) on system prompts"
+        ),
+    )
+    ollama_keep_alive: Optional[str] = Field(
+        default=None,
+        description=("Ollama keep_alive duration for loaded models (e.g. 5m, 30m, -1)"),
+    )
 
 
 class UserSettings(BaseModel):

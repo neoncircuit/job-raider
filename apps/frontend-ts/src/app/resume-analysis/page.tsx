@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils/cn";
+import { getJdPasteHint } from "@/lib/utils/jd-paste-hint";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 
@@ -228,6 +229,7 @@ function AnalysisDisplay({ analysis }: { analysis: ResumeAnalysis }) {
 function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
   const [jobDescription, setJobDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const jdPasteHint = getJdPasteHint(jobDescription);
 
   const analyze = useMutation({
     mutationFn: () => {
@@ -288,6 +290,11 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
           />
+          {jdPasteHint && (
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              {jdPasteHint}
+            </p>
+          )}
         </div>
       </div>
 

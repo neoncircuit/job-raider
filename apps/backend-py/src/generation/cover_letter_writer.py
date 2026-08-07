@@ -59,6 +59,10 @@ _COVER_LETTER_RULES = (
     "12. Return ONLY the letter body as plain text, no JSON"
 )
 
+_COVER_LETTER_SYSTEM = (
+    "You are a professional cover letter writer.\n\n" + _COVER_LETTER_RULES
+)
+
 
 @dataclass
 class GeneratedCoverLetter:
@@ -113,11 +117,7 @@ class CoverLetterWriter:
         messages = [
             Message(
                 role=MessageType.SYSTEM,
-                content=(
-                    "You are a professional cover letter writer. Write a concise, "
-                    "tailored cover letter for a job application.\n\n"
-                    f"{_COVER_LETTER_RULES}"
-                ),
+                content=_COVER_LETTER_SYSTEM,
             ),
             Message(
                 role=MessageType.USER,
@@ -200,12 +200,7 @@ class CoverLetterWriter:
         messages = [
             Message(
                 role=MessageType.SYSTEM,
-                content=(
-                    "You are a professional cover letter writer. Rewrite the "
-                    "draft cover letter based on the editor's critique."
-                    "\n\n"
-                    f"{_COVER_LETTER_RULES}"
-                ),
+                content=_COVER_LETTER_SYSTEM,
             ),
             Message(
                 role=MessageType.USER,

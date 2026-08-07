@@ -10,7 +10,7 @@ Date: 2026-04-20
 
 import os
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from anthropic import Anthropic, AsyncAnthropic
 from anthropic.types import Message as AnthropicMessage
@@ -23,6 +23,7 @@ from .base import (
     LLMConfig,
     LLMResponse,
     Message,
+    MessageType,
     ModelNotFoundError,
     TokenUsage,
 )
@@ -73,6 +74,8 @@ class ClaudeClient(BaseLLMClient):
         """
         super().__init__(config, provider="anthropic", **kwargs)
 
+        self.enable_prompt_cache = bool(kwargs.get("enable_prompt_cache", False))
+
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise AuthenticationError("ANTHROPIC_API_KEY not found")
@@ -109,9 +112,50 @@ class ClaudeClient(BaseLLMClient):
         """Return list of available models."""
         return self.AVAILABLE_MODELS
 
-    def _convert_messages(self, messages: List[Message]) -> List[Dict[str, str]]:
-        """Convert Message objects to Anthropic format."""
-        return [{"role": msg.role.value, "content": msg.content} for msg in messages]
+    def _split_messages(
+        self, messages: List[Message]
+    ) -> Tuple[Optional[Union[str, List[Dict[str, Any]]]], List[Dict[str, str]]]:
+        """Split leading system messages from conversational messages.
+
+        Anthropic accepts system content separately. When prompt caching is
+        enabled, system text is sent as a content block with ephemeral
+        ``cache_control``.
+
+        Args:
+            messages: Full message list including optional system roles.
+
+        Returns:
+            Tuple of (system param or None, non-system messages for API).
+        """
+        system_parts: List[str] = []
+        rest: List[Dict[str, str]] = []
+        past_leading_system = False
+
+        for msg in messages:
+            if msg.role == MessageType.SYSTEM and not past_leading_system:
+                system_parts.append(msg.content)
+                continue
+            past_leading_system = True
+            if msg.role == MessageType.SYSTEM:
+                continue
+            rest.append({"role": msg.role.value, "content": msg.content})
+
+        if not system_parts:
+            return None, rest
+
+        system_text = "\n\n".join(system_parts)
+        if self.enable_prompt_cache:
+            system_param: Union[str, List[Dict[str, Any]]] = [
+                {
+                    "type": "text",
+                    "text": system_text,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]
+        else:
+            system_param = system_text
+
+        return system_param, rest
 
     def _extract_content(self, response: AnthropicMessage) -> str:
         """Extract text content from Anthropic response."""
@@ -151,8 +195,10 @@ class ClaudeClient(BaseLLMClient):
         # Remove None values
         params = {k: v for k, v in params.items() if v is not None}
 
-        # Convert messages
-        anthropic_messages = self._convert_messages(messages)
+        system_param, anthropic_messages = self._split_messages(messages)
+        create_kwargs: Dict[str, Any] = {"messages": anthropic_messages, **params}
+        if system_param is not None:
+            create_kwargs["system"] = system_param
 
         # Retry logic
         last_error = None
@@ -160,9 +206,7 @@ class ClaudeClient(BaseLLMClient):
             try:
                 start_time = time.time()
 
-                response = self.client.messages.create(
-                    messages=anthropic_messages, **params
-                )
+                response = self.client.messages.create(**create_kwargs)
 
                 latency_ms = int((time.time() - start_time) * 1000)
                 content = self._extract_content(response)
@@ -235,8 +279,10 @@ class ClaudeClient(BaseLLMClient):
         # Remove None values
         params = {k: v for k, v in params.items() if v is not None}
 
-        # Convert messages
-        anthropic_messages = self._convert_messages(messages)
+        system_param, anthropic_messages = self._split_messages(messages)
+        create_kwargs: Dict[str, Any] = {"messages": anthropic_messages, **params}
+        if system_param is not None:
+            create_kwargs["system"] = system_param
 
         # Retry logic
         last_error = None
@@ -246,9 +292,7 @@ class ClaudeClient(BaseLLMClient):
 
                 start_time = time.time()
 
-                response = await self.async_client.messages.create(
-                    messages=anthropic_messages, **params
-                )
+                response = await self.async_client.messages.create(**create_kwargs)
 
                 latency_ms = int((time.time() - start_time) * 1000)
                 content = self._extract_content(response)

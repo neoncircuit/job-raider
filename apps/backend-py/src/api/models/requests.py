@@ -11,6 +11,24 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from ...utils.text_normalizer import normalize_user_prose
+
+
+def _normalize_cover_letter_content(value: str) -> str:
+    """Normalize cover letter body text for validate/explain/export requests.
+
+    Args:
+        value: Raw cover letter content from the client.
+
+    Returns:
+        Cleaned content capped at 12,000 characters.
+    """
+    if not value or not value.strip():
+        return value
+    original = value.strip()
+    cleaned = normalize_user_prose(original, max_chars=12000)
+    return cleaned if cleaned else original
+
 
 class PipelineStartRequest(BaseModel):
     """Request to start a new pipeline run."""
@@ -307,11 +325,23 @@ class CoverLetterValidateRequest(ManualCoverLetterRequest):
     content: str = Field(..., min_length=1, description="Cover letter text to validate")
     deep: bool = Field(default=False, description="Run LLM-powered validation")
 
+    @field_validator("content")
+    @classmethod
+    def normalize_content(cls, v: str) -> str:
+        """Apply prose normalization and length cap to cover letter body."""
+        return _normalize_cover_letter_content(v)
+
 
 class CoverLetterExplainRequest(ManualCoverLetterRequest):
     """Request to explain a cover letter's quality in plain language."""
 
     content: str = Field(..., min_length=1, description="Cover letter text to explain")
+
+    @field_validator("content")
+    @classmethod
+    def normalize_content(cls, v: str) -> str:
+        """Apply prose normalization and length cap to cover letter body."""
+        return _normalize_cover_letter_content(v)
 
 
 class CoverLetterExportRequest(BaseModel):
@@ -329,6 +359,12 @@ class CoverLetterExportRequest(BaseModel):
     sender_location: Optional[str] = Field(
         default=None, description="Applicant location"
     )
+
+    @field_validator("content")
+    @classmethod
+    def normalize_content(cls, v: str) -> str:
+        """Apply prose normalization and length cap to cover letter body."""
+        return _normalize_cover_letter_content(v)
 
     @field_validator("format")
     @classmethod

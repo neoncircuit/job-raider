@@ -168,3 +168,64 @@ class TestCleanAndJobDataHelpers:
         assert job.title == "Role"
         assert job.description == ""
         assert job.skills == []
+
+
+class TestPasteJobLlmFallback:
+    """Optional LLM extraction when rules leave skills empty."""
+
+    def test_llm_fallback_merges_skills_when_rules_empty(self, monkeypatch) -> None:
+        """LLM extract fills skills when allow_llm_extract is on and rules find none."""
+        from src.extractors import paste_job
+        from src.extractors.jd_extractor import ExtractionResult
+        from src.models.job_listing import JobListing, Skill
+
+        fake_listing = JobListing(
+            title="Ignored",
+            company="Ignored",
+            job_id="llm-1",
+            source=JobSource.MANUAL,
+            description="Need Python",
+            skills=[Skill(name="Python"), Skill(name="Docker")],
+        )
+
+        class FakeExtractor:
+            def __init__(self, llm_router=None) -> None:
+                self.llm_router = llm_router
+
+            def _extract_rule_based(self, *args, **kwargs):
+                return ExtractionResult(
+                    success=True,
+                    job_listing=JobListing(
+                        title="Ignored",
+                        company="Ignored",
+                        job_id="rule-1",
+                        source=JobSource.MANUAL,
+                        description="Need Python",
+                        skills=[],
+                    ),
+                    errors=[],
+                    warnings=[],
+                )
+
+            def extract_from_text(self, *args, **kwargs):
+                return ExtractionResult(
+                    success=True,
+                    job_listing=fake_listing,
+                    errors=[],
+                    warnings=[],
+                )
+
+        monkeypatch.setattr(paste_job, "JDExtractor", FakeExtractor)
+
+        job = build_job_listing_from_paste(
+            title="Engineer",
+            company="Acme",
+            description="A general role with Python mentioned in prose only.",
+            llm_router=object(),
+            allow_llm_extract=True,
+        )
+        skill_names = {s.name.lower() for s in job.skills}
+        assert "python" in skill_names
+        assert "docker" in skill_names
+        assert job.title == "Engineer"
+        assert job.company == "Acme"

@@ -10,7 +10,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.generation.cover_letter_writer import CoverLetterWriter, GeneratedCoverLetter
+from src.generation.cover_letter_writer import (
+    _COVER_LETTER_SYSTEM,
+    CoverLetterWriter,
+    GeneratedCoverLetter,
+)
 from src.generation.selector import SelectionOutput
 from src.llm.base import LLMResponse
 from src.llm.router import TaskType
@@ -332,6 +336,37 @@ class TestCoverLetterWriter:
 
         assert sample_job.company in result.content
         assert sample_job.title in result.content
+
+    def test_write_and_rewrite_share_system_prompt(
+        self, mock_llm_router, sample_job, sample_profile, sample_selection
+    ):
+        """Write and rewrite use the same unified system prompt."""
+        mock_llm_router.generate.return_value = LLMResponse(
+            content=SAMPLE_COVER_LETTER,
+            model="qwen2.5:7b",
+            provider="ollama",
+            tokens_used=400,
+            cost=0.0,
+        )
+
+        writer = CoverLetterWriter(mock_llm_router)
+        writer.write(sample_job, sample_profile, sample_selection)
+        write_messages = mock_llm_router.generate.call_args.kwargs["messages"]
+        write_system = write_messages[0].content
+
+        draft = GeneratedCoverLetter(
+            content="Draft letter",
+            highlighted_experiences=[],
+            word_count=2,
+            model_used="qwen2.5:7b",
+        )
+        writer.rewrite(sample_job, sample_profile, sample_selection, draft, "Fix tone")
+        rewrite_messages = mock_llm_router.generate.call_args.kwargs["messages"]
+        rewrite_system = rewrite_messages[0].content
+
+        assert write_system == _COVER_LETTER_SYSTEM
+        assert rewrite_system == _COVER_LETTER_SYSTEM
+        assert write_system == rewrite_system
 
 
 class TestGeneratedCoverLetter:
