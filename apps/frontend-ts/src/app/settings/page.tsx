@@ -119,7 +119,8 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
       model_params: initial.model_params,
       cost_limits: {
         ...initial.cost_limits,
-        enable_jd_llm_extract: initial.cost_limits.enable_jd_llm_extract ?? false,
+        enable_jd_llm_extract:
+          initial.cost_limits.enable_jd_llm_extract ?? false,
         enable_prompt_cache: initial.cost_limits.enable_prompt_cache ?? false,
         ollama_keep_alive: initial.cost_limits.ollama_keep_alive ?? "",
       },
@@ -527,7 +528,9 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
               </div>
               {cacheEnabled && (
                 <div className="space-y-1">
-                  <Label htmlFor="cache_ttl">Response Cache TTL (seconds)</Label>
+                  <Label htmlFor="cache_ttl">
+                    Response Cache TTL (seconds)
+                  </Label>
                   <Input
                     id="cache_ttl"
                     type="number"
@@ -583,8 +586,8 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   {...register("cost_limits.ollama_keep_alive")}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional duration to keep Ollama models loaded after each
-                  chat request. Leave blank to use Ollama defaults.
+                  Optional duration to keep Ollama models loaded after each chat
+                  request. Leave blank to use Ollama defaults.
                 </p>
               </div>
             </CardContent>
