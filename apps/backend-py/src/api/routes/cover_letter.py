@@ -11,7 +11,6 @@ Date: 2026-06-29
 
 import json
 import re
-import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -19,6 +18,7 @@ from typing import Any, Dict, List, Tuple
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
+from ...extractors.paste_job import build_job_listing_from_paste
 from ...generation.cover_letter_formatter import (
     CoverLetterExportOptions,
     CoverLetterFormatter,
@@ -33,7 +33,6 @@ from ...generation.cover_letter_writer import GeneratedCoverLetter
 from ...generation.selector import SelectionOutput
 from ...llm.base import Message, MessageType
 from ...llm.router import TaskType, create_router
-from ...models.job_listing import JobListing, JobSource
 from ...models.user_profile import UserProfile
 from ...scoring.matcher import JobMatcher
 from ...utils.logger import Components, get_logger
@@ -54,6 +53,25 @@ from . import profile as profile_state
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
+
+
+def _manual_job_listing(request: ManualCoverLetterRequest):
+    """
+    Build a structured JobListing from a pasted cover-letter request.
+
+    Args:
+        request: Manual title, company, location, and description fields.
+
+    Returns:
+        Normalized ``JobListing`` with rule-extracted skills/requirements when
+        present in the paste.
+    """
+    return build_job_listing_from_paste(
+        title=request.title,
+        company=request.company,
+        description=request.description,
+        location=request.location,
+    )
 
 
 def _require_active_profile() -> Dict[str, Any]:
@@ -121,14 +139,7 @@ async def generate_manual_cover_letter(
     profile = _require_active_profile()
     user_profile = _active_user_profile(profile)
 
-    job_listing = JobListing(
-        title=request.title,
-        company=request.company,
-        job_id=f"manual-{uuid.uuid4().hex[:12]}",
-        source=JobSource.MANUAL,
-        description=request.description,
-        location=request.location,
-    )
+    job_listing = _manual_job_listing(request)
 
     try:
         return await generate_cover_letter_for_profile(
@@ -262,14 +273,7 @@ async def assess_job_match(request: ManualCoverLetterRequest):
     profile = _require_active_profile()
     user_profile = _active_user_profile(profile)
 
-    job_listing = JobListing(
-        title=request.title,
-        company=request.company,
-        job_id=f"assess-{uuid.uuid4().hex[:12]}",
-        source=JobSource.MANUAL,
-        description=request.description,
-        location=request.location,
-    )
+    job_listing = _manual_job_listing(request)
 
     try:
         result = JobMatcher().score_job(job_listing, user_profile)
@@ -280,7 +284,7 @@ async def assess_job_match(request: ManualCoverLetterRequest):
             detail=f"Assessment failed: {exc}",
         )
 
-    scam_risk, scam_flags = _scan_scam_flags(request.description)
+    scam_risk, scam_flags = _scan_scam_flags(job_listing.description or "")
 
     return JdMatchResponse(
         score=result.total_score,
@@ -445,14 +449,7 @@ async def validate_cover_letter(request: CoverLetterValidateRequest):
     profile = _require_active_profile()
     user_profile = _active_user_profile(profile)
 
-    job_listing = JobListing(
-        title=request.title,
-        company=request.company,
-        job_id=f"validate-{uuid.uuid4().hex[:12]}",
-        source=JobSource.MANUAL,
-        description=request.description,
-        location=request.location,
-    )
+    job_listing = _manual_job_listing(request)
     result = GeneratedCoverLetter(
         content=request.content,
         highlighted_experiences=[],
@@ -511,14 +508,7 @@ async def explain_job_fit(request: ManualCoverLetterRequest):
     profile = _require_active_profile()
     user_profile = _active_user_profile(profile)
 
-    job_listing = JobListing(
-        title=request.title,
-        company=request.company,
-        job_id=f"explainfit-{uuid.uuid4().hex[:12]}",
-        source=JobSource.MANUAL,
-        description=request.description,
-        location=request.location,
-    )
+    job_listing = _manual_job_listing(request)
     raw = profile["profile"]
     raw_profile = raw.model_dump() if isinstance(raw, UserProfile) else raw
     profile_summary = json.dumps(

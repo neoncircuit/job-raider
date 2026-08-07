@@ -1,6 +1,6 @@
 # Job Raider Decision Log
 
-## 2026-07-28 ó Cover letter grounding uses severity-weighted penalties
+## 2026-07-28 ? Cover letter grounding uses severity-weighted penalties
 
 ### Context
 
@@ -34,7 +34,7 @@ flowchart LR
   Cap --> Content["Subtract from content score"]
 ```
 
-## 2026-08-01 ù Neon and Retrowave local color schemes
+## 2026-08-01 ? Neon and Retrowave local color schemes
 
 ### Context
 
@@ -50,7 +50,7 @@ Add a third appearance layer: `data-scheme` with `default` (Raid), `neon`, and `
 - New schemes require only CSS token packs plus labels; no page rewrites.
 - Avoid shipping many schemes until these two are stable in daily use.
 
-## 2026-08-02 ù DISC current-state polish and session safety
+## 2026-08-02 ? DISC current-state polish and session safety
 
 ### Context
 
@@ -109,3 +109,43 @@ Odysseus exposes themes in a dedicated Theme window: a swatch-card grid (Themes)
 - Settings swatch grid covers the full curated catalog (Raid through Stained glass).
 - Customize (pickers / harmony / density) is phase-two and optional.
 - Theme work stays localStorage-only and orthogonal to light/dark and cinematic.
+
+## 2026-08-07 - LLM response cache is allowlisted (kind A only)
+
+### Context
+
+Settings already exposes ``enable_cache`` / ``cache_ttl``, and ``ResponseCache`` exists, but the LLM router never consulted it. "Caching" also conflates four mechanisms: exact response reuse (A), provider prompt-prefix caching (B), Ollama model warm/keep_alive (C), and embedding TTL (D, already live). Wiring everything behind one toggle would risk stale creative cover letters and false cost confidence.
+
+### Decision
+
+- Treat Settings ``enable_cache`` / ``cache_ttl`` as **kind A (response cache) only**. Provider prefix cache (B) and Ollama keep_alive (C) stay separate future work with their own flags.
+- Wire ``ResponseCache`` inside ``LLMRouter.generate`` / ``generate_async``.
+- Cache only an **allowlist** of TaskTypes that are low-creativity and often re-run on identical inputs: ``validation``, ``jd_extraction``, ``resume_parsing``.
+- Additional guard: cache only when ``temperature <= 0.3`` (covers current extract/parse/validate call sites). Creative tasks (cover-letter write/rewrite, assessment generation, etc.) never hit the cache even if Settings cache is on.
+- Fail open: cache read/write errors must not block generation.
+- Mark ``LLMResponse.cached`` on hits; expose hit/miss counts on router stats.
+- Do **not** enable Anthropic ``cache_control`` or Ollama ``keep_alive`` in this change.
+
+### Consequences
+
+- Re-running the same validate/extract/parse request within TTL avoids a second model call.
+- Cover-letter generation quality and novelty are unchanged.
+- Phases 2+ (prompt hygiene, cloud prefix cache, keep_alive) remain gated in ``tasks/todo.md``.
+
+## 2026-08-07 - Paste JD paths normalize and structure without LLM
+
+### Context
+
+Cover-letter (and resume-analysis) paste flows assumed users would supply clean text, but real use is highlight-drag from LinkedIn/careers pages. Those paths built a ``JobListing`` with only a raw ``description``, skipping ``normalize_job_description`` and ``JDExtractor``. ``JobMatcher`` then awarded the full skills weight when ``job.skills`` was empty, so paste assess scores were optimistically high.
+
+### Decision
+
+- Add ``build_job_listing_from_paste`` (rules only, no LLM): normalize text, then rule-extract skills/requirements/responsibilities while preserving user title/company/location and the full cleaned description.
+- Wire cover-letter manual/assess/validate/explain-fit and resume-analysis JD paste through that helper.
+- When structured required skills are empty, score skills from description overlap against the profile (mid weight baseline; never full weight).
+
+### Consequences
+
+- Paste and scrape ingestion share the same normalizer.
+- Fit scores on paste are less inflated.
+- LLM ``JD_EXTRACTION`` on every paste remains optional future work if rules prove thin.

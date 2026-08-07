@@ -259,8 +259,7 @@ class JobMatcher:
         job_required_skills = {s.name.lower() for s in job.skills if s.is_required}
 
         if not job_required_skills:
-            # No specific skill requirements
-            return self.weights[ScoreCategory.SKILLS], []
+            return self._score_skills_from_description(job, profile)
 
         matched = user_skills & job_required_skills
         missing = job_required_skills - user_skills
@@ -274,6 +273,44 @@ class JobMatcher:
             score = weight // 2
 
         return score, list(missing)
+
+    def _score_skills_from_description(
+        self,
+        job: JobListing,
+        profile: UserProfile,
+    ) -> tuple[int, List[str]]:
+        """
+        Score skills when the listing has no structured required skills.
+
+        Used for pasted JDs that only provide a description blob. Mentions of
+        the candidate's skills in the description raise the score; absence of
+        structure never awards the full skills weight.
+
+        Args:
+            job: Job listing (typically paste-built, skills empty).
+            profile: User profile with skills.
+
+        Returns:
+            Tuple of (score, missing required skills). Missing is empty because
+            required skills were never enumerated on the job.
+        """
+        weight = self.weights[ScoreCategory.SKILLS]
+        user_skills = {s.name.lower() for s in profile.skills if s.name}
+        description = (job.description or "").lower()
+
+        if not user_skills or not description:
+            return weight // 2, []
+
+        matched = {
+            skill for skill in user_skills if len(skill) >= 2 and skill in description
+        }
+        if not matched:
+            return weight // 2, []
+
+        # Cap below full weight: structured required skills are more reliable.
+        match_ratio = len(matched) / max(len(user_skills), 1)
+        score = int(weight * min(match_ratio, 0.85))
+        return max(score, weight // 4), []
 
     def _score_experience(
         self,

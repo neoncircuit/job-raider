@@ -277,6 +277,37 @@ Recommended defaults (also shown in Settings as **Use recommended (3b / 7b)**):
 
 Any model installed on the shared Ollama host may be selected in **Settings → Ollama Models** and saved as the small/large tier defaults. `create_router()` loads those choices from user settings on each use.
 
+### LLM response cache (kind A)
+
+Settings ``enable_cache`` / ``cache_ttl`` control **exact response reuse** on the router only. This is not provider prompt-prefix caching and not Ollama ``keep_alive``.
+
+```mermaid
+flowchart LR
+  Call["LLMRouter.generate"] --> Gate{"TaskType allowlisted\nand temp <= 0.3\nand enable_cache?"}
+  Gate -->|no| Model["Provider generate"]
+  Gate -->|yes| Lookup["ResponseCache get"]
+  Lookup -->|hit| Return["LLMResponse.cached=true"]
+  Lookup -->|miss| Model
+  Model --> Store["ResponseCache set"]
+  Store --> ReturnFresh["LLMResponse"]
+```
+
+Allowlisted TaskTypes: ``validation``, ``jd_extraction``, ``resume_parsing``. Creative paths (cover-letter write/rewrite, assessment generation) never use the response cache.
+
+### Paste JD structuring
+
+Manual cover-letter and resume-analysis JD pastes go through ``build_job_listing_from_paste``: normalize text, then rule-extract skills/requirements (no LLM). Scraped listings already normalize at ingest. Matcher scores empty structured skills from description overlap instead of awarding full skills weight.
+
+```mermaid
+flowchart TD
+  Paste["User paste"] --> Helper["build_job_listing_from_paste"]
+  Helper --> Norm["normalize_job_description"]
+  Norm --> Rules["JDExtractor rule-based"]
+  Rules --> Listing["JobListing skills/reqs + full cleaned description"]
+  Listing --> Matcher["JobMatcher"]
+  Listing --> Writer["Cover letter / analysis"]
+```
+
 ## Data Flow
 
 ### Pipeline Execution Flow

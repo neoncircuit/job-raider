@@ -101,6 +101,7 @@ class ResponseCache:
         model: str,
         temperature: float,
         max_tokens: int,
+        extra: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Generate a cache key from request parameters.
@@ -110,12 +111,12 @@ class ResponseCache:
             model: Model name
             temperature: Temperature setting
             max_tokens: Max tokens setting
+            extra: Optional extra key fields (provider, think, task_type, ...)
 
         Returns:
             Cache key (hash)
         """
-        # Create a normalized representation of the request
-        request_data = {
+        request_data: Dict[str, Any] = {
             "messages": [
                 {"role": msg.role.value, "content": msg.content} for msg in messages
             ],
@@ -123,8 +124,9 @@ class ResponseCache:
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
+        if extra:
+            request_data["extra"] = extra
 
-        # Serialize and hash
         request_str = json.dumps(request_data, sort_keys=True)
         return hashlib.sha256(request_str.encode()).hexdigest()
 
@@ -134,6 +136,7 @@ class ResponseCache:
         model: str,
         temperature: float = 0.7,
         max_tokens: int = 4096,
+        extra: Optional[Dict[str, Any]] = None,
     ) -> Optional[LLMResponse]:
         """
         Get a cached response if available and not expired.
@@ -143,6 +146,7 @@ class ResponseCache:
             model: Model name
             temperature: Temperature setting
             max_tokens: Max tokens setting
+            extra: Optional extra key fields (provider, think, task_type, ...)
 
         Returns:
             Cached LLMResponse if found, None otherwise
@@ -150,10 +154,9 @@ class ResponseCache:
         if not self.enabled:
             return None
 
-        key = self._generate_key(messages, model, temperature, max_tokens)
+        key = self._generate_key(messages, model, temperature, max_tokens, extra)
 
         with self._lock:
-            # Check memory cache first
             if self.backend == "memory":
                 entry = self._memory_cache.get(key)
             else:
@@ -163,7 +166,6 @@ class ResponseCache:
                 return None
 
             if entry.is_expired():
-                # Remove expired entry
                 if self.backend == "memory":
                     del self._memory_cache[key]
                 else:
@@ -171,7 +173,6 @@ class ResponseCache:
                     self._save_to_file()
                 return None
 
-            # Mark as cached
             response = entry.response
             response.cached = True
             return response
@@ -184,6 +185,7 @@ class ResponseCache:
         temperature: float = 0.7,
         max_tokens: int = 4096,
         ttl: Optional[int] = None,
+        extra: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Cache a response.
@@ -195,15 +197,15 @@ class ResponseCache:
             temperature: Temperature setting
             max_tokens: Max tokens setting
             ttl: Time-to-live in seconds (defaults to instance ttl)
+            extra: Optional extra key fields (provider, think, task_type, ...)
         """
         if not self.enabled:
             return
 
-        key = self._generate_key(messages, model, temperature, max_tokens)
+        key = self._generate_key(messages, model, temperature, max_tokens, extra)
         entry_ttl = ttl or self.ttl
 
         with self._lock:
-            # Create cache entry
             entry = CacheEntry(
                 key=key,
                 response=response,
@@ -211,13 +213,10 @@ class ResponseCache:
                 ttl=entry_ttl,
             )
 
-            # Add to cache
             if self.backend == "memory":
                 self._memory_cache[key] = entry
 
-                # Enforce max size
                 if len(self._memory_cache) > self.max_size:
-                    # Remove oldest entry
                     oldest_key = min(
                         self._memory_cache.keys(),
                         key=lambda k: self._memory_cache[k].timestamp,
@@ -226,7 +225,6 @@ class ResponseCache:
             else:
                 self._file_cache[key] = entry
 
-                # Enforce max size
                 if len(self._file_cache) > self.max_size:
                     oldest_key = min(
                         self._file_cache.keys(),
@@ -285,10 +283,7 @@ class ResponseCache:
     def _save_to_file(self) -> None:
         """Save cache to file."""
         try:
-            # Ensure directory exists
             self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Convert entries to dict
             data = [entry.to_dict() for entry in self._file_cache.values()]
 
             with open(self.cache_path, "w") as f:

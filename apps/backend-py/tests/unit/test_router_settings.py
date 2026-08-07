@@ -63,6 +63,8 @@ class TestCreateRouterAppliesSettings:
         mock_settings.api_config.ollama_host = "localhost:11434"
         mock_settings.api_config.anthropic_api_key = "sk-ant-from-settings"
         mock_settings.api_config.gemini_api_key = "gemini-from-settings"
+        mock_settings.cost_limits.enable_cache = True
+        mock_settings.cost_limits.cache_ttl = 3600
 
         mock_storage = MagicMock()
         mock_storage.load_settings.return_value = mock_settings
@@ -73,3 +75,5 @@ class TestCreateRouterAppliesSettings:
         assert router.routes[TaskType.SELECTION].primary_model == "custom:3b"
         assert router.api_key == "sk-ant-from-settings"
         assert router.gemini_api_key == "gemini-from-settings"
+        assert router._response_cache.enabled is True
+        assert router._response_cache.ttl == 3600

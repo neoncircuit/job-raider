@@ -3501,3 +3501,159 @@ node ./node_modules/typescript/bin/tsc --noEmit
 ### Notes
 
 See `docs/decision-log.md` (2026-08-05). Stars are not a go signal; loose coupling is the firebreak.
+
+## LLM caching strategy (planning ? no implementation yet)
+
+**Status:** Design decision required before any PR. Do not wire caches until principles and phase gates are accepted.
+
+**Why this is major:** Caching sits on the LLM router path. Wrong defaults can silently return stale creative output, hide prompt bugs, or burn cloud cost with false confidence. Ollama-local behavior differs from Anthropic/Gemini provider prefix caching.
+
+### Taxonomy (do not conflate)
+
+| Kind | What it caches | Invalidation rule | Fits Job Raider when |
+|------|----------------|-------------------|----------------------|
+| A. Response cache | Full completion for identical request hash | Key = messages + model + temp + max_tokens (+ think?) | Deterministic / low-temp tasks only |
+| B. Provider prompt-prefix cache | Stable system/tool prefix tokens at the API | Prefix must be byte-identical; append new context | Cloud Anthropic (and maybe Gemini later); long stable system blocks |
+| C. Model warm / keep_alive | Loaded weights / KV in Ollama | Process/model unload | Local latency for hot TaskTypes |
+| D. Embedding TTL (already live) | Vector for text | TTL / eviction | RAG only ? leave alone |
+
+Infographic lesson applies mainly to **B**: one changed early token kills the whole prefix. **A** is exact-match reuse. **C** is ops, not prompt economics.
+
+### Existing surface (do not invent parallel knobs)
+
+- `ResponseCache` in `apps/backend-py/src/utils/cache.py` ? implemented, **not wired** into `LLMRouter.generate`
+- Settings `cost_limits.enable_cache` / `cache_ttl` ? already exposed; loader merges into config cache section
+- Embedding cache ? live; out of scope
+- Claude/Gemini clients ? no `cache_control` / CachedContent yet
+- Ollama client ? no `keep_alive`
+
+### Proposed principles (decision-log candidates)
+
+1. **Separate knobs by kind.** Never let one Settings toggle mean A+B+C.
+2. **Opt-in / allowlist by TaskType for A.** Creative cover-letter write stays uncached by default even if global `enable_cache` is true.
+3. **Stable system, mutable user.** Prompt changes for B/A friendliness: identical system for write+rewrite; job/profile only in user; no nonce at the front of a shared prefix.
+4. **Provider adapters own B.** Anthropic `cache_control` lives in `claude_client.py`; Ollama gets C only ? do not fake prefix caching locally.
+5. **Observability first.** Hits/misses must show on `LLMResponse.cached` and cost/metrics before trusting savings.
+6. **Fail open.** Cache backend errors never block generation.
+7. **Correctness over savings.** If unsure a TaskType is idempotent, leave it off the allowlist.
+
+### Suggested phases (each has its own go/no-go)
+
+**Phase 0 ? Decision only (this step)**
+- [ ] Agree taxonomy + principles above (or revise)
+- [ ] Write `docs/decision-log.md` entry
+- [ ] Choose Phase 1 scope only; park B/C until A is proven or explicitly skipped
+
+**Phase 1 ? Wire response cache (A) carefully**
+- [ ] Router consults `ResponseCache` only for allowlisted TaskTypes (candidates: validation, JD parse, resume parse, optional LLM cover-letter validate at temp 0)
+- [ ] Honor Settings `enable_cache` / `cache_ttl` as master switch for A
+- [ ] Explicit deny: cover-letter write/rewrite, assessment generation (nonce), creative selection if nondeterministic
+- [ ] Tests: hit/miss, TTL, disabled path, allowlist enforcement
+- [ ] Metrics: cache hit rate already sketched on cost tracker ? make real
+- Go/no-go: no stale creative letter in manual smoke; unit tests green
+
+**Phase 2 ? Prompt hygiene for prefix stability (supports A and B)**
+- [ ] Unify cover-letter write/rewrite system string
+- [ ] Prefer YAML single source where Python duplicates templates
+- [ ] Assessment nonce to end of user (or trailing message), not prefix head
+- Go/no-go: golden prompt snapshots / string equality tests for system blocks
+
+**Phase 3 ? Cloud prefix cache (B)**
+- [ ] Claude: extract system; `cache_control: ephemeral` on stable blocks; leave job body in user
+- [ ] Document minimum token thresholds / providers that no-op below size
+- [ ] Gemini CachedContent only if fallback volume justifies it
+- Go/no-go: cloud fallback traffic exists; usage fields show cache read tokens
+
+**Phase 4 ? Ollama warm (C)**
+- [ ] `keep_alive` for hot TaskTypes / models used by cover letter + selection
+- [ ] Document VRAM tradeoff
+- Go/no-go: measurable cold-start improvement without OOM under dual-model load
+
+### Explicit non-goals (for now)
+
+- Caching career coach / DISC (little or no LLM)
+- Frontend prompt construction
+- ScrapeGraphAI / enricher (separate standby decision)
+- Global response cache of all TaskTypes
+
+### Open questions for product owner
+
+1. Prefer **Phase 1 first** (Settings already promises enable_cache) or **Phase 2+3 first** (infographic / cloud economics)?
+2. Should `enable_cache` remain the master for **A only**, with separate future flags for B/C?
+3. File vs memory backend default for A in Docker (`data/cache/` is volume-backed)?
+4. Any TaskTypes that must **never** cache even if identical (privacy / per-session freshness)?
+
+### Decisions accepted (2026-08-07)
+
+1. Phase 1 first (allowlisted response cache).
+2. `enable_cache` / `cache_ttl` = kind A only.
+3. Creative TaskTypes never on the allowlist (cover-letter write/rewrite, assessment gen, etc.).
+
+### Phase 1 checklist
+
+- [x] Decision-log entry
+- [x] Wire ``ResponseCache`` in ``LLMRouter`` with TaskType allowlist + temp guard
+- [x] Honor Settings ``enable_cache`` / ``cache_ttl``
+- [x] Unit tests for hit/miss, deny creative, disabled master switch
+- [x] Backend checks (black / ruff / targeted pytest via Docker image venv)
+- [x] Docs note in architecture (kind A vs B/C)
+
+## Paste-JD unstructured to structured (investigation)
+
+**Status:** Findings recorded; fix not started (await go-ahead).
+
+**User concern:** Cover-letter (and similar) flows assume messy human paste — highlight-drag from LinkedIn/careers pages — not clean scraped HTML.
+
+### Entry points
+
+| Surface | Path | Normalize? | JDExtractor / structured skills? |
+|---------|------|------------|----------------------------------|
+| Cover letter manual | ``POST /cover-letter/manual`` (+ assess / prep / explain) | No | No — raw ``description`` only |
+| Job cover letter | ``POST /jobs/{id}/cover-letter`` | Via scrape earlier | Depends on scrape enrichment |
+| Resume analysis with JD | ``profile`` upload + ``job_description`` | No | Stub: fake ``Skill(name="skill")``, req = first 500 chars of paste |
+| Assessment manual job | ``assessment`` routes | No | Manual ``JobListing`` shell |
+| Scrape ingest | scrapers / ``base.normalize_description`` | Yes | Optional ``JDExtractor`` |
+
+### Effectiveness gap (why paste feels "idiot-proof" but is not)
+
+1. **Structured fields stay empty on paste.** Manual cover letter builds ``JobListing(title, company, description=raw)`` with empty ``skills`` / ``requirements`` / ``responsibilities``.
+2. **Matcher is optimistic when skills are empty.** ``JobMatcher._score_skills`` returns the **full skills weight** if ``job.skills`` has no required skills — paste assess can look stronger than a scraped job with hard skill lists.
+3. **Selector / writer degrade to description snippet.** ``_extract_requirements`` falls back to ``description[:500]`` / ``[:2000]``; no section-aware structure, so highlight-truncation and nav chrome stay in the prompt.
+4. **Normalizer exists but is scrape-only.** ``normalize_job_description`` already strips HTML entities, bullets, boilerplate, and section spacing — paste never calls it.
+5. **JDExtractor is unused on paste.** Rule + LLM extract path could fill skills/requirements; cover-letter manual never invokes it.
+6. **Resume-analysis JD path is a stub.** It does not parse the pasted JD at all (placeholder skill + truncated req text).
+
+```mermaid
+flowchart TD
+  Paste["User paste / highlight"] --> Manual["ManualCoverLetterRequest"]
+  Manual --> Shell["JobListing title+company+raw description"]
+  Shell --> Matcher["JobMatcher"]
+  Shell --> Selector["ResumeSelector"]
+  Shell --> Writer["CoverLetterWriter"]
+  Matcher --> Optimistic["Full skills weight if skills empty"]
+  Selector --> Trunc["description snippet only"]
+  Writer --> Trunc
+  Scrape["Scrape path"] --> Norm["normalize_job_description"]
+  Norm --> Extract["JDExtractor optional"]
+  Extract --> Full["JobListing with skills/reqs"]
+```
+
+### Recommended fix order (least violence — not implemented yet)
+
+1. **Normalize on paste** at cover-letter (and resume-analysis) entrypoints — reuse ``normalize_job_description``.
+2. **Lightweight structure:** rule-based ``JDExtractor._extract_rule_based`` (or shared helper) to populate skills/requirements when section headers exist; LLM extract only if rules are thin and Settings allow.
+3. **Matcher honesty:** when ``job.skills`` empty, score skills from description keyword overlap against profile skills (or score neutral mid-weight) — do not grant full weight.
+4. **Fixtures:** messy LinkedIn highlight pastes (HTML crumbs, missing Requirements header, truncated mid-sentence) with golden structured fields + matcher score deltas.
+5. Keep scrape path unchanged; share one ``build_job_listing_from_paste(...)`` helper.
+
+### Go / no-go before implementing
+
+- [x] Confirm scope: cover-letter paste first (+ resume-analysis JD) — rules-only, no LLM extract on every paste
+- [x] Confirm whether LLM ``JD_EXTRACTION`` on every paste is acceptable — deferred; rules-only shipped
+
+### Implemented (2026-08-07)
+
+- [x] ``build_job_listing_from_paste`` + cover-letter / resume-analysis wiring
+- [x] Matcher empty-skills honesty (description overlap, never full weight)
+- [x] Fix ``JDExtractor._split_into_sections`` so ``full`` is not overwritten by preamble
+- [x] Unit tests for messy paste + matcher

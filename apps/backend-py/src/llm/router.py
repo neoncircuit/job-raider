@@ -11,8 +11,9 @@ Date: 2026-04-20
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
+from ..utils.cache import ResponseCache
 from .base import BaseLLMClient, LLMConfig, LLMResponse, Message
 from .claude_client import ClaudeClient
 from .gemini_client import GeminiClient
@@ -44,6 +45,16 @@ class TaskType(str, Enum):
     ASSESSMENT_GENERATION = "assessment_generation"  # Generating assessment questions
     ASSESSMENT_EVALUATION = "assessment_evaluation"  # Evaluating assessment answers
     GENERAL = "general"  # General purpose tasks
+
+
+# Kind-A response cache allowlist (decision-log 2026-08-07). Creative TaskTypes
+# are intentionally excluded even when Settings enable_cache is true.
+CACHEABLE_TASK_TYPES: Set[TaskType] = {
+    TaskType.VALIDATION,
+    TaskType.JD_EXTRACTION,
+    TaskType.RESUME_PARSING,
+}
+MAX_CACHEABLE_TEMPERATURE = 0.3
 
 
 @dataclass
@@ -221,11 +232,17 @@ class LLMRouter:
         # Client cache
         self._clients: Dict[str, BaseLLMClient] = {}
 
+        # Kind-A response cache (Settings enable_cache / cache_ttl). Owned by
+        # the router so enabled/ttl can change without a sticky singleton.
+        self._response_cache = ResponseCache(enabled=True, ttl=3600, backend="memory")
+
         # Statistics
         self._total_requests = 0
         self._primary_used = 0
         self._fallback_used = 0
         self._total_cost = 0.0
+        self._cache_hits = 0
+        self._cache_misses = 0
 
     def reload_routes_from_settings(self, settings_routes: Dict[str, Any]) -> None:
         """
@@ -302,9 +319,147 @@ class LLMRouter:
                     self.api_key = settings.api_config.anthropic_api_key
                 if settings.api_config.gemini_api_key:
                     self.gemini_api_key = settings.api_config.gemini_api_key
+            if settings.cost_limits is not None:
+                self._response_cache.enabled = bool(settings.cost_limits.enable_cache)
+                self._response_cache.ttl = int(settings.cost_limits.cache_ttl)
             self._clients.clear()
         except Exception:
             pass
+
+    def _resolve_cache_params(self, kwargs: Dict[str, Any]) -> tuple[float, int]:
+        """
+        Resolve temperature and max_tokens used for cache keys and eligibility.
+
+        Args:
+            kwargs: Generation kwargs passed to ``generate``.
+
+        Returns:
+            Tuple of (temperature, max_tokens).
+        """
+        temperature = float(kwargs.get("temperature", 0.7))
+        max_tokens = int(kwargs.get("max_tokens", 4096))
+        return temperature, max_tokens
+
+    def _cache_extra(
+        self, task_type: TaskType, provider: str, kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Build extra cache-key fields that affect generation beyond messages.
+
+        Args:
+            task_type: Routed task type.
+            provider: Provider that would serve the request.
+            kwargs: Generation kwargs.
+
+        Returns:
+            Stable dict for hashing into the response-cache key.
+        """
+        extra: Dict[str, Any] = {
+            "task_type": task_type.value,
+            "provider": provider,
+        }
+        if "think" in kwargs:
+            extra["think"] = kwargs["think"]
+        return extra
+
+    def _should_use_response_cache(
+        self, task_type: TaskType, temperature: float
+    ) -> bool:
+        """
+        Return whether kind-A response caching applies to this call.
+
+        Args:
+            task_type: Routed task type.
+            temperature: Sampling temperature for the call.
+
+        Returns:
+            True when the Settings cache is on, the task is allowlisted, and
+            temperature is at or below ``MAX_CACHEABLE_TEMPERATURE``.
+        """
+        if not self._response_cache.enabled:
+            return False
+        if task_type not in CACHEABLE_TASK_TYPES:
+            return False
+        if temperature > MAX_CACHEABLE_TEMPERATURE:
+            return False
+        return True
+
+    def _try_cache_get(
+        self,
+        messages: List[Message],
+        task_type: TaskType,
+        provider: str,
+        model: str,
+        kwargs: Dict[str, Any],
+    ) -> Optional[LLMResponse]:
+        """
+        Look up a cached response; fail open on cache errors.
+
+        Args:
+            messages: Chat messages.
+            task_type: Routed task type.
+            provider: Primary provider for this route.
+            model: Primary model for this route.
+            kwargs: Generation kwargs.
+
+        Returns:
+            Cached ``LLMResponse`` on hit, otherwise ``None``.
+        """
+        temperature, max_tokens = self._resolve_cache_params(kwargs)
+        if not self._should_use_response_cache(task_type, temperature):
+            return None
+        try:
+            cached = self._response_cache.get(
+                messages,
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                extra=self._cache_extra(task_type, provider, kwargs),
+            )
+        except Exception:
+            return None
+        if cached is not None:
+            self._cache_hits += 1
+            return cached
+        self._cache_misses += 1
+        return None
+
+    def _try_cache_set(
+        self,
+        messages: List[Message],
+        response: LLMResponse,
+        task_type: TaskType,
+        provider: str,
+        model: str,
+        kwargs: Dict[str, Any],
+    ) -> None:
+        """
+        Store a response in cache; fail open on cache errors.
+
+        Args:
+            messages: Chat messages.
+            response: Fresh model response.
+            task_type: Routed task type.
+            provider: Provider that produced the response.
+            model: Model that produced the response.
+            kwargs: Generation kwargs.
+        """
+        temperature, max_tokens = self._resolve_cache_params(kwargs)
+        if not self._should_use_response_cache(task_type, temperature):
+            return
+        try:
+            to_store = response.model_copy(deep=True)
+            to_store.cached = False
+            self._response_cache.set(
+                messages,
+                to_store,
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                extra=self._cache_extra(task_type, provider, kwargs),
+            )
+        except Exception:
+            return
 
     def _get_client(
         self, provider: str, model: str, config: Optional[LLMConfig] = None
@@ -369,12 +524,30 @@ class LLMRouter:
         route = self.routes[task_type]
         self._total_requests += 1
 
+        cached = self._try_cache_get(
+            messages,
+            task_type,
+            route.primary_provider,
+            route.primary_model,
+            kwargs,
+        )
+        if cached is not None:
+            return cached
+
         # Try primary provider
         try:
             client = self._get_client(route.primary_provider, route.primary_model)
             response = client.generate(messages, **kwargs)
             self._primary_used += 1
             self._total_cost += response.cost or 0.0
+            self._try_cache_set(
+                messages,
+                response,
+                task_type,
+                route.primary_provider,
+                route.primary_model,
+                kwargs,
+            )
             return response
 
         except Exception as e:
@@ -387,6 +560,14 @@ class LLMRouter:
                     response = client.generate(messages, **kwargs)
                     self._fallback_used += 1
                     self._total_cost += response.cost or 0.0
+                    self._try_cache_set(
+                        messages,
+                        response,
+                        task_type,
+                        route.fallback_provider,
+                        route.fallback_model,
+                        kwargs,
+                    )
                     return response
                 except Exception as fallback_error:
                     raise Exception(
@@ -415,12 +596,30 @@ class LLMRouter:
         route = self.routes[task_type]
         self._total_requests += 1
 
+        cached = self._try_cache_get(
+            messages,
+            task_type,
+            route.primary_provider,
+            route.primary_model,
+            kwargs,
+        )
+        if cached is not None:
+            return cached
+
         # Try primary provider
         try:
             client = self._get_client(route.primary_provider, route.primary_model)
             response = await client.generate_async(messages, **kwargs)
             self._primary_used += 1
             self._total_cost += response.cost or 0.0
+            self._try_cache_set(
+                messages,
+                response,
+                task_type,
+                route.primary_provider,
+                route.primary_model,
+                kwargs,
+            )
             return response
 
         except Exception as e:
@@ -433,6 +632,14 @@ class LLMRouter:
                     response = await client.generate_async(messages, **kwargs)
                     self._fallback_used += 1
                     self._total_cost += response.cost or 0.0
+                    self._try_cache_set(
+                        messages,
+                        response,
+                        task_type,
+                        route.fallback_provider,
+                        route.fallback_model,
+                        kwargs,
+                    )
                     return response
                 except Exception as fallback_error:
                     raise Exception(
@@ -465,6 +672,7 @@ class LLMRouter:
     @property
     def stats(self) -> Dict[str, Any]:
         """Return routing statistics."""
+        cache_lookups = self._cache_hits + self._cache_misses
         return {
             "total_requests": self._total_requests,
             "primary_used": self._primary_used,
@@ -475,6 +683,12 @@ class LLMRouter:
                 else 0.0
             ),
             "total_cost": self._total_cost,
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "cache_hit_rate": (
+                self._cache_hits / cache_lookups if cache_lookups > 0 else 0.0
+            ),
+            "response_cache": self._response_cache.get_stats(),
         }
 
     def reset_stats(self) -> None:
@@ -483,6 +697,8 @@ class LLMRouter:
         self._primary_used = 0
         self._fallback_used = 0
         self._total_cost = 0.0
+        self._cache_hits = 0
+        self._cache_misses = 0
 
 
 def create_router(

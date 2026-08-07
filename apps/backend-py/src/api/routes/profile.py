@@ -22,7 +22,7 @@ from ...generation.linkedin_analyzer import LinkedInAnalyzer
 from ...generation.resume_analyzer import ResumeAnalyzer
 from ...linkedin.session import LinkedInSession, LinkedInSessionConfig
 from ...llm.router import LLMRouter
-from ...models.job_listing import ExperienceLevel, JobListing
+from ...models.job_listing import ExperienceLevel
 from ...models.linkedin_analysis import (
     LinkedInPeopleSearchInput,
     LinkedInPeopleSearchResponse,
@@ -633,17 +633,14 @@ async def analyze_resume(
 
         # Run analysis
         if job_description:
-            # Job-specific analysis
-            from ...models.job_listing import JobRequirement, JobResponsibility, Skill
+            # Job-specific analysis from pasted JD text
+            from ...extractors.paste_job import build_job_listing_from_paste
 
-            job = JobListing(
+            job = build_job_listing_from_paste(
                 title="Target Position",
                 company="Target Company",
+                description=job_description,
                 location="Not specified",
-                description=job_description[:2000],
-                requirements=[JobRequirement(text=job_description[:500])],
-                responsibilities=[JobResponsibility(text="Review job description")],
-                skills=[Skill(name="skill")] if True else [],
             )
 
             analysis = analyzer.analyze_job_specific(

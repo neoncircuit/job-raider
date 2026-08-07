@@ -402,10 +402,15 @@ Return a JSON object with these exact fields:
         )
 
     def _split_into_sections(self, text: str) -> Dict[str, str]:
-        """Split text into sections based on headings."""
-        sections = {"full": text}
-        current_section = "full"
-        current_content = []
+        """Split text into sections based on headings.
+
+        Always keeps ``sections["full"]`` as the complete source text so
+        whole-document scans (skills, experience level) are not truncated to
+        the preamble before the first header.
+        """
+        sections: Dict[str, str] = {}
+        current_section = "preamble"
+        current_content: List[str] = []
 
         lines = text.split("\n")
 
@@ -437,6 +442,7 @@ Return a JSON object with these exact fields:
         if current_content:
             sections[current_section] = "\n".join(current_content)
 
+        sections["full"] = text
         return sections
 
     def _extract_title(self, text: str, sections: Dict[str, str]) -> Optional[str]:

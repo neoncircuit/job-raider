@@ -116,7 +116,13 @@ class CostLimits(BaseModel):
     max_api_cost_per_run: float = Field(
         default=5.0, ge=0.0, description="Maximum API cost per pipeline run (USD)"
     )
-    enable_cache: bool = Field(default=True, description="Enable response caching")
+    enable_cache: bool = Field(
+        default=True,
+        description=(
+            "Enable kind-A LLM response caching for allowlisted TaskTypes "
+            "(validation, jd_extraction, resume_parsing)"
+        ),
+    )
     cache_ttl: int = Field(default=3600, ge=0, description="Cache TTL in seconds")
     max_concurrent_requests: int = Field(
         default=2, ge=1, le=10, description="Max concurrent LLM requests"
