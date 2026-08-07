@@ -110,6 +110,9 @@ async def track_external_application(
 ) -> Dict[str, Any]:
     """
     Track an application made outside the system.
+
+    When a pasted job description is included in metadata, it is normalized
+    before storage so interview prep later sees cleaned text.
     """
     app_date = None
     if request.application_date:
@@ -118,13 +121,20 @@ async def track_external_application(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format")
 
+    metadata = dict(request.metadata or {})
+    raw_description = metadata.get("description")
+    if isinstance(raw_description, str) and raw_description.strip():
+        from ...extractors.paste_job import clean_pasted_job_description
+
+        metadata["description"] = clean_pasted_job_description(raw_description)
+
     outcome = outcome_tracker.track_external_application(
         job_id=request.job_id,
         job_title=request.job_title,
         company=request.company,
         application_date=app_date,
         application_method=request.application_method,
-        metadata=request.metadata,
+        metadata=metadata or None,
     )
 
     return {

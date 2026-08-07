@@ -9,7 +9,11 @@ Date: 2026-04-20
 """
 
 from .jd_extractor import ExtractionResult, JDExtractor
-from .paste_job import build_job_listing_from_paste
+from .paste_job import (
+    build_job_listing_from_job_data,
+    build_job_listing_from_paste,
+    clean_pasted_job_description,
+)
 from .resume_parser import ResumeParser
 
 __all__ = [
@@ -17,4 +21,6 @@ __all__ = [
     "ExtractionResult",
     "ResumeParser",
     "build_job_listing_from_paste",
+    "build_job_listing_from_job_data",
+    "clean_pasted_job_description",
 ]

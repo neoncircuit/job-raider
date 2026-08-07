@@ -3657,3 +3657,18 @@ flowchart TD
 - [x] Matcher empty-skills honesty (description overlap, never full weight)
 - [x] Fix ``JDExtractor._split_into_sections`` so ``full`` is not overwritten by preamble
 - [x] Unit tests for messy paste + matcher
+
+### All JD-paste surfaces (expanded 2026-08-07)
+
+| Surface | Entrypoint | Helper |
+|---------|------------|--------|
+| Cover letter manual / assess / validate / explain-fit / explain-letter / prep | ``cover_letter.py`` | ``build_job_listing_from_paste`` via ``_manual_job_listing`` |
+| Resume analysis optional JD | ``profile.py`` analyze | ``build_job_listing_from_paste`` |
+| Jobs classify / trust / cover-letter body | ``jobs.py`` | ``build_job_listing_from_job_data`` |
+| Applications track-external JD metadata | ``applications.py`` | ``clean_pasted_job_description`` (text storage) |
+| CLI ``analyze --job`` | ``main.py`` | ``build_job_listing_from_paste`` |
+| LinkedIn paste tab | profile text, not JD | out of scope |
+| Assessment job-targeted | loads by id, no paste box | out of scope |
+
+- [x] Expand paste helper API (``clean_pasted_job_description``, ``build_job_listing_from_job_data``)
+- [x] Wire remaining JD paste surfaces above

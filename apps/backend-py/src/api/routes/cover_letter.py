@@ -347,6 +347,7 @@ async def generate_prep_sheet(request: ManualCoverLetterRequest):
     profile = _require_active_profile()
     raw = profile["profile"]
     raw_profile = raw.model_dump() if isinstance(raw, UserProfile) else raw
+    job_listing = _manual_job_listing(request)
 
     profile_summary = json.dumps(
         {
@@ -368,10 +369,20 @@ async def generate_prep_sheet(request: ManualCoverLetterRequest):
         "the profile and the requirements, each with a one-line mitigation. "
         "talking_points: profile strengths to lead with, tied to the JD."
     )
+    requirements_block = ""
+    if job_listing.requirements:
+        requirements_block = "\nRequirements:\n" + "\n".join(
+            f"- {req.text}" for req in job_listing.requirements[:12]
+        )
+    skills_block = ""
+    if job_listing.skills:
+        skills_block = "\nSkills: " + ", ".join(s.name for s in job_listing.skills[:20])
+
     user_prompt = (
-        f"Job: {request.title} at {request.company}\n"
-        f"Location: {request.location or 'unspecified'}\n\n"
-        f"Job description:\n{request.description[:6000]}\n\n"
+        f"Job: {job_listing.title} at {job_listing.company}\n"
+        f"Location: {job_listing.location or 'unspecified'}\n\n"
+        f"Job description:\n{(job_listing.description or '')[:6000]}"
+        f"{requirements_block}{skills_block}\n\n"
         f"Candidate profile (JSON):\n{profile_summary}"
     )
 
@@ -532,12 +543,12 @@ async def explain_job_fit(request: ManualCoverLetterRequest):
     try:
         match = JobMatcher().score_job(job_listing, user_profile)
         user_prompt = (
-            f"Job: {request.title} at {request.company}\n"
+            f"Job: {job_listing.title} at {job_listing.company}\n"
             f"Heuristic fit score: {match.total_score}/100 "
             f"(verdict: {match.recommendation})\n"
             f"Matched keywords: {', '.join(match.matched_keywords) or 'none'}\n"
             f"Missing skills: {', '.join(match.missing_skills) or 'none'}\n\n"
-            f"Job description:\n{request.description[:4000]}\n\n"
+            f"Job description:\n{(job_listing.description or '')[:4000]}\n\n"
             f"Candidate profile (JSON):\n{profile_summary}"
         )
         explanation = await _generate_explanation(system_prompt, user_prompt)
@@ -562,6 +573,7 @@ async def explain_cover_letter(request: CoverLetterExplainRequest):
     Returns:
         Strengths, concerns, and improvements for the letter.
     """
+    job_listing = _manual_job_listing(request)
     system_prompt = (
         "You are a cover-letter reviewer. Respond with ONLY a JSON object, no "
         "prose, in this exact shape: "
@@ -571,8 +583,8 @@ async def explain_cover_letter(request: CoverLetterExplainRequest):
         "it stronger. 2-5 short items per list."
     )
     user_prompt = (
-        f"Job: {request.title} at {request.company}\n\n"
-        f"Job description:\n{request.description[:3000]}\n\n"
+        f"Job: {job_listing.title} at {job_listing.company}\n\n"
+        f"Job description:\n{(job_listing.description or '')[:3000]}\n\n"
         f"Cover letter:\n{request.content[:4000]}"
     )
     try:

@@ -296,16 +296,28 @@ Allowlisted TaskTypes: ``validation``, ``jd_extraction``, ``resume_parsing``. Cr
 
 ### Paste JD structuring
 
-Manual cover-letter and resume-analysis JD pastes go through ``build_job_listing_from_paste``: normalize text, then rule-extract skills/requirements (no LLM). Scraped listings already normalize at ingest. Matcher scores empty structured skills from description overlap instead of awarding full skills weight.
+Any user-supplied job description is treated as paste input and cleaned before scoring, generation, or storage.
+
+| Surface | Path |
+|---------|------|
+| Cover letter (manual, assess, prep, validate, explain) | ``build_job_listing_from_paste`` |
+| Resume analysis optional JD | ``build_job_listing_from_paste`` |
+| Jobs classify / trust / cover-letter body | ``build_job_listing_from_job_data`` |
+| Applications track-external metadata | ``clean_pasted_job_description`` |
+| CLI ``analyze --job`` | ``build_job_listing_from_paste`` |
+
+Scraped listings already normalize at ingest. Matcher scores empty structured skills from description overlap instead of awarding full skills weight.
 
 ```mermaid
 flowchart TD
-  Paste["User paste"] --> Helper["build_job_listing_from_paste"]
+  Paste["User paste / job_data description"] --> Helper["paste_job helpers"]
   Helper --> Norm["normalize_job_description"]
   Norm --> Rules["JDExtractor rule-based"]
-  Rules --> Listing["JobListing skills/reqs + full cleaned description"]
+  Rules --> Listing["JobListing skills/reqs + cleaned description"]
   Listing --> Matcher["JobMatcher"]
-  Listing --> Writer["Cover letter / analysis"]
+  Listing --> Writer["Cover letter / classify / trust / analysis"]
+  Helper --> Meta["clean_pasted_job_description"]
+  Meta --> Apps["Applications metadata"]
 ```
 
 ## Data Flow

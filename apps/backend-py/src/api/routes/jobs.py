@@ -338,32 +338,18 @@ async def classify_job(job_id: str, job_data: Dict[str, Any] = None):
     """
     try:
         from ...classifiers.job_classifier import JobClassifier
+        from ...extractors.paste_job import build_job_listing_from_job_data
         from ...llm.router import create_router
-        from ...models.job_listing import JobListing, JobSource
 
         # Initialize classifier with LLM router
         llm_router = create_router(prefer_local=True)
         classifier = JobClassifier(llm_router=llm_router)
 
-        # Create job listing from provided data
-        if job_data:
-            job_listing = JobListing(
-                title=job_data.get("title", "Unknown"),
-                company=job_data.get("company", "Unknown"),
-                job_id=job_id,
-                source=JobSource(job_data.get("source", "manual")),
-                description=job_data.get("description", ""),
-                location=job_data.get("location"),
-            )
-        else:
-            # Default fallback if no data provided
-            job_listing = JobListing(
-                title="Software Engineer",
-                company="Unknown",
-                job_id=job_id,
-                source=JobSource.MANUAL,
-                description="No description provided",
-            )
+        job_listing = build_job_listing_from_job_data(
+            job_id,
+            job_data,
+            default_title="Software Engineer",
+        )
 
         result = classifier.classify(job_listing, use_llm=True)
 
@@ -415,7 +401,7 @@ async def trust_analysis(
         Trust analysis with tier, confidence, reasons, and category scores
     """
     try:
-        from ...models.job_listing import JobListing, JobSource
+        from ...extractors.paste_job import build_job_listing_from_job_data
         from ...scoring.trust_analyzer import TrustAnalyzer
 
         llm_router = None
@@ -426,22 +412,7 @@ async def trust_analysis(
 
         analyzer = TrustAnalyzer(llm_router=llm_router)
 
-        if job_data:
-            job_listing = JobListing(
-                title=job_data.get("title", "Unknown"),
-                company=job_data.get("company", "Unknown"),
-                job_id=job_id,
-                source=JobSource(job_data.get("source", "manual")),
-                description=job_data.get("description", ""),
-                location=job_data.get("location"),
-            )
-        else:
-            job_listing = JobListing(
-                title="Unknown",
-                company="Unknown",
-                job_id=job_id,
-                source=JobSource.MANUAL,
-            )
+        job_listing = build_job_listing_from_job_data(job_id, job_data)
 
         result = analyzer.analyze(job_listing, deep=deep)
 
@@ -579,10 +550,10 @@ async def generate_cover_letter(
         )
 
     try:
+        from ...extractors.paste_job import build_job_listing_from_job_data
         from ...generation.cover_letter_service import (
             generate_cover_letter_for_profile,
         )
-        from ...models.job_listing import JobListing, JobSource
 
         raw_profile = profile["profile"]
         user_profile = (
@@ -591,22 +562,7 @@ async def generate_cover_letter(
             else UserProfile(**raw_profile)
         )
 
-        if job_data:
-            job_listing = JobListing(
-                title=job_data.get("title", "Unknown"),
-                company=job_data.get("company", "Unknown"),
-                job_id=job_id,
-                source=JobSource(job_data.get("source", "manual")),
-                description=job_data.get("description", ""),
-                location=job_data.get("location"),
-            )
-        else:
-            job_listing = JobListing(
-                title="Unknown",
-                company="Unknown",
-                job_id=job_id,
-                source=JobSource.MANUAL,
-            )
+        job_listing = build_job_listing_from_job_data(job_id, job_data)
 
         return await generate_cover_letter_for_profile(
             job_listing, user_profile, deep=deep, review=review

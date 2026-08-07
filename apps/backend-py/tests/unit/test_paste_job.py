@@ -2,7 +2,11 @@
 Tests for pasted JD → structured JobListing helper and matcher honesty.
 """
 
-from src.extractors.paste_job import build_job_listing_from_paste
+from src.extractors.paste_job import (
+    build_job_listing_from_job_data,
+    build_job_listing_from_paste,
+    clean_pasted_job_description,
+)
 from src.models.job_listing import JobListing, JobSource
 from src.models.user_profile import ContactInfo, UserProfile
 from src.models.user_profile import Skill as ProfileSkill
@@ -122,3 +126,45 @@ class TestMatcherPasteHonesty:
 
         assert score > weight // 2
         assert score < weight
+
+
+class TestCleanAndJobDataHelpers:
+    """Helpers used by applications metadata and jobs API bodies."""
+
+    def test_clean_pasted_strips_html(self) -> None:
+        """Metadata-only clean path removes HTML crumbs."""
+        cleaned = clean_pasted_job_description(
+            "<div>Need Python&nbsp;and Docker</div>\nWe are an equal opportunity employer."
+        )
+        assert "<div" not in cleaned
+        assert "&nbsp;" not in cleaned
+        assert "equal opportunity" not in cleaned.lower()
+        assert "Python" in cleaned
+
+    def test_job_data_with_description_structures_listing(self) -> None:
+        """jobs route helper structures pasted description payloads."""
+        job = build_job_listing_from_job_data(
+            "job-1",
+            {
+                "title": "Engineer",
+                "company": "Acme",
+                "description": MESSY_PASTE,
+                "source": "manual",
+            },
+        )
+        assert job.job_id == "job-1"
+        assert job.title == "Engineer"
+        skill_names = {s.name.lower() for s in job.skills}
+        assert "python" in skill_names
+        assert "<div" not in (job.description or "")
+
+    def test_job_data_without_description_is_empty_shell(self) -> None:
+        """Missing description still returns a usable listing shell."""
+        job = build_job_listing_from_job_data(
+            "job-2",
+            {"title": "Role", "company": "Co"},
+            default_title="Fallback",
+        )
+        assert job.title == "Role"
+        assert job.description == ""
+        assert job.skills == []

@@ -443,22 +443,18 @@ def run_analyze_command(args) -> int:
             # Job-specific analysis
             logger.info(f"Running job-specific analysis against: {args.job}")
 
-            # Load job description
+            # Load job description file and structure like a paste
             with open(args.job, "r") as f:
                 job_text = f.read()
 
-            # Create a simple job listing from text
-            # For now, use the text as description
-            from src.models.job_listing import JobRequirement, JobResponsibility, Skill
+            from src.extractors.paste_job import build_job_listing_from_paste
 
-            job = JobListing(
+            job = build_job_listing_from_paste(
                 title="Target Position",
                 company="Target Company",
-                location=args.job,
-                description=job_text[:2000],
-                requirements=[JobRequirement(text=job_text[:500])],
-                responsibilities=[JobResponsibility(text="Review job description")],
-                skills=[Skill(name="skill")] if True else [],
+                description=job_text,
+                location=None,
+                job_id="cli-analyze",
             )
 
             analysis = analyzer.analyze_job_specific(

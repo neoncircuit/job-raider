@@ -149,3 +149,22 @@ Cover-letter (and resume-analysis) paste flows assumed users would supply clean 
 - Paste and scrape ingestion share the same normalizer.
 - Fit scores on paste are less inflated.
 - LLM ``JD_EXTRACTION`` on every paste remains optional future work if rules prove thin.
+
+## 2026-08-07 - All JD paste surfaces share one structuring path
+
+### Context
+
+Paste is not limited to the cover-letter tab. Users also drag-copy full JDs into resume analysis, applications track-external, jobs classify/trust/cover-letter payloads, and CLI analyze. Leaving any of those on raw blobs reintroduces optimistic matcher scores and HTML crumb prompts.
+
+### Decision
+
+- Treat every user-supplied job description string as paste input.
+- Route full listings through ``build_job_listing_from_paste`` / ``build_job_listing_from_job_data``.
+- Route metadata-only storage (applications) through ``clean_pasted_job_description``.
+- Do not apply this to LinkedIn profile paste (different domain) or assessment sessions that load jobs by id.
+
+### Consequences
+
+- One module owns paste hygiene for JD text.
+- Interview prep from tracked external apps receives cleaned stored descriptions.
+- New paste features should import the helper rather than building ``JobListing`` ad hoc.
