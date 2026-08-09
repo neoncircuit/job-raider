@@ -564,8 +564,18 @@ async def generate_cover_letter(
 
         job_listing = build_job_listing_from_job_data(job_id, job_data)
 
+        style = "modern"
+        if isinstance(job_data, dict):
+            raw_style = job_data.get("style", "modern")
+            if raw_style in ("modern", "classic"):
+                style = raw_style
+
         return await generate_cover_letter_for_profile(
-            job_listing, user_profile, deep=deep, review=review
+            job_listing,
+            user_profile,
+            deep=deep,
+            review=review,
+            style=style,
         )
 
     except HTTPException:

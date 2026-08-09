@@ -7,7 +7,7 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -309,6 +309,14 @@ class ManualCoverLetterRequest(BaseModel):
         description="Full job description",
     )
     location: Optional[str] = Field(default=None, description="Job location")
+    style: Literal["modern", "classic"] = Field(
+        default="modern",
+        description=(
+            "Letter style: modern (achievement-led body) or classic "
+            "(traditional salutation and structure). Export still adds "
+            "date/sender chrome."
+        ),
+    )
 
     @field_validator("description")
     @classmethod

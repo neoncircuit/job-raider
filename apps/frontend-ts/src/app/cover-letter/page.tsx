@@ -56,6 +56,7 @@ interface FormState {
   company: string;
   location: string;
   description: string;
+  style: "modern" | "classic";
   deep: boolean;
   review: boolean;
 }
@@ -65,6 +66,7 @@ const initialForm: FormState = {
   company: "",
   location: "",
   description: "",
+  style: "modern",
   deep: false,
   review: false,
 };
@@ -164,6 +166,7 @@ export default function CoverLetterPage() {
           company: form.company,
           description: form.description,
           location: form.location || undefined,
+          style: form.style,
         },
         form.deep,
         form.review,
@@ -386,6 +389,7 @@ export default function CoverLetterPage() {
           company,
           description,
           location: location || undefined,
+          style: form.style,
           deep: form.deep,
         },
         controller.signal,
@@ -522,6 +526,45 @@ export default function CoverLetterPage() {
               )}
               <p className="text-xs text-muted-foreground">
                 Minimum 50 characters required for meaningful generation.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Letter style</Label>
+              <div
+                className="grid grid-cols-2 gap-2"
+                role="radiogroup"
+                aria-label="Cover letter style"
+              >
+                <Button
+                  type="button"
+                  variant={form.style === "modern" ? "default" : "outline"}
+                  className="h-auto flex-col items-start gap-0.5 py-2.5 px-3"
+                  aria-pressed={form.style === "modern"}
+                  onClick={() => setForm((f) => ({ ...f, style: "modern" }))}
+                >
+                  <span className="text-sm font-medium">Modern</span>
+                  <span className="text-xs font-normal opacity-80 text-left">
+                    Achievement-led opening, no letterhead in body
+                  </span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={form.style === "classic" ? "default" : "outline"}
+                  className="h-auto flex-col items-start gap-0.5 py-2.5 px-3"
+                  aria-pressed={form.style === "classic"}
+                  onClick={() => setForm((f) => ({ ...f, style: "classic" }))}
+                >
+                  <span className="text-sm font-medium">Classic</span>
+                  <span className="text-xs font-normal opacity-80 text-left">
+                    Salutation, formal arc, sincerely + name
+                  </span>
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Classic uses a traditional letter structure while staying
+                grounded to your resume and the job description. Export still
+                adds date and sender details.
               </p>
             </div>
 

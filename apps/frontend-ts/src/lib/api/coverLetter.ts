@@ -9,6 +9,8 @@ export interface ManualCoverLetterRequest {
   company: string;
   description: string;
   location?: string;
+  /** modern = achievement-led; classic = traditional letter structure */
+  style?: "modern" | "classic";
 }
 
 export interface CoverLetterExportRequest {

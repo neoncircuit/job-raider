@@ -157,7 +157,11 @@ async def generate_manual_cover_letter(
 
     try:
         return await generate_cover_letter_for_profile(
-            job_listing, user_profile, deep=deep, review=review
+            job_listing,
+            user_profile,
+            deep=deep,
+            review=review,
+            style=request.style,
         )
     except HTTPException:
         raise
@@ -502,11 +506,19 @@ async def validate_cover_letter(request: CoverLetterValidateRequest):
         )
         if request.deep:
             validation = validator.validate_with_llm(
-                result, job_listing, user_profile, selection
+                result,
+                job_listing,
+                user_profile,
+                selection,
+                style=request.style,
             )
         else:
             validation = validator.validate(
-                result, job_listing, user_profile, selection
+                result,
+                job_listing,
+                user_profile,
+                selection,
+                style=request.style,
             )
     except Exception as exc:
         logger.error("Cover letter validation failed: %s", exc, exc_info=True)

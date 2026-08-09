@@ -13,7 +13,7 @@ Date: 2026-05-13
 """
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
@@ -21,6 +21,8 @@ from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
 from .selector import SelectionOutput
+
+CoverLetterStyle = Literal["modern", "classic"]
 
 # Shared drafting rules for write + rewrite so grounding constraints stay aligned.
 _COVER_LETTER_RULES = (
@@ -63,6 +65,75 @@ _COVER_LETTER_SYSTEM = (
     "You are a professional cover letter writer.\n\n" + _COVER_LETTER_RULES
 )
 
+_CLASSIC_COVER_LETTER_RULES = (
+    "RULES:\n"
+    "1. The letter MUST be between 200 and 350 words including "
+    "salutation and signature\n"
+    "2. Connect 2-3 specific experiences from the candidate's "
+    "background to the job requirements\n"
+    "3. Mention the company and role by name\n"
+    "4. Use a traditional letter structure:\n"
+    "   - Open with 'Dear Hiring Manager,' (or a named contact "
+    "if one is provided in the profile context)\n"
+    "   - Brief statement of the role and company you are applying for\n"
+    "   - Current-role paragraph with a concrete result tied to the JD\n"
+    "   - Prior-role or project paragraph with another grounded result\n"
+    "   - Short closing asking for a conversation (e.g. opportunity "
+    "to discuss how you can contribute; thank them for consideration)\n"
+    "   - Close with 'Sincerely,' then the candidate's full name on "
+    "the next line\n"
+    "5. Do NOT include date lines, postal addresses, or recipient "
+    "street addresses — export formatting adds those separately\n"
+    "6. Do NOT include fluffy soft-sell paragraphs about being hard "
+    "working, having a great attitude, loving teamwork, or vague "
+    "passion without concrete profile evidence\n"
+    "7. Include at least one quantified result (numbers, "
+    "percentages, scale) from the candidate's background "
+    "when one is available\n"
+    "8. Avoid stock phrases such as 'team player', 'fast "
+    "learner', 'passionate about', and 'proven track record'\n"
+    "9. The closing pitch MUST restate facts already used earlier "
+    "in the same letter or explicitly listed in the candidate "
+    "profile / selection strategy — do NOT invent new capability "
+    "claims. Do not use words like deployed, production, launched, "
+    "or shipped unless those exact claims appear in the profile\n"
+    "10. Every sentence must be traceable to either a specific "
+    "resume bullet/achievement or a specific job requirement "
+    "being addressed. Prefer restating concrete profile facts "
+    "over persuasive synthesis. Do not inflate scope with verbs "
+    "like led, leading, spearheaded, or owned unless the profile "
+    "uses that phrasing. Do not attach techniques (retrieval, "
+    "RAG, fine-tuning, distributed, real-time, containerized) "
+    "to a project unless that project's own bullets list them\n"
+    "11. Return ONLY the letter body as plain text, no JSON"
+)
+
+_CLASSIC_COVER_LETTER_SYSTEM = (
+    "You are a professional cover letter writer who drafts "
+    "traditional formal letters.\n\n" + _CLASSIC_COVER_LETTER_RULES
+)
+
+# Markers shared by modern and classic prompts (asserted in unit tests).
+_SHARED_GROUNDING_MARKERS = (
+    "do NOT invent new capability claims",
+    "Every sentence must be traceable",
+)
+
+
+def _system_prompt_for_style(style: CoverLetterStyle) -> str:
+    """
+    Return the system prompt for the requested cover-letter style.
+
+    Args:
+        style: ``modern`` or ``classic``.
+
+    Returns:
+        Full system prompt string.
+    """
+    if style == "classic":
+        return _CLASSIC_COVER_LETTER_SYSTEM
+    return _COVER_LETTER_SYSTEM
+
 
 @dataclass
 class GeneratedCoverLetter:
@@ -98,6 +169,7 @@ class CoverLetterWriter:
         job: JobListing,
         profile: UserProfile,
         selection: SelectionOutput,
+        style: CoverLetterStyle = "modern",
     ) -> GeneratedCoverLetter:
         """
         Generate a tailored cover letter for a job application.
@@ -106,6 +178,7 @@ class CoverLetterWriter:
             job: Target job listing
             profile: User profile
             selection: Selection output from selector stage
+            style: ``modern`` (achievement-led) or ``classic`` (formal structure)
 
         Returns:
             GeneratedCoverLetter with the letter content and metadata
@@ -113,16 +186,24 @@ class CoverLetterWriter:
         job_context = self._prepare_job_context(job)
         profile_context = self._prepare_profile_context(profile)
         selection_context = self._prepare_selection_context(selection)
+        system_prompt = _system_prompt_for_style(style)
+        if style == "classic":
+            user_lead = (
+                "Write a classic formal cover letter for the following "
+                "job application (salutation, grounded body, sincerely + name):\n\n"
+            )
+        else:
+            user_lead = "Write a cover letter for the following job application:\n\n"
 
         messages = [
             Message(
                 role=MessageType.SYSTEM,
-                content=_COVER_LETTER_SYSTEM,
+                content=system_prompt,
             ),
             Message(
                 role=MessageType.USER,
                 content=(
-                    f"Write a cover letter for the following job application:\n\n"
+                    f"{user_lead}"
                     f"TARGET JOB:\n{job_context}\n\n"
                     f"SELECTION STRATEGY:\n{selection_context}\n\n"
                     f"CANDIDATE PROFILE:\n{profile_context}"
@@ -156,9 +237,10 @@ class CoverLetterWriter:
             highlighted = self._extract_highlighted_experiences(content, selection)
 
             self.logger.info(
-                "Cover letter generated: %d words, model=%s",
+                "Cover letter generated: %d words, model=%s style=%s",
                 word_count,
                 model_used,
+                style,
             )
 
             return GeneratedCoverLetter(
@@ -179,6 +261,7 @@ class CoverLetterWriter:
         selection: SelectionOutput,
         draft: GeneratedCoverLetter,
         critique: str,
+        style: CoverLetterStyle = "modern",
     ) -> GeneratedCoverLetter:
         """
         Rewrite a cover letter draft using a reviewer critique.
@@ -189,6 +272,7 @@ class CoverLetterWriter:
             selection: Selection output from selector stage.
             draft: The original generated cover letter.
             critique: Actionable feedback from the reviewer.
+            style: ``modern`` or ``classic`` (must match the original draft style).
 
         Returns:
             ``GeneratedCoverLetter`` with the rewritten content and metadata.
@@ -196,16 +280,23 @@ class CoverLetterWriter:
         job_context = self._prepare_job_context(job)
         profile_context = self._prepare_profile_context(profile)
         selection_context = self._prepare_selection_context(selection)
+        system_prompt = _system_prompt_for_style(style)
+        style_note = (
+            "Preserve classic formal structure (salutation, sincerely + name). "
+            if style == "classic"
+            else "Preserve modern achievement-led body style. "
+        )
 
         messages = [
             Message(
                 role=MessageType.SYSTEM,
-                content=_COVER_LETTER_SYSTEM,
+                content=system_prompt,
             ),
             Message(
                 role=MessageType.USER,
                 content=(
-                    f"Rewrite the following cover letter for the job application:\n\n"
+                    f"Rewrite the following cover letter for the job application. "
+                    f"{style_note}\n\n"
                     f"TARGET JOB:\n{job_context}\n\n"
                     f"SELECTION STRATEGY:\n{selection_context}\n\n"
                     f"CANDIDATE PROFILE:\n{profile_context}\n\n"
@@ -241,9 +332,10 @@ class CoverLetterWriter:
             highlighted = self._extract_highlighted_experiences(content, selection)
 
             self.logger.info(
-                "Cover letter rewritten: %d words, model=%s",
+                "Cover letter rewritten: %d words, model=%s style=%s",
                 word_count,
                 model_used,
+                style,
             )
 
             return GeneratedCoverLetter(

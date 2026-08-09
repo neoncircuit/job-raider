@@ -235,3 +235,21 @@ Set default locations to ``Singapore`` then ``Remote`` in ``search_config.yaml``
 
 - Fresh searches and pipeline runs target Singapore without profile prefill.
 - Profile target locations still override when the user enables profile-target prefill.
+
+## 2026-08-10 - Opt-in classic cover letter style
+
+### Context
+
+TheJobInterviewGuide-style formal letters are useful for some applications, but adopting that template as the only path would undo modern grounding and reopen generic openings.
+
+### Decision
+
+- Add ``style: modern|classic`` (default ``modern``) on cover-letter generate/validate.
+- Classic changes structure (salutation, current/prior impact arc, sincerely + name) while keeping shared grounding rules.
+- Export formatter continues to supply date/sender chrome; classic LLM output must not emit postal letterhead.
+- Soften generic-opening validation only for ``classic``.
+
+### Consequences
+
+- Users can choose formal structure without replacing the modern default.
+- Grounding and no-invention constraints remain for both styles.

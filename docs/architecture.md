@@ -701,10 +701,13 @@ Schemes remap design tokens only. They do not replace light/dark or cinematic at
 
 Cover letters use a local-first draft path, then deterministic proofreading. The grader must not treat vague wording the same as fabricated scope.
 
+Generation accepts ``style: modern|classic`` (default ``modern``). Modern keeps the achievement-led body with no salutation chrome. Classic uses a traditional salutation / current-role / prior-role / sincerely structure while sharing the same grounding constraints. Export DOCX/PDF still owns date and sender letterhead for both styles.
+
 ```mermaid
 flowchart TD
   Profile["User profile + selection"] --> Writer["CoverLetterWriter"]
   Job["Job listing / pasted JD"] --> Writer
+  Style["style modern or classic"] --> Writer
   Writer --> Draft["Draft letter"]
   Draft --> Reviewer["Optional reviewer + one rewrite"]
   Reviewer --> Validator["CoverLetterValidator"]

@@ -256,6 +256,22 @@ class TestCoverLetterValidator:
         assert CoverLetterIssue.GENERIC_OPENING in result.issues
         assert result.tone_score < 100
 
+    def test_classic_style_allows_traditional_opening(
+        self, sample_job, sample_profile, sample_selection
+    ):
+        """Classic style does not flag traditional apply openers."""
+        validator = CoverLetterValidator(strict_mode=False)
+        result = validator.validate(
+            GENERIC_COVER_LETTER,
+            sample_job,
+            sample_profile,
+            sample_selection,
+            style="classic",
+        )
+
+        assert CoverLetterIssue.GENERIC_OPENING not in result.issues
+        assert result.details.get("has_generic_opening") is False
+
     def test_detects_missing_selected_project(
         self, sample_job, sample_profile, sample_selection
     ):

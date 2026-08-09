@@ -11,9 +11,12 @@ from unittest.mock import Mock
 import pytest
 
 from src.generation.cover_letter_writer import (
+    _CLASSIC_COVER_LETTER_SYSTEM,
     _COVER_LETTER_SYSTEM,
+    _SHARED_GROUNDING_MARKERS,
     CoverLetterWriter,
     GeneratedCoverLetter,
+    _system_prompt_for_style,
 )
 from src.generation.selector import SelectionOutput
 from src.llm.base import LLMResponse
@@ -367,6 +370,51 @@ class TestCoverLetterWriter:
         assert write_system == _COVER_LETTER_SYSTEM
         assert rewrite_system == _COVER_LETTER_SYSTEM
         assert write_system == rewrite_system
+
+    def test_classic_system_differs_but_shares_grounding(
+        self, mock_llm_router, sample_job, sample_profile, sample_selection
+    ):
+        """Classic style uses a different system prompt with shared grounding."""
+        mock_llm_router.generate.return_value = LLMResponse(
+            content=SAMPLE_COVER_LETTER,
+            model="qwen2.5:7b",
+            provider="ollama",
+            tokens_used=400,
+            cost=0.0,
+        )
+
+        writer = CoverLetterWriter(mock_llm_router)
+        writer.write(sample_job, sample_profile, sample_selection, style="classic")
+        classic_system = mock_llm_router.generate.call_args.kwargs["messages"][
+            0
+        ].content
+
+        assert classic_system == _CLASSIC_COVER_LETTER_SYSTEM
+        assert classic_system != _COVER_LETTER_SYSTEM
+        assert _system_prompt_for_style("modern") == _COVER_LETTER_SYSTEM
+        assert _system_prompt_for_style("classic") == _CLASSIC_COVER_LETTER_SYSTEM
+        for marker in _SHARED_GROUNDING_MARKERS:
+            assert marker in _COVER_LETTER_SYSTEM
+            assert marker in _CLASSIC_COVER_LETTER_SYSTEM
+
+        draft = GeneratedCoverLetter(
+            content="Draft letter",
+            highlighted_experiences=[],
+            word_count=2,
+            model_used="qwen2.5:7b",
+        )
+        writer.rewrite(
+            sample_job,
+            sample_profile,
+            sample_selection,
+            draft,
+            "Fix tone",
+            style="classic",
+        )
+        rewrite_system = mock_llm_router.generate.call_args.kwargs["messages"][
+            0
+        ].content
+        assert rewrite_system == _CLASSIC_COVER_LETTER_SYSTEM
 
 
 class TestGeneratedCoverLetter:

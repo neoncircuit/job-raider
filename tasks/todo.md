@@ -3713,3 +3713,11 @@ Ship recommended optional follow-ons after JD paste polish landed on main.
 - [x] ``search_config.yaml`` / ``scoring_config.yaml`` / ``prompt_templates.yaml`` job_scraping locations prefer Singapore
 - [x] Jobs search bar and pipeline form default location ``Singapore``
 - [x] Application settings location placeholder updated
+
+## Classic cover letter style (2026-08-10)
+
+- [x] ``style: modern|classic`` on manual cover-letter requests (validate inherits)
+- [x] Classic writer system prompt + service/routes/jobs threading
+- [x] Style-aware generic-opening validation
+- [x] Cover-letter UI Modern/Classic toggle
+- [x] Tests + decision-log + architecture note

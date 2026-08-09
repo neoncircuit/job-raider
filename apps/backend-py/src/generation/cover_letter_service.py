@@ -93,6 +93,7 @@ async def generate_cover_letter_for_profile(
     user_profile: UserProfile,
     deep: bool = False,
     review: bool = False,
+    style: str = "modern",
 ) -> CoverLetterResponse:
     """
     Generate and validate a tailored cover letter for the given job/profile.
@@ -106,6 +107,7 @@ async def generate_cover_letter_for_profile(
         deep: If True, run LLM-powered validation instead of deterministic checks.
         review: If True, run a single-pass drafter-reviewer loop. A reviewer
             critiques the draft and the writer rewrites it once if needed.
+        style: ``modern`` (default) or ``classic`` letter structure.
 
     Returns:
         ``CoverLetterResponse`` containing the letter and validation results.
@@ -114,6 +116,7 @@ async def generate_cover_letter_for_profile(
         Exception: Re-raised after logging if generation fails. Routes should
             convert this into an appropriate HTTP response.
     """
+    letter_style = style if style in ("modern", "classic") else "modern"
     llm_router = create_router(prefer_local=True)
     total_started = time.perf_counter()
 
@@ -124,7 +127,7 @@ async def generate_cover_letter_for_profile(
 
     writer = CoverLetterWriter(llm_router=llm_router)
     generation_started = time.perf_counter()
-    result = writer.write(job_listing, user_profile, selection)
+    result = writer.write(job_listing, user_profile, selection, style=letter_style)
     generation_ms = _elapsed_ms(generation_started)
 
     review_metadata: Dict[str, Any] = {}
@@ -144,6 +147,7 @@ async def generate_cover_letter_for_profile(
                 selection,
                 result,
                 review_result.critique,
+                style=letter_style,
             )
             rewrite_ms = _elapsed_ms(rewrite_started)
             rewrite_count = 1
@@ -164,11 +168,19 @@ async def generate_cover_letter_for_profile(
     try:
         if deep:
             validation = validator.validate_with_llm(
-                result, job_listing, user_profile, selection
+                result,
+                job_listing,
+                user_profile,
+                selection,
+                style=letter_style,
             )
         else:
             validation = validator.validate(
-                result, job_listing, user_profile, selection
+                result,
+                job_listing,
+                user_profile,
+                selection,
+                style=letter_style,
             )
     except Exception as exc:
         logger.error("Cover letter validation failed: %s", exc, exc_info=True)
@@ -177,6 +189,7 @@ async def generate_cover_letter_for_profile(
 
     if review_metadata:
         validation.details["review"] = review_metadata
+    validation.details["style"] = letter_style
 
     total_ms = _elapsed_ms(total_started)
     timing = {
@@ -203,6 +216,7 @@ async def generate_cover_letter_for_profile(
             "word_count": result.word_count,
             "model_used": result.model_used,
             "highlighted_experiences": result.highlighted_experiences,
+            "style": letter_style,
             "timing": timing,
         },
         validation=_adapt_validation_response(validation),

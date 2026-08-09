@@ -103,6 +103,7 @@ export const jobsApi = {
       description?: string;
       location?: string;
       source?: string;
+      style?: "modern" | "classic";
     },
     deep = false,
   ) =>

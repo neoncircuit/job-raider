@@ -118,6 +118,7 @@ class CoverLetterValidator:
         job: JobListing,
         profile: UserProfile,
         selection: SelectionOutput,
+        style: str = "modern",
     ) -> CoverLetterValidationResult:
         """
         Validate a generated cover letter.
@@ -127,6 +128,7 @@ class CoverLetterValidator:
             job: Target job listing
             profile: Original user profile
             selection: Selection output used for generation
+            style: ``modern`` or ``classic`` (classic softens generic-opening checks)
 
         Returns:
             CoverLetterValidationResult with detailed findings
@@ -134,6 +136,7 @@ class CoverLetterValidator:
         issues: List[CoverLetterIssue] = []
         content = cover_letter.content
         content_lower = content.lower()
+        letter_style = style if style in ("modern", "classic") else "modern"
 
         structure_issues = self._check_structure(content)
         issues.extend(structure_issues)
@@ -141,7 +144,7 @@ class CoverLetterValidator:
         content_issues = self._check_content(content_lower, job, selection)
         issues.extend(content_issues)
 
-        tone_issues = self._check_tone(content_lower)
+        tone_issues = self._check_tone(content_lower, style=letter_style)
         issues.extend(tone_issues)
 
         accuracy_issues = self._check_accuracy(content_lower, profile, selection)
@@ -217,8 +220,11 @@ class CoverLetterValidator:
         details = {
             "word_count": cover_letter.word_count,
             "paragraph_count": self._count_paragraphs(content),
-            "has_generic_opening": any(
-                phrase in content_lower for phrase in self.GENERIC_OPENINGS
+            "style": letter_style,
+            "has_generic_opening": (
+                False
+                if letter_style == "classic"
+                else any(phrase in content_lower for phrase in self.GENERIC_OPENINGS)
             ),
             "has_call_to_action": any(
                 phrase in content_lower for phrase in self.CALL_TO_ACTION_PHRASES
@@ -310,19 +316,25 @@ class CoverLetterValidator:
 
         return issues
 
-    def _check_tone(self, content_lower: str) -> List[CoverLetterIssue]:
+    def _check_tone(
+        self, content_lower: str, style: str = "modern"
+    ) -> List[CoverLetterIssue]:
         """
         Check tone and professionalism.
 
         Args:
             content_lower: Lowercase cover letter text
+            style: ``modern`` or ``classic``. Classic skips GENERIC_OPENING
+                penalties for traditional apply openers.
 
         Returns:
             List of tone issues found
         """
         issues = []
 
-        if any(phrase in content_lower[:100] for phrase in self.GENERIC_OPENINGS):
+        if style != "classic" and any(
+            phrase in content_lower[:100] for phrase in self.GENERIC_OPENINGS
+        ):
             issues.append(CoverLetterIssue.GENERIC_OPENING)
 
         closing = content_lower[-200:] if len(content_lower) > 200 else content_lower
@@ -554,6 +566,7 @@ class CoverLetterValidator:
         job: JobListing,
         profile: UserProfile,
         selection: SelectionOutput,
+        style: str = "modern",
     ) -> CoverLetterValidationResult:
         """
         Validate using LLM for nuanced quality assessment.
@@ -565,12 +578,13 @@ class CoverLetterValidator:
             job: Target job listing
             profile: Original user profile
             selection: Selection output
+            style: ``modern`` or ``classic``
 
         Returns:
             CoverLetterValidationResult with detailed findings
         """
         if not self.llm_router:
-            return self.validate(cover_letter, job, profile, selection)
+            return self.validate(cover_letter, job, profile, selection, style=style)
 
         messages = [
             Message(
@@ -648,4 +662,4 @@ class CoverLetterValidator:
 
         except Exception as e:
             self.logger.error("LLM validation failed: %s", str(e))
-            return self.validate(cover_letter, job, profile, selection)
+            return self.validate(cover_letter, job, profile, selection, style=style)
