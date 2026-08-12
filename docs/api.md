@@ -110,13 +110,22 @@ curl -s -X POST http://localhost:8000/api/profile/upload \
 {
   "profile_id": "profile_abc123",
   "resume_path": "apps/backend-py/data/profiles/profile_abc123.pdf",
-  "message": "Resume uploaded and parsed successfully"
+  "message": "Resume uploaded and parsed successfully",
+  "resume_parse": {
+    "parsed_at": "2026-08-12T06:15:00.123456",
+    "duration_ms": 47200,
+    "model": "qwen3.5:9b",
+    "provider": "ollama",
+    "method": "llm"
+  }
 }
 ```
 
+``resume_parse.method`` is ``llm`` on a successful structured parse, or ``rule_based`` when the LLM/JSON path failed and the parser fell back (skills may still populate from the Technical Skills section).
+
 #### GET /api/profile/
 
-Returns the active profile with contact info, skills, experience, education, etc.
+Returns the active profile with contact info, skills, experience, education, etc. Includes the same ``resume_parse`` object when available (from the last upload).
 
 ```bash
 curl -s http://localhost:8000/api/profile/ | jq .

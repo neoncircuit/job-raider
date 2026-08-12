@@ -661,6 +661,38 @@ Scoring complete: 0 listings above threshold
 
 ## Resume Generation Issues
 
+### Issue: Profile Skills list is shorter than the resume Technical Skills line
+
+**Symptoms:** Profile shows ~10 skills and invented labels such as "Machine Learning" / "Web Development", while the resume Technical Skills line lists many more atomic skills (TypeScript, FastAPI, RAG, etc.). Strength Assessment "Technical Skills" count matches the incomplete list.
+
+**Cause:** Older LLM resume parsing summarized skills into a short categorized set and used umbrella domain examples. Cover-letter tech grounding reads the same `profile.skills` list, so missing skills also weaken fabricated-tech checks.
+
+**Fix:** Current parsing takes the Technical Skills / Skills section as the sole `profile.skills` source when present (verbatim, deduplicated). Project tech stacks stay on project cards and do not inflate the count. Per-project tags are also overwritten from each project's own tech line in the Projects section so Experience technologies (e.g. PostgreSQL) cannot bleed onto another project. Rebuild/redeploy the backend, then **re-upload the resume** so the stored profile is regenerated. Confirm Profile Skills count matches the Technical Skills line before relying on cover-letter grounding.
+
+```mermaid
+flowchart LR
+  Upload["Re-upload resume"] --> Parser["Section + LLM merge"]
+  Parser --> Profile["Stored profile.skills"]
+  Profile --> UI["Strength Assessment count"]
+  Profile --> CL["Cover-letter allowlist"]
+```
+
+### Issue: Experience or Projects missing after resume upload
+
+**Symptoms:** Skills look correct, but Experience and/or Projects sections are empty on Profile. Upload still succeeds.
+
+**Cause:** Older parsers threw on null LLM JSON entries (or bad project URL / GPA) and fell through to rule-based parsing, which hard-codes empty experience/projects while still filling skills from the Technical Skills section. Check backend logs for ``LLM resume parsing failed, falling back to rule-based``.
+
+**Fix:** Current mapping skips null/non-dict list items, normalizes project URLs, drops junk GPAs, and limits rule-based wipe to true LLM/JSON failures. Redeploy backend, re-upload, and confirm Profile shows ``resume_parse.method: llm`` (or the parse summary under the name) rather than rule-based fallback.
+
+### Issue: Frontend crashes with Minified React error #185 after Date & time settings
+
+**Symptoms:** App shows “Something went wrong” / React error #185 (maximum update depth) after deploying datetime prefs.
+
+**Cause:** ``useSyncExternalStore`` for datetime prefs returned a new object from ``getSnapshot`` on every read, so React treated the store as constantly changing.
+
+**Fix:** Prefer a build that caches a referentially stable prefs snapshot. Hard-refresh after redeploying the frontend.
+
 ### Issue: Resume generation fails
 
 **Symptoms:**

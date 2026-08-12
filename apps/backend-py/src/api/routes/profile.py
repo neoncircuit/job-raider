@@ -62,6 +62,34 @@ def _parse_experience_levels(values: list[str]) -> list[ExperienceLevel]:
     return parsed
 
 
+def _resume_parse_payload(profile_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Build the resume-parse metadata payload for profile API responses.
+
+    Prefers the value stored on the profile record; falls back to
+    ``UserProfile.metadata["resume_parse"]`` for older persisted profiles.
+
+    Args:
+        profile_data: Stored profile dict for the active profile.
+
+    Returns:
+        Parse metadata dict, or None when unavailable.
+    """
+    stored = profile_data.get("resume_parse")
+    if isinstance(stored, dict) and stored:
+        return dict(stored)
+    profile = profile_data.get("profile")
+    if profile is None:
+        return None
+    metadata = getattr(profile, "metadata", None)
+    if not isinstance(metadata, dict):
+        return None
+    resume_parse = metadata.get("resume_parse")
+    if isinstance(resume_parse, dict) and resume_parse:
+        return dict(resume_parse)
+    return None
+
+
 # Module-level singletons for expensive analyzer objects
 _llm_router: Optional[LLMRouter] = None
 _linkedin_analyzer: Optional[LinkedInAnalyzer] = None
@@ -241,7 +269,7 @@ def _load_state() -> None:
 _load_state()
 
 
-@router.post("/upload", response_model=Dict[str, str])
+@router.post("/upload", response_model=Dict[str, Any])
 async def upload_resume(
     file: UploadFile = File(..., description="Resume file (PDF or DOCX)"),
 ):
@@ -281,11 +309,16 @@ async def upload_resume(
         logger.error(f"Failed to save uploaded file: {e}")
         raise HTTPException(status_code=500, detail="Failed to save uploaded file")
 
-    # Parse resume
+        # Parse resume
     try:
         llm_router = LLMRouter()
         parser = ResumeParser(llm_router=llm_router)
         profile = parser.parse_file(str(filepath))
+        resume_parse = {}
+        if isinstance(profile.metadata, dict):
+            raw_parse = profile.metadata.get("resume_parse")
+            if isinstance(raw_parse, dict):
+                resume_parse = dict(raw_parse)
 
         # Store profile
         stored_profiles[profile_id] = {
@@ -294,18 +327,24 @@ async def upload_resume(
             "original_filename": file.filename,
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
+            "resume_parse": resume_parse,
         }
 
         # Set as active profile (writes the per-profile file marker so
         # every uvicorn worker observes the new active profile).
         active_profile_id.set(profile_id)
 
-        logger.info(f"Created profile {profile_id} from uploaded resume")
+        logger.info(
+            "Created profile %s from uploaded resume (parse=%s)",
+            profile_id,
+            resume_parse,
+        )
 
         return {
             "profile_id": profile_id,
             "resume_path": str(filepath),
             "message": "Resume uploaded and parsed successfully",
+            "resume_parse": resume_parse,
         }
 
     except Exception as e:
@@ -490,6 +529,7 @@ async def get_profile():
         ),
         "created_at": profile_data["created_at"].isoformat(),
         "updated_at": profile_data["updated_at"].isoformat(),
+        "resume_parse": _resume_parse_payload(profile_data),
     }
 
 

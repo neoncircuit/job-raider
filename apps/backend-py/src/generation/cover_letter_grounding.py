@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
 
-from ..models.user_profile import UserProfile
+from ..models.user_profile import SkillCategory, UserProfile
 from .selector import SelectionOutput
 
 # Common function words longer than 3 chars — excluded so they do not inflate
@@ -143,6 +143,234 @@ _TECHNIQUE_TERMS: tuple[str, ...] = (
     "containerized",
 )
 
+# Canonical tech names for letter-vs-resume Technical Skills checks.
+# Only known tools/languages/clouds/databases are matched so ordinary
+# English is not flagged. Aliases map onto these keys (see ``_TECH_ALIASES``).
+_KNOWN_TECHNOLOGIES: frozenset[str] = frozenset(
+    {
+        "python",
+        "javascript",
+        "typescript",
+        "java",
+        "c++",
+        "c#",
+        "golang",
+        "rust",
+        "ruby",
+        "php",
+        "swift",
+        "kotlin",
+        "scala",
+        "matlab",
+        "sql",
+        "html",
+        "css",
+        "react",
+        "angular",
+        "vue",
+        "next.js",
+        "svelte",
+        "django",
+        "flask",
+        "fastapi",
+        "express",
+        "spring",
+        "rails",
+        "laravel",
+        "node.js",
+        ".net",
+        "docker",
+        "kubernetes",
+        "aws",
+        "azure",
+        "gcp",
+        "git",
+        "linux",
+        "postgresql",
+        "mysql",
+        "mongodb",
+        "redis",
+        "elasticsearch",
+        "kafka",
+        "rabbitmq",
+        "graphql",
+        "terraform",
+        "ansible",
+        "jenkins",
+        "github actions",
+        "gitlab ci",
+        "pytorch",
+        "tensorflow",
+        "pandas",
+        "numpy",
+        "scikit-learn",
+        "spark",
+        "hadoop",
+        "airflow",
+        "dbt",
+        "snowflake",
+        "bigquery",
+        "redshift",
+        "dynamodb",
+        "cassandra",
+        "neo4j",
+        "sqlite",
+        "celery",
+        "nginx",
+        "helm",
+        "prometheus",
+        "grafana",
+        "datadog",
+        "sentry",
+        "openai",
+        "langchain",
+        "huggingface",
+        "ollama",
+        "mlflow",
+        "keras",
+        "opencv",
+        "powershell",
+        "pulumi",
+        "cloudformation",
+        "ecs",
+        "eks",
+        "lambda",
+        "cloudflare",
+        "vercel",
+        "heroku",
+        "firebase",
+        "supabase",
+        "prisma",
+        "sqlalchemy",
+        "webpack",
+        "vite",
+        "tailwind",
+        "bootstrap",
+        "jquery",
+        "redux",
+        "zustand",
+        "grpc",
+        "oauth",
+        "jwt",
+        "splunk",
+        "kibana",
+        "logstash",
+        "consul",
+        "istio",
+        "envoy",
+        "traefik",
+        "selenium",
+        "cypress",
+        "playwright",
+        "jest",
+        "pytest",
+        "junit",
+        "storybook",
+        "tableau",
+        "power bi",
+        "looker",
+        "protobuf",
+        "gradle",
+        "maven",
+        "npm",
+        "yarn",
+        "pnpm",
+        "conda",
+        "poetry",
+        "flutter",
+        "react native",
+        "xamarin",
+        "electron",
+        "opentelemetry",
+        "jaeger",
+        "new relic",
+        "pagerduty",
+        "salesforce",
+        "okta",
+        "auth0",
+        "cognito",
+        "keycloak",
+        "pydantic",
+        "matplotlib",
+        "seaborn",
+        "plotly",
+        "three.js",
+        "cuda",
+        "onnx",
+        "vllm",
+        "spacy",
+        "nltk",
+        "xgboost",
+        "lightgbm",
+        "catboost",
+        "scipy",
+        "memcached",
+        "flink",
+        "kinesis",
+        "cloudwatch",
+        "sagemaker",
+        "bedrock",
+        "argocd",
+        "circleci",
+        "azure devops",
+        "cicd",
+        "mlops",
+    }
+)
+
+# Alternate spellings / short names -> lexicon canonical keys.
+_TECH_ALIASES: dict[str, str] = {
+    "k8s": "kubernetes",
+    "kube": "kubernetes",
+    "postgres": "postgresql",
+    "psql": "postgresql",
+    "nodejs": "node.js",
+    "node.js": "node.js",
+    "nextjs": "next.js",
+    "reactjs": "react",
+    "vuejs": "vue",
+    "go": "golang",
+    "google cloud": "gcp",
+    "google cloud platform": "gcp",
+    "amazon web services": "aws",
+    "microsoft azure": "azure",
+    "cplusplus": "c++",
+    "csharp": "c#",
+    "dotnet": ".net",
+    "sklearn": "scikit-learn",
+    "scikit learn": "scikit-learn",
+    "gh actions": "github actions",
+    "githubactions": "github actions",
+    "ci/cd": "cicd",
+    "ci-cd": "cicd",
+    "mongo": "mongodb",
+    "elastic search": "elasticsearch",
+    "powerbi": "power bi",
+    "power-bi": "power bi",
+    "reactnative": "react native",
+    "react-native": "react native",
+    "threejs": "three.js",
+    "tf": "tensorflow",
+    "torch": "pytorch",
+}
+
+# Aliases that are also common English / too short for free-text matching.
+# Still used when normalizing profile skill names.
+_AMBIGUOUS_TEXT_ALIASES: frozenset[str] = frozenset(
+    {
+        "go",
+        "tf",
+        "torch",
+    }
+)
+
+_NON_TECH_SKILL_CATEGORIES = frozenset(
+    {
+        SkillCategory.SOFT_SKILL,
+        SkillCategory.LANGUAGE,
+    }
+)
+
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 _WORD_RE = re.compile(r"[a-z0-9+#./-]+", re.IGNORECASE)
 
@@ -221,6 +449,114 @@ def collect_resume_bullets(
             bullets.append(f"{name} {reason}".strip())
 
     return [bullet for bullet in bullets if bullet and bullet.strip()]
+
+
+def normalize_tech_name(name: str) -> str:
+    """
+    Normalize a technology name for allowlist comparison.
+
+    Applies lowercasing, light cleanup, and alias folding (for example
+    ``K8s`` -> ``kubernetes``, ``Postgres`` -> ``postgresql``).
+
+    Args:
+        name: Raw skill or technology string from profile or letter text.
+
+    Returns:
+        Canonical lowercase technology key.
+    """
+    cleaned = re.sub(r"\s+", " ", (name or "").strip().lower().replace("_", " "))
+    if cleaned in _TECH_ALIASES:
+        return _TECH_ALIASES[cleaned]
+    return cleaned
+
+
+def collect_profile_technical_skills(profile: UserProfile) -> Set[str]:
+    """
+    Build the Technical Skills allowlist from the candidate profile.
+
+    Uses ``profile.skills`` entries whose category is not a soft skill or
+    spoken language. Names are alias-normalized so resume ``Kubernetes``
+    covers letter ``K8s``.
+
+    Args:
+        profile: Candidate profile whose skills section is the source of truth.
+
+    Returns:
+        Set of normalized technical skill names.
+    """
+    allowed: Set[str] = set()
+    for skill in profile.skills or []:
+        if skill.category in _NON_TECH_SKILL_CATEGORIES:
+            continue
+        if not skill.name:
+            continue
+        allowed.add(normalize_tech_name(skill.name))
+    return allowed
+
+
+def extract_technologies(text: str) -> Set[str]:
+    """
+    Extract known technology names from free text via the curated lexicon.
+
+    Matches are case-insensitive and respect token boundaries so ordinary
+    English is not treated as a technology. Ambiguous short aliases such as
+    ``go`` are excluded from free-text matching.
+
+    Args:
+        text: Cover-letter body or other free text.
+
+    Returns:
+        Set of canonical technology keys found in the text.
+    """
+    lowered = (text or "").lower()
+    if not lowered.strip():
+        return set()
+
+    candidates: List[tuple[str, str]] = []
+    for tech in _KNOWN_TECHNOLOGIES:
+        candidates.append((tech, tech))
+    for alias, canonical in _TECH_ALIASES.items():
+        if alias in _AMBIGUOUS_TEXT_ALIASES:
+            continue
+        if alias in _KNOWN_TECHNOLOGIES:
+            continue
+        candidates.append((alias, canonical))
+    candidates.sort(key=lambda item: len(item[0]), reverse=True)
+
+    found: Set[str] = set()
+    for term, canonical in candidates:
+        escaped = re.escape(term)
+        pattern = re.compile(
+            rf"(?<![A-Za-z0-9]){escaped}(?![A-Za-z0-9])",
+            re.IGNORECASE,
+        )
+        if pattern.search(lowered):
+            found.add(normalize_tech_name(canonical))
+    return found
+
+
+def flag_fabricated_technologies(
+    letter_text: str,
+    profile: UserProfile,
+) -> List[str]:
+    """
+    Flag named technologies in the letter that are absent from Technical Skills.
+
+    Detection is limited to the curated tech lexicon so ordinary English is
+    not flagged. JD-only names such as AWS or Kubernetes that never appear on
+    the resume skills list are returned as hard grounding findings.
+
+    Args:
+        letter_text: Generated cover-letter body.
+        profile: Candidate profile providing the Technical Skills allowlist.
+
+    Returns:
+        Sorted list of fabricated canonical technology names.
+    """
+    claimed = extract_technologies(letter_text)
+    allowed = collect_profile_technical_skills(profile)
+    fabricated = sorted(tech for tech in claimed if tech not in allowed)
+    return fabricated
 
 
 def build_project_techniques(profile: UserProfile) -> dict[str, List[str]]:
@@ -470,6 +806,7 @@ _PENALTY_SOFT_UNGROUNDED = 3
 _PENALTY_HARD_UNGROUNDED = 10
 _PENALTY_SCOPE_INFLATION = 12
 _PENALTY_TECHNIQUE_MISMATCH = 10
+_PENALTY_FABRICATED_TECH = 10
 _MAX_GROUNDING_PENALTY = 50
 
 
@@ -504,22 +841,26 @@ def _is_hard_ungrounded(sentence: str) -> bool:
 def calc_grounding_penalty(
     ungrounded_sentences: List[str],
     claim_overclaims: List[Dict[str, Any]],
+    fabricated_technologies: Optional[Sequence[str]] = None,
 ) -> tuple[int, Dict[str, Any]]:
     """
     Score grounding findings by severity instead of a flat per-issue penalty.
 
     Soft ungrounded sentences (weak lexical overlap / vague phrasing) cost
-    little. Hard ungrounded overclaim verbs, scope inflation, and technique
-    mismatches cost substantially more. Total deduction is capped so other
-    content dimensions remain visible.
+    little. Hard ungrounded overclaim verbs, scope inflation, technique
+    mismatches, and fabricated technologies cost substantially more. Total
+    deduction is capped so other content dimensions remain visible.
 
     Args:
-        ungrounded_sentences: Sentences failing resume/JD overlap checks.
+        ungrounded_sentences: Sentences failing resume overlap checks.
         claim_overclaims: Scope/technique findings with per-sentence flags.
+        fabricated_technologies: Tech names claimed in the letter but absent
+            from the resume Technical Skills allowlist.
 
     Returns:
         Tuple of (penalty points to subtract from content score, breakdown
-        dict with soft/hard/scope/technique counts and raw vs capped penalty).
+        dict with soft/hard/scope/technique/fabricated_tech counts and raw
+        vs capped penalty).
     """
     overclaim_keys = {
         _normalize_finding_sentence(item["sentence"])
@@ -550,11 +891,14 @@ def calc_grounding_penalty(
             elif lowered.startswith("technique mismatch"):
                 technique_count += 1
 
+    fabricated_count = len(fabricated_technologies or [])
+
     raw = (
         soft_count * _PENALTY_SOFT_UNGROUNDED
         + hard_count * _PENALTY_HARD_UNGROUNDED
         + scope_count * _PENALTY_SCOPE_INFLATION
         + technique_count * _PENALTY_TECHNIQUE_MISMATCH
+        + fabricated_count * _PENALTY_FABRICATED_TECH
     )
     penalty = min(raw, _MAX_GROUNDING_PENALTY)
     breakdown: Dict[str, Any] = {
@@ -562,6 +906,7 @@ def calc_grounding_penalty(
         "hard_ungrounded": hard_count,
         "scope_inflation": scope_count,
         "technique_mismatch": technique_count,
+        "fabricated_tech": fabricated_count,
         "raw_penalty": raw,
         "capped_penalty": penalty,
         "weights": {
@@ -569,6 +914,7 @@ def calc_grounding_penalty(
             "hard_ungrounded": _PENALTY_HARD_UNGROUNDED,
             "scope_inflation": _PENALTY_SCOPE_INFLATION,
             "technique_mismatch": _PENALTY_TECHNIQUE_MISMATCH,
+            "fabricated_tech": _PENALTY_FABRICATED_TECH,
             "max_penalty": _MAX_GROUNDING_PENALTY,
         },
     }

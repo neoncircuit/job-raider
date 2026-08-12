@@ -537,14 +537,14 @@ http://localhost:3000
 - **Pipeline** - Discover (default: scrape and score) or advanced full pipeline; optional Use profile targets
 - **Jobs** - Review latest discover shortlist, or live search; optional Use profile targets; apply is explicit
 - **Applications** - Track saved and applied jobs (Simulate Apply for dry-run paths)
-- **Profile** - Manage profile, skills, experience, and Job Targets (keywords, locations, experience, exclude internships)
+- **Profile** - Manage profile, skills, experience, and Job Targets (keywords, locations, experience, exclude internships). After upload, shows parse time, duration, and model.
 - **Assessment** - DISC work-style assessment and skill-based technical interview practice
 - **Resume Analysis** - AI-powered resume parsing and gap analysis
 - **LinkedIn Analysis** - Inbound-attraction scoring and recruiter-focused profile recommendations
 - **Cover Letter** - Paste a job description, generate/review, and export. Proofread scores use severity-weighted grounding: vague wording costs less than fabricated scope or technique mismatches. The UI shows flagged sentences and the grounding deduction breakdown before you send.
 - **Career Coach** - Agent-backed career guidance (requires an active profile)
 - **Metrics** - Cost tracking and outcome statistics
-- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits; optional **color scheme** swatch grid (Raid through Stained glass) and **Cinematic atmosphere** (local, off by default)
+- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits; optional **color scheme** swatch grid (Raid through Stained glass), **Cinematic atmosphere** (local, off by default), and **Date & time** format/timezone prefs (system, profile location, or manual IANA; applies app-wide via ``formatDate`` / ``formatDatetime``)
 
 **DISC Work Style Assessment:**
 - Employer-style Most/Least forced-choice practice (not a full personality inventory)

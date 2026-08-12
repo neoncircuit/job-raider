@@ -145,12 +145,25 @@ apps/backend-py/tests/
     └── test_rag_pipeline.py
 ```
 
-Cover-letter grounding tests verify soft versus hard penalties, double-count avoidance, and the max grounding cap. Run:
+Cover-letter grounding tests verify soft versus hard penalties, fabricated
+technologies against Technical Skills, double-count avoidance, and the max
+grounding cap. Resume parser tests cover Technical Skills extraction, project
+tech lines, description/tech dedupe, null-safe profile mapping, and parse
+metadata. Run:
 
 ```bash
 cd apps/backend-py
 source .venv/bin/activate
-pytest tests/unit/test_cover_letter_grounding.py tests/test_cover_letter_validator.py -q
+pytest tests/unit/test_cover_letter_grounding.py tests/test_cover_letter_validator.py \
+  tests/unit/test_resume_skills_extraction.py tests/unit/test_resume_profile_mapping.py \
+  tests/unit/test_resume_parse_metadata.py -q
+```
+
+Frontend datetime preference helpers:
+
+```bash
+cd apps/frontend-ts
+npx vitest --run tests/lib/datetime-prefs.test.ts
 ```
 
 ## Writing Tests

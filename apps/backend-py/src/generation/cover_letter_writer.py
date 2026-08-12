@@ -58,7 +58,11 @@ _COVER_LETTER_RULES = (
     "uses that phrasing. Do not attach techniques (retrieval, "
     "RAG, fine-tuning, distributed, real-time, containerized) "
     "to a project unless that project's own bullets list them\n"
-    "12. Return ONLY the letter body as plain text, no JSON"
+    "12. Never name a technology, tool, cloud platform, or database "
+    "that is not listed in the candidate's skills / Technical Skills. "
+    "Do not copy example stacks from the job description unless those "
+    "exact names appear on the resume\n"
+    "13. Return ONLY the letter body as plain text, no JSON"
 )
 
 _COVER_LETTER_SYSTEM = (
@@ -105,7 +109,11 @@ _CLASSIC_COVER_LETTER_RULES = (
     "uses that phrasing. Do not attach techniques (retrieval, "
     "RAG, fine-tuning, distributed, real-time, containerized) "
     "to a project unless that project's own bullets list them\n"
-    "11. Return ONLY the letter body as plain text, no JSON"
+    "11. Never name a technology, tool, cloud platform, or database "
+    "that is not listed in the candidate's skills / Technical Skills. "
+    "Do not copy example stacks from the job description unless those "
+    "exact names appear on the resume\n"
+    "12. Return ONLY the letter body as plain text, no JSON"
 )
 
 _CLASSIC_COVER_LETTER_SYSTEM = (
@@ -117,6 +125,7 @@ _CLASSIC_COVER_LETTER_SYSTEM = (
 _SHARED_GROUNDING_MARKERS = (
     "do NOT invent new capability claims",
     "Every sentence must be traceable",
+    "Never name a technology, tool, cloud platform, or database",
 )
 
 

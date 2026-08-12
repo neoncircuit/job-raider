@@ -1,4 +1,10 @@
 import type { SalaryRange } from "@/lib/types/api";
+import {
+  formatDateTimeWithPrefs,
+  formatDateWithPrefs,
+  readDateTimePrefs,
+  readProfileLocationCache,
+} from "@/lib/datetime-prefs";
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -32,24 +38,34 @@ export function formatDurationMs(ms: number): string {
   return formatDuration(seconds);
 }
 
+/**
+ * Format an ISO datetime using Settings → Appearance date/time prefs.
+ *
+ * @param isoString - ISO timestamp from the API.
+ * @returns Formatted datetime, or ``N/A`` when missing/invalid.
+ */
 export function formatDatetime(isoString: string | null | undefined): string {
-  if (!isoString) return "N/A";
-  return new Date(isoString).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const formatted = formatDateTimeWithPrefs(
+    isoString,
+    readDateTimePrefs(),
+    readProfileLocationCache(),
+  );
+  return formatted ?? "N/A";
 }
 
+/**
+ * Format an ISO date (no time) using Settings → Appearance date/time prefs.
+ *
+ * @param isoString - ISO date or timestamp from the API.
+ * @returns Formatted date, or ``N/A`` when missing/invalid.
+ */
 export function formatDate(isoString: string | null | undefined): string {
-  if (!isoString) return "N/A";
-  return new Date(isoString).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const formatted = formatDateWithPrefs(
+    isoString,
+    readDateTimePrefs(),
+    readProfileLocationCache(),
+  );
+  return formatted ?? "N/A";
 }
 
 export function formatPercentage(value: number, decimals = 1): string {
@@ -74,7 +90,13 @@ export function formatSalaryRange(
     new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: normalizedCurrency as
-        "USD" | "EUR" | "GBP" | "SGD" | "CAD" | "AUD" | "INR",
+        | "USD"
+        | "EUR"
+        | "GBP"
+        | "SGD"
+        | "CAD"
+        | "AUD"
+        | "INR",
       maximumFractionDigits: 0,
     }).format(v);
   if (min_amount && max_amount)

@@ -5,6 +5,8 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { PageSkeleton } from "./PageSkeleton";
 import { CinematicDocumentSync } from "@/lib/hooks/use-cinematic";
 import { ColorSchemeDocumentSync } from "@/lib/hooks/use-color-scheme";
+import { ProfileLocationCacheSync } from "@/components/layout/ProfileLocationCacheSync";
+import { DatetimePrefsRefresh } from "@/components/layout/DatetimePrefsRefresh";
 
 /**
  * Application chrome: sidebar (desktop), mobile nav, and main content.
@@ -19,6 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-background relative">
       <CinematicDocumentSync />
       <ColorSchemeDocumentSync />
+      <ProfileLocationCacheSync />
       <div className="raid-atmosphere" aria-hidden />
 
       <div className="hidden md:flex relative z-10">
@@ -32,7 +35,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <ErrorBoundary>
-            <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
+            <DatetimePrefsRefresh>
+              <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
+            </DatetimePrefsRefresh>
           </ErrorBoundary>
         </main>
       </div>

@@ -663,21 +663,23 @@ graph LR
 | `/cover-letter` | Manual JD paste → generate/review/export cover letter |
 | `/career-coach` | Agent-backed career analysis (requires active profile) |
 | `/metrics` | Recharts funnel + pie, cost tiles, LLM call log |
-| `/settings` | Ollama host, cloud fallback provider (Anthropic/Gemini) + API key, installed-only small/large model pickers, model params, cost limits; local color schemes and cinematic atmosphere |
+| `/settings` | Ollama host, cloud fallback provider (Anthropic/Gemini) + API key, installed-only small/large model pickers, model params, cost limits; local color schemes, cinematic atmosphere, and date/time display prefs |
 | `/assessment` | DISC work-style assessment and skill-based technical interview practice |
 
 ### Appearance Color Schemes
 
-Light/dark mode stays on the sidebar toggle. Color schemes are a separate local preference (`data-scheme` on the document root). Settings Appearance shows an Odysseus-inspired swatch-card grid for curated presets. A Customize panel stays on the roadmap.
+Light/dark mode stays on the sidebar toggle. Color schemes are a separate local preference (`data-scheme` on the document root). Settings Appearance shows an Odysseus-inspired swatch-card grid for curated presets. A Customize panel stays on the roadmap. The same Appearance card also holds **Date & time** prefs (format + timezone mode); shared ``formatDate`` / ``formatDatetime`` read them across the app.
 
 ```mermaid
 flowchart LR
-  Settings["Settings Appearance"] --> Store["localStorage scheme"]
+  Settings["Settings Appearance"] --> Store["localStorage scheme + datetime prefs"]
   Store --> Sync["ColorSchemeDocumentSync"]
   Sync --> Attr["html data-scheme"]
   Attr --> Tokens["CSS token remap"]
   Tokens --> UI["Background / primary / wash"]
   Mode["Light or dark class"] --> Tokens
+  Store --> Format["formatDate / formatDatetime"]
+  Format --> Pages["Profile Pipeline Dashboard Jobs Metrics"]
 ```
 
 | Scheme | Intent |
@@ -718,20 +720,23 @@ flowchart TD
   Grounding --> Hard["Hard ungrounded: overclaim verbs"]
   Grounding --> Scope["Scope inflation"]
   Grounding --> Tech["Technique mismatch"]
+  Grounding --> FabTech["Fabricated technology"]
   Soft --> Penalty["Severity-weighted content penalty"]
   Hard --> Penalty
   Scope --> Penalty
   Tech --> Penalty
+  FabTech --> Penalty
   Penalty --> Scores["Structure / content / tone scores"]
   Scores --> UI["Proofread UI + review-before-send"]
 ```
 
 | Finding | Typical meaning | Content penalty per hit |
 |---------|-----------------|-------------------------|
-| Soft ungrounded | Weak resume/JD lexical overlap | 3 |
+| Soft ungrounded | Weak resume lexical overlap (title/company/coverage terms only; not raw JD body) | 3 |
 | Hard ungrounded | Capability verbs such as deployed / production / shipped without resume support | 10 |
 | Scope inflation | Leadership phrasing beyond IC bullets | 12 |
 | Technique mismatch | Named technique not verified for the referenced project | 10 |
+| Fabricated technology | Named tool/cloud/database absent from resume Technical Skills | 10 |
 
 The grounding bucket is capped at 50 so other content checks remain visible. Issue enums still flag findings for review; only the numeric content score uses severity weights. Implementation lives in `apps/backend-py/src/generation/cover_letter_grounding.py` and `cover_letter_validator.py`.
 

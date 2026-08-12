@@ -3721,3 +3721,71 @@ Ship recommended optional follow-ons after JD paste polish landed on main.
 - [x] Style-aware generic-opening validation
 - [x] Cover-letter UI Modern/Classic toggle
 - [x] Tests + decision-log + architecture note
+
+## Resume Technical Skills grounding for cover letters (2026-08-11)
+
+- [x] Curated tech lexicon + ``flag_fabricated_technologies`` + hard penalty
+- [x] Validator issue ``FABRICATED_TECHNOLOGY``; omit raw JD description from soft grounding
+- [x] Writer modern/classic rule: never name tech absent from Technical Skills
+- [x] Unit tests for JD-only stack + K8s/Kubernetes alias + penalty
+- [x] Decision-log + architecture table; Proofread UI lists fabricated techs
+
+### Review
+
+Hard-flags named technologies in cover letters that are absent from ``profile.skills`` (excluding soft/spoken categories). Stops JD body text from legitimizing soft overlap for AWS/Kubernetes/MongoDB/Redis-style fabrications.
+
+## Verbatim Technical Skills extraction (2026-08-12)
+
+- [x] Deterministic Technical Skills section extract/split/categorize/merge
+- [x] LLM prompt no longer invents umbrella domains; map domains/databases/cloud
+- [x] Rule-based fallback unions section skills with lexicon
+- [x] Fixture + unit tests (verbatim 20+, invented-domain rejection, grounding allowlist)
+- [x] Decision-log + troubleshooting (re-upload required)
+- [x] Scope locked: section-only for ``profile.skills`` when section exists (no project-stack inflation); dedupe by normalized name
+- [x] Per-project technologies overwritten from Projects-section tech lines (fixes Agent-C misattribution / under-inclusion)
+
+### Review
+
+Incomplete Profile skills were LLM summarization, not a UI bug. Section-only SoT restores verbatim Technical Skills for Strength Assessment counts and cover-letter tech grounding. Project stacks remain on projects, with deterministic per-project tech lines to prevent Experience bleed. Re-upload resume after deploying the parser fix.
+
+## Project description vs tech tags (2026-08-12)
+
+- [x] Suppress project ``description`` when it duplicates ``technologies`` (parser + Profile UI)
+- [x] Unit tests for stack-line detection, create_profile clear, section-apply clear
+- [x] Decision-log note; containers rebuilt
+
+### Review
+
+Resume Projects often put the tech stack on its own line under the title. That line was landing in both ``description`` and ``technologies``, so Profile showed the same stack as prose and as pills. Clear/hide the prose when it matches the tag list; keep real prose descriptions and bullets.
+
+## Harden resume parse against section wipe (2026-08-12)
+
+- [x] Null-safe nested objects + skip non-dict list items; experience key aliases
+- [x] Per-entry try/except; normalize project URL; coerce/drop bad GPA
+- [x] Rule-based wipe only on LLM/JSON failure (not mapping edge cases)
+- [x] Unit tests for wipe-prone JSON; black/ruff/pytest; overlay + decision-log
+
+### Review
+
+Intermittent empty Experience/Projects came from LLM JSON with null entries (or bad URL/GPA) throwing in ``_create_profile_from_dict``, then rule-based fallback hard-coding empty lists while skills still looked fine. Mapping now skips/coerces bad fields so sections survive regardless of model flake.
+
+## Resume parse metadata on Profile (2026-08-12)
+
+- [x] Record ``parsed_at``, ``duration_ms``, ``model``, ``provider``, ``method`` on profile metadata
+- [x] Expose via upload response + ``GET /profile``; persist through profile storage
+- [x] Profile UI + upload toast show parse summary
+- [x] Unit tests; black/ruff/pytest; rebuild containers
+
+### Review
+
+Makes it obvious a CV actually went through parsing and which model produced the profile, including rule-based fallback when the LLM path fails.
+
+## Configurable datetime display (2026-08-12)
+
+- [x] Local Appearance settings: format + timezone mode (system / profile location / manual)
+- [x] Shared formatter for Profile parse timestamps; location heuristic map
+- [x] Unit tests; frontend rebuild
+
+### Review
+
+Datetime display prefs stay in localStorage (like color scheme). Default remains system locale/timezone; optional profile-location inference and manual IANA picker. ``formatDate`` / ``formatDatetime`` honor these prefs app-wide.

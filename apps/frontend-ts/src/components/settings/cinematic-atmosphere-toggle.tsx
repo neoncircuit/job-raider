@@ -2,6 +2,13 @@
 
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCinematicPreference } from "@/lib/hooks/use-cinematic";
 import {
   COLOR_SCHEME_LABELS,
@@ -10,6 +17,15 @@ import {
   useColorSchemePreference,
   type ColorScheme,
 } from "@/lib/hooks/use-color-scheme";
+import { useDateTimePrefs } from "@/lib/hooks/use-datetime-prefs";
+import {
+  DATE_TIME_FORMAT_OPTIONS,
+  MANUAL_TIME_ZONES,
+  TIME_ZONE_MODE_OPTIONS,
+  formatDateTimeWithPrefs,
+  type DateTimeFormatId,
+  type TimeZoneMode,
+} from "@/lib/datetime-prefs";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -75,13 +91,19 @@ function SchemePresetCard({
 }
 
 /**
- * Local Appearance preferences: color scheme and cinematic atmosphere.
+ * Local Appearance preferences: color scheme, cinematic atmosphere, datetime.
  *
  * Preferences stay in localStorage and do not sync to the backend.
  */
 export function CinematicAtmosphereToggle() {
   const [enabled, setEnabled] = useCinematicPreference();
   const [scheme, setScheme] = useColorSchemePreference();
+  const [dateTimePrefs, setDateTimePrefs] = useDateTimePrefs();
+  const preview = formatDateTimeWithPrefs(
+    new Date().toISOString(),
+    dateTimePrefs,
+    "Singapore, Singapore",
+  );
 
   return (
     <div className="rounded-lg border bg-card p-4 space-y-4">
@@ -126,6 +148,110 @@ export function CinematicAtmosphereToggle() {
           checked={enabled}
           onCheckedChange={setEnabled}
         />
+      </div>
+
+      <div className="space-y-3 border-t border-border pt-4">
+        <div>
+          <h3 className="text-sm font-medium text-foreground">Date &amp; time</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Applies to dates and timestamps across the app (Profile, Pipeline,
+            Dashboard, Jobs, Metrics, Career Coach, Applications, and more).
+            Default is this device’s system locale and time zone.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="datetime-format">Format</Label>
+          <Select
+            value={dateTimePrefs.format}
+            onValueChange={(value) => {
+              if (!value) return;
+              setDateTimePrefs({
+                ...dateTimePrefs,
+                format: value as DateTimeFormatId,
+              });
+            }}
+          >
+            <SelectTrigger id="datetime-format" className="w-full">
+              <SelectValue placeholder="Format" />
+            </SelectTrigger>
+            <SelectContent>
+              {DATE_TIME_FORMAT_OPTIONS.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label} — {option.exampleHint}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="datetime-timezone-mode">Time zone</Label>
+          <Select
+            value={dateTimePrefs.timeZoneMode}
+            onValueChange={(value) => {
+              if (!value) return;
+              setDateTimePrefs({
+                ...dateTimePrefs,
+                timeZoneMode: value as TimeZoneMode,
+              });
+            }}
+          >
+            <SelectTrigger id="datetime-timezone-mode" className="w-full">
+              <SelectValue placeholder="Time zone" />
+            </SelectTrigger>
+            <SelectContent>
+              {TIME_ZONE_MODE_OPTIONS.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {
+              TIME_ZONE_MODE_OPTIONS.find(
+                (option) => option.id === dateTimePrefs.timeZoneMode,
+              )?.description
+            }
+          </p>
+        </div>
+
+        {dateTimePrefs.timeZoneMode === "manual" && (
+          <div className="space-y-2">
+            <Label htmlFor="datetime-manual-timezone">Manual time zone</Label>
+            <Select
+              value={dateTimePrefs.manualTimeZone}
+              onValueChange={(value) => {
+                if (!value) return;
+                setDateTimePrefs({
+                  ...dateTimePrefs,
+                  manualTimeZone: value,
+                });
+              }}
+            >
+              <SelectTrigger id="datetime-manual-timezone" className="w-full">
+                <SelectValue placeholder="IANA time zone" />
+              </SelectTrigger>
+              <SelectContent>
+                {MANUAL_TIME_ZONES.map((zone) => (
+                  <SelectItem key={zone.id} value={zone.id}>
+                    {zone.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {preview && (
+          <p className="text-xs text-muted-foreground">
+            Preview: <span className="text-foreground">{preview}</span>
+            {dateTimePrefs.timeZoneMode === "profile_location"
+              ? " (sample location: Singapore)"
+              : null}
+          </p>
+        )}
       </div>
     </div>
   );

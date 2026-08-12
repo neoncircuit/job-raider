@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
@@ -20,10 +20,10 @@ import {
   Settings,
 } from "lucide-react";
 import { profileApi } from "@/lib/api/profile";
-import type { UserProfile } from "@/lib/types/api";
+import type { ResumeParseInfo, UserProfile } from "@/lib/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils/format";
+import { formatDate, formatDatetime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import { ApplicationSettingsModal } from "@/components/application-settings-modal";
 import { JobTargetsEditor } from "@/components/job-targets-editor";
@@ -35,6 +35,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { useDateTimePrefs } from "@/lib/hooks/use-datetime-prefs";
+import { writeProfileLocationCache } from "@/lib/datetime-prefs";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -58,16 +60,131 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+/**
+ * Drop leading highlights that duplicate the description summary line.
+ *
+ * @param description - Summary shown under the entry header.
+ * @param highlights - Bullet list under that entry.
+ * @returns Highlights with leading duplicates of description removed.
+ */
+function highlightsWithoutDescriptionDuplicate(
+  description: string | null | undefined,
+  highlights: string[] | null | undefined,
+): string[] {
+  const bullets = (highlights ?? []).map((item) => item.trim()).filter(Boolean);
+  const summary = (description ?? "").trim();
+  if (!summary || bullets.length === 0) {
+    return bullets;
+  }
+  const normalize = (value: string) =>
+    value.replace(/\s+/g, " ").trim().toLowerCase();
+  const summaryKey = normalize(summary);
+  let start = 0;
+  while (start < bullets.length && normalize(bullets[start]) === summaryKey) {
+    start += 1;
+  }
+  return bullets.slice(start);
+}
+
+/**
+ * Return whether a project description is only its technologies list as text.
+ *
+ * @param description - Project summary prose.
+ * @param technologies - Tag list for the same project.
+ * @returns True when showing description would duplicate the tag row.
+ */
+function descriptionDuplicatesTechnologies(
+  description: string | null | undefined,
+  technologies: string[] | null | undefined,
+): boolean {
+  const summary = (description ?? "").trim();
+  const techs = (technologies ?? []).map((item) => item.trim()).filter(Boolean);
+  if (!summary || techs.length === 0) {
+    return false;
+  }
+  const normalize = (value: string) =>
+    value.replace(/\s+/g, " ").trim().toLowerCase();
+  if (normalize(summary) === normalize(techs.join(", "))) {
+    return true;
+  }
+  const descParts = summary
+    .split(/[,|;]+/)
+    .map((part) => normalize(part))
+    .filter(Boolean)
+    .sort();
+  const techParts = [...techs.map(normalize)].sort();
+  return (
+    descParts.length === techParts.length &&
+    descParts.every((part, index) => part === techParts[index])
+  );
+}
+
+/**
+ * Format parse duration for display (ms or seconds).
+ *
+ * @param durationMs - Elapsed parse time in milliseconds.
+ * @returns Human-readable duration string, or null when missing.
+ */
+function formatParseDuration(durationMs: number | null | undefined): string | null {
+  if (durationMs == null || Number.isNaN(durationMs) || durationMs < 0) {
+    return null;
+  }
+  if (durationMs < 1000) {
+    return `${Math.round(durationMs)} ms`;
+  }
+  return `${(durationMs / 1000).toFixed(1)} s`;
+}
+
+/**
+ * Build a short status line describing the last resume parse.
+ *
+ * @param info - Resume parse metadata from the profile API.
+ * @returns Display line, or null when no useful fields exist.
+ */
+function formatResumeParseSummary(
+  info: ResumeParseInfo | null | undefined,
+): string | null {
+  if (!info) {
+    return null;
+  }
+  const parts: string[] = [];
+  if (info.parsed_at) {
+    const when = formatDatetime(info.parsed_at);
+    if (when && when !== "N/A") {
+      parts.push(`Parsed ${when}`);
+    }
+  }
+  const duration = formatParseDuration(info.duration_ms);
+  if (duration) {
+    parts.push(duration);
+  }
+  const modelLabel =
+    info.method === "rule_based"
+      ? "rule-based fallback"
+      : [info.provider, info.model].filter(Boolean).join(" / ") || info.model;
+  if (modelLabel) {
+    parts.push(modelLabel);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 // ── Upload dropzone ───────────────────────────────────────────────────────────
 
 function ResumeDropzone({ onUploaded }: { onUploaded: () => void }) {
   const qc = useQueryClient();
+  // Subscribe so toast formatting refreshes if prefs change mid-session.
+  useDateTimePrefs();
 
   const upload = useMutation({
     mutationFn: profileApi.upload,
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Resume uploaded and parsed.");
+      const summary = formatResumeParseSummary(result.resume_parse);
+      toast.success(
+        summary
+          ? `Resume parsed · ${summary.replace(/^Parsed\s+/i, "")}`
+          : "Resume uploaded and parsed.",
+      );
       onUploaded();
     },
     onError: () => toast.error("Upload failed. Check the file format."),
@@ -136,7 +253,14 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
     languages,
     target_job,
     years_of_experience,
+    resume_parse,
   } = profile;
+  // Subscribe so date labels refresh when Appearance prefs change.
+  useDateTimePrefs();
+  useEffect(() => {
+    writeProfileLocationCache(c.location);
+  }, [c.location]);
+  const parseSummary = formatResumeParseSummary(resume_parse);
 
   // Group skills by category
   const skillsByCategory = skills.reduce<Record<string, typeof skills>>(
@@ -157,6 +281,9 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
             <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground">
               {c.name || "—"}
             </h2>
+            {parseSummary && (
+              <p className="text-xs text-muted-foreground">{parseSummary}</p>
+            )}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               {c.location && (
                 <span className="flex items-center gap-1">
@@ -467,19 +594,28 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                           {e.description}
                         </p>
                       )}
-                      {(e.highlights?.length ?? 0) > 0 && (
-                        <ul className="mt-2 space-y-1">
-                          {e.highlights.map((h, j) => (
-                            <li
-                              key={j}
-                              className="flex gap-2 text-sm text-foreground dark:text-muted-foreground"
-                            >
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                              {h}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      {(() => {
+                        const bullets = highlightsWithoutDescriptionDuplicate(
+                          e.description,
+                          e.highlights,
+                        );
+                        if (bullets.length === 0) {
+                          return null;
+                        }
+                        return (
+                          <ul className="mt-2 space-y-1">
+                            {bullets.map((h, j) => (
+                              <li
+                                key={j}
+                                className="flex gap-2 text-sm text-foreground dark:text-muted-foreground"
+                              >
+                                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                                {h}
+                              </li>
+                            ))}
+                          </ul>
+                        );
+                      })()}
                       {(e.technologies?.length ?? 0) > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {e.technologies.map((t) => (
@@ -545,24 +681,51 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                           )}
                         </div>
                       </div>
-                      {p.description && (
+                      {p.description &&
+                        !descriptionDuplicatesTechnologies(
+                          p.description,
+                          p.technologies,
+                        ) && (
                         <p className="mt-1.5 text-sm text-muted-foreground dark:text-muted-foreground leading-relaxed">
                           {p.description}
                         </p>
                       )}
-                      {(p.highlights?.length ?? 0) > 0 && (
-                        <ul className="mt-2 space-y-1">
-                          {p.highlights.map((h, j) => (
-                            <li
-                              key={j}
-                              className="flex gap-2 text-sm text-foreground dark:text-muted-foreground"
-                            >
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary dark:bg-primary" />
-                              {h}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      {(() => {
+                        const displayDescription =
+                          p.description &&
+                          !descriptionDuplicatesTechnologies(
+                            p.description,
+                            p.technologies,
+                          )
+                            ? p.description
+                            : "";
+                        const bullets = highlightsWithoutDescriptionDuplicate(
+                          displayDescription,
+                          p.highlights,
+                        ).filter(
+                          (bullet) =>
+                            !descriptionDuplicatesTechnologies(
+                              bullet,
+                              p.technologies,
+                            ),
+                        );
+                        if (bullets.length === 0) {
+                          return null;
+                        }
+                        return (
+                          <ul className="mt-2 space-y-1">
+                            {bullets.map((h, j) => (
+                              <li
+                                key={j}
+                                className="flex gap-2 text-sm text-foreground dark:text-muted-foreground"
+                              >
+                                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary dark:bg-primary" />
+                                {h}
+                              </li>
+                            ))}
+                          </ul>
+                        );
+                      })()}
                       {(p.technologies?.length ?? 0) > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {p.technologies.map((t) => (

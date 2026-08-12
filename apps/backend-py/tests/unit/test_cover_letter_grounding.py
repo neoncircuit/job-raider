@@ -250,3 +250,66 @@ def test_flag_claim_overclaims_scans_full_letter():
     joined_flags = " ".join(flag for item in findings for flag in item["flags"]).lower()
     assert "scope inflation" in joined_flags
     assert "technique mismatch" in joined_flags
+
+
+def _docker_only_profile() -> UserProfile:
+    """Profile whose Technical Skills list contains Docker only."""
+    return UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Remote"),
+        skills=[
+            Skill(name="Docker", category=SkillCategory.TOOL),
+            Skill(name="Communication", category=SkillCategory.SOFT_SKILL),
+            Skill(name="English", category=SkillCategory.LANGUAGE),
+        ],
+    )
+
+
+def test_flag_fabricated_technologies_jd_only_stack():
+    """JD-only AWS/K8s/Mongo/Redis claims are hard-flagged; Docker is allowed."""
+    from src.generation.cover_letter_grounding import flag_fabricated_technologies
+
+    profile = _docker_only_profile()
+    letter = (
+        "I containerized services with Docker and also operated AWS, "
+        "Kubernetes, MongoDB, and Redis in production."
+    )
+    fabricated = flag_fabricated_technologies(letter, profile)
+    assert fabricated == ["aws", "kubernetes", "mongodb", "redis"]
+    assert "docker" not in fabricated
+
+
+def test_flag_fabricated_technologies_empty_when_resume_skills_only():
+    """Letter that only names resume Technical Skills yields no fabrications."""
+    from src.generation.cover_letter_grounding import flag_fabricated_technologies
+
+    profile = _docker_only_profile()
+    letter = "I package services with Docker for reliable local delivery."
+    assert flag_fabricated_technologies(letter, profile) == []
+
+
+def test_flag_fabricated_technologies_alias_k8s_allowed():
+    """Letter K8s is allowed when resume lists Kubernetes."""
+    from src.generation.cover_letter_grounding import flag_fabricated_technologies
+
+    profile = UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Remote"),
+        skills=[Skill(name="Kubernetes", category=SkillCategory.TOOL)],
+    )
+    letter = "I operate K8s clusters for batch workloads."
+    assert flag_fabricated_technologies(letter, profile) == []
+
+
+def test_calc_grounding_penalty_includes_fabricated_tech():
+    """Each fabricated technology adds a hard-band penalty."""
+    baseline, _ = calc_grounding_penalty([], [])
+    with_tech, breakdown = calc_grounding_penalty(
+        [],
+        [],
+        fabricated_technologies=["aws", "kubernetes", "mongodb", "redis"],
+    )
+    assert baseline == 0
+    assert breakdown["fabricated_tech"] == 4
+    assert with_tech == 40
+    assert breakdown["weights"]["fabricated_tech"] == 10

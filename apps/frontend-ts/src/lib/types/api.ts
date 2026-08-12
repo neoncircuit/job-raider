@@ -278,6 +278,7 @@ export type CoverLetterIssue =
   | "ungrounded_claims"
   | "scope_inflation"
   | "technique_mismatch"
+  | "fabricated_technology"
   | "poor_structure"
   | "tone_too_informal"
   | "tone_too_formal"
@@ -459,6 +460,17 @@ export interface UserProfile {
   original_filename?: string | null;
   created_at?: string;
   updated_at?: string;
+  /** Last resume parse run (duration, datetime, model). */
+  resume_parse?: ResumeParseInfo | null;
+}
+
+/** Metadata recorded when a resume was last parsed into this profile. */
+export interface ResumeParseInfo {
+  parsed_at?: string;
+  duration_ms?: number;
+  model?: string;
+  provider?: string | null;
+  method?: "llm" | "rule_based" | string;
 }
 
 export type VisaStatus =

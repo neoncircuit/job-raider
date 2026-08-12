@@ -2973,3 +2973,16 @@
 - Classify soft ungrounded, hard overclaim verbs, scope inflation, and technique mismatch.
 - Scale by finding count with a capped bucket.
 - Keep issue enums for review UI; put numeric severity in `calc_grounding_penalty`.
+
+## Frontend local preferences (2026-08-12)
+
+### useSyncExternalStore snapshots must be referentially stable
+
+**Lesson:** Never return a fresh object/array from ``getSnapshot`` on every call. React compares with ``Object.is``; a new object each time causes infinite re-renders (minified error #185).
+
+**Why:** Datetime prefs were normalized into a new ``{ format, timeZoneMode, manualTimeZone }`` on every ``readDateTimePrefs()`` call while ``DatetimePrefsRefresh`` subscribed via ``useSyncExternalStore``.
+
+**How to apply:**
+- Cache the last raw localStorage string and snapshot object; return the same reference when contents are unchanged.
+- Prefer primitives for simple prefs (color scheme string works for this reason).
+- Keep server snapshot as a module-level constant, not ``{ ...defaults }``.

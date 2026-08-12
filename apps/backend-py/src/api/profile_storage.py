@@ -87,12 +87,35 @@ def _entry_payload(profile_id: str, entry: Dict[str, Any]) -> Dict[str, Any]:
         "original_filename": entry.get("original_filename"),
         "created_at": _parse_dt(entry.get("created_at")).isoformat(),
         "updated_at": _parse_dt(entry.get("updated_at")).isoformat(),
+        "resume_parse": entry.get("resume_parse")
+        or _resume_parse_from_profile(profile),
         "profile": (
             profile.model_dump(mode="json")
             if hasattr(profile, "model_dump")
             else profile
         ),
     }
+
+
+def _resume_parse_from_profile(profile: Any) -> Optional[Dict[str, Any]]:
+    """
+    Extract resume_parse metadata from a UserProfile when present.
+
+    Args:
+        profile: UserProfile instance or dict.
+
+    Returns:
+        Parse metadata dict, or None.
+    """
+    metadata = None
+    if hasattr(profile, "metadata"):
+        metadata = profile.metadata
+    elif isinstance(profile, dict):
+        metadata = profile.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    resume_parse = metadata.get("resume_parse")
+    return dict(resume_parse) if isinstance(resume_parse, dict) else None
 
 
 def _entry_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -110,6 +133,8 @@ def _entry_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         "original_filename": payload.get("original_filename"),
         "created_at": _parse_dt(payload.get("created_at")),
         "updated_at": _parse_dt(payload.get("updated_at")),
+        "resume_parse": payload.get("resume_parse")
+        or _resume_parse_from_profile(payload.get("profile")),
     }
 
 

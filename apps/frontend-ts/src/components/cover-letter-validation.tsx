@@ -158,6 +158,9 @@ export function CoverLetterValidationDisplay({
         (item) => item && (item.sentence || (item.flags?.length ?? 0) > 0),
       )
     : [];
+  const fabricatedTechnologies = Array.isArray(details?.fabricated_technologies)
+    ? (details.fabricated_technologies as string[])
+    : [];
   const groundingPenalty =
     details?.grounding_penalty &&
     typeof details.grounding_penalty === "object" &&
@@ -167,12 +170,14 @@ export function CoverLetterValidationDisplay({
           hard_ungrounded?: number;
           scope_inflation?: number;
           technique_mismatch?: number;
+          fabricated_tech?: number;
           capped_penalty?: number;
           weights?: {
             soft_ungrounded?: number;
             hard_ungrounded?: number;
             scope_inflation?: number;
             technique_mismatch?: number;
+            fabricated_tech?: number;
           };
         })
       : null;
@@ -285,7 +290,9 @@ export function CoverLetterValidationDisplay({
       )}
 
       {/* Ungrounded / overclaim review — deterministic resume grounding */}
-      {(ungroundedSentences.length > 0 || claimOverclaims.length > 0) && (
+      {(ungroundedSentences.length > 0 ||
+        claimOverclaims.length > 0 ||
+        fabricatedTechnologies.length > 0) && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -312,10 +319,31 @@ export function CoverLetterValidationDisplay({
                   {groundingPenalty.technique_mismatch
                     ? ` · ${groundingPenalty.technique_mismatch} technique (−${groundingPenalty.weights?.technique_mismatch ?? 10} each)`
                     : ""}
+                  {groundingPenalty.fabricated_tech
+                    ? ` · ${groundingPenalty.fabricated_tech} fabricated tech (−${groundingPenalty.weights?.fabricated_tech ?? 10} each)`
+                    : ""}
                   . Penalties scale by severity (soft wording vs hard
                   overclaims).
                 </p>
               )}
+            {fabricatedTechnologies.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  These technologies appear in the letter but are not listed in
+                  your Technical Skills. Remove them or add them to your
+                  profile before sending.
+                </p>
+                <ul className="flex flex-wrap gap-1.5">
+                  {fabricatedTechnologies.map((tech) => (
+                    <li key={`fabricated-tech-${tech}`}>
+                      <Badge variant="outline" className="font-normal">
+                        {tech}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {ungroundedSentences.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
@@ -491,6 +519,7 @@ export function CoverLetterValidationDisplay({
         llmFeedback.length === 0 &&
         ungroundedSentences.length === 0 &&
         claimOverclaims.length === 0 &&
+        fabricatedTechnologies.length === 0 &&
         !reviewDetails && (
           <p className="text-xs text-muted-foreground">
             No issues detected. The cover letter looks good.

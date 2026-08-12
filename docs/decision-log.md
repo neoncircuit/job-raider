@@ -1,5 +1,76 @@
 # Job Raider Decision Log
 
+## 2026-08-12 - Verbatim Technical Skills section extraction
+
+### Context
+
+LLM resume parsing asked for a short categorized skills object and exemplified umbrella domains (`Machine Learning`, `Web Development`). The model summarized a ~20-item Technical Skills line into ~11 skills, which made Strength Assessment counts and cover-letter tech allowlists incomplete. An early merge then unioned LLM/project-stack names back in, overshooting to ~26 unique skills.
+
+### Decision
+
+- Deterministically parse the Technical Skills / Skills section (split on commas / `|` / bullets / newlines).
+- When that section exists, it is the **sole** source of `profile.skills` (verbatim, case-insensitive dedupe). Project/experience tech stacks stay on those entities and do not inflate the skills count.
+- When a Projects section lists per-project tech lines, each project's `technologies` are overwritten from **that project block only** (corrects LLM misattribution such as Experience PostgreSQL onto Agent-C, and under-inclusion on long stacks). Blank lines between a project name and its tech line (common in PDF extraction) still bind; wrapped tech lines are merged. Bullet/prose body text is never comma-split into tags, even when it contains commas.
+- Experience/project `description` is never shown again as `highlights[0]`: if description is empty, bullet 1 becomes the description and is removed from the list; if description already matches bullet 1, that bullet is dropped.
+- Project `description` that is only the same tech-stack line as `technologies` is cleared (and hidden in Profile UI) so the stack is not shown twice as prose and tags.
+- Resume JSON mapping is null-safe and per-entry isolated: null list items, scheme-less project URLs, bad GPA, and null `target_job`/`apprenticeship` no longer throw into rule-based fallback (which wiped Experience/Projects). Rule-based wipe is limited to LLM call / JSON extract failures.
+- Each successful resume parse records `metadata.resume_parse` (`parsed_at`, `duration_ms`, `model`, `provider`, `method`) and exposes it on `GET /profile` / upload response for Profile UI confirmation.
+- Profile/UI datetime display format and timezone are local Appearance preferences (system default, profile-location inference, or manual IANA zone); they do not sync to the backend. Shared ``formatDate`` / ``formatDatetime`` apply them across the app.
+- When no Skills section is found, fall back to LLM/lexicon skills and reject invented umbrella domains unless the exact phrase appears on the resume.
+- Keep LLM input truncation, but always run section extraction on the full resume text.
+- Profile UI counts and cover-letter grounding continue to read `profile.skills`.
+
+### Consequences
+
+- Re-upload (or re-parse) the resume after deploy; stored profiles are not auto-migrated.
+- Strength Assessment and radar percentages update from the corrected `profile.skills` length/categories.
+- Naming Azure OpenAI / Google Gen AI only on a project card does not put them on the Technical Skills allowlist unless they also appear in the Skills section.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Resume["Resume text"] --> Section{"Technical Skills section found?"}
+  Section -->|yes| Skills["profile.skills = section tokens deduped"]
+  Section -->|no| LLM["LLM or lexicon skills filtered"]
+  LLM --> Skills
+  Skills --> UI["Strength count + radar"]
+  Skills --> Ground["Cover-letter tech allowlist"]
+  Resume --> Projects["Per-project tech lines from Projects section"]
+  Projects --> ProjectTags["project.technologies overwritten"]
+```
+
+## 2026-08-11 - Hard-flag JD-only technologies in cover letters
+
+### Context
+
+Cover-letter soft grounding merged JD text into the overlap vocabulary, so the model could copy preferred stacks from the job description (AWS, Kubernetes, MongoDB, Redis) into the letter without a hard fail when sentence overlap still looked plausible. Feedback asked for a simpler source of truth: every named technology in the letter must appear on the resume Technical Skills list.
+
+### Decision
+
+- Allowlist = `profile.skills` excluding soft skills and spoken languages.
+- Detect named tools via a curated tech lexicon with alias folding (`k8s` -> `kubernetes`).
+- New hard issue `FABRICATED_TECHNOLOGY` (−10 each, same band as technique mismatch).
+- Stop passing raw `job.description` into soft ungrounded overlap as JD terms.
+- Writer prompts (modern + classic) forbid naming tech absent from Technical Skills.
+
+### Consequences
+
+- JD-only stacks no longer look "grounded" via soft overlap.
+- Project/`experience.technologies` are not a second allowlist in v1.
+- Ordinary English is not flagged; only lexicon-matched names.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Letter["Generated letter"] --> Detect["Match curated tech lexicon"]
+  Profile["profile.skills Technical SoT"] --> Allow["Allowed tech names"]
+  Detect --> Diff["Techs in letter not in allowlist"]
+  Diff --> Hard["FABRICATED_TECHNOLOGY hard flag + penalty"]
+  Diff --> Details["details.fabricated_technologies"]
+```
+
 ## 2026-07-28 ? Cover letter grounding uses severity-weighted penalties
 
 ### Context

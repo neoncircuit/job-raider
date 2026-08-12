@@ -1,0 +1,31 @@
+James Tan Jen Yang
+Singapore, Singapore
+james@example.com
+
+SUMMARY
+Computer Science graduate focused on the reliability layer of AI systems.
+
+Technical Skills
+Python, TypeScript, JavaScript, SQL, React, Next.js, FastAPI, Convex, Git, Docker, Inngest, Letta, PostgreSQL, Model Evaluation, Prompt Engineering, RAG, Vector Databases, Agent Memory Systems, REST APIs, CI/CD, Agile
+
+EXPERIENCE
+AI Associate Engineer (AIAP) — AI Singapore
+Oct 2025 – Mar 2026
+- Built an Inngest-triggered pipeline in Python for memory agents.
+
+Analyst Programmer (Intern) — Phillip Securities
+Jun 2025 – Sep 2025
+- Built a two-stage KYC watchlist screening approach in PostgreSQL.
+
+PROJECTS
+Agent-C (AI Singapore)
+Python, Docker, Convex, Inngest, Letta, Google Gen AI, Azure OpenAI
+- Built evaluation graders for memory agents, combining retrieval checks, prompt quality signals, and regression harnesses.
+
+Job Raider (Personal Project)
+Python, FastAPI, Qwen2.5 (Ollama), Next.js
+- Built a two-layer job scam detection system, combining a rule-based scoring engine across five risk categories with a local LLM classifier, keeping the system explainable for reviewers.
+
+EDUCATION
+B.S. in Computer Science, Singapore Institute of Management / University of London
+Jun 2025

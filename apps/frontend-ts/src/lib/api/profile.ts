@@ -24,6 +24,13 @@ export const profileApi = {
       profile_id: string;
       resume_path: string;
       message: string;
+      resume_parse?: {
+        parsed_at?: string;
+        duration_ms?: number;
+        model?: string;
+        provider?: string | null;
+        method?: string;
+      };
     }>("POST", "/profile/upload", { formData: fd });
   },
 

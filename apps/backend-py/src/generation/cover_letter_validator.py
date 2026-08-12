@@ -22,6 +22,7 @@ from .cover_letter_grounding import (
     calc_grounding_penalty,
     collect_resume_bullets,
     flag_claim_overclaims,
+    flag_fabricated_technologies,
     flag_ungrounded_sentences,
 )
 from .cover_letter_writer import GeneratedCoverLetter
@@ -45,6 +46,7 @@ class CoverLetterIssue(str, Enum):
     UNGROUNDED_CLAIMS = "ungrounded_claims"
     SCOPE_INFLATION = "scope_inflation"
     TECHNIQUE_MISMATCH = "technique_mismatch"
+    FABRICATED_TECHNOLOGY = "fabricated_technology"
 
 
 @dataclass
@@ -160,8 +162,8 @@ class CoverLetterValidator:
             grounding_terms.append(job.title)
         if job.company:
             grounding_terms.append(job.company)
-        if job.description:
-            grounding_terms.append(job.description)
+        # Do not pass raw job.description: JD-only tech names must not
+        # legitimize soft lexical overlap for fabricated resume claims.
 
         resume_bullets = collect_resume_bullets(profile, selection)
         ungrounded_sentences = flag_ungrounded_sentences(
@@ -174,6 +176,7 @@ class CoverLetterValidator:
             profile,
             resume_bullets=resume_bullets,
         )
+        fabricated_technologies = flag_fabricated_technologies(content, profile)
         grounding_issues: List[CoverLetterIssue] = []
         if ungrounded_sentences:
             grounding_issues.append(CoverLetterIssue.UNGROUNDED_CLAIMS)
@@ -187,11 +190,14 @@ class CoverLetterValidator:
             for item in claim_overclaims
         ):
             grounding_issues.append(CoverLetterIssue.TECHNIQUE_MISMATCH)
+        if fabricated_technologies:
+            grounding_issues.append(CoverLetterIssue.FABRICATED_TECHNOLOGY)
         issues.extend(grounding_issues)
 
         grounding_penalty, grounding_penalty_breakdown = calc_grounding_penalty(
             ungrounded_sentences,
             claim_overclaims,
+            fabricated_technologies=fabricated_technologies,
         )
 
         structure_score = self._calc_structure_score(content, structure_issues)
@@ -239,6 +245,7 @@ class CoverLetterValidator:
             "jd_coverage": jd_coverage,
             "ungrounded_sentences": ungrounded_sentences,
             "claim_overclaims": claim_overclaims,
+            "fabricated_technologies": fabricated_technologies,
             "grounding_penalty": grounding_penalty_breakdown,
         }
 
