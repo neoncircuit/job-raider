@@ -1,7 +1,8 @@
 """
 Job Raider - Scrapers Module
 
-This module provides job board scrapers for LinkedIn and JSearch API.
+This module provides job board scrapers for LinkedIn, JSearch, and
+MyCareersFuture.
 
 Author: Job Raider
 Date: 2026-04-20
@@ -18,6 +19,7 @@ from .base import (
 from .jsearch_scraper import JSearchScraper
 from .linkedin_scraper import LinkedInScraper
 from .manager import ScraperManager
+from .mycareersfuture_scraper import MyCareersFutureScraper, mcf_enabled
 from .storage import JobListingStorage
 
 __all__ = [
@@ -31,6 +33,8 @@ __all__ = [
     # Scrapers
     "LinkedInScraper",
     "JSearchScraper",
+    "MyCareersFutureScraper",
+    "mcf_enabled",
     # Manager
     "ScraperManager",
     # Storage

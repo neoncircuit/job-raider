@@ -1,5 +1,44 @@
 # Job Raider Decision Log
 
+## 2026-08-14 - MyCareersFuture public JSON adapter (Phase 1)
+
+### Context
+
+Singapore inventory gaps: MCF and Careers@Gov are not covered by LinkedIn/JSearch well. Plan locked public HTTP/JSON only, no login, no Playwright for SG boards in v1.
+
+### Spike (Phase 0) — go
+
+- Endpoint: `GET https://api.mycareersfuture.gov.sg/v2/jobs?search=&limit=&page=`
+- No login, CAPTCHA, or undocumented auth headers on a capped probe.
+- Useful fields: `uuid`, `title`, `postedCompany`, `description`, `salary`, `skills`, `metadata` (`expiryDate`, `jobDetailsUrl`, posting dates), employment types, address, position levels.
+
+### Decision
+
+- Ship `JobSource.MYCAREERSFUTURE` + `MyCareersFutureScraper` with hard caps (20/page, max 3 pages, max 60 results), rate limit ~1.5s, kill switch `MCF_ENABLED`.
+- Treat the endpoint as personal-use tooling, not an official developer API. Prefer stop over aggressive pagination.
+- Do not store board credentials on resume profiles. MCF needs none.
+- Defer Careers@Gov and dedicated JobStreet until MCF is stable in daily Jobs search.
+
+### Consequences
+
+- SourceSelector shows `mycareersfuture` via `GET /jobs/sources` when enabled.
+- Catalog upsert refreshes `last_seen_at`; expiry maps from MCF `expiryDate`.
+- Set `MCF_ENABLED=0` to unregister the scraper without code changes.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Search["Jobs or Pipeline search"] --> Manager["ScraperManager"]
+  Manager --> MCF["MyCareersFuture"]
+  MCF --> Cap{"MCF_ENABLED and page caps"}
+  Cap -->|off or over cap| Stop["Stop"]
+  Cap -->|ok| HTTP["Public JSON HTTP"]
+  HTTP --> Map["Map to JobListing"]
+  Map --> Catalog["catalog.json upsert"]
+  Catalog --> UI["SourceSelector"]
+```
+
 ## 2026-08-14 - Applications Expired bucket
 
 ### Context

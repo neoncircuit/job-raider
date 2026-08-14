@@ -39,6 +39,33 @@ curl -s http://127.0.0.1:8000/api/health | python3 -m json.tool
 
 **Note:** Using `localhost` instead of `127.0.0.1` can also cause "Connection reset by peer" in WSL2 because `localhost` resolves to `::1` (IPv6) while the server binds to `0.0.0.0` (IPv4). Always use `127.0.0.1` for direct health checks.
 
+## MyCareersFuture adapter
+
+### Not an official developer API
+
+MyCareersFuture search uses the same public JSON service as the website (`api.mycareersfuture.gov.sg`). It is not a formally documented developer API. Job Raider treats it as personal-use tooling: low rate limits, capped pages, and an easy kill switch.
+
+### Enable / disable
+
+Default is enabled after the Phase 0 spike passed. To disable:
+
+```bash
+# In apps/backend-py/.env (or container env)
+MCF_ENABLED=0
+```
+
+Then recreate or restart the backend so `ScraperManager` rebuilds without the source. `GET /jobs/sources` will omit `mycareersfuture`.
+
+### Symptoms of rate limiting or blocks
+
+- Jobs search with only MyCareersFuture selected returns 0 jobs.
+- Backend logs: `MyCareersFuture API returned HTTP 429` or timeouts.
+- Increase delay in `config/scrapers_config.yaml` under `mycareersfuture.rate_limit_delay`, or disable with `MCF_ENABLED=0`.
+
+### Careers@Gov and JobStreet (deferred)
+
+Live scrapers for Careers@Gov and a dedicated JobStreet SG adapter are not implemented. Use JSearch for JobStreet-adjacent coverage. Revisit only after MCF is reliable in daily use (see `tasks/todo.md`).
+
 ### Degraded Health: Data Directories Missing
 
 **Symptoms:**

@@ -50,9 +50,9 @@ def _active_profile() -> Optional[UserProfile]:
         or profile_state.active_profile_id not in profile_state.stored_profiles
     ):
         return None
-    profile_data = profile_state.stored_profiles[
-        profile_state.active_profile_id
-    ].get("profile")
+    profile_data = profile_state.stored_profiles[profile_state.active_profile_id].get(
+        "profile"
+    )
     if not profile_data:
         return None
     if isinstance(profile_data, UserProfile):
@@ -110,6 +110,7 @@ async def search_jobs(
     source_map = {
         "linkedin": JobSource.LINKEDIN,
         "jsearch": JobSource.JSEARCH,
+        "mycareersfuture": JobSource.MYCAREERSFUTURE,
     }
     source_names = request.sources or ["linkedin", "jsearch"]
     sources = [source_map[s] for s in source_names if s in source_map]
@@ -245,9 +246,7 @@ async def get_job(job_id: str):
     if listing is None:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Job not found. Search or run Discover so the listing is stored."
-            ),
+            detail=("Job not found. Search or run Discover so the listing is stored."),
         )
     return serialize_listing(listing)
 
@@ -276,9 +275,7 @@ async def score_job(job_id: str):
     if listing is None:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Job not found. Search or run Discover so the listing is stored."
-            ),
+            detail=("Job not found. Search or run Discover so the listing is stored."),
         )
 
     try:

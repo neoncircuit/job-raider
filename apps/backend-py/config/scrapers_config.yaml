@@ -20,6 +20,18 @@ sources:
     timeout: 30
     max_results: 50
 
+  mycareersfuture:
+    enabled: true  # Kill switch via env MCF_ENABLED=0 (registration is code-driven)
+    base_url: https://api.mycareersfuture.gov.sg/v2
+    requires_auth: false
+    rate_limit_delay: 1.5
+    timeout: 30
+    max_results: 60
+    max_pages: 3
+    notes: >
+      Public JSON search used by the MCF website. Not a formal developer API.
+      Personal-use tooling only; keep caps low.
+
   indeed:
     enabled: false  # Blocked by Cloudflare bot detection
     base_url: https://www.indeed.com

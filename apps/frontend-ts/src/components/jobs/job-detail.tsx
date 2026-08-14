@@ -378,7 +378,12 @@ export function JobDetail({
                 className="flex-1"
               >
                 <Button size="sm" className="w-full">
-                  Apply on {job.source === "jsearch" ? "Job Board" : job.source}
+                  Apply on{" "}
+                  {job.source === "jsearch"
+                    ? "Job Board"
+                    : job.source === "mycareersfuture"
+                      ? "MyCareersFuture"
+                      : job.source}
                 </Button>
               </a>
               <Button size="sm" variant="outline" onClick={handleCopyLink}>

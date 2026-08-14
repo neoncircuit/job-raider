@@ -876,6 +876,21 @@
 - New scrapers appear automatically when backend is updated
 - Fallback ensures frontend works even when backend is unreachable
 
+#### Undocumented public JSON boards need caps and a kill switch
+
+**Lesson:** When a job board exposes website JSON that is not a formal developer API (for example MyCareersFuture), integrate carefully: public HTTP only, hard result caps, rate limits, and an env kill switch. Do not add login scrapers or third-party scrape SaaS. Defer harder boards until the first adapter proves daily use.
+
+**Why:**
+- Undocumented endpoints can change or rate-limit without notice
+- Aggressive pagination increases ToS and block risk
+- Credentials must never live on resume profiles; Settings/env/session is the only later path for login boards
+
+**How to apply:**
+- Prefer `requests` + map to `JobListing`; stub HTML Playwright helpers
+- Cap pages/results; default `MCF_ENABLED` with easy `0`/`false` disable
+- Register in manager only when enabled so `GET /jobs/sources` stays accurate
+- Document personal-use stance in decision-log and troubleshooting
+
 #### Graceful Degradation When External APIs Are Unavailable
 
 **Lesson:** When an external API key is missing or the API is unreachable, return empty results rather than crashing. Log the error clearly.

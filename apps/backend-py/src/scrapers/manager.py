@@ -19,6 +19,7 @@ from ..utils.logger import Components, get_logger
 from .base import BaseScraper, SearchParams
 from .jsearch_scraper import JSearchScraper
 from .linkedin_scraper import LinkedInScraper
+from .mycareersfuture_scraper import MyCareersFutureScraper, mcf_enabled
 
 
 class ScraperManager:
@@ -48,11 +49,13 @@ class ScraperManager:
         self.max_workers = max_workers
         self.deduplicate = deduplicate
 
-        # Initialize scrapers
+        # Initialize scrapers (MCF is kill-switched via MCF_ENABLED)
         self.scrapers: Dict[JobSource, BaseScraper] = {
             JobSource.LINKEDIN: LinkedInScraper(),
             JobSource.JSEARCH: JSearchScraper(),
         }
+        if mcf_enabled():
+            self.scrapers[JobSource.MYCAREERSFUTURE] = MyCareersFutureScraper()
 
         self.logger = get_logger(Components.SCRAPERS)
 

@@ -30,6 +30,7 @@ export const DISCOVER_PIPELINE_STAGES = PIPELINE_STAGES.filter((s) =>
 export const SOURCE_COLORS: Record<string, string> = {
   linkedin: "bg-info text-info-foreground",
   jsearch: "bg-primary text-primary-foreground",
+  mycareersfuture: "bg-success text-success-foreground",
   manual: "bg-muted text-muted-foreground",
 };
 

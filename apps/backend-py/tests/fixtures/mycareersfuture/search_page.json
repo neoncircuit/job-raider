@@ -1,0 +1,62 @@
+{
+  "results": [
+    {
+      "uuid": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "title": "Software Engineer",
+      "description": "<p>Build APIs with Python and Docker.</p>",
+      "otherRequirements": "<p>Degree in Computer Science.</p>",
+      "minimumYearsExperience": 3,
+      "postedCompany": {
+        "name": "Example Pte Ltd",
+        "uen": "201234567A"
+      },
+      "salary": {
+        "minimum": 5000,
+        "maximum": 8000,
+        "type": { "salaryType": "Monthly" }
+      },
+      "skills": [
+        { "skill": "Python", "isKeySkill": true },
+        { "skill": "Docker", "isKeySkill": false }
+      ],
+      "employmentTypes": [{ "employmentType": "Full Time" }],
+      "positionLevels": [{ "position": "Professional" }],
+      "address": {
+        "isOverseas": false,
+        "districts": [{ "location": "Central" }],
+        "postalCode": "018956"
+      },
+      "flexibleWorkArrangements": [
+        { "flexibleWorkArrangement": "Hybrid" }
+      ],
+      "categories": [{ "category": "Information Technology" }],
+      "status": { "jobStatus": "Open" },
+      "metadata": {
+        "jobPostId": "JOB-2026-0001",
+        "jobDetailsUrl": "https://www.mycareersfuture.gov.sg/job/software-engineer/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "newPostingDate": "2026-08-01",
+        "originalPostingDate": "2026-07-20",
+        "expiryDate": "2026-09-01"
+      }
+    },
+    {
+      "uuid": "11111111-2222-3333-4444-555555555555",
+      "title": "Intern (Data)",
+      "description": "Support data pipelines.",
+      "postedCompany": { "name": "Gov Agency" },
+      "salary": {},
+      "skills": [],
+      "employmentTypes": [{ "employmentType": "Internship" }],
+      "positionLevels": [{ "position": "Intern" }],
+      "address": { "isOverseas": false },
+      "flexibleWorkArrangements": [],
+      "metadata": {
+        "expiryDate": "2026-08-20"
+      }
+    }
+  ],
+  "total": 2,
+  "_links": {
+    "self": { "href": "/v2/jobs?search=software&limit=20&page=0" }
+  }
+}

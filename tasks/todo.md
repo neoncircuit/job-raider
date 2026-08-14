@@ -4148,3 +4148,48 @@ flowchart TD
   Catalog --> Score["POST /jobs/id/score"]
 ```
 
+## Singapore boards: MyCareersFuture Phase 1 [COMPLETED] (2026-08-14)
+
+**Scope:** Public JSON HTTP only. No login. No Playwright. MCF only. Careers@Gov and dedicated JobStreet deferred.
+
+### Plan
+
+- [x] Phase 0 spike: confirm `api.mycareersfuture.gov.sg/v2/jobs` needs no auth; go decision logged.
+- [x] Add `JobSource.MYCAREERSFUTURE` and `MyCareersFutureScraper` with page/result caps and `MCF_ENABLED` kill switch.
+- [x] Register in `ScraperManager`, `jobs.py` / `pipeline/stages.py` source maps, scrapers `__init__`, YAML intent, `.env.example`.
+- [x] Frontend `SOURCE_COLORS` for `mycareersfuture`; SourceSelector still loads from `GET /jobs/sources`.
+- [x] Unit tests with JSON fixtures; decision-log + troubleshooting ToS note.
+- [x] Document Careers@Gov and JobStreet as Phase 2/3 only after MCF proves daily use.
+
+### Deferred (do not implement yet)
+
+- **Phase 2 — Careers@Gov:** Spike public listing vs HTML. Same adapter checklist only if public JSON and personal-use ToS are acceptable. Prefer paste/import if scrape is blocked. Credentials (if ever required) go in Settings/env/session, never on resume profiles.
+- **Phase 3 — JobStreet SG:** Decide if a dedicated Seek/JobStreet adapter is still needed given JSearch. Prefer official/partner HTTP; dedup against JSearch in catalog.
+
+### Verification
+
+- [x] Unit tests for parse/mapping, disabled path, caps, manager registration.
+- [x] Manual: capped live search (`software`, limit 3) returned mapped listings; source registered. Spot-check job `mcf-70cd0fb44ec21fb28fbe75247a3ef92b` matched public JSON (title, company, SGD 3500-5000 monthly, expiry 2026-08-21, URL).
+- Overlay backend after Python change.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Search["Jobs or Pipeline"] --> Manager["ScraperManager"]
+  Manager --> LinkedIn["LinkedIn"]
+  Manager --> JSearch["JSearch"]
+  Manager --> MCF["MyCareersFuture"]
+  MCF --> HTTP["Capped public JSON"]
+  HTTP --> Catalog["catalog upsert"]
+  Catalog --> UI["GET /jobs/sources"]
+  MCFStable["MCF stable daily"] --> CAG["Careers@Gov later"]
+  MCFStable --> JS["JobStreet dedicated later"]
+```
+
+### Review
+
+- MCF is personal-use tooling against the website JSON service, not an official API.
+- Kill switch: `MCF_ENABLED=0`. Caps: 20 per page, max 3 pages, max 60 results.
+- Careers@Gov and JobStreet live scrapers remain out of scope until MCF is proven in daily Jobs search.
+

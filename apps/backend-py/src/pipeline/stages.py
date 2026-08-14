@@ -147,7 +147,11 @@ class PipelineStages:
             # Perform scraping. SearchParams takes a single optional location
             # (matches the convention in api/routes/jobs.py); multi-location
             # search is not currently supported, so only the first is used.
-            source_map = {"linkedin": JobSource.LINKEDIN, "jsearch": JobSource.JSEARCH}
+            source_map = {
+                "linkedin": JobSource.LINKEDIN,
+                "jsearch": JobSource.JSEARCH,
+                "mycareersfuture": JobSource.MYCAREERSFUTURE,
+            }
             source_enums = (
                 [source_map[s] for s in sources if s in source_map] if sources else None
             )
@@ -221,9 +225,7 @@ class PipelineStages:
             try:
                 self.context.storage.upsert_listings(deduplicated)
             except Exception as catalog_err:
-                self.logger.warning(
-                    "Failed to upsert listing catalog: %s", catalog_err
-                )
+                self.logger.warning("Failed to upsert listing catalog: %s", catalog_err)
 
             # Persist scraper-detected applied status to tracker
             applied_tracker = AppliedJobsTracker()
