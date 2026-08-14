@@ -503,3 +503,177 @@ class TestJdCoverage:
         assert match("go", "we use golang and mongodb") is False
         assert match("c++", "experience with c++ and java") is True
         assert match("r", "premier league") is False
+
+
+class TestGroundingHardFails:
+    """Hard grounding checks for JD fabrication, duration, and metrics."""
+
+    def test_missing_jd_skills_do_not_ground_soft_overlap(
+        self, sample_profile, sample_selection
+    ):
+        """
+        Unmet JD skill names must not enter soft ungrounded jd_terms.
+
+        A sentence that only echoes missing JD skills (TensorFlow / AWS)
+        should remain weakly grounded against the resume corpus.
+        """
+        job = JobListing(
+            title="ML Engineer",
+            company="Acme Labs",
+            job_id="jd-leak-1",
+            source=JobSource.MANUAL,
+            description="Need TensorFlow and AWS experience.",
+            skills=[
+                JobSkill(name="TensorFlow", is_required=True),
+                JobSkill(name="AWS", is_required=True),
+                JobSkill(name="Python", is_required=True),
+            ],
+        )
+        letter = GeneratedCoverLetter(
+            content=(
+                "I am excited about Acme Labs and the ML Engineer role. "
+                "My proficiency in TensorFlow and AWS makes me an ideal fit "
+                "for transitioning complex proofs into dependable solutions. "
+                "I look forward to discussing this opportunity. "
+                "Thank you for considering my application."
+            ),
+            highlighted_experiences=[],
+            word_count=50,
+            model_used="test",
+        )
+        # Pad to clear too_short without adding resume vocabulary.
+        letter.content = letter.content + (" Please consider my interest." * 20)
+        letter.word_count = len(letter.content.split())
+
+        validator = CoverLetterValidator()
+        result = validator.validate(
+            letter, job, sample_profile, sample_selection
+        )
+
+        assert CoverLetterIssue.FABRICATED_TECHNOLOGY in result.issues
+        assert result.is_valid is False
+        assert result.recommendation == "reject"
+        assert "tensorflow" in result.details["fabricated_technologies"]
+        assert "aws" in result.details["fabricated_technologies"]
+        # Soft check must not treat missing JD skills as grounded vocabulary.
+        assert any(
+            "tensorflow" in s.lower() or "aws" in s.lower()
+            for s in result.details.get("ungrounded_sentences", [])
+        ) or CoverLetterIssue.UNGROUNDED_CLAIMS in result.issues
+
+    def test_inflated_duration_and_bad_percent_flagged(
+        self, sample_job, sample_selection
+    ):
+        """Duration inflation and 52->78 as 46% surface as hard issues."""
+        profile = UserProfile(
+            name="Alex",
+            contact=ContactInfo(email="a@example.com", location="Remote"),
+            skills=[
+                Skill(name="Python", category=SkillCategory.PROGRAMMING_LANGUAGE),
+            ],
+            experience=[
+                WorkExperience(
+                    title="AIAP Associate",
+                    company="AIAP",
+                    start_date=datetime(2024, 1, 1),
+                    end_date=datetime(2025, 1, 1),
+                    highlights=["Improved ranking accuracy from 52% to 78%"],
+                ),
+            ],
+            projects=[
+                Project(
+                    name="Job Raider",
+                    description="Automated applications",
+                    technologies=["Python"],
+                )
+            ],
+        )
+        content = (
+            "Dear Hiring Manager,\n\n"
+            "I am applying for the Senior Python Developer role at TechStartup Inc. "
+            "Over 2 years of hands-on experience deploying machine learning models "
+            "into production environments prepared me for this role. "
+            "I enhanced model accuracy by nearly 46%, from 52% to 78%, on the "
+            "ranking evaluation set while working with Python on Job Raider. "
+            "I would welcome the opportunity to discuss how I can contribute. "
+            "Thank you for considering my application.\n\n"
+            "Sincerely,\nAlex"
+        )
+        letter = GeneratedCoverLetter(
+            content=content,
+            highlighted_experiences=[],
+            word_count=len(content.split()),
+            model_used="test",
+        )
+        validator = CoverLetterValidator()
+        result = validator.validate(letter, sample_job, profile, sample_selection)
+
+        assert CoverLetterIssue.INFLATED_DURATION in result.issues
+        assert CoverLetterIssue.INCONSISTENT_METRIC in result.issues
+        assert result.is_valid is False
+        assert result.recommendation == "reject"
+        assert result.details["inflated_duration_claims"]
+        assert result.details["inconsistent_percent_claims"]
+        assert result.details["grounding_penalty"]["inflated_duration"] >= 1
+        assert result.details["grounding_penalty"]["inconsistent_metric"] >= 1
+
+    def test_analogical_claim_hard_fails(self, sample_selection):
+        """Facilities analogies from an AI resume reject the letter."""
+        profile = UserProfile(
+            name="Alex",
+            contact=ContactInfo(email="a@example.com", location="Singapore"),
+            summary="AI Associate building evaluation pipelines with Python",
+            skills=[
+                Skill(name="Python", category=SkillCategory.PROGRAMMING_LANGUAGE),
+                Skill(name="LlamaIndex", category=SkillCategory.FRAMEWORK),
+            ],
+            experience=[
+                WorkExperience(
+                    title="AI Associate",
+                    company="AIAP",
+                    start_date=datetime(2024, 1, 1),
+                    highlights=["Built evaluation pipelines with LlamaIndex"],
+                )
+            ],
+            projects=[
+                Project(
+                    name="Job Raider",
+                    description="LLM job matching",
+                    technologies=["Python", "LlamaIndex"],
+                )
+            ],
+        )
+        job = JobListing(
+            title="Facilities Coordinator",
+            company="Property Co",
+            job_id="fac-val-1",
+            source=JobSource.MANUAL,
+            description=(
+                "Coordinate vendors, manage work orders, inspect property, "
+                "and report facility statistics."
+            ),
+            requirements=[
+                JobRequirement(text="Manage work orders and vendor contracts"),
+            ],
+        )
+        content = (
+            "I want to join Property Co as Facilities Coordinator. "
+            "My LlamaIndex evaluation pipelines are similar to the tasks of "
+            "managing work orders. I look forward to discussing this role. "
+            "Thank you for considering my application."
+        )
+        content = content + (" Please consider my interest." * 20)
+        letter = GeneratedCoverLetter(
+            content=content,
+            highlighted_experiences=[],
+            word_count=len(content.split()),
+            model_used="test",
+        )
+        validator = CoverLetterValidator()
+        result = validator.validate(letter, job, profile, sample_selection)
+
+        assert CoverLetterIssue.ANALOGICAL_CLAIM in result.issues
+        assert result.is_valid is False
+        assert result.recommendation == "reject"
+        assert result.details["analogical_claims"]
+        assert result.details["grounding_penalty"]["analogical_claim"] >= 1

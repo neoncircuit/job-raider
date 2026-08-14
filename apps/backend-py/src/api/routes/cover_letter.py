@@ -23,6 +23,7 @@ from ...generation.cover_letter_formatter import (
     CoverLetterExportOptions,
     CoverLetterFormatter,
 )
+from ...generation.cover_letter_grounding import is_domain_mismatch
 from ...generation.cover_letter_service import (
     _adapt_validation_response,
     _build_fallback_validation,
@@ -162,6 +163,7 @@ async def generate_manual_cover_letter(
             deep=deep,
             review=review,
             style=request.style,
+            writer_model=request.writer_model,
         )
     except HTTPException:
         raise
@@ -347,6 +349,45 @@ def _string_list(value: Any, limit: int = 10) -> List[str]:
     return [str(item).strip() for item in value if str(item).strip()][:limit]
 
 
+def _is_weak_fit(job: Any, profile: UserProfile, recommendation: str) -> bool:
+    """
+    Return whether this job is a skip or a low domain-overlap mismatch.
+
+    Args:
+        job: Target job listing.
+        profile: Active candidate profile.
+        recommendation: Heuristic verdict (``apply``, ``maybe``, or ``skip``).
+
+    Returns:
+        True when the explanation must not invent transferable fit.
+    """
+    return recommendation == "skip" or is_domain_mismatch(job, profile)
+
+
+def _weak_fit_instruction(weak: bool) -> str:
+    """
+    Return extra prompt text that forbids analogical stretch on a weak fit.
+
+    Args:
+        weak: Whether ``_is_weak_fit`` is true for this job and profile.
+
+    Returns:
+        Instruction block, or an empty string when the fit is not weak.
+    """
+    if not weak:
+        return ""
+    return (
+        "WEAK FIT: Domain overlap is low or the heuristic verdict is skip. "
+        "Strengths and talking points may be empty or limited to literal "
+        "keyword or skill overlaps. Do not claim resume work is applicable "
+        "to unsupported duties (similar to, transferable to, prepared me "
+        "for, maps onto). Improvements must say this is a poor domain match "
+        "and recommend skipping unless the candidate intends a career "
+        "change. Do not recommend retraining, internships, or tools in an "
+        "unrelated field as a way to chase this posting.\n"
+    )
+
+
 @router.post("/prep", response_model=PrepSheetResponse)
 async def generate_prep_sheet(request: ManualCoverLetterRequest):
     """
@@ -361,8 +402,11 @@ async def generate_prep_sheet(request: ManualCoverLetterRequest):
 
     Returns:
         Prep sheet with likely questions, gaps, and talking points.
+        Talking points stay literal; a skip or domain mismatch does not
+        invent transferable fit.
     """
     profile = _require_active_profile()
+    user_profile = _active_user_profile(profile)
     raw = profile["profile"]
     raw_profile = raw.model_dump() if isinstance(raw, UserProfile) else raw
     job_listing = _manual_job_listing(request)
@@ -376,6 +420,8 @@ async def generate_prep_sheet(request: ManualCoverLetterRequest):
         default=str,
     )[:4000]
 
+    match = JobMatcher().score_job(job_listing, user_profile)
+    weak = _is_weak_fit(job_listing, user_profile, match.recommendation)
     system_prompt = (
         "You are an interview preparation assistant. Compare the candidate "
         "profile against the job description and respond with ONLY a JSON "
@@ -384,8 +430,9 @@ async def generate_prep_sheet(request: ManualCoverLetterRequest):
         '"talking_points": ["..."]}. '
         "likely_questions: 5-7 interview questions this employer would "
         "plausibly ask for this role. gaps_to_address: honest gaps between "
-        "the profile and the requirements, each with a one-line mitigation. "
-        "talking_points: profile strengths to lead with, tied to the JD."
+        "the profile and the requirements. talking_points: resume facts that "
+        "also appear in the JD — do not invent transferable analogies. "
+        + _weak_fit_instruction(weak)
     )
     requirements_block = ""
     if job_listing.requirements:
@@ -398,7 +445,9 @@ async def generate_prep_sheet(request: ManualCoverLetterRequest):
 
     user_prompt = (
         f"Job: {job_listing.title} at {job_listing.company}\n"
-        f"Location: {job_listing.location or 'unspecified'}\n\n"
+        f"Location: {job_listing.location or 'unspecified'}\n"
+        f"Heuristic fit: {match.total_score}/100 "
+        f"(verdict: {match.recommendation})\n\n"
         f"Job description:\n{(job_listing.description or '')[:6000]}"
         f"{requirements_block}{skills_block}\n\n"
         f"Candidate profile (JSON):\n{profile_summary}"
@@ -561,19 +610,27 @@ async def explain_job_fit(request: ManualCoverLetterRequest):
         "You explain WHY a job-fit score was given for a candidate. Respond with "
         "ONLY a JSON object, no prose, in this exact shape: "
         '{"strengths": ["..."], "concerns": ["..."], "improvements": ["..."]}. '
-        "strengths: concrete reasons the candidate fits, grounded in their "
-        "matched skills and experience. concerns: honest gaps or risks, grounded "
-        "in the missing skills. improvements: specific actions that would raise "
-        "the fit. 2-5 short items per list."
+        "strengths: ONLY literal overlaps (matched keywords and skills that "
+        "appear on both the resume and this job). Do not invent transferable "
+        "analogies (similar to, applicable to, could transfer, prepared me "
+        "for). If the verdict is skip or domain overlap is low, strengths "
+        "may be empty. concerns: honest gaps, including domain mismatch. "
+        "improvements: what would raise THIS heuristic score. If the verdict "
+        "is skip or domain overlap is low, say this is a poor domain match "
+        "and recommend skipping unless the candidate intends a career "
+        "change. Do not recommend retraining into an unrelated field. "
+        "2-5 short items per list; strengths may have fewer."
     )
     try:
         match = JobMatcher().score_job(job_listing, user_profile)
+        weak = _is_weak_fit(job_listing, user_profile, match.recommendation)
         user_prompt = (
             f"Job: {job_listing.title} at {job_listing.company}\n"
             f"Heuristic fit score: {match.total_score}/100 "
             f"(verdict: {match.recommendation})\n"
             f"Matched keywords: {', '.join(match.matched_keywords) or 'none'}\n"
-            f"Missing skills: {', '.join(match.missing_skills) or 'none'}\n\n"
+            f"Missing skills: {', '.join(match.missing_skills) or 'none'}\n"
+            f"{_weak_fit_instruction(weak)}\n"
             f"Job description:\n{(job_listing.description or '')[:4000]}\n\n"
             f"Candidate profile (JSON):\n{profile_summary}"
         )
@@ -604,9 +661,12 @@ async def explain_cover_letter(request: CoverLetterExplainRequest):
         "You are a cover-letter reviewer. Respond with ONLY a JSON object, no "
         "prose, in this exact shape: "
         '{"strengths": ["..."], "concerns": ["..."], "improvements": ["..."]}. '
-        "strengths: what makes this letter effective for the role. concerns: "
-        "what is weak, generic, or missing. improvements: specific edits to make "
-        "it stronger. 2-5 short items per list."
+        "strengths: what makes this letter effective without inventing job "
+        "fit. concerns: what is weak, generic, missing, or analogical "
+        "(resume work claimed as similar to or preparation for unrelated "
+        "duties). improvements: specific edits. If the letter maps resume "
+        "facts onto job-only duties, treat that as a concern and tell the "
+        "writer to delete the bridge. 2-5 short items per list."
     )
     user_prompt = (
         f"Job: {job_listing.title} at {job_listing.company}\n\n"

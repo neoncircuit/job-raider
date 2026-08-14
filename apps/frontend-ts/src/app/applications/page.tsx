@@ -11,6 +11,7 @@ import {
   CalendarCheck,
   Sparkles,
   Loader2,
+  Clock,
 } from "lucide-react";
 import { applicationsApi } from "@/lib/api/applications";
 import { coverLetterApi } from "@/lib/api/coverLetter";
@@ -29,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate } from "@/lib/utils/format";
 import { STATUS_COLORS } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
+import { filterExpiredApplications } from "@/lib/applications-filters";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/layout/EmptyState";
@@ -116,6 +118,11 @@ function AppCard({
             <Badge className={cn("text-xs", statusColor)}>
               {app.current_status.replace(/_/g, " ")}
             </Badge>
+            {app.listing_status === "expired" && (
+              <Badge className="text-xs bg-destructive text-destructive-foreground">
+                Expired
+              </Badge>
+            )}
             {app.applied_date && (
               <span className="text-xs text-muted-foreground">
                 {formatDate(app.applied_date)}
@@ -413,12 +420,13 @@ export default function ApplicationsPage() {
 
       {/* Summary tiles */}
       {summary && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {[
             { label: "Total", value: summary.total_applications },
             { label: "Bookmarked", value: summary.bookmarked },
             { label: "Hidden", value: summary.hidden },
             { label: "External", value: summary.external },
+            { label: "Expired", value: summary.expired ?? 0 },
           ].map(({ label, value }) => (
             <div
               key={label}
@@ -445,6 +453,10 @@ export default function ApplicationsPage() {
           <TabsTrigger value="hidden">
             <EyeOff className="mr-1.5 h-3.5 w-3.5" />
             Hidden
+          </TabsTrigger>
+          <TabsTrigger value="expired">
+            <Clock className="mr-1.5 h-3.5 w-3.5" />
+            Expired
           </TabsTrigger>
         </TabsList>
 
@@ -514,6 +526,27 @@ export default function ApplicationsPage() {
                 onUnhide={() => unhide.mutate(app.application_id)}
               />
             ))}
+        </TabsContent>
+
+        <TabsContent value="expired" className="mt-4 space-y-2">
+          {allQuery.isLoading && (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          )}
+          {filterExpiredApplications(allQuery.data?.applications ?? [])
+            .length === 0 &&
+            !allQuery.isLoading &&
+            !allQuery.isError && (
+              <EmptyState
+                title="No expired listings"
+                description="Saved or applied jobs whose catalog listing has expired appear here. They stay on All with an Expired badge."
+                action={{ label: "Browse jobs", href: "/jobs" }}
+              />
+            )}
+          {filterExpiredApplications(allQuery.data?.applications ?? []).map(
+            (app) => (
+              <AppCard key={app.application_id} app={app} />
+            ),
+          )}
         </TabsContent>
       </Tabs>
     </PageContainer>

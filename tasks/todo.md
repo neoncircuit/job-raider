@@ -3789,3 +3789,362 @@ Makes it obvious a CV actually went through parsing and which model produced the
 ### Review
 
 Datetime display prefs stay in localStorage (like color scheme). Default remains system locale/timezone; optional profile-location inference and manual IANA picker. ``formatDate`` / ``formatDatetime`` honor these prefs app-wide.
+
+## Bug backlog: Cover letter fabricates skills/experience when JD exceeds resume (2026-08-13)
+
+**Status:** Fixed (2026-08-13) — omit + hard-fail proofread. Follow-up (same day): JD-only stacks stripped from the writer prompt; fabricated/duration/metric/scope issues reject `is_valid`; one grounding rewrite pass.
+
+**Fix shipped:**
+- [x] Writer prompts (modern/classic write+rewrite): ban proficiency/years/% invention; omit absent tools without pivot-confession letters
+- [x] Filter ``keywords_to_emphasize`` to resume-supported terms before prompt injection
+- [x] Soft grounding ``jd_terms`` = job title + company only (no matched/missing JD skills)
+- [x] ``flag_inflated_duration_claims`` (merged non-overlapping experience intervals)
+- [x] ``flag_inconsistent_percent_claims`` (from A% to B% vs claimed Z%; v1 numeric only)
+- [x] Proofread UI + severity-weighted penalties for ``inflated_duration`` / ``inconsistent_metric``
+- [x] Regression tests including 52%→78% ≠ 46%
+
+**Priority:** Was medium/low; closed after implement.
+
+## Design backlog: Per-section model dropdowns (Settings = baseline) (2026-08-13)
+
+**Status:** Pilot in progress (2026-08-13) — Cover Letter **writer** ModelSelect shipped for testing the waters. Session-only override; no Save-as-default; provider stays in Settings. Inventories: Anthropic + Gemini catalogs selectable when those providers are active; Ollama = installed tags only; foreign models greyed.
+
+**Problem:** Model choice today is global via Settings ``routing[TaskType]``. Switching models to A/B a cover letter (or try a larger tag for one write) forces a Settings trip and risks changing behavior for resume parse, selection, review, etc.
+
+**Goal:** Convenient, low-friction per-surface model choice without turning every page into a second Settings panel. Settings remains the single place for **provider** and **baseline model**; surfaces may override **model name only**. Learn from a narrow pilot before generalizing.
+
+### Layering (locked)
+
+| Layer | Owns | Does not own |
+|---|---|---|
+| Settings | Provider per task (or tier defaults), baseline model, fallbacks, Ollama host, API keys | Per-request experimentation UI |
+| Section dropdown | Model name for that surface’s TaskType(s), scoped to Settings provider | Provider switch, host, keys |
+| Response | ``model_used`` (and provider if useful) for audit | Mutating saved settings |
+
+**Provider stays in Settings only.** Changing Ollama ↔ Anthropic ↔ Gemini never happens from Cover Letter / Profile / Assessment. The dropdown reacts to whatever provider Settings already set for that ``TaskType``.
+
+### Dropdown UX (locked direction)
+
+When Settings primary provider for the relevant task is **Anthropic** (example):
+
+- **Selectable (normal):** Anthropic models in the known catalog for that provider.
+- **Visible but disabled (grey):** models belonging to other providers (e.g. installed Ollama tags, Gemini IDs) — still listed so the user understands why they cannot pick ``qwen2.5:7b`` until Settings switches back.
+- Same pattern for Gemini and Ollama: current-provider set is the allowlist; cross-provider entries are grey denylist, not omitted silently.
+
+**After a Settings provider swap:**
+
+1. Recompute allowlist for every open surface.
+2. If the section override is no longer in the allowlist, **clear the override** and fall back to Settings baseline for that task.
+3. Optional short hint: “Previous model unavailable for Anthropic — using Settings default.”
+
+**Grey-list composition (mostly locked; size still open):**
+
+- Foreign provider entries come from the **Anthropic** and **Gemini (GCP)** curated catalogs, plus **installed** Ollama tags only.
+- **Still open:** grey = full foreign inventories vs only baselines / last-used (full is clearer; last-used is quieter).
+
+### Surface → TaskType mapping (efficiency)
+
+Do **not** put one “LLM model” control on a page that runs multiple tasks. Wire dropdowns to ``TaskType``:
+
+| Surface (pilot candidates) | Dropdown(s) | TaskType |
+|---|---|---|
+| Cover Letter | Writer | ``cover_letter_writing`` |
+| Cover Letter (when review on) | Reviewer | ``cover_letter_review`` |
+| Profile / resume upload | Parse | ``resume_parsing`` |
+| Resume generation | Selection + Writing | ``selection``, ``resume_writing`` |
+| Assessment | Gen / Eval | ``assessment_generation``, ``assessment_evaluation`` |
+
+**Efficiency rules:**
+
+- Default selection = Settings baseline for that TaskType (label: “Settings default (qwen2.5:7b)” or equivalent).
+- One-click **Reset to Settings default** clears the override.
+- Show current effective model near Generate (and keep ``model_used`` in results).
+- Do not require opening Settings to confirm what will run.
+- Only show a dropdown on surfaces where model choice actually changes outcomes users care about (start with Cover Letter writer ± reviewer). Background/pipeline tasks can stay Settings-only longer.
+
+### Override persistence (open — pick before implement)
+
+| Option | Pros | Cons |
+|---|---|---|
+| **A. Session / tab only** (local React state or sessionStorage) | Safest; no surprise tomorrow | Lost on refresh |
+| **B. Per-surface sticky** (localStorage, not backend settings) | Convenient for multi-day A/B | Can drift from Settings; must invalidate on provider change |
+| **C. Persist into Settings routing** on every change | Single source of truth | Destroys “baseline vs experiment”; not recommended |
+
+**Recommendation for pilot:** **A**, with optional promote control “Save as Settings default” that writes that TaskType’s ``primary_model`` only (provider unchanged).
+
+### API / router contract (when built)
+
+- Request body optional ``model`` (or ``model_overrides: { task_type: model }``) for generate/validate/review endpoints that need it.
+- Router: for that call only, if override is non-empty **and** allowed for the route’s ``primary_provider``, use it as ``primary_model``; else ignore and use Settings route.
+- **Never** change saved Settings from a generate call unless the user explicitly hits “Save as default.”
+- Reject or ignore cross-provider model names server-side (UI greying is not enough).
+- Kind-A response cache keys must include the effective model so overrides do not return another model’s cached body.
+
+### Model inventories (locked 2026-08-13)
+
+External providers for v1 are **only** Anthropic and Google (GCP / Gemini). No other cloud providers in the section dropdown.
+
+| Provider (Settings) | Selectable models in section dropdown |
+|---|---|
+| **Anthropic** | Curated Anthropic console / API model IDs from Job Raider’s model catalog (``model_config.yaml`` / Settings models API ``anthropic`` list) — not free-text |
+| **Gemini (GCP)** | Curated Google Gemini / GCP model IDs from the same catalog (``gemini`` list) — not free-text |
+| **Ollama** | **Installed tags only** from live discovery (``ollama_installed`` via ``resolve_effective_ollama_host``). Do **not** offer YAML-catalogued Ollama names that are not actually pulled |
+
+**Grey / disabled entries** when the Settings provider is e.g. Anthropic: show Gemini catalog models + currently installed Ollama tags as grey text (and vice versa). Do not invent uninstalled Ollama tags just to fill the grey list.
+
+**Settings vs section (pilot stance):** For the experiment, only the **section dropdown** must follow the inventories above (Ollama = installed-only; Anthropic / Gemini = curated catalogs). Whether Settings’ own Ollama picker stays catalog∪installed or also goes installed-only is **deferred** — decide after the pilot. Do not block Cover Letter on Settings UI consistency.
+
+Dropdown disabled or linked to Settings when the provider has no usable inventory (empty install list, missing API key, unreachable Ollama host).
+
+### Non-goals (v1)
+
+- Per-page provider switcher.
+- Free-text arbitrary model IDs.
+- Overriding fallback provider/model from the section UI.
+- Changing Ollama host or API keys from a feature page.
+- Forcing every pipeline stage to expose a dropdown on day one.
+- Offering uninstalled Ollama catalog entries as selectable (or as “available”) in the section UI.
+- Adding Azure OpenAI / other clouds until explicitly productized.
+
+### Open questions (resolve before coding; OK to stay soft during pilot)
+
+1. Session-only vs sticky localStorage for overrides? (**Lean A / session for pilot** so a failed experiment leaves no sticky mess.)
+2. Grey list = foreign full catalogs + installed Ollama, or only baselines / last-used?
+3. Cover Letter pilot: writer only, or writer + reviewer as two controls? (**Lean writer-only first.**)
+4. Should “Save as Settings default” exist in v1 at all? (**Lean no for first pilot** — Settings remains the only way to change baseline.)
+5. Writer override applies to review rewrite that reuses ``COVER_LETTER_WRITING``? (Yes if rewrite shares that TaskType.)
+6. Align Settings Ollama picker with installed-only? (**Deferred** — not part of testing the waters.)
+
+### Suggested pilot order
+
+1. [x] Ship the smallest Cover Letter **writer** ModelSelect + optional request ``writer_model`` override + router allowlist (inventories above).
+2. Use it for a few real letters; note friction (grey list noise, wrong default, provider swap confusion).
+3. Only then: reviewer dropdown, sticky persistence, Save-as-default, other surfaces, Settings picker alignment.
+4. If the pattern feels wrong, remove the section control and keep Settings-only — low sunk cost by design.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Settings["Settings: provider + baseline model per TaskType"] --> Route["LLMRouter route for TaskType"]
+  Surface["Section ModelSelect"] --> Override{"Override set and allowed for provider?"}
+  Override -->|yes| Effective["Effective primary_model = override"]
+  Override -->|no| Baseline["Effective = Settings baseline"]
+  Route --> Override
+  ProviderSwap["Settings provider change"] --> Invalidate["Clear illegal overrides"]
+  Invalidate --> Baseline
+  Effective --> Call["generate / review / parse"]
+  Baseline --> Call
+  Call --> Meta["Response model_used"]
+```
+
+**Priority:** Medium — UX quality / workflow efficiency; not blocking job-search use of current Settings routing.
+
+## Design backlog: Learnings from SG Jobs Dashboard (2026-08-13)
+
+**Status:** Future plan only — **do not start new job portals until the current LinkedIn / JSearch / Cover Letter / Profile stack is solid.** MyCareersFuture, Careers@Gov, and JobStreet are **important** next sources (not optional nice-to-haves), but they wait on current-state quality.
+
+**Source (public, personal project):**
+- Post: multi-portal SG scrape + resume scoring + ATS resume/cover letter + daily expire cleanup
+- Dashboard: [JunRong19/SG-Jobs-Dashboard](https://github.com/JunRong19/SG-Jobs-Dashboard)
+- Pipeline: [JunRong19/SG-Jobs-Scraper](https://github.com/JunRong19/SG-Jobs-Scraper)
+
+**Do not copy their code.** Use the shape of the product as a checklist against Job Raider. Their stack (Supabase + LiteLLM + OpenAI) is not a migration target; Job Raider already has local Ollama routing, FastAPI, Next.js, and file-backed storage.
+
+### Overlap (Job Raider already covers)
+
+| Their feature | Job Raider today |
+|---|---|
+| Scrape LinkedIn into one dashboard | LinkedIn + JSearch + manual paste |
+| Score listings vs resume 0–100 | Score / rank + semantic re-rank + fit explain |
+| Tailored resume + cover letter | Resume generation + Cover Letter (grounded) |
+| Track applications | Applications dashboard + custom statuses |
+| Next.js + Python | Same shape (frontend-ts + backend-py) |
+
+### Gaps worth learning from (priority order)
+
+1. **Job lifecycle (highest product value, source-agnostic)**
+   - Auto-expire stale listings (age / last-seen).
+   - Recheck whether a posting is still live on the source URL.
+   - Hide or bucket expired jobs instead of leaving dead cards in Jobs / Applications.
+   - Their UI: buckets Total / Applied / In-progress / Not interested / Rejected / **Expired**, plus a **Scraped Today** toggle.
+   - Job Raider has no listing `expired` / live-status pass today (`JobSource` is linkedin / jsearch / manual / other only).
+
+2. **Singapore-local sources (important — after current state is solid)**
+   - **Must consider (not optional):** MyCareersFuture, Careers@Gov, JobStreet.
+   - These are first-class SG search channels that LinkedIn + JSearch do not fully cover (public sector, gov portal, Seek/JobStreet inventory).
+   - Treat as new ``JobSource`` adapters behind the existing scraper manager, not a second dashboard.
+   - **Constraint:** scraping may violate site ToS. Prefer official/public APIs where they exist (especially MyCareersFuture). Same legal caution Job Raider already takes on LinkedIn.
+   - **Sequence lock:** do not add adapters until Discover, scoring, cover-letter grounding, profile parse, and listing hygiene on the current two sources feel reliable in daily use.
+
+3. **Scheduled daily pipeline (ops, not UI)**
+   - Their scripts: scrape → score → generate top-match docs → expire/delete inactive.
+   - Job Raider pipeline is operator-triggered. A daily schedule (Discover + score + expire) would match “set and forget” without changing generation quality.
+   - Keep generation on-demand unless we explicitly want auto-docs for top-N (cost / grounding review risk).
+
+4. **Documents library**
+   - One place for every generated resume and cover letter, with in-browser PDF preview.
+   - Job Raider generates per job / Cover Letter page but does not present a global library of artefacts.
+
+5. **Re-score after customizing a resume**
+   - Their `score_jobs.py` re-scores jobs that already have a tailored resume.
+   - Useful later: after generating a tailored resume, refresh fit score against that variant, not only the base profile.
+
+### Explicit non-goals (from this comparison)
+
+- Replacing the LLM router with LiteLLM / locking to OpenAI.
+- Moving storage to Supabase.
+- Cloning their junior/entry-level-only filter as a hard default (Job Raider already has target-job + apprenticeship constraints).
+- Auto-generating a resume PDF for every scrape hit (wasteful; keep generate-on-apply).
+
+### Suggested future order (when current state is solid)
+
+0. **Now:** Perfect current sources and generation (LinkedIn, JSearch, manual paste, scoring, grounded cover letters, profile SoT, model-select pilot). No new portal work in this phase.
+1. Listing lifecycle on **existing** listings: last-seen, expire, live URL check, Expired bucket + Scraped Today filter (pays off before new scrapers). **v1 done 2026-08-13:** catalog last-seen, age/deadline expire, Jobs hide-expired + Scraped today. **Applications Expired bucket done 2026-08-14.** Still open: live URL HEAD check (optional; ToS / flaky LinkedIn).
+2. MyCareersFuture adapter (structured expiry; important SG inventory).
+3. Careers@Gov and JobStreet adapters after MCF proves the pattern and ToS stance.
+4. Documents library of generated artefacts.
+5. Optional daily schedule wrapping existing pipeline stages.
+
+### Flow (target, not current)
+
+```mermaid
+flowchart TD
+  Sources["LinkedIn JSearch plus future SG portals"] --> Scrape["Scheduled or manual scrape"]
+  Scrape --> Dedupe["Deduplicate"]
+  Dedupe --> Score["Score vs resume"]
+  Score --> Live["Live URL / age expiry pass"]
+  Live --> Dash["Jobs and Applications buckets"]
+  Dash --> Gen["On-demand resume and cover letter"]
+  Gen --> Lib["Documents library"]
+```
+
+**Priority:** Medium — those three SG boards matter for coverage, but **current-state quality is the gate**. Not blocking job search on LinkedIn/JSearch today.
+
+## Applications Expired bucket (2026-08-14)
+
+**Scope:** Join catalog `listing_status` onto application rows. Dedicated Expired tab. No live URL HEAD. No new portals. Do not hide expired from All (the user already applied or saved).
+
+**Plan**
+
+- [x] Helper: catalog lookup by `application_id` (== `job_id`). Missing catalog row stays unknown (not expired).
+- [x] Dashboard and GET detail include `listing_status`. Summary `expired` count.
+- [x] Applications UI: Expired badge + Expired tab. Summary tile.
+- [x] Tests, decision log, troubleshooting.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Dash["GET applications dashboard"] --> Catalog["catalog.json by job_id"]
+  Catalog -->|hit| Status["listing_status active or expired"]
+  Catalog -->|miss| Unknown["no listing_status"]
+  Status --> All["All tab with Expired badge"]
+  Status --> Tab["Expired tab"]
+  Unknown --> All
+```
+
+### Review
+
+- Catalog join only. External ids stay unknown. All still shows expired rows with a badge.
+- Overlay backend and rebuild frontend to pick up the Applications tab.
+
+## Job Fit explanation analogical stretch (2026-08-14)
+
+**Problem:** Heuristic Job Fit correctly scores a facilities JD as skip (40). The on-demand explanation still invents transferable strengths (batch processing → work orders) and career-change “improvements” (facilities internships, Microsoft Office).
+
+**Plan**
+
+- [x] Weak-fit context: skip verdict or low domain overlap.
+- [x] explain-fit: literal overlaps only; no analogies; skip-oriented improvements.
+- [x] Prep talking points and explain-letter: same no-bridge rule.
+- [x] Tests, decision log, troubleshooting, overlay.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Assess["Heuristic Job Fit"] --> Score["Score and skip/apply"]
+  Score --> Explain["Explain this score"]
+  Explain --> Weak{"Skip or low domain overlap?"}
+  Weak -->|yes| Literal["Literal overlaps only. Recommend skip."]
+  Weak -->|no| Normal["Strengths tied to matched skills"]
+```
+
+### Review
+
+- Score stays heuristic. Explain-fit / prep / explain-letter prompts no longer force analogical strengths on skip.
+- Overlay the backend after tests pass.
+
+## Cover letter analogical overclaim (low JD overlap) (2026-08-14)
+
+**Problem:** Proofread rejects a mismatched JD (Facilities vs AI resume). The writer still invents relevance: real resume facts mapped onto JD-only duties (“evaluation pipelines are like work orders”). Review & rewrite can worsen this by treating missing JD mapping as a factual gap.
+
+**Plan**
+
+- [x] Domain-overlap heuristic: JD title/requirements vs resume corpus. Low overlap injects mismatch instructions (do not analogize; omit unsupported duties).
+- [x] Writer rules: connect only to resume-supported requirements; never claim X is like / prepared me for JD-only duties.
+- [x] On mismatch, drop selector alignment reasons so the prompt cannot teach invented fit.
+- [x] Reviewer: missing JD mapping is not a gap. Analogical bridges are. Guard Review & rewrite critiques on mismatch.
+- [x] Deterministic `analogical_claim` hard-fail + one grounding rewrite. Do not hard-fail all `ungrounded_claims`.
+- [x] Tests: facilities-style mismatch flags; in-domain “prepared me for” does not; nearby-tech analogy flags. Docs + lessons.
+
+### Flow
+
+```mermaid
+flowchart TD
+  JD["Job description"] --> Overlap["JD vs resume domain overlap"]
+  Overlap -->|low| Mismatch["Mismatch writer rules"]
+  Overlap -->|high| Normal["Normal connect-to-overlap rules"]
+  Mismatch --> Write["First draft"]
+  Normal --> Write
+  Write --> Review{"Review and rewrite?"}
+  Review -->|yes and mismatch| Guard["Do not request more JD mapping"]
+  Review -->|yes and overlap| ReviewNorm["Normal critique"]
+  Guard --> Proof["Proofread"]
+  ReviewNorm --> Proof
+  Write --> Proof
+  Proof --> Analog{"Analogical claim?"}
+  Analog -->|yes| Rewrite["One grounding rewrite"]
+  Analog -->|no| Score["Score-based result"]
+  Rewrite --> Proof2["Proofread again"]
+```
+
+### Review
+
+- Writer no longer must connect resume facts to unsupported JD duties. Low overlap injects mismatch rules and drops selector alignment reasons.
+- Review & rewrite cannot treat missing JD mapping as a gap. Analogical glue (`similar to`, `prepared me for`, `is like`) hard-fails as `analogical_claim` and rewrites once.
+- 87 cover-letter tests passed (grounding, writer, validator, reviewer, service). Overlay the backend to pick up the Python change.
+
+## Listing lifecycle v1 (current sources) [COMPLETED] (2026-08-13)
+
+**Scope:** LinkedIn / JSearch / pipeline listings only. No new portals. No live URL HEAD checks.
+
+### Plan
+
+- [x] Add `last_seen_at` on `JobListing`. Compute `listing_status` (`active` / `expired`) from deadline and last-seen age (30 days). Do not expire a posting only because `posted_date` is old if it was seen today.
+- [x] Persist a `data/listings/catalog.json` keyed by `job_id`. Upsert on live search and pipeline dedupe. `GET /jobs/{id}` and `POST /jobs/{id}/score` read the catalog (replace 501).
+- [x] Include `listing_status`, `last_seen_at`, `scraped_today`, `days_since_posted` on search, shortlist, and GET payloads.
+- [x] Jobs UI: hide expired by default (toggle to show), Scraped today filter, Expired / Scraped today badges.
+- [x] Tests + decision log + troubleshooting. Skip live URL recheck (ToS / flaky LinkedIn).
+
+### Review
+
+- Backend: 19 unit tests passed (lifecycle, catalog, GET/score, shortlist).
+- Scoring: `JobMatcher._score_location` no longer calls `.value` on `work_mode` (string under `use_enum_values=True`), so catalog scoring and live search scoring actually return scores.
+- Not in v1: live URL HEAD check, Applications Expired bucket, new job portals.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Scrape["Search or Discover scrape"] --> Upsert["Upsert catalog last_seen_at"]
+  Upsert --> Status{"Deadline passed or last_seen older than 30 days?"}
+  Status -->|yes| Expired["listing_status expired"]
+  Status -->|no| Active["listing_status active"]
+  Expired --> Jobs["Jobs list hidden unless Show expired"]
+  Active --> Jobs
+  Catalog["catalog.json"] --> Get["GET /jobs/id"]
+  Catalog --> Score["POST /jobs/id/score"]
+```
+

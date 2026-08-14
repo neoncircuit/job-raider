@@ -151,6 +151,21 @@ export function JobDetail({
             </Badge>
           )}
 
+          {job.listing_status === "expired" && (
+            <Badge className="text-xs bg-destructive text-destructive-foreground">
+              Expired
+            </Badge>
+          )}
+
+          {job.scraped_today && (
+            <Badge
+              variant="outline"
+              className="text-xs border-info/30 bg-info/10 text-info"
+            >
+              Scraped today
+            </Badge>
+          )}
+
           {job.work_mode && job.work_mode !== "On-site" && (
             <Badge
               variant="outline"

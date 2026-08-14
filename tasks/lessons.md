@@ -2986,3 +2986,107 @@
 - Cache the last raw localStorage string and snapshot object; return the same reference when contents are unchanged.
 - Prefer primitives for simple prefs (color scheme string works for this reason).
 - Keep server snapshot as a module-level constant, not ``{ ...defaults }``.
+
+## Cover letter grounding (2026-08-13)
+
+### Soft grounding must not ingest unmet JD skills
+
+**Lesson:** Never pass ``jd_coverage["missing"]`` (or even matched structured JD skills) into soft ungrounded ``jd_terms``. That turns JD keyword echo into “grounded” vocabulary and hides fabricated proficiency claims.
+
+**Why:** The model already sees the full JD in the writer prompt; soft overlap only needs company/title. Named tech is already hard-checked against Technical Skills.
+
+**How to apply:**
+- Soft ``jd_terms`` = title + company only.
+- Filter ``keywords_to_emphasize`` to resume-supported names before prompt injection.
+- Add deterministic hard nets for duration (merged intervals) and from/to % arithmetic; do not rely on prompts alone.
+
+### Do not put JD-only stacks in the writer prompt
+
+**Lesson:** Filtering ``KEYWORDS TO WEAVE IN`` is not enough if ``TARGET JOB`` still lists Required Skills and a raw description full of TensorFlow/AWS/React. The model will echo the JD shopping list.
+
+**Why:** First-write prompts that say “do not name X” still teach X. Redact unsupported lexicon hits from the JD text and only list overlapping skills.
+
+**How to apply:**
+- ``redact_unsupported_technologies`` on description and requirements.
+- Required-skills list = JD ∩ resume-supported names.
+- After proofread hard-fail, rewrite once with a critique that names the claims to delete.
+- ``is_valid`` must be false for fabricated tech / duration / metric / scope / technique, independent of the 80/60 score bands.
+- LLM deep-check must not bypass deterministic hard-fail.
+
+## Listing lifecycle (2026-08-13)
+
+### last_seen_at must not default to now() on JSON load
+
+**Lesson:** Optional timestamps that mean "unknown" must stay None (or fall back to `scraped_at`). A `default_factory=datetime.now` on load un-expires every stale listing the first time new code reads old files.
+
+**Why:** Status is derived from last-seen age. Loading a 40-day-old catalog row with `last_seen_at=now()` would mark it scraped today and active.
+
+**How to apply:**
+- Store `last_seen_at` as Optional; resolve with `last_seen_at or scraped_at`.
+- Set `last_seen_at` only in upsert when a scrape actually observes the job.
+- Keep a canonical catalog file that cleanup must not delete.
+
+### Compute listing status at read time
+
+**Lesson:** Do not persist `listing_status` as the source of truth. Recompute from deadline and last-seen when serializing search, shortlist, and GET.
+
+**Why:** A stored "active" flag goes stale at midnight (Scraped today) and at the 30-day boundary without another write.
+
+**How to apply:**
+- `attach_lifecycle_fields` on shortlist load so old artifacts get current flags.
+- Hide expired in the UI by default; do not delete catalog rows on expire.
+
+### JobListing enums are strings at runtime
+
+**Lesson:** ``JobListing.model_config`` uses ``use_enum_values=True``. After validation, ``work_mode`` / ``source`` / ``job_type`` are strings, not Enum members. ``job.work_mode.value`` raises ``AttributeError`` and live search scoring was swallowing it per listing.
+
+**Why:** Catalog JSON round-trips make the string form obvious. Fresh Pydantic instances already store the enum value.
+
+**How to apply:**
+- Compare with ``hasattr(..., "value")`` then ``str(...).lower()``, or compare to the enum value string (``"Hybrid"``), never assume ``.value``.
+- Do not treat a caught scoring exception as a successful unscored search result without a log you will notice.
+
+## Cover letter analogical overclaim (2026-08-14)
+
+### Do not require the writer to invent JD fit
+
+**Lesson:** A rule that says “connect 2-3 experiences to the job requirements” forces analogical overclaim when overlap is low. Proofread after the fact is not enough if Review & rewrite then asks the model to connect harder.
+
+**Why:** Resume-true clauses keep whole-sentence overlap above the ungrounded threshold. The lie is the bridge (“X is like Y”), not the resume facts.
+
+**How to apply:**
+- Connect only to requirements that also appear on the resume. Omit the rest.
+- On low domain overlap, inject mismatch rules and drop selector alignment reasons.
+- Reviewer: missing JD mapping is not a factual gap. Analogical bridges are.
+- Hard-fail analogical glue whose target is JD-only. Do not hard-fail all ``ungrounded_claims``.
+- Keep tech redaction for nearby-stack JDs; analogical checks catch “Django is similar to React” as well as facilities forced-fit.
+
+## Job Fit explanation analogical stretch (2026-08-14)
+
+### Do not force strengths on a skip score
+
+**Lesson:** Asking an explainer for “reasons the candidate fits” on a 40/100 skip produces analogical overclaim in the rationale, even when the number is honest.
+
+**Why:** The model must fill the strengths list. Resume-true tech plus “applicable to” is the easy way out. Career-change improvements (facilities internships) are the same failure in the improvements slot.
+
+**How to apply:**
+- Weak fit = skip verdict or ``is_domain_mismatch``.
+- Strengths and prep talking points = literal overlaps only; empty is allowed.
+- Improvements on weak fit = recommend skip, not retraining into the JD domain.
+- Do not add analogical hard-fail to Job Fit prose; it is advisory, not a sendable letter.
+
+## Applications Expired bucket (2026-08-14)
+
+### Do not hide tracked applications the way Jobs hides listings
+
+**Lesson:** Jobs can hide expired rows because they are a browse list. Applications is a personal tracker. Expired postings still belong on All, with a dedicated bucket for triage.
+
+**Why:** The user already saved or applied. Dropping them from All looks like data loss.
+
+**How to apply:**
+- Join catalog `listing_status` by job_id. Missing catalog row is unknown, not expired.
+- Badge on All plus an Expired tab. No live URL HEAD.
+
+
+
+

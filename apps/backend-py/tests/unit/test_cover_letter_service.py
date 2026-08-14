@@ -21,7 +21,10 @@ import pytest
 
 from src.generation.cover_letter_reviewer import CoverLetterReviewResult
 from src.generation.cover_letter_service import generate_cover_letter_for_profile
-from src.generation.cover_letter_validator import CoverLetterValidationResult
+from src.generation.cover_letter_validator import (
+    CoverLetterIssue,
+    CoverLetterValidationResult,
+)
 from src.generation.cover_letter_writer import GeneratedCoverLetter
 from src.generation.selector import SelectionOutput
 from src.models.job_listing import JobListing, JobRequirement, JobSource
@@ -342,3 +345,92 @@ class TestGenerateCoverLetterService:
             generate_cover_letter_for_profile(sample_job, sample_profile, review=False)
         )
         assert "review" not in response.validation.details
+
+    def test_hard_fail_triggers_grounding_rewrite(
+        self, sample_job, sample_profile, patch_dependencies, mock_writer, mock_validator
+    ):
+        """Fabricated-tech proofread must rewrite once even when review is off."""
+        writer, _, rewritten_draft = mock_writer
+        failing = CoverLetterValidationResult(
+            is_valid=False,
+            score=40,
+            issues=[CoverLetterIssue.FABRICATED_TECHNOLOGY],
+            word_count=4,
+            structure_score=80,
+            content_score=40,
+            tone_score=80,
+            recommendation="reject",
+            details={"fabricated_technologies": ["tensorflow"]},
+        )
+        passing = CoverLetterValidationResult(
+            is_valid=True,
+            score=85,
+            issues=[],
+            word_count=4,
+            structure_score=80,
+            content_score=90,
+            tone_score=85,
+            recommendation="approve",
+            details={},
+        )
+        mock_validator.validate.side_effect = [failing, passing]
+
+        response = asyncio.run(
+            generate_cover_letter_for_profile(
+                sample_job, sample_profile, deep=False, review=False
+            )
+        )
+
+        writer.rewrite.assert_called_once()
+        critique = writer.rewrite.call_args.args[4]
+        assert "tensorflow" in critique.lower()
+        assert response.cover_letter["content"] == rewritten_draft.content
+        assert response.validation.details["grounding_rewrite"]["applied"] is True
+
+    def test_analogical_hard_fail_triggers_grounding_rewrite(
+        self, sample_job, sample_profile, patch_dependencies, mock_writer, mock_validator
+    ):
+        """Analogical-claim proofread must rewrite once even when review is off."""
+        writer, _, rewritten_draft = mock_writer
+        failing = CoverLetterValidationResult(
+            is_valid=False,
+            score=40,
+            issues=[CoverLetterIssue.ANALOGICAL_CLAIM],
+            word_count=4,
+            structure_score=80,
+            content_score=40,
+            tone_score=80,
+            recommendation="reject",
+            details={
+                "analogical_claims": [
+                    {
+                        "sentence": "Pipelines are similar to work orders",
+                        "flags": ["Analogical claim: work orders"],
+                    }
+                ]
+            },
+        )
+        passing = CoverLetterValidationResult(
+            is_valid=True,
+            score=85,
+            issues=[],
+            word_count=4,
+            structure_score=80,
+            content_score=90,
+            tone_score=85,
+            recommendation="approve",
+            details={},
+        )
+        mock_validator.validate.side_effect = [failing, passing]
+
+        response = asyncio.run(
+            generate_cover_letter_for_profile(
+                sample_job, sample_profile, deep=False, review=False
+            )
+        )
+
+        writer.rewrite.assert_called_once()
+        critique = writer.rewrite.call_args.args[4]
+        assert "analogize" in critique.lower() or "work orders" in critique.lower()
+        assert response.cover_letter["content"] == rewritten_draft.content
+        assert response.validation.details["grounding_rewrite"]["applied"] is True

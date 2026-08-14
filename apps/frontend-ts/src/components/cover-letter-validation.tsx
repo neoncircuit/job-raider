@@ -161,6 +161,33 @@ export function CoverLetterValidationDisplay({
   const fabricatedTechnologies = Array.isArray(details?.fabricated_technologies)
     ? (details.fabricated_technologies as string[])
     : [];
+  const inflatedDurationClaims = Array.isArray(details?.inflated_duration_claims)
+    ? (
+        details.inflated_duration_claims as Array<{
+          sentence?: string;
+          flags?: string[];
+          claimed_years?: number;
+          cap_years?: number;
+        }>
+      ).filter(
+        (item) => item && (item.sentence || (item.flags?.length ?? 0) > 0),
+      )
+    : [];
+  const inconsistentPercentClaims = Array.isArray(
+    details?.inconsistent_percent_claims,
+  )
+    ? (
+        details.inconsistent_percent_claims as Array<{
+          sentence?: string;
+          flags?: string[];
+          from_pct?: number;
+          to_pct?: number;
+          claimed_pct?: number;
+        }>
+      ).filter(
+        (item) => item && (item.sentence || (item.flags?.length ?? 0) > 0),
+      )
+    : [];
   const groundingPenalty =
     details?.grounding_penalty &&
     typeof details.grounding_penalty === "object" &&
@@ -171,6 +198,8 @@ export function CoverLetterValidationDisplay({
           scope_inflation?: number;
           technique_mismatch?: number;
           fabricated_tech?: number;
+          inflated_duration?: number;
+          inconsistent_metric?: number;
           capped_penalty?: number;
           weights?: {
             soft_ungrounded?: number;
@@ -178,6 +207,8 @@ export function CoverLetterValidationDisplay({
             scope_inflation?: number;
             technique_mismatch?: number;
             fabricated_tech?: number;
+            inflated_duration?: number;
+            inconsistent_metric?: number;
           };
         })
       : null;
@@ -292,7 +323,9 @@ export function CoverLetterValidationDisplay({
       {/* Ungrounded / overclaim review — deterministic resume grounding */}
       {(ungroundedSentences.length > 0 ||
         claimOverclaims.length > 0 ||
-        fabricatedTechnologies.length > 0) && (
+        fabricatedTechnologies.length > 0 ||
+        inflatedDurationClaims.length > 0 ||
+        inconsistentPercentClaims.length > 0) && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -322,6 +355,12 @@ export function CoverLetterValidationDisplay({
                   {groundingPenalty.fabricated_tech
                     ? ` · ${groundingPenalty.fabricated_tech} fabricated tech (−${groundingPenalty.weights?.fabricated_tech ?? 10} each)`
                     : ""}
+                  {groundingPenalty.inflated_duration
+                    ? ` · ${groundingPenalty.inflated_duration} inflated duration (−${groundingPenalty.weights?.inflated_duration ?? 10} each)`
+                    : ""}
+                  {groundingPenalty.inconsistent_metric
+                    ? ` · ${groundingPenalty.inconsistent_metric} inconsistent metric (−${groundingPenalty.weights?.inconsistent_metric ?? 10} each)`
+                    : ""}
                   . Penalties scale by severity (soft wording vs hard
                   overclaims).
                 </p>
@@ -339,6 +378,58 @@ export function CoverLetterValidationDisplay({
                       <Badge variant="outline" className="font-normal">
                         {tech}
                       </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {inflatedDurationClaims.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  These sentences claim more years of experience than your
+                  dated roles (merged, non-overlapping) support.
+                </p>
+                <ul className="space-y-2">
+                  {inflatedDurationClaims.map((item, i) => (
+                    <li
+                      key={`duration-${i}-${(item.sentence || "").slice(0, 24)}`}
+                      className="space-y-1 text-xs text-foreground"
+                    >
+                      <p className="flex items-start gap-2">
+                        <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                        <span>{item.sentence}</span>
+                      </p>
+                      {(item.flags || []).map((flag) => (
+                        <p key={flag} className="pl-3.5 text-muted-foreground">
+                          {flag}
+                        </p>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {inconsistentPercentClaims.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  These sentences state a percentage gain that does not match
+                  the from/to endpoints (absolute points or relative change).
+                </p>
+                <ul className="space-y-2">
+                  {inconsistentPercentClaims.map((item, i) => (
+                    <li
+                      key={`metric-${i}-${(item.sentence || "").slice(0, 24)}`}
+                      className="space-y-1 text-xs text-foreground"
+                    >
+                      <p className="flex items-start gap-2">
+                        <span className="mt-0.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                        <span>{item.sentence}</span>
+                      </p>
+                      {(item.flags || []).map((flag) => (
+                        <p key={flag} className="pl-3.5 text-muted-foreground">
+                          {flag}
+                        </p>
+                      ))}
                     </li>
                   ))}
                 </ul>
@@ -520,6 +611,8 @@ export function CoverLetterValidationDisplay({
         ungroundedSentences.length === 0 &&
         claimOverclaims.length === 0 &&
         fabricatedTechnologies.length === 0 &&
+        inflatedDurationClaims.length === 0 &&
+        inconsistentPercentClaims.length === 0 &&
         !reviewDetails && (
           <p className="text-xs text-muted-foreground">
             No issues detected. The cover letter looks good.

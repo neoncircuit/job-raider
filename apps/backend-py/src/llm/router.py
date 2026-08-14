@@ -248,6 +248,88 @@ class LLMRouter:
         self._cache_hits = 0
         self._cache_misses = 0
 
+    def is_model_allowed_for_provider(self, provider: str, model: str) -> bool:
+        """
+        Return whether ``model`` may be used with ``provider`` for overrides.
+
+        Anthropic and Gemini must appear in the YAML catalog. Ollama models
+        must be installed on the configured host (catalog-only names that
+        are not pulled are rejected).
+
+        Args:
+            provider: Provider key (``ollama``, ``anthropic``, ``gemini``).
+            model: Candidate model id / tag.
+
+        Returns:
+            True when the model is allowed for that provider.
+        """
+        provider_key = (provider or "").strip().lower()
+        model_name = (model or "").strip()
+        if not provider_key or not model_name:
+            return False
+
+        try:
+            from ..config.loader import get_config_loader
+
+            catalog = get_config_loader().get_available_models()
+        except Exception:
+            catalog = {}
+
+        if provider_key in ("anthropic", "gemini"):
+            return model_name in (catalog.get(provider_key) or [])
+
+        if provider_key == "ollama":
+            try:
+                from ..api.ollama_models import (
+                    list_installed_ollama_models,
+                    resolve_effective_ollama_host,
+                )
+
+                host = resolve_effective_ollama_host(
+                    f"{self.ollama_host}:{self.ollama_port}"
+                    if self.ollama_port
+                    else str(self.ollama_host or "")
+                )
+                installed = list_installed_ollama_models(host)
+            except Exception:
+                installed = []
+            if model_name in installed:
+                return True
+            # Accept bare name when Ollama reports ``name:latest``.
+            if f"{model_name}:latest" in installed:
+                return True
+            if model_name.endswith(":latest"):
+                bare = model_name[: -len(":latest")]
+                if bare in installed:
+                    return True
+            return False
+
+        return False
+
+    def resolve_primary_model(
+        self,
+        task_type: TaskType,
+        model_override: Optional[str] = None,
+    ) -> tuple[str, str]:
+        """
+        Resolve provider and primary model for a task, applying an override.
+
+        Args:
+            task_type: Routed task type.
+            model_override: Optional one-shot model name. Used only when
+                allowed for the route's primary provider; otherwise ignored.
+
+        Returns:
+            Tuple of ``(provider, model)``.
+        """
+        route = self.routes[task_type]
+        override = (model_override or "").strip() or None
+        if override and self.is_model_allowed_for_provider(
+            route.primary_provider, override
+        ):
+            return route.primary_provider, override
+        return route.primary_provider, route.primary_model
+
     def reload_routes_from_settings(self, settings_routes: Dict[str, Any]) -> None:
         """
         Reload routes from user settings.
@@ -308,14 +390,20 @@ class LLMRouter:
         keeps constructor defaults when settings cannot be loaded.
         """
         try:
-            from ..api.ollama_models import parse_ollama_host_port
+            from ..api.ollama_models import (
+                parse_ollama_host_port,
+                resolve_effective_ollama_host,
+            )
             from ..api.settings import get_storage
 
             settings = get_storage().load_settings()
             if settings.routing:
                 self.reload_routes_from_settings(settings.routing)
             if settings.api_config and settings.api_config.ollama_host:
-                host, port = parse_ollama_host_port(settings.api_config.ollama_host)
+                effective = resolve_effective_ollama_host(
+                    settings.api_config.ollama_host
+                )
+                host, port = parse_ollama_host_port(effective)
                 self.ollama_host = host
                 self.ollama_port = port
             if settings.api_config:
@@ -520,7 +608,11 @@ class LLMRouter:
         return client
 
     def generate(
-        self, messages: List[Message], task_type: TaskType = TaskType.GENERAL, **kwargs
+        self,
+        messages: List[Message],
+        task_type: TaskType = TaskType.GENERAL,
+        model: Optional[str] = None,
+        **kwargs,
     ) -> LLMResponse:
         """
         Generate a response using the appropriate model for the task.
@@ -528,6 +620,8 @@ class LLMRouter:
         Args:
             messages: List of messages in the conversation
             task_type: Type of task (determines routing)
+            model: Optional one-shot primary model override (must be allowed
+                for the route's primary provider; otherwise ignored)
             **kwargs: Additional generation parameters
 
         Returns:
@@ -536,14 +630,18 @@ class LLMRouter:
         if task_type not in self.routes:
             raise ValueError(f"Unknown task type: {task_type}")
 
+        # Do not forward override to provider clients.
+        kwargs.pop("model", None)
+
         route = self.routes[task_type]
+        provider, primary_model = self.resolve_primary_model(task_type, model)
         self._total_requests += 1
 
         cached = self._try_cache_get(
             messages,
             task_type,
-            route.primary_provider,
-            route.primary_model,
+            provider,
+            primary_model,
             kwargs,
         )
         if cached is not None:
@@ -551,7 +649,7 @@ class LLMRouter:
 
         # Try primary provider
         try:
-            client = self._get_client(route.primary_provider, route.primary_model)
+            client = self._get_client(provider, primary_model)
             response = client.generate(messages, **kwargs)
             self._primary_used += 1
             self._total_cost += response.cost or 0.0
@@ -559,8 +657,8 @@ class LLMRouter:
                 messages,
                 response,
                 task_type,
-                route.primary_provider,
-                route.primary_model,
+                provider,
+                primary_model,
                 kwargs,
             )
             return response
@@ -592,7 +690,11 @@ class LLMRouter:
             raise
 
     async def generate_async(
-        self, messages: List[Message], task_type: TaskType = TaskType.GENERAL, **kwargs
+        self,
+        messages: List[Message],
+        task_type: TaskType = TaskType.GENERAL,
+        model: Optional[str] = None,
+        **kwargs,
     ) -> LLMResponse:
         """
         Generate a response asynchronously using the appropriate model.
@@ -600,6 +702,8 @@ class LLMRouter:
         Args:
             messages: List of messages in the conversation
             task_type: Type of task (determines routing)
+            model: Optional one-shot primary model override (must be allowed
+                for the route's primary provider; otherwise ignored)
             **kwargs: Additional generation parameters
 
         Returns:
@@ -608,14 +712,17 @@ class LLMRouter:
         if task_type not in self.routes:
             raise ValueError(f"Unknown task type: {task_type}")
 
+        kwargs.pop("model", None)
+
         route = self.routes[task_type]
+        provider, primary_model = self.resolve_primary_model(task_type, model)
         self._total_requests += 1
 
         cached = self._try_cache_get(
             messages,
             task_type,
-            route.primary_provider,
-            route.primary_model,
+            provider,
+            primary_model,
             kwargs,
         )
         if cached is not None:
@@ -623,7 +730,7 @@ class LLMRouter:
 
         # Try primary provider
         try:
-            client = self._get_client(route.primary_provider, route.primary_model)
+            client = self._get_client(provider, primary_model)
             response = await client.generate_async(messages, **kwargs)
             self._primary_used += 1
             self._total_cost += response.cost or 0.0
@@ -631,8 +738,8 @@ class LLMRouter:
                 messages,
                 response,
                 task_type,
-                route.primary_provider,
-                route.primary_model,
+                provider,
+                primary_model,
                 kwargs,
             )
             return response

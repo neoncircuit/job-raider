@@ -218,6 +218,12 @@ class PipelineStages:
             self.context.storage.save_collection(
                 JobListingCollection(listings=deduplicated)
             )
+            try:
+                self.context.storage.upsert_listings(deduplicated)
+            except Exception as catalog_err:
+                self.logger.warning(
+                    "Failed to upsert listing catalog: %s", catalog_err
+                )
 
             # Persist scraper-detected applied status to tracker
             applied_tracker = AppliedJobsTracker()

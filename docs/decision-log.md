@@ -1,5 +1,204 @@
 # Job Raider Decision Log
 
+## 2026-08-14 - Applications Expired bucket
+
+### Context
+
+Jobs already hide expired catalog listings. Applications had no join to `listing_status`, so saved or applied jobs whose posting had closed stayed indistinguishable from live ones.
+
+### Decision
+
+- Join catalog status onto dashboard and detail by `application_id` == `job_id`. Missing catalog rows (external `ext-` ids) stay unknown, not expired.
+- Show an Expired badge on All/Saved/Hidden. Add an Expired tab and summary count. Do not hide expired from All: the user already tracked the application.
+- No live URL HEAD check.
+
+### Consequences
+
+- Expired is a triage bucket, not a delete.
+- Re-scraping a listing updates `last_seen_at` and can move it out of Expired.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Dash["GET applications dashboard"] --> Catalog["catalog.json by job_id"]
+  Catalog -->|hit| Status["listing_status"]
+  Catalog -->|miss| Unknown["no listing_status"]
+  Status --> All["All tab plus Expired badge"]
+  Status --> Tab["Expired tab"]
+  Unknown --> All
+```
+
+## 2026-08-14 - Job Fit explanation must not invent transferable fit
+
+### Context
+
+Heuristic Job Fit correctly scored a Facilities Coordinator JD as skip (40/100). The on-demand explanation still listed Python/Docker as strengths “applicable to work order scheduling” and told the candidate to retrain into facilities and Microsoft Office.
+
+### Decision
+
+- Reuse skip verdict and the cover-letter domain-overlap check as a weak-fit context.
+- Strengths and prep talking points may only name literal resume/JD overlaps. Analogical glue is forbidden.
+- On weak fit, improvements recommend skipping unless the candidate intends a career change. Do not recommend unrelated retraining.
+- Cover-letter “Explain this letter” treats analogical bridges as concerns.
+
+### Consequences
+
+- The score stays heuristic. Only the prose changes.
+- A matching software JD is unchanged: strengths may still cite matched skills.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Score["Heuristic Job Fit"] --> Explain["Explain this score"]
+  Explain --> Weak{"Skip or low domain overlap?"}
+  Weak -->|yes| Literal["Literal overlaps only. Recommend skip."]
+  Weak -->|no| Normal["Strengths from matched skills"]
+```
+
+## 2026-08-14 - Cover letter analogical overclaim on low JD overlap
+
+### Context
+
+Proofread already rejected mismatched JDs (Facilities Coordinator vs an AI/LLM resume). The writer still invented relevance: resume-true facts (Python, LlamaIndex, evaluation pipelines) mapped onto JD-only duties (“similar to work orders”, “prepared me for facility statistics”). Review & rewrite treated missing JD mapping as a factual gap and could push the drafter to connect harder.
+
+### Decision
+
+- Compute a cheap JD-vs-resume domain overlap. Below 0.15, inject mismatch writer rules: mention company and role, restate resume facts, omit unsupported duties, do not analogize.
+- Change the standing connect rule: only map experience onto job requirements that also appear on the resume.
+- On mismatch, drop selector project-alignment reasons so the prompt cannot teach invented fit.
+- Reviewer: missing JD mapping is not a factual gap. Analogical bridges are. On mismatch, prepend a rewrite guard so Review & rewrite cannot demand more JD mapping.
+- New hard-fail issue `analogical_claim`: glue phrases (`similar to`, `prepared me for`, `is like`, …) whose target contains JD-only duty words. Triggers one grounding rewrite. Soft `ungrounded_claims` stay score-only.
+
+### Consequences
+
+- A deliberately mismatched JD should produce a short honest restatement, not a forced-fit story.
+- A nearby tech JD with extra stack is still covered by tech redaction; analogical “Django is similar to React” is now a hard fail.
+- One extra rewrite call when analogical glue survives the first draft.
+
+### Flow
+
+```mermaid
+flowchart TD
+  JD["Job description"] --> Overlap["JD vs resume domain overlap"]
+  Overlap -->|below 0.15| Mismatch["Mismatch writer rules"]
+  Overlap -->|0.15 or above| Normal["Connect only to resume-supported requirements"]
+  Mismatch --> Write["First draft"]
+  Normal --> Write
+  Write --> Review{"Review and rewrite on?"}
+  Review -->|yes and mismatch| Guard["Do not request more JD mapping"]
+  Review -->|yes and overlap| ReviewNorm["Normal critique"]
+  Guard --> Proof["Deterministic proofread"]
+  ReviewNorm --> Proof
+  Write --> Proof
+  Proof --> Analog{"analogical_claim?"}
+  Analog -->|yes| Rewrite["One grounding rewrite"]
+  Analog -->|no| Score["Score-based result"]
+  Rewrite --> Proof2["Proofread again"]
+```
+
+## 2026-08-13 - Cover letter hard-fail and JD-stack redaction
+
+### Context
+
+The omit + proofread work flagged fabricated technologies, inflated duration, and bad percentages, but two holes remained. The writer prompt still listed JD Required Skills and the raw description (TensorFlow / AWS / React), so the model kept echoing them. Proofread only subtracted points; with `strict_mode=False` a letter could stay `is_valid` and look sendable.
+
+### Decision
+
+- Redact known technologies that are not on the resume from the writer job context. List only overlapping JD skills. Do not name missing tools in the first-write prompt.
+- Hard-fail issues (`fabricated_technology`, `inflated_duration`, `inconsistent_metric`, `fabricated_experience`) force `recommendation=reject` and `is_valid=False` regardless of numeric score. Scope inflation and technique mismatch stay as score penalties (they are noisier).
+- After a hard-fail proofread, rewrite once using a structured critique, then proofread again.
+- Deep (LLM) validation cannot override a deterministic hard-fail.
+
+### Consequences
+
+- First-write prompts no longer teach JD-only stacks.
+- Proofread “Ready to send” cannot appear on a letter that names resume-absent tools or invents years/%.
+- A bad first draft costs one extra writer call.
+
+### Flow
+
+```mermaid
+flowchart TD
+  JD["Job description"] --> Redact["Redact resume-absent tech"]
+  Profile["Profile skills"] --> Redact
+  Redact --> Write["Writer first draft"]
+  Write --> Proof["Deterministic proofread"]
+  Proof --> Hard{"Hard-fail issues?"}
+  Hard -->|yes| Rewrite["One grounding rewrite"]
+  Rewrite --> Proof2["Proofread again"]
+  Proof2 --> Reject["is_valid false if still hard-fail"]
+  Hard -->|no| Send["Score-based approve / revise"]
+```
+
+## 2026-08-13 - Listing lifecycle catalog (age / last-seen)
+
+### Context
+
+Jobs search was live-only. `GET /jobs/{id}` and `POST /jobs/{id}/score` returned 501. Pipeline snapshots used file mtime, not per-listing last-seen, so stale LinkedIn/JSearch cards stayed in the Jobs list with no Expired or Scraped today signal.
+
+### Decision
+
+- Keep JSON file storage. Add `last_seen_at` on `JobListing` (optional; fall back to `scraped_at`). Do not default it to `now()` on load.
+- Canonical catalog `data/listings/catalog.json` keyed by `job_id`. Upsert on live search and pipeline dedupe. Timestamped snapshot files remain for pipeline history; cleanup skips the catalog.
+- Status is computed at read time: expired when the application deadline has passed, or last-seen age is at least 30 days. An old `posted_date` stays active if the listing was seen recently. No live URL HEAD check in v1.
+- Jobs UI hides expired listings by default and offers Show expired plus Scraped today filters.
+
+### Consequences
+
+- `GET /jobs/{id}` and `POST /jobs/{id}/score` read the catalog (404 until a search or Discover run stores the job).
+- Overnight, yesterday's shortlist is no longer Scraped today; it stays active until the 30-day last-seen window.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Scrape["Search or Discover"] --> Catalog["catalog.json last_seen_at"]
+  Catalog --> Status{"Deadline passed or last-seen 30 days?"}
+  Status -->|yes| Expired["expired hidden by default"]
+  Status -->|no| Active["active plus Scraped today when same day"]
+  Catalog --> Get["GET /jobs/id"]
+  Catalog --> Score["POST /jobs/id/score"]
+```
+
+## 2026-08-13 - Cover letter omit + hard-fail for JD-driven fabrication
+
+### Context
+
+Cover letters for JDs that asked for stacks and years beyond the resume invented proficiency claims (Node, TensorFlow, Azure), inflated duration (“over 2 years” vs ~1 year), and misstated relative gains (“nearly 46%” from 52%→78%). Soft grounding also passed missing JD skill terms into the overlap vocabulary, which could legitimize JD echo.
+
+### Decision
+
+- Two-layer defense: harden modern/classic write+rewrite rules (omit absent tools; no pivot-confession letters; no invented years/%) and filter ``keywords_to_emphasize`` to resume-supported names before prompting.
+- Soft ungrounded ``jd_terms`` = job title + company only. Named tech remains enforced by ``FABRICATED_TECHNOLOGY``.
+- New hard checks: ``flag_inflated_duration_claims`` (merged non-overlapping experience intervals + optional skill years) and ``flag_inconsistent_percent_claims`` (accept absolute points or relative % within 2 pts). Qualitative “nearly doubled” without endpoints is out of scope for v1.
+- Issues ``inflated_duration`` / ``inconsistent_metric`` (−10 each) in the existing severity-weighted penalty cap.
+
+### Consequences
+
+- Proofread should hard-fail reproduced fabrications even when the model ignores prompt rules.
+- Letters that correctly restate resume numbers (26 pp or ~50% relative for 52→78) are not flagged.
+- Duration findings depend on accurate dated ``experience`` on the stored profile.
+
+### Flow
+
+```mermaid
+flowchart TD
+  JD["JD + selection keywords"] --> Filter["Filter keywords to resume SoT"]
+  Filter --> Writer["Write / rewrite with omit rules"]
+  Writer --> Letter["Letter body"]
+  Letter --> Tech["FABRICATED_TECHNOLOGY"]
+  Letter --> Years["inflated_duration merged intervals"]
+  Letter --> Pct["inconsistent_metric A% to B% vs Z%"]
+  Letter --> Soft["soft ungrounded title/company only"]
+  Tech --> Penalty["severity-weighted penalty"]
+  Years --> Penalty
+  Pct --> Penalty
+  Soft --> Penalty
+  Penalty --> UI["Proofread UI"]
+```
+
 ## 2026-08-12 - Verbatim Technical Skills section extraction
 
 ### Context

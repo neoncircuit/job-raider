@@ -10,6 +10,9 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 
 from ...metrics.outcome_tracker import ApplicationStatus, OutcomeTracker
+from ...models.job_listing import JobListing
+from ...scrapers.listing_lifecycle import listing_status_for_job_id
+from ...scrapers.storage import JobListingStorage
 from ...utils.logger import Components, get_logger
 from ..models.requests import (
     CreateCustomStatusRequest,
@@ -30,6 +33,18 @@ logger = get_logger(Components.SCRAPERS)
 
 # Global tracker instance
 outcome_tracker = OutcomeTracker()
+
+
+def _listing_catalog() -> Dict[str, JobListing]:
+    """
+    Load the canonical job listing catalog for lifecycle joins.
+
+    Isolated so tests can point it at a temp catalog.
+
+    Returns:
+        Listings keyed by job_id.
+    """
+    return JobListingStorage().load_catalog()
 
 
 @router.post("/actions", response_model=JobActionResponse)
@@ -288,6 +303,7 @@ async def get_dashboard(
 
     # Get custom statuses
     custom_statuses = outcome_tracker.get_custom_statuses()
+    catalog = _listing_catalog()
 
     # Build summary
     summary = {
@@ -295,12 +311,15 @@ async def get_dashboard(
         "bookmarked": len(outcome_tracker.get_bookmarked_jobs()),
         "hidden": len(outcome_tracker.get_hidden_jobs()),
         "external": len(outcome_tracker.get_external_applications()),
+        "expired": 0,
         "by_status": {},
     }
 
     for app in applications:
         status_key = app.current_status.value
         summary["by_status"][status_key] = summary["by_status"].get(status_key, 0) + 1
+        if listing_status_for_job_id(app.application_id, catalog) == "expired":
+            summary["expired"] += 1
 
     # Convert applications to dict format
     apps_data = []
@@ -319,6 +338,7 @@ async def get_dashboard(
                     created_at=cs.created_at,
                 )
 
+        metadata = app.metadata or {}
         apps_data.append(
             {
                 "application_id": app.application_id,
@@ -332,6 +352,10 @@ async def get_dashboard(
                 "final_outcome": app.final_outcome.value if app.final_outcome else None,
                 "interview_count": app.interview_count,
                 "days_since_application": app.days_since_application,
+                "source_url": metadata.get("source_url"),
+                "listing_status": listing_status_for_job_id(
+                    app.application_id, catalog
+                ),
             }
         )
 
@@ -425,4 +449,8 @@ async def get_application_details(job_id: str) -> ApplicationDetailResponse:
         ),
         timeline_notes=outcome.timeline_notes,
         metadata=outcome.metadata,
+        listing_status=listing_status_for_job_id(
+            outcome.application_id, _listing_catalog()
+        ),
+        source_url=(outcome.metadata or {}).get("source_url"),
     )

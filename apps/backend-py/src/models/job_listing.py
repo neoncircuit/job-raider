@@ -215,6 +215,14 @@ class JobListing(BaseModel):
     scraped_at: datetime = Field(
         default_factory=datetime.now, description="When this was scraped"
     )
+    last_seen_at: Optional[datetime] = Field(
+        default=None,
+        description=(
+            "When this listing was last observed in a scrape. "
+            "None falls back to scraped_at at read time; do not default to now "
+            "on load or stale rows will un-expire."
+        ),
+    )
     raw_html: Optional[str] = Field(default=None, description="Raw HTML for debugging")
     metadata: Dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"

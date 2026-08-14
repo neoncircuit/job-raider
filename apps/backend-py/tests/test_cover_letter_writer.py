@@ -13,6 +13,7 @@ import pytest
 from src.generation.cover_letter_writer import (
     _CLASSIC_COVER_LETTER_SYSTEM,
     _COVER_LETTER_SYSTEM,
+    _DOMAIN_MISMATCH_RULES,
     _SHARED_GROUNDING_MARKERS,
     CoverLetterWriter,
     GeneratedCoverLetter,
@@ -302,10 +303,34 @@ class TestCoverLetterWriter:
         call_kwargs = mock_llm_router.generate.call_args
         assert call_kwargs.kwargs.get("task_type") == TaskType.COVER_LETTER_WRITING
 
-    def test_prepare_job_context(self, mock_llm_router, sample_job):
+    def test_prepare_job_context(self, mock_llm_router, sample_job, sample_profile):
         """Test job context preparation."""
         writer = CoverLetterWriter(mock_llm_router)
-        context = writer._prepare_job_context(sample_job)
+        context = writer._prepare_job_context(sample_job, sample_profile)
+
+        assert "Senior Python Developer" in context
+        assert "TechStartup Inc" in context
+        assert "Python" in context
+        assert "Required Skills:" not in context
+
+    def test_prepare_job_context_omits_jd_only_technologies(
+        self, mock_llm_router, sample_job, sample_profile
+    ):
+        """JD-only stacks must not appear in the writer prompt."""
+        sample_job.description = (
+            "Need Python plus TensorFlow, AWS, and Kubernetes experience."
+        )
+        sample_job.skills = list(sample_job.skills) + [
+            JobSkill(name="TensorFlow"),
+            JobSkill(name="AWS"),
+        ]
+        writer = CoverLetterWriter(mock_llm_router)
+        context = writer._prepare_job_context(sample_job, sample_profile)
+        lowered = context.lower()
+        assert "python" in lowered
+        assert "tensorflow" not in lowered
+        assert "aws" not in lowered
+        assert "kubernetes" not in lowered
 
         assert "Senior Python Developer" in context
         assert "TechStartup Inc" in context
@@ -320,13 +345,113 @@ class TestCoverLetterWriter:
         assert "Python" in context
         assert "Tech Corp" in context
 
-    def test_prepare_selection_context(self, mock_llm_router, sample_selection):
-        """Test selection context preparation."""
+    def test_prepare_selection_context(
+        self, mock_llm_router, sample_selection, sample_profile
+    ):
+        """Test selection context preparation filters to resume-supported keywords."""
         writer = CoverLetterWriter(mock_llm_router)
-        context = writer._prepare_selection_context(sample_selection)
+        context = writer._prepare_selection_context(sample_selection, sample_profile)
 
         assert "E-commerce Platform" in context
         assert "Python" in context
+
+    def test_prepare_selection_context_drops_jd_only_keywords(
+        self, mock_llm_router, sample_profile
+    ):
+        """JD-only keywords are not presented as KEYWORDS TO WEAVE IN."""
+        selection = SelectionOutput(
+            selected_projects=[
+                {"name": "E-commerce Platform", "reason": "Python stack"},
+            ],
+            keywords_to_emphasize=["Python", "TensorFlow", "AWS", "Kubernetes"],
+            key_achievements=["Reduced API latency by 40%"],
+            summary_suggestion="Python engineer",
+            raw_response="",
+        )
+        writer = CoverLetterWriter(mock_llm_router)
+        context = writer._prepare_selection_context(selection, sample_profile)
+
+        assert "KEYWORDS TO WEAVE IN:" in context
+        assert "Python" in context
+        assert "TensorFlow" not in context
+        assert "AWS" not in context
+        assert "Kubernetes" not in context
+
+    def test_prepare_job_context_mismatch_note(
+        self, mock_llm_router, sample_profile
+    ):
+        """Low JD overlap injects a domain-mismatch instruction into job context."""
+        job = JobListing(
+            title="Facilities Coordinator",
+            company="Property Co",
+            job_id="fac-writer-1",
+            source=JobSource.MANUAL,
+            description=(
+                "Coordinate vendors, manage work orders, inspect property, "
+                "and oversee HVAC contractors."
+            ),
+            requirements=[
+                JobRequirement(text="Manage work orders and vendor contracts"),
+            ],
+        )
+        writer = CoverLetterWriter(mock_llm_router)
+        context = writer._prepare_job_context(job, sample_profile)
+        assert "DOMAIN OVERLAP: low" in context
+        assert "Do not analogize" in context
+
+    def test_prepare_selection_context_strips_reasons_on_mismatch(
+        self, mock_llm_router, sample_profile
+    ):
+        """Selector alignment reasons are omitted when the JD domain does not overlap."""
+        selection = SelectionOutput(
+            selected_projects=[
+                {
+                    "name": "E-commerce Platform",
+                    "reason": "Aligns with vendor coordination and work orders",
+                },
+            ],
+            keywords_to_emphasize=["Python"],
+            key_achievements=["Reduced API latency by 40%"],
+            summary_suggestion="Python engineer",
+            raw_response="",
+        )
+        writer = CoverLetterWriter(mock_llm_router)
+        context = writer._prepare_selection_context(
+            selection, sample_profile, domain_mismatch=True
+        )
+        assert "E-commerce Platform" in context
+        assert "vendor coordination" not in context
+        assert "work orders" not in context
+
+    def test_write_appends_mismatch_rules_on_facilities_jd(
+        self, mock_llm_router, sample_profile, sample_selection
+    ):
+        """First-write system prompt includes mismatch rules for a facilities JD."""
+        mock_llm_router.generate.return_value = LLMResponse(
+            content=SAMPLE_COVER_LETTER,
+            model="qwen2.5:7b",
+            provider="ollama",
+            tokens_used=400,
+            cost=0.0,
+        )
+        job = JobListing(
+            title="Facilities Coordinator",
+            company="Property Co",
+            job_id="fac-writer-2",
+            source=JobSource.MANUAL,
+            description=(
+                "Coordinate vendors, manage work orders, inspect property, "
+                "and oversee HVAC contractors."
+            ),
+            requirements=[
+                JobRequirement(text="Manage work orders and vendor contracts"),
+            ],
+        )
+        writer = CoverLetterWriter(mock_llm_router)
+        writer.write(job, sample_profile, sample_selection)
+        system = mock_llm_router.generate.call_args.kwargs["messages"][0].content
+        assert _DOMAIN_MISMATCH_RULES in system
+        assert "Do not analogize across domains" in system
 
     def test_fallback_contains_company_and_title(
         self, mock_llm_router, sample_job, sample_profile, sample_selection

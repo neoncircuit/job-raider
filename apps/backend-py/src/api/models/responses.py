@@ -234,6 +234,8 @@ class ApplicationDetailResponse(BaseModel):
     offer: Optional[Dict[str, Any]] = None
     timeline_notes: List[Dict[str, str]] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    listing_status: Optional[str] = None
+    source_url: Optional[str] = None
 
 
 class SemanticSearchResult(BaseModel):

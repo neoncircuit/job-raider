@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Search, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Sheet,
   SheetContent,
@@ -32,6 +34,7 @@ import {
 } from "@/lib/hooks/use-jobs";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import type { JobListing } from "@/lib/types/api";
+import { filterJobsByLifecycle } from "@/lib/jobs-filters";
 import Link from "next/link";
 
 /** Tailwind ``lg`` breakpoint: below this, job detail opens in a sheet. */
@@ -56,6 +59,8 @@ export default function JobsPage() {
   const [googleQuery, setGoogleQuery] = useState<string | null>(null);
   /** When true, ignore shortlist and wait for a live search. */
   const [preferSearch, setPreferSearch] = useState(false);
+  const [showExpired, setShowExpired] = useState(false);
+  const [scrapedTodayOnly, setScrapedTodayOnly] = useState(false);
 
   const shortlist = useLatestShortlist();
   const search = useJobSearch(searchParams);
@@ -73,9 +78,20 @@ export default function JobsPage() {
     preferSearch || searchParams != null
       ? (search.data?.jobs ?? [])
       : shortlistJobs;
-  const totalPages = Math.ceil(jobs.length / PAGE_SIZE);
-  const pageJobs = jobs.slice(jobsPage * PAGE_SIZE, (jobsPage + 1) * PAGE_SIZE);
-  const selectedJob = jobs.find((j) => j.job_id === selectedJobId) ?? null;
+  const visibleJobs = filterJobsByLifecycle(jobs, {
+    showExpired,
+    scrapedTodayOnly,
+  });
+  const hiddenExpiredCount = jobs.filter(
+    (job) => job.listing_status === "expired",
+  ).length;
+  const totalPages = Math.ceil(visibleJobs.length / PAGE_SIZE);
+  const pageJobs = visibleJobs.slice(
+    jobsPage * PAGE_SIZE,
+    (jobsPage + 1) * PAGE_SIZE,
+  );
+  const selectedJob =
+    visibleJobs.find((j) => j.job_id === selectedJobId) ?? null;
 
   const listLoading = showingShortlist ? shortlist.isLoading : search.isLoading;
   const listError = showingShortlist ? shortlist.error : search.error;
@@ -153,8 +169,47 @@ export default function JobsPage() {
     <div className="flex flex-1 flex-col gap-4 min-h-0 overflow-hidden lg:flex-row">
       <div className="flex w-full shrink-0 flex-col gap-2 overflow-y-auto lg:w-96">
         <p className="text-xs text-muted-foreground">
-          {jobs.length} results · page {jobsPage + 1}/{totalPages || 1}
+          {visibleJobs.length} results · page {jobsPage + 1}/{totalPages || 1}
+          {!showExpired && hiddenExpiredCount > 0
+            ? ` · ${hiddenExpiredCount} expired hidden`
+            : ""}
         </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="jobs-show-expired"
+              size="sm"
+              checked={showExpired}
+              onCheckedChange={(checked) => {
+                setShowExpired(checked);
+                setJobsPage(0);
+              }}
+            />
+            <Label
+              htmlFor="jobs-show-expired"
+              className="text-xs font-normal text-muted-foreground"
+            >
+              Show expired
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="jobs-scraped-today"
+              size="sm"
+              checked={scrapedTodayOnly}
+              onCheckedChange={(checked) => {
+                setScrapedTodayOnly(checked);
+                setJobsPage(0);
+              }}
+            />
+            <Label
+              htmlFor="jobs-scraped-today"
+              className="text-xs font-normal text-muted-foreground"
+            >
+              Scraped today
+            </Label>
+          </div>
+        </div>
 
         <div className="space-y-1.5">
           {pageJobs.map((j) => (

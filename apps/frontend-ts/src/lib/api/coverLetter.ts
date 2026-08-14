@@ -11,6 +11,8 @@ export interface ManualCoverLetterRequest {
   location?: string;
   /** modern = achievement-led; classic = traditional letter structure */
   style?: "modern" | "classic";
+  /** Optional one-shot cover_letter_writing model override */
+  writer_model?: string;
 }
 
 export interface CoverLetterExportRequest {

@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
 from ..utils.logger import Components, get_logger
+from .listing_lifecycle import DEFAULT_MAX_AGE_DAYS
 
 
 class JobListingStorage:
@@ -26,10 +27,12 @@ class JobListingStorage:
     scraped job listings.
     """
 
+    CATALOG_FILENAME = "catalog.json"
+
     def __init__(
         self,
         storage_dir: str = "data/listings",
-        max_age_days: int = 30,
+        max_age_days: int = DEFAULT_MAX_AGE_DAYS,
     ):
         """
         Initialize the storage manager.
@@ -46,6 +49,11 @@ class JobListingStorage:
 
         # Track seen job IDs for deduplication
         self._seen_ids: Set[str] = set()
+
+    @property
+    def catalog_path(self) -> Path:
+        """Return the canonical per-job catalog file path."""
+        return self.storage_dir / self.CATALOG_FILENAME
 
     def save_collection(self, collection: JobListingCollection) -> str:
         """
@@ -149,6 +157,8 @@ class JobListingStorage:
 
         for filepath in self.storage_dir.glob("*.json"):
             try:
+                if filepath.name == self.CATALOG_FILENAME:
+                    continue
                 # Check file modification time
                 if datetime.fromtimestamp(filepath.stat().st_mtime) < cutoff_time:
                     continue
@@ -235,6 +245,8 @@ class JobListingStorage:
 
         for filepath in self.storage_dir.glob("*.json"):
             try:
+                if filepath.name == self.CATALOG_FILENAME:
+                    continue
                 # Check file modification time
                 if datetime.fromtimestamp(filepath.stat().st_mtime) < cutoff_time:
                     filepath.unlink()
@@ -250,6 +262,146 @@ class JobListingStorage:
 
         return removed
 
+    def load_catalog(self) -> Dict[str, JobListing]:
+        """
+        Load the canonical job catalog from disk.
+
+        Reloads on every call so API workers see writes from search and
+        pipeline without an in-memory cache going stale.
+
+        Returns:
+            Mapping of job_id to JobListing. Empty when the file is missing.
+        """
+        path = self.catalog_path
+        if not path.exists():
+            return {}
+
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except Exception as exc:
+            self.logger.error("Failed to load listing catalog: %s", exc)
+            return {}
+
+        raw_listings = data.get("listings", {}) if isinstance(data, dict) else {}
+        if not isinstance(raw_listings, dict):
+            self.logger.error("Listing catalog is not a job_id map")
+            return {}
+
+        catalog: Dict[str, JobListing] = {}
+        for job_id, payload in raw_listings.items():
+            if not job_id or not isinstance(payload, dict):
+                continue
+            try:
+                listing = JobListing(**payload)
+                catalog[listing.job_id] = listing
+                self._seen_ids.add(listing.job_id)
+            except Exception as exc:
+                self.logger.warning(
+                    "Skipping invalid catalog entry %s: %s", job_id, exc
+                )
+        return catalog
+
+    def _write_catalog(self, catalog: Dict[str, JobListing]) -> None:
+        """
+        Write the canonical job catalog to disk.
+
+        Args:
+            catalog: Mapping of job_id to JobListing.
+        """
+        payload = {
+            "updated_at": datetime.now().isoformat(),
+            "listings": {
+                job_id: listing.model_dump(mode="json")
+                for job_id, listing in catalog.items()
+            },
+        }
+        with open(self.catalog_path, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, default=str)
+
+    def _merge_catalog_listing(
+        self,
+        existing: Optional[JobListing],
+        incoming: JobListing,
+        now: datetime,
+    ) -> JobListing:
+        """
+        Merge a newly seen listing into the catalog row.
+
+        Keeps the longer description, ORs already_applied, and always
+        refreshes last_seen_at.
+
+        Args:
+            existing: Current catalog row, if any.
+            incoming: Newly scraped listing.
+            now: Last-seen timestamp to write.
+
+        Returns:
+            Merged JobListing.
+        """
+        if existing is None:
+            return incoming.model_copy(update={"last_seen_at": now})
+
+        keep_description = incoming.description or existing.description
+        if existing.description and incoming.description:
+            if len(existing.description) > len(incoming.description):
+                keep_description = existing.description
+
+        return incoming.model_copy(
+            update={
+                "description": keep_description,
+                "already_applied": existing.already_applied or incoming.already_applied,
+                "last_seen_at": now,
+            }
+        )
+
+    def upsert_listings(
+        self,
+        listings: List[JobListing],
+        *,
+        now: Optional[datetime] = None,
+    ) -> int:
+        """
+        Insert or refresh listings in the canonical catalog.
+
+        Args:
+            listings: Listings observed in a search or pipeline scrape.
+            now: Last-seen timestamp override for tests.
+
+        Returns:
+            Number of listings written (skipped rows with empty job_id).
+        """
+        clock = now or datetime.now()
+        catalog = self.load_catalog()
+        written = 0
+        for listing in listings:
+            if not listing.job_id:
+                continue
+            catalog[listing.job_id] = self._merge_catalog_listing(
+                catalog.get(listing.job_id),
+                listing,
+                clock,
+            )
+            self._seen_ids.add(listing.job_id)
+            written += 1
+        self._write_catalog(catalog)
+        self.logger.info("Upserted %s listings into catalog", written)
+        return written
+
+    def get_by_id(self, job_id: str) -> Optional[JobListing]:
+        """
+        Return a listing from the canonical catalog.
+
+        Args:
+            job_id: Job identifier.
+
+        Returns:
+            JobListing, or None when missing.
+        """
+        if not job_id:
+            return None
+        return self.load_catalog().get(job_id)
+
     def get_statistics(self) -> Dict[str, Any]:
         """
         Get statistics about stored listings.
@@ -261,11 +413,16 @@ class JobListingStorage:
             "storage_dir": str(self.storage_dir),
             "total_files": 0,
             "total_listings": 0,
+            "catalog_listings": 0,
             "by_source": defaultdict(int),
             "listings_by_source": defaultdict(int),
         }
 
         for filepath in self.storage_dir.glob("*.json"):
+            if filepath.name == self.CATALOG_FILENAME:
+                catalog = self.load_catalog()
+                stats["catalog_listings"] = len(catalog)
+                continue
             stats["total_files"] += 1
 
             try:

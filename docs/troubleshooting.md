@@ -80,9 +80,13 @@ curl -s http://127.0.0.1:8000/api/health | python3 -m json.tool
 
 **Root Cause:**
 
-Discovery uses `api_config.ollama_host` from saved settings. Inside Docker, `localhost:11434` is the backend container. `ollama:11434` is the Compose Ollama service. Desktop Ollama is typically `host.docker.internal:11434`.
+Discovery uses `api_config.ollama_host` from saved settings, rewritten through `resolve_effective_ollama_host` when Settings still say `localhost` inside Docker (then Compose `OLLAMA_HOST`, e.g. `ollama:11434`, is used). Inside Docker, raw `localhost:11434` is the backend container itself and returns an empty model list.
 
-If Dashboard health shows **Ollama unhealthy** with `base_url` `http://localhost:11434` while the shared `ollama` container is up, Settings still point at loopback. Set **Ollama Host** to `ollama:11434` (or `host.docker.internal:11434` for desktop Ollama) and save. Health checks also prefer Compose `OLLAMA_HOST` when Settings are loopback inside Docker.
+There are often **two** Ollama inventories on a Windows desktop setup:
+- Compose/shared container `ollama:11434` (may only have a few pulled tags)
+- Desktop Ollama at `host.docker.internal:11434` / host `127.0.0.1:11434` (full library)
+
+If Settings still look empty after redeploy, set **Ollama Host** to the inventory you want (`ollama:11434` or `host.docker.internal:11434`) and save.
 
 **Fix:**
 
@@ -444,6 +448,50 @@ ollama run qwen2.5:3b
 
 ## Scraping Issues
 
+### GET /jobs/{id} returns 404 after browsing Jobs
+
+**Symptoms:**
+- `GET /api/jobs/{id}` returns 404 with "Job not found. Search or run Discover so the listing is stored."
+- `POST /api/jobs/{id}/score` returns the same 404.
+
+**Root Cause:**
+
+Listings are stored in `data/listings/catalog.json` when a live search or Discover run upserts them. The Jobs page can still show a shortlist from `data/results/latest_shortlist.json` that was saved before the catalog existed. Direct ID lookup only reads the catalog.
+
+**Fix:**
+
+1. Run a live search or a Discover pipeline so listings are upserted.
+2. Confirm the catalog file exists:
+
+```bash
+docker exec job-raider-backend ls -l /app/data/listings/catalog.json
+```
+
+3. Rebuild the backend overlay after pulling this change; a recreate without rebuild keeps the previous image.
+
+### Expired jobs missing from the Jobs list
+
+**Symptoms:**
+- Listings disappear from Jobs even though they were visible yesterday.
+- The result count mentions "expired hidden".
+
+**Root Cause:**
+
+A listing is expired when its application deadline has passed, or when it has not been seen in a scrape for 30 days. The Jobs page hides expired rows unless **Show expired** is on. An old `posted_date` does not expire a listing that was scraped today.
+
+**Fix:**
+
+1. Turn on **Show expired** to inspect stale cards.
+2. Re-run search or Discover to refresh `last_seen_at` and mark them active again.
+
+### Issue: Applications Expired tab is empty but Jobs shows expired cards
+
+**Symptoms:** Jobs lists expired listings. Applications has no Expired tab rows for the same jobs.
+
+**Cause:** Applications join catalog status by `job_id`. External tracked rows (`ext-…`) and jobs never upserted into `catalog.json` have no `listing_status`.
+
+**Fix:** Save or apply from Jobs/search so the catalog has the listing. Overlay/redeploy the backend if the Applications API predates the join. Expired applications remain on All with an Expired badge.
+
 ### Issue: LinkedIn scraper returns 0 jobs with Pydantic validation error
 
 **Symptoms:**
@@ -692,6 +740,36 @@ flowchart LR
 **Cause:** ``useSyncExternalStore`` for datetime prefs returned a new object from ``getSnapshot`` on every read, so React treated the store as constantly changing.
 
 **Fix:** Prefer a build that caches a referentially stable prefs snapshot. Hard-refresh after redeploying the frontend.
+
+### Issue: Cover letter invents skills or years when the JD asks for more than the resume has
+
+**Symptoms:** Letter claims proficiency in JD-only stacks (Node, TensorFlow, AWS/Azure, etc.), inflates years of experience, or invents relative % improvements (e.g. calling a 52%→78% absolute gain “nearly 46%”).
+
+**Cause:** Soft grounding previously allowed matched/missing JD skill terms into the overlap vocabulary; writer keywords could include JD-only stacks; duration and percentage arithmetic were unchecked beyond ``FABRICATED_TECHNOLOGY``.
+
+**Fix:** Omit unsupported claims in writer rules; filter selection keywords to resume-supported terms; strip JD-only technology names from the writer job context; soft ``jd_terms`` are company/title only; hard-flag ``inflated_duration`` (merged experience intervals) and ``inconsistent_metric`` (from A% to B% vs claimed Z%). Fabricated technology, fabricated experience, inflated duration, and inconsistent metrics reject the letter (`is_valid=false`) and trigger one grounding rewrite. Proofread surfaces findings with severity-weighted penalties. Qualitative inflation without endpoints (e.g. “nearly doubled”) is still out of scope for v1.
+
+**Workaround (if on an older build):** Prefer letters that only restate resume bullets; manually delete JD-mirrored skill sentences before send.
+
+### Issue: Cover letter invents relevance for an unrelated job
+
+**Symptoms:** Job Fit is weak. Proofread shows major issues. The letter still maps real resume facts onto JD-only duties (for example “evaluation pipelines are similar to work orders” or “advanced math prepared me for facility statistics”). Review & rewrite can make the stretch worse.
+
+**Cause:** Writer rules previously required connecting 2-3 experiences to the job even when overlap was low. Whole-sentence grounding overlap stays high because the resume half of the sentence is true. The reviewer treated missing JD mapping as a factual gap.
+
+**Fix:** Low JD-vs-resume overlap injects mismatch instructions (do not analogize; omit unsupported duties). Selector alignment reasons are dropped on mismatch. Reviewer must not request manufactured fit. Glue phrases whose target is JD-only (`similar to`, `prepared me for`, `is like`) hard-fail as `analogical_claim` and trigger one grounding rewrite. Redeploy/overlay the backend.
+
+**Workaround (if on an older build):** Turn Review & rewrite off. Manually delete analogical sentences before export. Do not send the letter.
+
+### Issue: Job Fit explanation invents transferable strengths on a skip score
+
+**Symptoms:** Score is weak (for example 40/100 SKIP). Explanation lists resume tech as applicable to unrelated duties (batch processing → work orders) and recommends internships or tools in that other field.
+
+**Cause:** The explain-fit prompt asked for “reasons the candidate fits” even on skip. The model had to invent a bridge. Prep talking points had the same “tie strengths to the JD” instruction.
+
+**Fix:** Skip verdict or low domain overlap injects a weak-fit guard. Strengths and talking points may only be literal overlaps. Improvements recommend skipping, not retraining. Redeploy/overlay the backend, then click Refresh explanation.
+
+**Workaround (if on an older build):** Trust the numeric score and SKIP label. Ignore analogical strengths and career-change bullets.
 
 ### Issue: Resume generation fails
 

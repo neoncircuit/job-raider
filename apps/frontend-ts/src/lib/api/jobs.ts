@@ -1,6 +1,7 @@
 import { request } from "./client";
 import type {
   CoverLetterResponse,
+  JobListing,
   JobSearchResponse,
   SemanticSearchResponse,
   JobSimilarityResponse,
@@ -27,6 +28,9 @@ export const jobsApi = {
 
   search: (req: JobSearchRequest, signal?: AbortSignal) =>
     request<JobSearchResponse>("POST", "/jobs/search", { body: req, signal }),
+
+  get: (jobId: string, signal?: AbortSignal) =>
+    request<JobListing>("GET", `/jobs/${jobId}`, { signal }),
 
   semanticSearch: (req: SemanticSearchRequest, signal?: AbortSignal) =>
     request<SemanticSearchResponse>("POST", "/jobs/search/semantic", {

@@ -13,13 +13,20 @@ Date: 2026-05-13
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Literal
+from typing import Dict, List, Literal, Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
+from .cover_letter_grounding import (
+    collect_resume_supported_names,
+    filter_resume_supported_keywords,
+    is_domain_mismatch,
+    normalize_tech_name,
+    redact_unsupported_technologies,
+)
 from .selector import SelectionOutput
 
 CoverLetterStyle = Literal["modern", "classic"]
@@ -29,7 +36,10 @@ _COVER_LETTER_RULES = (
     "RULES:\n"
     "1. The letter MUST be between 200 and 300 words\n"
     "2. Connect 2-3 specific experiences from the candidate's "
-    "background to the job requirements\n"
+    "background only to job requirements that also appear on the "
+    "resume. If a requirement is absent from the resume, omit it. "
+    "Do not invent a narrative that the candidate already performs "
+    "those duties\n"
     "3. Mention the company and role by name\n"
     "4. Do NOT use generic phrases or templates\n"
     "5. Be direct and confident in tone\n"
@@ -62,7 +72,22 @@ _COVER_LETTER_RULES = (
     "that is not listed in the candidate's skills / Technical Skills. "
     "Do not copy example stacks from the job description unless those "
     "exact names appear on the resume\n"
-    "13. Return ONLY the letter body as plain text, no JSON"
+    "13. Never claim proficiency, strong knowledge, hands-on experience, "
+    "or production experience for a technology absent from Technical "
+    "Skills. When the job asks for skills the candidate lacks, connect "
+    "with resume-supported evidence only — do not name the missing tools "
+    "and do not apologize for gaps mid-letter\n"
+    "14. Duration claims (N years, over N years) must not exceed the "
+    "candidate's total dated work experience on the profile\n"
+    "15. Quantified improvements must restate numbers that appear in the "
+    "profile or selection achievements. Do not invent a relative "
+    "percentage from absolute endpoints unless that relative figure is "
+    "already stated on the resume\n"
+    "16. Do not analogize across domains. Do not claim that resume work "
+    "is similar to, comparable to, transferable to, or preparation for "
+    "job duties that are not on the resume. Restate resume facts "
+    "without claiming they satisfy unsupported duties\n"
+    "17. Return ONLY the letter body as plain text, no JSON"
 )
 
 _COVER_LETTER_SYSTEM = (
@@ -74,7 +99,10 @@ _CLASSIC_COVER_LETTER_RULES = (
     "1. The letter MUST be between 200 and 350 words including "
     "salutation and signature\n"
     "2. Connect 2-3 specific experiences from the candidate's "
-    "background to the job requirements\n"
+    "background only to job requirements that also appear on the "
+    "resume. If a requirement is absent from the resume, omit it. "
+    "Do not invent a narrative that the candidate already performs "
+    "those duties\n"
     "3. Mention the company and role by name\n"
     "4. Use a traditional letter structure:\n"
     "   - Open with 'Dear Hiring Manager,' (or a named contact "
@@ -113,7 +141,22 @@ _CLASSIC_COVER_LETTER_RULES = (
     "that is not listed in the candidate's skills / Technical Skills. "
     "Do not copy example stacks from the job description unless those "
     "exact names appear on the resume\n"
-    "12. Return ONLY the letter body as plain text, no JSON"
+    "12. Never claim proficiency, strong knowledge, hands-on experience, "
+    "or production experience for a technology absent from Technical "
+    "Skills. When the job asks for skills the candidate lacks, connect "
+    "with resume-supported evidence only — do not name the missing tools "
+    "and do not apologize for gaps mid-letter\n"
+    "13. Duration claims (N years, over N years) must not exceed the "
+    "candidate's total dated work experience on the profile\n"
+    "14. Quantified improvements must restate numbers that appear in the "
+    "profile or selection achievements. Do not invent a relative "
+    "percentage from absolute endpoints unless that relative figure is "
+    "already stated on the resume\n"
+    "15. Do not analogize across domains. Do not claim that resume work "
+    "is similar to, comparable to, transferable to, or preparation for "
+    "job duties that are not on the resume. Restate resume facts "
+    "without claiming they satisfy unsupported duties\n"
+    "16. Return ONLY the letter body as plain text, no JSON"
 )
 
 _CLASSIC_COVER_LETTER_SYSTEM = (
@@ -126,22 +169,47 @@ _SHARED_GROUNDING_MARKERS = (
     "do NOT invent new capability claims",
     "Every sentence must be traceable",
     "Never name a technology, tool, cloud platform, or database",
+    "Never claim proficiency, strong knowledge, hands-on experience",
+    "Duration claims (N years, over N years)",
+    "Do not invent a relative percentage",
+    "Do not analogize across domains",
+    "only to job requirements that also appear on the",
+)
+
+_DOMAIN_MISMATCH_RULES = (
+    "DOMAIN MISMATCH:\n"
+    "The job's duties have little overlap with the resume.\n"
+    "- Mention the company and role by name\n"
+    "- Restate 2-3 concrete resume facts\n"
+    "- Do not claim the candidate already performs this job's duties\n"
+    "- Do not analogize resume work to unsupported duties "
+    "(similar to, prepared me for, transferable to, is like)\n"
+    "- Omit job requirements that are not on the resume"
 )
 
 
-def _system_prompt_for_style(style: CoverLetterStyle) -> str:
+def _system_prompt_for_style(
+    style: CoverLetterStyle,
+    domain_mismatch: bool = False,
+) -> str:
     """
     Return the system prompt for the requested cover-letter style.
 
     Args:
         style: ``modern`` or ``classic``.
+        domain_mismatch: When True, append instructions that forbid
+            analogical mapping onto unsupported JD duties.
 
     Returns:
         Full system prompt string.
     """
     if style == "classic":
-        return _CLASSIC_COVER_LETTER_SYSTEM
-    return _COVER_LETTER_SYSTEM
+        prompt = _CLASSIC_COVER_LETTER_SYSTEM
+    else:
+        prompt = _COVER_LETTER_SYSTEM
+    if domain_mismatch:
+        return prompt + "\n\n" + _DOMAIN_MISMATCH_RULES
+    return prompt
 
 
 @dataclass
@@ -179,6 +247,7 @@ class CoverLetterWriter:
         profile: UserProfile,
         selection: SelectionOutput,
         style: CoverLetterStyle = "modern",
+        model: Optional[str] = None,
     ) -> GeneratedCoverLetter:
         """
         Generate a tailored cover letter for a job application.
@@ -188,14 +257,18 @@ class CoverLetterWriter:
             profile: User profile
             selection: Selection output from selector stage
             style: ``modern`` (achievement-led) or ``classic`` (formal structure)
+            model: Optional one-shot writer model override (Settings provider)
 
         Returns:
             GeneratedCoverLetter with the letter content and metadata
         """
-        job_context = self._prepare_job_context(job)
+        job_context = self._prepare_job_context(job, profile)
         profile_context = self._prepare_profile_context(profile)
-        selection_context = self._prepare_selection_context(selection)
-        system_prompt = _system_prompt_for_style(style)
+        mismatch = is_domain_mismatch(job, profile)
+        selection_context = self._prepare_selection_context(
+            selection, profile, domain_mismatch=mismatch
+        )
+        system_prompt = _system_prompt_for_style(style, domain_mismatch=mismatch)
         if style == "classic":
             user_lead = (
                 "Write a classic formal cover letter for the following "
@@ -224,6 +297,7 @@ class CoverLetterWriter:
             response = self.llm_router.generate(
                 messages=messages,
                 task_type=TaskType.COVER_LETTER_WRITING,
+                model=model,
                 # Slightly higher than default creative temp: more varied
                 # phrasing between letters without sacrificing coherence.
                 temperature=0.8,
@@ -239,7 +313,7 @@ class CoverLetterWriter:
             if not content:
                 raise ValueError("Cover letter model returned empty content")
             word_count = len(content.split())
-            model_used = self.llm_router.routes[
+            model_used = response.model or self.llm_router.routes[
                 TaskType.COVER_LETTER_WRITING
             ].primary_model
 
@@ -271,6 +345,7 @@ class CoverLetterWriter:
         draft: GeneratedCoverLetter,
         critique: str,
         style: CoverLetterStyle = "modern",
+        model: Optional[str] = None,
     ) -> GeneratedCoverLetter:
         """
         Rewrite a cover letter draft using a reviewer critique.
@@ -282,14 +357,18 @@ class CoverLetterWriter:
             draft: The original generated cover letter.
             critique: Actionable feedback from the reviewer.
             style: ``modern`` or ``classic`` (must match the original draft style).
+            model: Optional one-shot writer model override (Settings provider).
 
         Returns:
             ``GeneratedCoverLetter`` with the rewritten content and metadata.
         """
-        job_context = self._prepare_job_context(job)
+        job_context = self._prepare_job_context(job, profile)
         profile_context = self._prepare_profile_context(profile)
-        selection_context = self._prepare_selection_context(selection)
-        system_prompt = _system_prompt_for_style(style)
+        mismatch = is_domain_mismatch(job, profile)
+        selection_context = self._prepare_selection_context(
+            selection, profile, domain_mismatch=mismatch
+        )
+        system_prompt = _system_prompt_for_style(style, domain_mismatch=mismatch)
         style_note = (
             "Preserve classic formal structure (salutation, sincerely + name). "
             if style == "classic"
@@ -319,6 +398,7 @@ class CoverLetterWriter:
             response = self.llm_router.generate(
                 messages=messages,
                 task_type=TaskType.COVER_LETTER_WRITING,
+                model=model,
                 # Slightly higher than default creative temp: more varied
                 # phrasing between letters without sacrificing coherence.
                 temperature=0.8,
@@ -334,7 +414,7 @@ class CoverLetterWriter:
             if not content:
                 raise ValueError("Cover letter rewrite returned empty content")
             word_count = len(content.split())
-            model_used = self.llm_router.routes[
+            model_used = response.model or self.llm_router.routes[
                 TaskType.COVER_LETTER_WRITING
             ].primary_model
 
@@ -358,34 +438,57 @@ class CoverLetterWriter:
             self.logger.error("Cover letter rewrite failed: %s", str(e))
             return self._fallback_cover_letter(job, profile, selection)
 
-    def _prepare_job_context(self, job: JobListing) -> str:
+    def _prepare_job_context(self, job: JobListing, profile: UserProfile) -> str:
         """
         Prepare job context for the prompt.
 
+        JD-only technologies are omitted so the model cannot echo stacks
+        that are absent from the resume.
+
         Args:
             job: Target job listing
+            profile: Candidate profile used as the technology allowlist
 
         Returns:
             Formatted job context string
         """
+        allowed = collect_resume_supported_names(profile)
         parts = [
             f"Title: {job.title}",
             f"Company: {job.company}",
             f"Location: {job.location or 'Not specified'}",
+            "Only mention technologies listed under CANDIDATE PROFILE.",
         ]
 
         if job.description:
-            parts.append(f"\nDescription:\n{job.description[:2000]}")
+            sanitized = redact_unsupported_technologies(job.description[:2000], profile)
+            if sanitized:
+                parts.append(f"\nDescription:\n{sanitized}")
 
         if job.requirements:
             parts.append("\nKey Requirements:")
             for req in job.requirements[:8]:
-                parts.append(f"- {req.text}")
+                sanitized_req = redact_unsupported_technologies(req.text, profile)
+                if sanitized_req:
+                    parts.append(f"- {sanitized_req}")
 
-        if job.skills:
-            parts.append("\nRequired Skills:")
-            for skill in job.skills[:10]:
-                parts.append(f"- {skill.name}")
+        overlap_skills = [
+            skill.name
+            for skill in (job.skills or [])[:10]
+            if skill.name and normalize_tech_name(skill.name) in allowed
+        ]
+        if overlap_skills:
+            parts.append("\nRequired skills that also appear on the resume:")
+            for name in overlap_skills:
+                parts.append(f"- {name}")
+
+        if is_domain_mismatch(job, profile):
+            parts.append(
+                "\nDOMAIN OVERLAP: low. Do not claim the candidate already "
+                "performs this job's duties. Restate resume facts. Do not "
+                "analogize (similar to, prepared me for, transferable to, "
+                "is like). Omit unsupported requirements."
+            )
 
         return "\n".join(parts)
 
@@ -444,12 +547,24 @@ class CoverLetterWriter:
 
         return "\n".join(parts)
 
-    def _prepare_selection_context(self, selection: SelectionOutput) -> str:
+    def _prepare_selection_context(
+        self,
+        selection: SelectionOutput,
+        profile: UserProfile,
+        domain_mismatch: bool = False,
+    ) -> str:
         """
         Prepare selection context for the prompt.
 
+        Keywords are filtered to resume-supported terms so JD-only stacks
+        are never presented as ``KEYWORDS TO WEAVE IN``. On domain mismatch,
+        project alignment reasons are omitted so the selector cannot teach
+        invented fit.
+
         Args:
             selection: Selection output from selector stage
+            profile: Candidate profile used as the keyword allowlist source
+            domain_mismatch: When True, list project names without reasons
 
         Returns:
             Formatted selection context string
@@ -459,11 +574,18 @@ class CoverLetterWriter:
         if selection.selected_projects:
             parts.append("SELECTED PROJECTS (emphasize these):")
             for proj in selection.selected_projects:
-                parts.append(f"- {proj['name']}: {proj['reason']}")
+                if domain_mismatch:
+                    parts.append(f"- {proj['name']}")
+                else:
+                    parts.append(f"- {proj['name']}: {proj['reason']}")
 
-        if selection.keywords_to_emphasize:
+        allowed_keywords = filter_resume_supported_keywords(
+            selection.keywords_to_emphasize or [],
+            profile,
+        )
+        if allowed_keywords:
             parts.append("\nKEYWORDS TO WEAVE IN:")
-            parts.append(", ".join(selection.keywords_to_emphasize))
+            parts.append(", ".join(allowed_keywords))
 
         if selection.key_achievements:
             parts.append("\nKEY ACHIEVEMENTS:")
@@ -519,18 +641,26 @@ class CoverLetterWriter:
         projects_text = ""
         if selection.selected_projects:
             project_parts = []
+            mismatch = is_domain_mismatch(job, profile)
             for proj in selection.selected_projects[:2]:
-                project_parts.append(
-                    f"My work on {proj['name']} has given me direct experience "
-                    f"that aligns with this role"
-                )
+                if mismatch:
+                    project_parts.append(f"My work on {proj['name']} is listed on my resume")
+                else:
+                    project_parts.append(
+                        f"My work on {proj['name']} has given me direct experience "
+                        f"that aligns with this role"
+                    )
             projects_text = " ".join(project_parts)
 
         keywords_text = ""
-        if selection.keywords_to_emphasize:
+        safe_keywords = filter_resume_supported_keywords(
+            selection.keywords_to_emphasize or [],
+            profile,
+        )
+        if safe_keywords:
             keywords_text = (
                 f"My expertise in "
-                f"{', '.join(selection.keywords_to_emphasize[:3])} "
+                f"{', '.join(safe_keywords[:3])} "
                 f"makes me a strong fit for this position."
             )
 

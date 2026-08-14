@@ -47,6 +47,10 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
 import { ScoreExplanationDisplay } from "@/components/score-explanation";
+import {
+  TaskModelSelect,
+  SETTINGS_DEFAULT_MODEL_VALUE,
+} from "@/components/model-select";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("CoverLetterPage");
@@ -119,6 +123,7 @@ function prettyCategory(key: string): string {
  */
 export default function CoverLetterPage() {
   const [form, setForm] = useState<FormState>(initialForm);
+  const [writerModel, setWriterModel] = useState(SETTINGS_DEFAULT_MODEL_VALUE);
   const [result, setResult] = useState<CoverLetterResponse | null>(null);
   const [copied, setCopied] = useState(false);
   const [assessment, setAssessment] = useState<JdMatchResponse | null>(null);
@@ -167,6 +172,10 @@ export default function CoverLetterPage() {
           description: form.description,
           location: form.location || undefined,
           style: form.style,
+          writer_model:
+            writerModel === SETTINGS_DEFAULT_MODEL_VALUE
+              ? undefined
+              : writerModel,
         },
         form.deep,
         form.review,
@@ -567,6 +576,13 @@ export default function CoverLetterPage() {
                 adds date and sender details.
               </p>
             </div>
+
+            <TaskModelSelect
+              taskType="cover_letter_writing"
+              label="Writer model"
+              value={writerModel}
+              onValueChange={setWriterModel}
+            />
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div className="space-y-0.5">

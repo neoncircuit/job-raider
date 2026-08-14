@@ -17,6 +17,7 @@ from ...api.ollama_models import (
     RECOMMENDED_OLLAMA_SMALL,
     apply_ollama_tier_models,
     list_installed_ollama_models,
+    resolve_effective_ollama_host,
 )
 from ...api.settings import UserSettings, get_storage
 from ...config.loader import get_config_loader
@@ -134,7 +135,8 @@ async def get_available_models() -> Dict[str, Any]:
     settings = storage.load_settings()
     catalog = loader.get_available_models()
 
-    installed = list_installed_ollama_models(settings.api_config.ollama_host)
+    effective_host = resolve_effective_ollama_host(settings.api_config.ollama_host)
+    installed = list_installed_ollama_models(effective_host)
     catalog_ollama = list(catalog.get("ollama", []))
     merged_ollama = sorted(set(catalog_ollama) | set(installed))
 
@@ -142,6 +144,7 @@ async def get_available_models() -> Dict[str, Any]:
         **catalog,
         "ollama": merged_ollama,
         "ollama_installed": installed,
+        "ollama_host_effective": effective_host,
         "recommended": {
             "small": RECOMMENDED_OLLAMA_SMALL,
             "large": RECOMMENDED_OLLAMA_LARGE,
@@ -218,7 +221,8 @@ async def validate_settings(settings: UserSettings) -> Dict[str, Any]:
     results: Dict[str, Any] = {"valid": True, "errors": [], "warnings": []}
 
     catalog = loader.get_available_models()
-    installed = list_installed_ollama_models(settings.api_config.ollama_host)
+    effective_host = resolve_effective_ollama_host(settings.api_config.ollama_host)
+    installed = list_installed_ollama_models(effective_host)
     if not installed:
         results["warnings"].append(
             "Ollama is unreachable or has no models; installed-model checks skipped."

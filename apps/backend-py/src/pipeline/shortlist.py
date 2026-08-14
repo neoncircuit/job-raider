@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from ..models.job_listing import JobListing, JobSource
 from ..rag.ranker import RAGMatchScore
 from ..scoring.matcher import MatchScore
+from ..scrapers.listing_lifecycle import attach_lifecycle_fields, lifecycle_fields
 from ..utils.location_normalizer import normalize_all_locations
 
 ScoredItem = Union[Tuple[JobListing, MatchScore], RAGMatchScore]
@@ -77,17 +78,19 @@ def _job_and_score(
     return job, score, float(score.total_score) if score else None
 
 
-def serialize_scored_job(item: ScoredItem) -> Dict[str, Any]:
+def serialize_listing(listing: JobListing) -> Dict[str, Any]:
     """
-    Serialize one scored listing into the Jobs API response shape.
+    Serialize a job listing into the Jobs API response shape.
+
+    Includes lifecycle fields (status, last-seen, scraped-today). Score
+    fields are added by ``serialize_scored_job``.
 
     Args:
-        item: Heuristic or RAG-ranked scored entry.
+        listing: Job listing to serialize.
 
     Returns:
         Dict compatible with frontend ``JobListing``.
     """
-    listing, score_result, display_score = _job_and_score(item)
     source = (
         listing.source.value
         if isinstance(listing.source, JobSource)
@@ -124,12 +127,33 @@ def serialize_scored_job(item: ScoredItem) -> Dict[str, Any]:
         "posted_date": (
             listing.posted_date.isoformat() if listing.posted_date else None
         ),
+        "application_deadline": (
+            listing.application_deadline.isoformat()
+            if listing.application_deadline
+            else None
+        ),
         "scraped_at": (
             listing.scraped_at.isoformat()
             if hasattr(listing, "scraped_at") and listing.scraped_at
             else None
         ),
     }
+    job_data.update(lifecycle_fields(listing))
+    return job_data
+
+
+def serialize_scored_job(item: ScoredItem) -> Dict[str, Any]:
+    """
+    Serialize one scored listing into the Jobs API response shape.
+
+    Args:
+        item: Heuristic or RAG-ranked scored entry.
+
+    Returns:
+        Dict compatible with frontend ``JobListing``.
+    """
+    listing, score_result, display_score = _job_and_score(item)
+    job_data = serialize_listing(listing)
     if display_score is not None:
         job_data["relevance_score"] = display_score
     if score_result:
@@ -303,6 +327,11 @@ def load_latest_shortlist(
             data = json.load(handle)
         if not isinstance(data, dict) or "jobs" not in data:
             return None
+        jobs = data.get("jobs") or []
+        if isinstance(jobs, list):
+            for job in jobs:
+                if isinstance(job, dict):
+                    attach_lifecycle_fields(job)
         return data
     except (OSError, json.JSONDecodeError):
         return None

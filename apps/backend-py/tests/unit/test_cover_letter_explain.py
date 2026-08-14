@@ -80,6 +80,32 @@ VALID_JOB_PAYLOAD = {
     "location": "Remote",
 }
 
+FACILITIES_JOB_PAYLOAD = {
+    "title": "Facilities Coordinator",
+    "company": "Property Co",
+    "description": (
+        "Coordinate vendors, manage work orders, inspect property, "
+        "update CMMS records, oversee HVAC contractors, and evaluate "
+        "vendor submissions for repairs and renovations."
+    ),
+    "location": "Singapore",
+}
+
+VALID_PREP_JSON = json.dumps(
+    {
+        "likely_questions": ["Walk me through a recent project."],
+        "gaps_to_address": ["No facilities experience"],
+        "talking_points": ["Python is on the resume"],
+    }
+)
+
+
+def _llm_messages(router: MagicMock) -> tuple[str, str]:
+    """Return system and user prompt text from a mocked generate_async call."""
+    call = router.generate_async.call_args
+    messages = call.args[0] if call.args else call.kwargs["messages"]
+    return messages[0].content, messages[1].content
+
 
 class TestExplainFit:
     """Tests for POST /api/cover-letter/explain-fit."""
@@ -99,6 +125,41 @@ class TestExplainFit:
         assert isinstance(data["improvements"], list) and data["improvements"]
         assert isinstance(data["fit_score"], int)
         assert 0 <= data["fit_score"] <= 100
+
+    def test_matching_python_job_omits_weak_fit_guard(
+        self, client: TestClient
+    ) -> None:
+        """An overlapping software JD must not inject the skip/mismatch guard."""
+        router = _mock_router(VALID_EXPLANATION_JSON)
+        with patch(
+            "src.api.routes.cover_letter.create_router",
+            return_value=router,
+        ):
+            resp = client.post("/api/cover-letter/explain-fit", json=VALID_JOB_PAYLOAD)
+
+        assert resp.status_code == 200
+        system, user = _llm_messages(router)
+        assert "literal overlaps" in system.lower()
+        assert "Do not invent transferable analogies" in system
+        assert "WEAK FIT:" not in user
+
+    def test_facilities_job_injects_weak_fit_guard(self, client: TestClient) -> None:
+        """A skip / domain-mismatch JD must forbid analogical strengths."""
+        router = _mock_router(VALID_EXPLANATION_JSON)
+        with patch(
+            "src.api.routes.cover_letter.create_router",
+            return_value=router,
+        ):
+            resp = client.post(
+                "/api/cover-letter/explain-fit", json=FACILITIES_JOB_PAYLOAD
+            )
+
+        assert resp.status_code == 200
+        system, user = _llm_messages(router)
+        assert "WEAK FIT:" in user
+        assert "poor domain match" in user.lower()
+        assert "Do not recommend retraining" in user
+        assert "literal overlaps" in system.lower()
 
     def test_without_active_profile_returns_400(self, client: TestClient) -> None:
         """Should return 400 when no active profile exists."""
@@ -147,6 +208,24 @@ class TestExplainLetter:
         assert isinstance(data["concerns"], list) and data["concerns"]
         assert isinstance(data["improvements"], list) and data["improvements"]
 
+    def test_letter_prompt_flags_analogical_bridges(self, client: TestClient) -> None:
+        """Explain-letter must treat invented JD mapping as a concern."""
+        payload = {
+            **VALID_JOB_PAYLOAD,
+            "content": "Dear Hiring Manager, I am excited to apply for this role...",
+        }
+        router = _mock_router(VALID_EXPLANATION_JSON)
+        with patch(
+            "src.api.routes.cover_letter.create_router",
+            return_value=router,
+        ):
+            resp = client.post("/api/cover-letter/explain-letter", json=payload)
+
+        assert resp.status_code == 200
+        system, _user = _llm_messages(router)
+        assert "analogical" in system.lower()
+        assert "delete the bridge" in system.lower()
+
     def test_without_active_profile_still_succeeds(self, client: TestClient) -> None:
         """Should succeed even without an active profile (no profile dependency)."""
         payload = {
@@ -176,3 +255,64 @@ class TestExplainLetter:
             resp = client.post("/api/cover-letter/explain-letter", json=payload)
 
         assert resp.status_code == 500
+
+
+class TestPrepSheet:
+    """Tests for POST /api/cover-letter/prep weak-fit talking-point guards."""
+
+    def test_facilities_prep_forbids_invented_talking_points(
+        self, client: TestClient
+    ) -> None:
+        """Prep on a skip JD must not ask for transferable talking points."""
+        router = _mock_router(VALID_PREP_JSON)
+        with patch(
+            "src.api.routes.cover_letter.create_router",
+            return_value=router,
+        ):
+            resp = client.post("/api/cover-letter/prep", json=FACILITIES_JOB_PAYLOAD)
+
+        assert resp.status_code == 200
+        system, user = _llm_messages(router)
+        assert "do not invent transferable analogies" in system.lower()
+        assert "WEAK FIT:" in system
+        assert "verdict:" in user.lower()
+
+
+class TestWeakFitHelpers:
+    """Deterministic weak-fit helpers used by explain-fit and prep."""
+
+    def test_skip_verdict_is_weak_fit(self, sample_user_profile: UserProfile) -> None:
+        """A skip recommendation is always treated as weak fit."""
+        from src.api.routes.cover_letter import _is_weak_fit, _weak_fit_instruction
+        from src.models.job_listing import JobListing, JobSource
+
+        job = JobListing(
+            title="Python Engineer",
+            company="Tech Corp",
+            job_id="py-weak",
+            source=JobSource.MANUAL,
+            description="Python FastAPI Django APIs",
+        )
+        assert _is_weak_fit(job, sample_user_profile, "skip") is True
+        assert "WEAK FIT:" in _weak_fit_instruction(True)
+        assert _weak_fit_instruction(False) == ""
+
+    def test_apply_on_overlapping_job_is_not_weak(
+        self, sample_user_profile: UserProfile
+    ) -> None:
+        """An overlapping software JD with apply is not a weak-fit context."""
+        from src.api.routes.cover_letter import _is_weak_fit
+        from src.models.job_listing import JobListing, JobRequirement, JobSource
+
+        job = JobListing(
+            title="Senior Python Engineer",
+            company="Tech Corp",
+            job_id="py-ok",
+            source=JobSource.MANUAL,
+            description="Python Django FastAPI APIs and AWS",
+            requirements=[
+                JobRequirement(text="Python and Django API development"),
+                JobRequirement(text="FastAPI and AWS experience"),
+            ],
+        )
+        assert _is_weak_fit(job, sample_user_profile, "apply") is False

@@ -19,8 +19,14 @@ from ..llm.router import create_router
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
+from .cover_letter_grounding import is_domain_mismatch
 from .cover_letter_reviewer import CoverLetterReviewer
-from .cover_letter_validator import CoverLetterValidationResult, CoverLetterValidator
+from .cover_letter_validator import (
+    CoverLetterValidationResult,
+    CoverLetterValidator,
+    build_grounding_rewrite_critique,
+    collect_hard_fail_issues,
+)
 from .cover_letter_writer import CoverLetterWriter
 from .selector import ResumeSelector
 
@@ -94,6 +100,7 @@ async def generate_cover_letter_for_profile(
     deep: bool = False,
     review: bool = False,
     style: str = "modern",
+    writer_model: Optional[str] = None,
 ) -> CoverLetterResponse:
     """
     Generate and validate a tailored cover letter for the given job/profile.
@@ -108,6 +115,8 @@ async def generate_cover_letter_for_profile(
         review: If True, run a single-pass drafter-reviewer loop. A reviewer
             critiques the draft and the writer rewrites it once if needed.
         style: ``modern`` (default) or ``classic`` letter structure.
+        writer_model: Optional one-shot override for ``cover_letter_writing``
+            (must be allowed for that route's Settings provider).
 
     Returns:
         ``CoverLetterResponse`` containing the letter and validation results.
@@ -127,27 +136,49 @@ async def generate_cover_letter_for_profile(
 
     writer = CoverLetterWriter(llm_router=llm_router)
     generation_started = time.perf_counter()
-    result = writer.write(job_listing, user_profile, selection, style=letter_style)
+    result = writer.write(
+        job_listing,
+        user_profile,
+        selection,
+        style=letter_style,
+        model=writer_model,
+    )
     generation_ms = _elapsed_ms(generation_started)
 
     review_metadata: Dict[str, Any] = {}
     review_ms: Optional[float] = None
     rewrite_ms: Optional[float] = None
+    domain_mismatch = is_domain_mismatch(job_listing, user_profile)
     if review:
         reviewer = CoverLetterReviewer(llm_router=llm_router)
         review_started = time.perf_counter()
-        review_result = reviewer.review(result, job_listing, user_profile, selection)
+        review_result = reviewer.review(
+            result,
+            job_listing,
+            user_profile,
+            selection,
+            domain_mismatch=domain_mismatch,
+        )
         review_ms = _elapsed_ms(review_started)
         rewrite_count = 0
         if review_result.rewrite_needed:
+            critique = review_result.critique
+            if domain_mismatch:
+                critique = (
+                    "DOMAIN MISMATCH: Do not invent job fit or analogical "
+                    "bridges. Only delete invented claims and fix structure "
+                    "or tone.\n"
+                    + critique
+                )
             rewrite_started = time.perf_counter()
             result = writer.rewrite(
                 job_listing,
                 user_profile,
                 selection,
                 result,
-                review_result.critique,
+                critique,
                 style=letter_style,
+                model=writer_model,
             )
             rewrite_ms = _elapsed_ms(rewrite_started)
             rewrite_count = 1
@@ -187,6 +218,49 @@ async def generate_cover_letter_for_profile(
         validation = _build_fallback_validation(result)
     validation_ms = _elapsed_ms(validation_started)
 
+    grounding_rewrite_ms: Optional[float] = None
+    if collect_hard_fail_issues(validation.issues):
+        critique = build_grounding_rewrite_critique(validation)
+        rewrite_started = time.perf_counter()
+        rewritten = writer.rewrite(
+            job_listing,
+            user_profile,
+            selection,
+            result,
+            critique,
+            style=letter_style,
+            model=writer_model,
+        )
+        grounding_rewrite_ms = _elapsed_ms(rewrite_started)
+        result = rewritten
+        try:
+            if deep:
+                validation = validator.validate_with_llm(
+                    result,
+                    job_listing,
+                    user_profile,
+                    selection,
+                    style=letter_style,
+                )
+            else:
+                validation = validator.validate(
+                    result,
+                    job_listing,
+                    user_profile,
+                    selection,
+                    style=letter_style,
+                )
+        except Exception as exc:
+            logger.error(
+                "Cover letter re-validation failed: %s", exc, exc_info=True
+            )
+            validation = _build_fallback_validation(result)
+        validation.details["grounding_rewrite"] = {
+            "applied": True,
+            "critique": critique,
+            "rewrite_ms": grounding_rewrite_ms,
+        }
+
     if review_metadata:
         validation.details["review"] = review_metadata
     validation.details["style"] = letter_style
@@ -197,6 +271,7 @@ async def generate_cover_letter_for_profile(
         "generation_ms": generation_ms,
         "review_ms": review_ms,
         "rewrite_ms": rewrite_ms,
+        "grounding_rewrite_ms": grounding_rewrite_ms,
         "validation_ms": validation_ms,
         "total_ms": total_ms,
     }

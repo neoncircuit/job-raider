@@ -21,8 +21,11 @@ from ..utils.logger import Components, get_logger
 from .cover_letter_grounding import (
     calc_grounding_penalty,
     collect_resume_bullets,
+    flag_analogical_claims,
     flag_claim_overclaims,
     flag_fabricated_technologies,
+    flag_inconsistent_percent_claims,
+    flag_inflated_duration_claims,
     flag_ungrounded_sentences,
 )
 from .cover_letter_writer import GeneratedCoverLetter
@@ -47,6 +50,20 @@ class CoverLetterIssue(str, Enum):
     SCOPE_INFLATION = "scope_inflation"
     TECHNIQUE_MISMATCH = "technique_mismatch"
     FABRICATED_TECHNOLOGY = "fabricated_technology"
+    INFLATED_DURATION = "inflated_duration"
+    INCONSISTENT_METRIC = "inconsistent_metric"
+    ANALOGICAL_CLAIM = "analogical_claim"
+
+
+HARD_FAIL_ISSUES: frozenset[CoverLetterIssue] = frozenset(
+    {
+        CoverLetterIssue.FABRICATED_TECHNOLOGY,
+        CoverLetterIssue.INFLATED_DURATION,
+        CoverLetterIssue.INCONSISTENT_METRIC,
+        CoverLetterIssue.FABRICATED_EXPERIENCE,
+        CoverLetterIssue.ANALOGICAL_CLAIM,
+    }
+)
 
 
 @dataclass
@@ -62,6 +79,80 @@ class CoverLetterValidationResult:
     tone_score: int  # 0-100
     recommendation: str  # "approve", "needs_revision", "reject"
     details: Dict[str, Any]
+
+
+def collect_hard_fail_issues(
+    issues: List[CoverLetterIssue],
+) -> List[CoverLetterIssue]:
+    """
+    Return grounding issues that must reject the letter.
+
+    Soft ungrounded wording and structure/tone findings do not hard-fail.
+
+    Args:
+        issues: Validation issues from a cover-letter check.
+
+    Returns:
+        Hard-fail issues in the original order, de-duplicated.
+    """
+    seen: set[CoverLetterIssue] = set()
+    hard: List[CoverLetterIssue] = []
+    for issue in issues:
+        if issue in HARD_FAIL_ISSUES and issue not in seen:
+            seen.add(issue)
+            hard.append(issue)
+    return hard
+
+
+def build_grounding_rewrite_critique(
+    validation: CoverLetterValidationResult,
+) -> str:
+    """
+    Build a writer critique from deterministic hard-fail findings.
+
+    Names the unsupported claims so the rewrite can delete them. Do not use
+    this text on the first-write prompt (that would teach the missing stack).
+
+    Args:
+        validation: Result of the first deterministic proofread.
+
+    Returns:
+        Plain-text editor critique for ``CoverLetterWriter.rewrite``.
+    """
+    lines = [
+        "Deterministic proofread found resume-unsupported claims.",
+        "Rewrite the letter. Delete the flagged claims.",
+        "Do not name tools that are not on the candidate profile.",
+        "Do not apologize for skill gaps. Do not invent replacement metrics.",
+        "Do not analogize resume work to job duties that are not on the resume.",
+    ]
+    details = validation.details or {}
+    fabricated = details.get("fabricated_technologies") or []
+    if fabricated:
+        lines.append(
+            "Remove these technologies: " + ", ".join(str(item) for item in fabricated)
+        )
+    for item in details.get("inflated_duration_claims") or []:
+        flags = item.get("flags") if isinstance(item, dict) else None
+        if flags:
+            lines.append("Duration: " + "; ".join(str(flag) for flag in flags))
+    for item in details.get("inconsistent_percent_claims") or []:
+        flags = item.get("flags") if isinstance(item, dict) else None
+        if flags:
+            lines.append("Metric: " + "; ".join(str(flag) for flag in flags))
+    for item in details.get("claim_overclaims") or []:
+        flags = item.get("flags") if isinstance(item, dict) else None
+        sentence = item.get("sentence") if isinstance(item, dict) else None
+        if flags:
+            prefix = f"{sentence} — " if sentence else ""
+            lines.append(prefix + "; ".join(str(flag) for flag in flags))
+    for item in details.get("analogical_claims") or []:
+        flags = item.get("flags") if isinstance(item, dict) else None
+        sentence = item.get("sentence") if isinstance(item, dict) else None
+        if flags:
+            prefix = f"{sentence} — " if sentence else ""
+            lines.append(prefix + "; ".join(str(flag) for flag in flags))
+    return "\n".join(lines)
 
 
 class CoverLetterValidator:
@@ -155,15 +246,14 @@ class CoverLetterValidator:
         jd_issues, jd_coverage = self._check_jd_coverage(content_lower, job, profile)
         issues.extend(jd_issues)
 
-        grounding_terms = list(jd_coverage.get("matched", [])) + list(
-            jd_coverage.get("missing", [])
-        )
+        grounding_terms: List[str] = []
         if job.title:
             grounding_terms.append(job.title)
         if job.company:
             grounding_terms.append(job.company)
-        # Do not pass raw job.description: JD-only tech names must not
-        # legitimize soft lexical overlap for fabricated resume claims.
+        # Soft overlap may only use company/title. Matched or missing JD
+        # skill terms must not legitimize fabricated resume claims; named
+        # tech is enforced by flag_fabricated_technologies instead.
 
         resume_bullets = collect_resume_bullets(profile, selection)
         ungrounded_sentences = flag_ungrounded_sentences(
@@ -176,7 +266,14 @@ class CoverLetterValidator:
             profile,
             resume_bullets=resume_bullets,
         )
+        analogical_claims = flag_analogical_claims(
+            content,
+            profile,
+            job,
+        )
         fabricated_technologies = flag_fabricated_technologies(content, profile)
+        inflated_duration_claims = flag_inflated_duration_claims(content, profile)
+        inconsistent_percent_claims = flag_inconsistent_percent_claims(content)
         grounding_issues: List[CoverLetterIssue] = []
         if ungrounded_sentences:
             grounding_issues.append(CoverLetterIssue.UNGROUNDED_CLAIMS)
@@ -190,14 +287,23 @@ class CoverLetterValidator:
             for item in claim_overclaims
         ):
             grounding_issues.append(CoverLetterIssue.TECHNIQUE_MISMATCH)
+        if analogical_claims:
+            grounding_issues.append(CoverLetterIssue.ANALOGICAL_CLAIM)
         if fabricated_technologies:
             grounding_issues.append(CoverLetterIssue.FABRICATED_TECHNOLOGY)
+        if inflated_duration_claims:
+            grounding_issues.append(CoverLetterIssue.INFLATED_DURATION)
+        if inconsistent_percent_claims:
+            grounding_issues.append(CoverLetterIssue.INCONSISTENT_METRIC)
         issues.extend(grounding_issues)
 
         grounding_penalty, grounding_penalty_breakdown = calc_grounding_penalty(
             ungrounded_sentences,
             claim_overclaims,
             fabricated_technologies=fabricated_technologies,
+            inflated_duration_claims=inflated_duration_claims,
+            inconsistent_percent_claims=inconsistent_percent_claims,
+            analogical_claims=analogical_claims,
         )
 
         structure_score = self._calc_structure_score(content, structure_issues)
@@ -219,9 +325,14 @@ class CoverLetterValidator:
         else:
             recommendation = "reject"
 
-        is_valid = recommendation == "approve" or (
-            not self.strict_mode and recommendation == "needs_revision"
-        )
+        hard_fail = collect_hard_fail_issues(issues)
+        if hard_fail:
+            recommendation = "reject"
+            is_valid = False
+        else:
+            is_valid = recommendation == "approve" or (
+                not self.strict_mode and recommendation == "needs_revision"
+            )
 
         details = {
             "word_count": cover_letter.word_count,
@@ -246,6 +357,9 @@ class CoverLetterValidator:
             "ungrounded_sentences": ungrounded_sentences,
             "claim_overclaims": claim_overclaims,
             "fabricated_technologies": fabricated_technologies,
+            "inflated_duration_claims": inflated_duration_claims,
+            "inconsistent_percent_claims": inconsistent_percent_claims,
+            "analogical_claims": analogical_claims,
             "grounding_penalty": grounding_penalty_breakdown,
         }
 
@@ -592,6 +706,12 @@ class CoverLetterValidator:
         """
         if not self.llm_router:
             return self.validate(cover_letter, job, profile, selection, style=style)
+
+        deterministic = self.validate(
+            cover_letter, job, profile, selection, style=style
+        )
+        if collect_hard_fail_issues(deterministic.issues):
+            return deterministic
 
         messages = [
             Message(

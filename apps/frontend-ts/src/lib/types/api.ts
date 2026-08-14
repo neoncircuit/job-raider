@@ -171,6 +171,11 @@ export interface JobListing {
   requirements?: JobRequirement[];
   posted_date?: string | null;
   scraped_at?: string | null;
+  last_seen_at?: string | null;
+  application_deadline?: string | null;
+  listing_status?: "active" | "expired";
+  scraped_today?: boolean;
+  days_since_posted?: number | null;
   relevance_score?: number | null;
   scam_score?: number | null;
   classification?: JobClassification | null;
@@ -279,6 +284,9 @@ export type CoverLetterIssue =
   | "scope_inflation"
   | "technique_mismatch"
   | "fabricated_technology"
+  | "inflated_duration"
+  | "inconsistent_metric"
+  | "analogical_claim"
   | "poor_structure"
   | "tone_too_informal"
   | "tone_too_formal"
@@ -506,6 +514,7 @@ export interface ApplicationSummary {
   is_hidden: boolean;
   days_since_application?: number | null;
   source_url?: string | null;
+  listing_status?: "active" | "expired" | null;
 }
 
 export interface ApplicationDetail extends ApplicationSummary {
@@ -522,6 +531,7 @@ export interface DashboardSummary {
   bookmarked: number;
   hidden: number;
   external: number;
+  expired?: number;
   by_status: Record<string, number>;
 }
 

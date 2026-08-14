@@ -51,6 +51,8 @@ export const sampleJob: JobListing = {
     { name: "Node.js", is_required: false },
   ],
   posted_date: "2026-06-01",
+  listing_status: "active",
+  scraped_today: true,
   relevance_score: 0.92,
   scam_score: 0.05,
 };

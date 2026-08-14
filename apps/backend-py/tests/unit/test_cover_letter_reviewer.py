@@ -270,3 +270,53 @@ class TestCoverLetterReviewer:
         assert "Python" in user_content
         assert "Job Raider" in user_content
         assert sample_draft.content in user_content
+
+    def test_review_prompt_forbids_manufactured_jd_fit(
+        self,
+        mock_llm_router,
+        sample_draft,
+        sample_job,
+        sample_profile,
+        sample_selection,
+    ):
+        """Reviewer must not treat missing JD mapping as a factual gap."""
+        mock_llm_router.generate.return_value = LLMResponse(
+            content='{"critique": "OK.", "rewrite_needed": false}',
+            model="qwen2.5:3b",
+            provider="ollama",
+            tokens_used=80,
+            cost=0.0,
+        )
+        reviewer = CoverLetterReviewer(mock_llm_router)
+        reviewer.review(sample_draft, sample_job, sample_profile, sample_selection)
+        system = mock_llm_router.generate.call_args.kwargs["messages"][0].content
+        assert "Missing JD mapping is not a factual gap" in system
+        assert "do not ask the writer to connect harder" in system.lower()
+
+    def test_review_mismatch_note_in_user_prompt(
+        self,
+        mock_llm_router,
+        sample_draft,
+        sample_job,
+        sample_profile,
+        sample_selection,
+    ):
+        """Low overlap tells the reviewer not to request more JD mapping."""
+        mock_llm_router.generate.return_value = LLMResponse(
+            content='{"critique": "OK.", "rewrite_needed": false}',
+            model="qwen2.5:3b",
+            provider="ollama",
+            tokens_used=80,
+            cost=0.0,
+        )
+        reviewer = CoverLetterReviewer(mock_llm_router)
+        reviewer.review(
+            sample_draft,
+            sample_job,
+            sample_profile,
+            sample_selection,
+            domain_mismatch=True,
+        )
+        user_content = mock_llm_router.generate.call_args.kwargs["messages"][1].content
+        assert "Resume overlap with this job is low" in user_content
+        assert "Do not request more JD mapping" in user_content

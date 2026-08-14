@@ -393,7 +393,12 @@ class JobMatcher:
                     return weight
 
         # Partial credit if remote optional
-        if job.work_mode.value == "hybrid":
+        work_mode = (
+            job.work_mode.value
+            if hasattr(job.work_mode, "value")
+            else str(job.work_mode or "")
+        )
+        if work_mode.lower() == "hybrid":
             return int(weight * 0.5)
 
         # No location match

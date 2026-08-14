@@ -317,6 +317,15 @@ class ManualCoverLetterRequest(BaseModel):
             "date/sender chrome."
         ),
     )
+    writer_model: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional one-shot model override for cover_letter_writing. "
+            "Must be allowed for that task's Settings primary provider "
+            "(Anthropic/Gemini catalog or installed Ollama tag). Ignored "
+            "when invalid; does not change saved Settings."
+        ),
+    )
 
     @field_validator("description")
     @classmethod
@@ -325,6 +334,15 @@ class ManualCoverLetterRequest(BaseModel):
         if not v.strip():
             raise ValueError("Description cannot be empty")
         return v
+
+    @field_validator("writer_model")
+    @classmethod
+    def normalize_writer_model(cls, v: Optional[str]) -> Optional[str]:
+        """Strip empty writer model overrides to None."""
+        if v is None:
+            return None
+        cleaned = v.strip()
+        return cleaned or None
 
 
 class CoverLetterValidateRequest(ManualCoverLetterRequest):

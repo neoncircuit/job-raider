@@ -51,6 +51,8 @@ class TestDiscoverShortlist:
         assert payload["relevance_score"] == 85.0
         assert payload["recommendation"] == "apply"
         assert payload["url"].startswith("https://")
+        assert payload["listing_status"] == "active"
+        assert payload["scraped_today"] is True
 
     def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
         """save_latest_shortlist writes a loadable artifact."""

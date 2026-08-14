@@ -7,14 +7,16 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ...models.user_profile import UserProfile
+from ...pipeline.shortlist import serialize_listing, serialize_scored_job
 from ...scoring.matcher import JobMatcher
 from ...scrapers.manager import ScraperManager
-from ...utils.location_normalizer import location_matches, normalize_all_locations
+from ...scrapers.storage import JobListingStorage
+from ...utils.location_normalizer import location_matches
 from ...utils.logger import Components, get_logger
 from ..models.requests import JobSearchRequest, SemanticSearchRequest
 from ..models.responses import SemanticSearchResult
@@ -24,23 +26,38 @@ router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
 
 
-def _compute_apply_method(source: str, already_applied: bool) -> str:
-    """Return a lightweight apply-method heuristic based on job source.
+def _listing_storage() -> JobListingStorage:
+    """
+    Return the canonical job listing catalog.
 
-    No HTML fetching — uses source and already-applied state only.
-
-    Args:
-        source: Job source string (e.g. "linkedin", "jsearch").
-        already_applied: Whether the user has already applied.
+    Isolated as a function so tests can point it at a temp directory.
 
     Returns:
-        One of "already_applied", "external_site", or "easy_apply".
+        JobListingStorage rooted at data/listings.
     """
-    if already_applied:
-        return "already_applied"
-    if source == "jsearch":
-        return "external_site"
-    return "easy_apply"
+    return JobListingStorage()
+
+
+def _active_profile() -> Optional[UserProfile]:
+    """
+    Return the active UserProfile when one is loaded.
+
+    Returns:
+        UserProfile, or None when no active profile is stored.
+    """
+    if (
+        not profile_state.active_profile_id
+        or profile_state.active_profile_id not in profile_state.stored_profiles
+    ):
+        return None
+    profile_data = profile_state.stored_profiles[
+        profile_state.active_profile_id
+    ].get("profile")
+    if not profile_data:
+        return None
+    if isinstance(profile_data, UserProfile):
+        return profile_data
+    return UserProfile(**profile_data)
 
 
 @router.get("/sources")
@@ -150,105 +167,47 @@ async def search_jobs(
 
         # Score jobs if profile is available
         scored_listings = []
-        if (
-            profile_state.active_profile_id
-            and profile_state.active_profile_id in profile_state.stored_profiles
-        ):
-            from ...models.user_profile import UserProfile
+        profile = _active_profile()
+        if profile:
+            try:
+                matcher = JobMatcher(fresh_grad_mode=request.fresh_grad_mode)
 
-            profile_data = profile_state.stored_profiles[
-                profile_state.active_profile_id
-            ].get("profile")
-            if profile_data:
-                try:
-                    profile = (
-                        profile_data
-                        if isinstance(profile_data, UserProfile)
-                        else UserProfile(**profile_data)
+                for listing in all_listings:
+                    try:
+                        score_result = matcher.score_job(listing, profile)
+                        scored_listings.append((listing, score_result))
+                    except Exception as e:
+                        logger.warning(f"Failed to score job {listing.job_id}: {e}")
+                        scored_listings.append((listing, None))
+
+                # Sort by score if scoring succeeded
+                if scored_listings and scored_listings[0][1] is not None:
+                    scored_listings.sort(
+                        key=lambda x: x[1].total_score if x[1] else 0,
+                        reverse=True,
                     )
-                    matcher = JobMatcher(fresh_grad_mode=request.fresh_grad_mode)
-
-                    for listing in all_listings:
-                        try:
-                            score_result = matcher.score_job(listing, profile)
-                            scored_listings.append((listing, score_result))
-                        except Exception as e:
-                            logger.warning(f"Failed to score job {listing.job_id}: {e}")
-                            scored_listings.append((listing, None))
-
-                    # Sort by score if scoring succeeded
-                    if scored_listings and scored_listings[0][1] is not None:
-                        scored_listings.sort(
-                            key=lambda x: x[1].total_score if x[1] else 0, reverse=True
-                        )
-                        logger.info(
-                            f"Scored {len(scored_listings)} jobs using fresh_grad_mode={request.fresh_grad_mode}"
-                        )
-                except Exception as e:
-                    logger.warning(f"Profile scoring failed: {e}")
-                    scored_listings = [(listing, None) for listing in all_listings]
+                    logger.info(
+                        f"Scored {len(scored_listings)} jobs using fresh_grad_mode={request.fresh_grad_mode}"
+                    )
+            except Exception as e:
+                logger.warning(f"Profile scoring failed: {e}")
+                scored_listings = [(listing, None) for listing in all_listings]
         else:
             # No profile available, return unsorted
             scored_listings = [(listing, None) for listing in all_listings]
 
+        try:
+            _listing_storage().upsert_listings(all_listings)
+        except Exception as catalog_err:
+            logger.warning("Failed to upsert search listings: %s", catalog_err)
+
         # Convert to response format
         jobs_response = []
         for listing, score_result in scored_listings[: request.limit]:
-            job_data = {
-                "job_id": listing.job_id
-                or f"{listing.source}_{hash(str(listing.source_url))}",
-                "title": listing.title,
-                "company": listing.company,
-                "location": normalize_all_locations(listing.location),
-                "description": (listing.description or "")[:5000],
-                "url": str(listing.source_url) if listing.source_url else None,
-                "source_url": str(listing.source_url) if listing.source_url else None,
-                "source": (
-                    listing.source.value
-                    if isinstance(listing.source, JobSource)
-                    else str(listing.source)
-                ),
-                "apply_method": _compute_apply_method(
-                    (
-                        listing.source.value
-                        if isinstance(listing.source, JobSource)
-                        else str(listing.source)
-                    ),
-                    listing.already_applied,
-                ),
-                "job_type": (
-                    listing.job_type.value
-                    if hasattr(listing.job_type, "value")
-                    else listing.job_type if listing.job_type else None
-                ),
-                "experience_level": (
-                    listing.experience_level.value
-                    if hasattr(listing.experience_level, "value")
-                    else listing.experience_level if listing.experience_level else None
-                ),
-                "salary_range": listing.salary_range,
-                "remote": listing.is_remote,
-                "already_applied": listing.already_applied,
-                "posted_date": (
-                    listing.posted_date.isoformat() if listing.posted_date else None
-                ),
-                "scraped_at": (
-                    listing.scraped_at.isoformat()
-                    if hasattr(listing, "scraped_at") and listing.scraped_at
-                    else None
-                ),
-            }
-
-            # Add score data if available
-            if score_result:
-                job_data["relevance_score"] = score_result.total_score
-                job_data["match_breakdown"] = score_result.breakdown
-                job_data["recommendation"] = score_result.recommendation
-                job_data["reasoning"] = score_result.reasoning
-                job_data["matched_keywords"] = score_result.matched_keywords
-                job_data["missing_skills"] = score_result.missing_skills
-                job_data["passed_threshold"] = score_result.passed_threshold
-
+            if score_result is not None:
+                job_data = serialize_scored_job((listing, score_result))
+            else:
+                job_data = serialize_listing(listing)
             jobs_response.append(job_data)
 
         logger.info(
@@ -272,47 +231,68 @@ async def search_jobs(
 @router.get("/{job_id}")
 async def get_job(job_id: str):
     """
-    Get details for a specific job.
+    Get details for a stored job listing.
+
+    Listings are written to the catalog by live search and Discover.
 
     Args:
         job_id: Job ID
 
     Returns:
-        Job listing details
+        Job listing details in the Jobs API shape.
     """
-    # TODO: Implement job storage and retrieval
-    # For now, return error
-    raise HTTPException(
-        status_code=501,
-        detail="Job retrieval not yet implemented",
-    )
+    listing = _listing_storage().get_by_id(job_id)
+    if listing is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Job not found. Search or run Discover so the listing is stored."
+            ),
+        )
+    return serialize_listing(listing)
 
 
 @router.post("/{job_id}/score")
 async def score_job(job_id: str):
     """
-    Get relevance score for a specific job.
+    Get relevance score for a stored job listing.
 
-    Requires active profile to be loaded.
+    Requires an active profile.
 
     Args:
         job_id: Job ID
 
     Returns:
-        Job with relevance score
+        Serialized listing plus score fields, including total_score.
     """
-    if not profile_state.active_profile_id:
+    profile = _active_profile()
+    if profile is None:
         raise HTTPException(
             status_code=400,
             detail="No active profile found. Upload a resume first.",
         )
 
-    # TODO: Implement job scoring
-    # For now, return error
-    raise HTTPException(
-        status_code=501,
-        detail="Job scoring not yet implemented",
-    )
+    listing = _listing_storage().get_by_id(job_id)
+    if listing is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Job not found. Search or run Discover so the listing is stored."
+            ),
+        )
+
+    try:
+        score_result = JobMatcher().score_job(listing, profile)
+    except Exception as exc:
+        logger.error("Job scoring failed for %s: %s", job_id, exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Job scoring failed: {exc}",
+        ) from exc
+
+    payload = serialize_scored_job((listing, score_result))
+    payload["total_score"] = score_result.total_score
+    return payload
 
 
 @router.post("/{job_id}/classify")

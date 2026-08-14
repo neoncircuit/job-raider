@@ -98,6 +98,19 @@ export function JobListItem({
               Applied Elsewhere
             </Badge>
           )}
+          {job.listing_status === "expired" && (
+            <Badge className="text-[10px] px-1.5 py-0 bg-destructive text-destructive-foreground">
+              Expired
+            </Badge>
+          )}
+          {job.scraped_today && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 border-info/30 bg-info/10 text-info"
+            >
+              Scraped today
+            </Badge>
+          )}
           {job.already_applied && (
             <Badge className="text-[10px] px-1.5 py-0 bg-success text-success-foreground">
               Applied

@@ -66,6 +66,7 @@ class CoverLetterReviewer:
         job: JobListing,
         profile: UserProfile,
         selection: SelectionOutput,
+        domain_mismatch: bool = False,
     ) -> CoverLetterReviewResult:
         """
         Review a generated cover letter draft.
@@ -75,10 +76,18 @@ class CoverLetterReviewer:
             job: Target job listing.
             profile: Candidate profile.
             selection: Selection output used to draft the letter.
+            domain_mismatch: When True, the resume has little overlap with
+                the job. The reviewer must not request invented JD mapping.
 
         Returns:
             ``CoverLetterReviewResult`` with critique and rewrite guidance.
         """
+        mismatch_note = ""
+        if domain_mismatch:
+            mismatch_note = (
+                "\nNOTE: Resume overlap with this job is low. Do not request "
+                "more JD mapping. Request deletion of invented analogies only.\n"
+            )
         messages = [
             Message(
                 role=MessageType.SYSTEM,
@@ -91,7 +100,16 @@ class CoverLetterReviewer:
                     '"rewrite_needed": true/false}\n\n'
                     "Set rewrite_needed=true only if the draft has clear "
                     "problems (missing role/company, wrong tone, generic "
-                    "opening, factual gaps, no call to action)."
+                    "opening, invented facts, analogical bridges between "
+                    "unrelated domains, no call to action).\n"
+                    "Do not set rewrite_needed because the letter omits job "
+                    "duties that are absent from the resume. Missing JD "
+                    "mapping is not a factual gap. If the draft invents "
+                    "relevance (similar to, prepared me for, transferable to) "
+                    "between resume work and job-only duties, set "
+                    "rewrite_needed and tell the writer to delete those "
+                    "bridges — do not ask the writer to connect harder to "
+                    "the job."
                 ),
             ),
             Message(
@@ -101,7 +119,8 @@ class CoverLetterReviewer:
                     f"Keywords to emphasize: "
                     f"{', '.join(selection.keywords_to_emphasize)}\n"
                     f"Selected projects: "
-                    f"{', '.join(p['name'] for p in selection.selected_projects)}\n\n"
+                    f"{', '.join(p['name'] for p in selection.selected_projects)}\n"
+                    f"{mismatch_note}\n"
                     f"DRAFT COVER LETTER:\n{cover_letter.content}"
                 ),
             ),
