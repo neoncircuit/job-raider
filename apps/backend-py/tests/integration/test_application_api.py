@@ -2,16 +2,27 @@
 Integration tests for application tracking API.
 """
 
+from pathlib import Path
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
-from src.api.main import app
+from src.metrics.outcome_tracker import OutcomeTracker
 
 
 @pytest.fixture
-def client():
-    """Create a test client."""
-    return TestClient(app)
+def client(tmp_path: Path):
+    """Create a test client with isolated application storage."""
+    tracker = OutcomeTracker(str(tmp_path / "applications"))
+    with patch("src.api.routes.applications.outcome_tracker", tracker):
+        from src.api.auth import verify_api_key
+        from src.api.main import app
+
+        app.dependency_overrides[verify_api_key] = lambda: None
+        tc = TestClient(app, raise_server_exceptions=False)
+        yield tc
+        app.dependency_overrides.clear()
 
 
 @pytest.mark.integration

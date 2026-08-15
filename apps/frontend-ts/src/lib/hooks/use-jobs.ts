@@ -5,7 +5,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { jobsApi } from "@/lib/api/jobs";
 import { pipelineApi } from "@/lib/api/pipeline";
-import { applicationsApi } from "@/lib/api/applications";
+import {
+  APPLICATIONS_DASHBOARD_QUERY_KEY,
+  applicationsApi,
+} from "@/lib/api/applications";
+import { isTrackedApplication } from "@/lib/applications-filters";
 import { coverLetterApi } from "@/lib/api/coverLetter";
 import type { JobSearchRequest } from "@/lib/api/jobs";
 import type { ScoreExplanation } from "@/lib/api/coverLetter";
@@ -17,7 +21,7 @@ import type {
   DiscoverShortlistResponse,
 } from "@/lib/types/api";
 
-const DASHBOARD_QUERY_KEY = ["applications", "dashboard"] as const;
+const DASHBOARD_QUERY_KEY = APPLICATIONS_DASHBOARD_QUERY_KEY;
 
 interface UseJobSearchResult {
   /** Matching jobs, or undefined while loading. */
@@ -105,7 +109,11 @@ interface UseSavedAndExternalJobIdsResult {
 export function useSavedAndExternalJobIds(): UseSavedAndExternalJobIdsResult {
   const { data, isLoading, error } = useQuery({
     queryKey: DASHBOARD_QUERY_KEY,
-    queryFn: () => applicationsApi.getDashboard({ include_hidden: false }),
+    queryFn: () =>
+      applicationsApi.getDashboard({
+        include_hidden: false,
+        include_external: true,
+      }),
     staleTime: 30_000,
   });
 
@@ -115,9 +123,7 @@ export function useSavedAndExternalJobIds(): UseSavedAndExternalJobIdsResult {
       applications.filter((a) => a.is_bookmarked).map((a) => a.application_id),
     );
     const externalIds = new Set<string>(
-      applications
-        .filter((a) => a.current_status === "applied_elsewhere")
-        .map((a) => a.application_id),
+      applications.filter(isTrackedApplication).map((a) => a.application_id),
     );
 
     return { savedIds, externalIds, isLoading, error };
@@ -139,7 +145,10 @@ export function useSaveJob() {
       applicationsApi.action(id, saved ? "unsave" : "save"),
     onSuccess: (_, { saved }) => {
       toast.success(saved ? "Removed from saved" : "Job saved");
-      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["applications"],
+        refetchType: "all",
+      });
     },
     onError: () => {
       toast.error("Action failed");
@@ -160,14 +169,25 @@ export function useMarkAppliedElsewhere() {
       id,
       title,
       company,
+      description,
+      sourceUrl,
     }: {
       id: string;
       title: string;
       company: string;
-    }) => applicationsApi.markAppliedExternally(id, title, company),
+      description?: string;
+      sourceUrl?: string;
+    }) =>
+      applicationsApi.markAppliedExternally(id, title, company, {
+        ...(description?.trim() ? { description: description.trim() } : {}),
+        ...(sourceUrl ? { source_url: sourceUrl } : {}),
+      }),
     onSuccess: () => {
       toast.success("Marked as applied externally");
-      void queryClient.invalidateQueries({ queryKey: ["applications"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["applications"],
+        refetchType: "all",
+      });
     },
     onError: (error: Error) => {
       toast.error(

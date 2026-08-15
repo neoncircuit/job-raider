@@ -1,5 +1,38 @@
 # Job Raider Decision Log
 
+## 2026-08-15 - Singapore boards are Singapore/remote only
+
+### Context
+
+Jobs search defaults to location Singapore. MCF listings use district names (`Islandwide`, `D07 Middle Road...`) that do not contain "Singapore", so the text post-filter dropped every row.
+
+### Decision
+
+- Treat MyCareersFuture and Careers@Gov as Singapore-scoped sources. Match Singapore/SG without requiring that word in the district string.
+- Allow Remote when the listing is remote or hybrid.
+- Do not query these boards for other countries. Overseas MCF rows stay excluded from Singapore searches.
+- Careers@Gov is not scraped yet; the same geography rule is reserved for Phase 2.
+- Dedicated JobStreet, if added, is JobStreet Singapore only. Do not add Malaysia / Philippines / Indonesia JobStreet sources until Singapore is fully working. JSearch stays the current JobStreet-adjacent path and still follows the search location.
+
+### Consequences
+
+- Default Singapore Jobs search keeps MCF district listings.
+- A New York search with MCF selected returns no MCF rows and does not call the MCF API.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Search["Jobs search"] --> Geo{"Singapore-scoped source?"}
+  Geo -->|no| Text["location_matches on listing text"]
+  Geo -->|yes| Scope{"Requested location"}
+  Scope -->|"Singapore / SG / empty"| Keep["Keep unless overseas"]
+  Scope -->|Remote| Remote{"Remote or hybrid?"}
+  Remote -->|yes| Keep
+  Remote -->|no| Drop["Drop"]
+  Scope -->|other country| Skip["Skip board / drop listing"]
+```
+
 ## 2026-08-14 - MyCareersFuture public JSON adapter (Phase 1)
 
 ### Context

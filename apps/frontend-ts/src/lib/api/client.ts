@@ -18,6 +18,73 @@ export class ConnectionError extends Error {
   }
 }
 
+/**
+ * Flatten FastAPI / proxy error payloads into a single readable string.
+ *
+ * Pydantic 422 responses send ``detail`` as an array of ``{ loc, msg }``
+ * objects. Those must not become ``[object Object]`` in toasts.
+ *
+ * @param raw - ``detail`` or ``message`` from a JSON error body.
+ * @param fallback - Text to use when ``raw`` is empty or unreadable.
+ * @returns A user-visible error string.
+ */
+export function normalizeApiErrorDetail(
+  raw: unknown,
+  fallback: string,
+): string {
+  if (typeof raw === "string" && raw.trim()) {
+    return raw;
+  }
+  if (Array.isArray(raw)) {
+    const parts = raw.map((item) => {
+      if (typeof item === "string") {
+        return item;
+      }
+      if (item && typeof item === "object" && "msg" in item) {
+        const loc = Array.isArray((item as { loc?: unknown }).loc)
+          ? (item as { loc: unknown[] }).loc
+              .filter((part) => part !== "body")
+              .join(".")
+          : "";
+        const msg = String((item as { msg: unknown }).msg);
+        return loc ? `${loc}: ${msg}` : msg;
+      }
+      return JSON.stringify(item);
+    });
+    const joined = parts.filter(Boolean).join("; ");
+    if (joined) {
+      return joined;
+    }
+  }
+  if (raw != null && typeof raw === "object") {
+    return JSON.stringify(raw);
+  }
+  return fallback;
+}
+
+/**
+ * Choose a toast message for a failed API call.
+ *
+ * @param error - Thrown value from {@link request}.
+ * @param networkFallback - Shown only for unreachable / fetch failures.
+ * @returns The API detail when the backend responded, otherwise the fallback.
+ */
+export function getApiErrorMessage(
+  error: unknown,
+  networkFallback: string,
+): string {
+  if (error instanceof ConnectionError) {
+    return networkFallback;
+  }
+  if (error instanceof ApiError) {
+    return error.detail || error.message;
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return networkFallback;
+}
+
 // Simple logger function (inline to avoid module resolution issues)
 const LOG_PREFIX = "[JobRaider API]";
 
@@ -208,7 +275,10 @@ export async function request<T>(
     let detail = res.statusText;
     try {
       const json = await res.json();
-      detail = json?.detail ?? json?.message ?? detail;
+      detail = normalizeApiErrorDetail(
+        json?.detail ?? json?.message,
+        res.statusText,
+      );
     } catch {
       // ignore parse errors
     }

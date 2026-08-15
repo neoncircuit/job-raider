@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Search, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -49,18 +48,23 @@ const logger = createLogger("JobsPage");
  * replaces that feed until cleared. Apply remains an explicit per-job action.
  */
 export default function JobsPage() {
-  const { selectedJobId, setSelectedJobId, jobsPage, setJobsPage } =
-    useAppState();
+  const {
+    selectedJobId,
+    setSelectedJobId,
+    jobsPage,
+    setJobsPage,
+    jobsSearchParams: searchParams,
+    setJobsSearchParams: setSearchParams,
+    jobsPreferSearch: preferSearch,
+    setJobsPreferSearch: setPreferSearch,
+    jobsGoogleQuery: googleQuery,
+    setJobsGoogleQuery: setGoogleQuery,
+    jobsShowExpired: showExpired,
+    setJobsShowExpired: setShowExpired,
+    jobsScrapedTodayOnly: scrapedTodayOnly,
+    setJobsScrapedTodayOnly: setScrapedTodayOnly,
+  } = useAppState();
   const isCompact = useMediaQuery(MOBILE_JOBS_QUERY);
-
-  const [searchParams, setSearchParams] = useState<JobSearchRequest | null>(
-    null,
-  );
-  const [googleQuery, setGoogleQuery] = useState<string | null>(null);
-  /** When true, ignore shortlist and wait for a live search. */
-  const [preferSearch, setPreferSearch] = useState(false);
-  const [showExpired, setShowExpired] = useState(false);
-  const [scrapedTodayOnly, setScrapedTodayOnly] = useState(false);
 
   const shortlist = useLatestShortlist();
   const search = useJobSearch(searchParams);
@@ -121,6 +125,8 @@ export default function JobsPage() {
           id: job.job_id,
           title: job.title,
           company: job.company,
+          description: job.description ?? "",
+          sourceUrl: job.source_url ?? undefined,
         })
       }
     />
@@ -339,7 +345,12 @@ export default function JobsPage() {
         </div>
       )}
 
-      <SearchBar onSearch={handleSearch} onGoogleSearch={handleGoogleSearch} />
+      <SearchBar
+        onSearch={handleSearch}
+        onGoogleSearch={handleGoogleSearch}
+        initialRequest={searchParams}
+        initialGoogleQuery={googleQuery}
+      />
 
       {listLoading && (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">

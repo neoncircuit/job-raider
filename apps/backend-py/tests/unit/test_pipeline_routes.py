@@ -132,3 +132,37 @@ class TestStartPipeline:
 
         assert resp.status_code == 400
         assert "profile data" in resp.json()["message"].lower()
+
+    def test_start_accepts_mycareersfuture_and_reserved_sources(self, client):
+        """Discover may send MCF plus reserved board ids that have no scraper yet."""
+        resp = client.post(
+            "/api/pipeline/start",
+            json={
+                "keywords": ["python"],
+                "locations": ["Singapore"],
+                "sources": [
+                    "linkedin",
+                    "jsearch",
+                    "mycareersfuture",
+                    "careersatgov",
+                    "jobstreet",
+                ],
+                "mode": "discover",
+            },
+        )
+
+        assert resp.status_code == 200
+        assert "run_id" in resp.json()
+
+    def test_start_rejects_unknown_source(self, client):
+        """Unknown source ids still fail validation."""
+        resp = client.post(
+            "/api/pipeline/start",
+            json={
+                "keywords": ["python"],
+                "locations": ["Singapore"],
+                "sources": ["not-a-board"],
+            },
+        )
+
+        assert resp.status_code == 422

@@ -14,8 +14,8 @@ from typing import Any, Dict, List, Optional
 
 from ..models.job_listing import ExperienceLevel, JobListing
 from ..models.user_profile import UserProfile
-from ..utils.location_normalizer import location_matches
 from ..utils.logger import Components, get_logger
+from ..utils.source_geography import listing_matches_requested_locations
 
 
 class ScoreCategory(str, Enum):
@@ -387,10 +387,10 @@ class JobMatcher:
             return weight
 
         # Check if job location is in targets
-        if job.location and profile.targets.locations:
-            for target_loc in profile.targets.locations:
-                if location_matches(target_loc, job.location):
-                    return weight
+        if profile.targets.locations and listing_matches_requested_locations(
+            job, profile.targets.locations, include_missing=False
+        ):
+            return weight
 
         # Partial credit if remote optional
         work_mode = (

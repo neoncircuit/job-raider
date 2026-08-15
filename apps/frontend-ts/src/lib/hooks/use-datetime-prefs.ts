@@ -49,7 +49,8 @@ export function useDateTimePrefs(): [
 
   const setPrefs = useCallback(
     (next: DateTimePrefs | ((prev: DateTimePrefs) => DateTimePrefs)) => {
-      const resolved = typeof next === "function" ? next(readDateTimePrefs()) : next;
+      const resolved =
+        typeof next === "function" ? next(readDateTimePrefs()) : next;
       writeDateTimePrefs(resolved);
     },
     [],

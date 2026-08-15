@@ -161,6 +161,8 @@ describe("CoverLetterPage", () => {
           "We are seeking a talented Senior Software Engineer",
         ),
         location: "Remote",
+        style: "modern",
+        writer_model: undefined,
       },
       false,
       false,

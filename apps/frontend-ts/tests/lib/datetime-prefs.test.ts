@@ -62,27 +62,21 @@ describe("datetime-prefs", () => {
   });
 
   it("formats ISO-like datetimes in a fixed zone", () => {
-    const formatted = formatDateTimeWithPrefs(
-      "2026-08-12T06:00:00.000Z",
-      {
-        format: "iso",
-        timeZoneMode: "manual",
-        manualTimeZone: "UTC",
-      },
-    );
+    const formatted = formatDateTimeWithPrefs("2026-08-12T06:00:00.000Z", {
+      format: "iso",
+      timeZoneMode: "manual",
+      manualTimeZone: "UTC",
+    });
     expect(formatted).toMatch(/2026-08-12/);
     expect(formatted).toMatch(/06:00/);
   });
 
   it("formats date-only values without a time component", () => {
-    const formatted = formatDateWithPrefs(
-      "2026-08-12T06:00:00.000Z",
-      {
-        format: "iso",
-        timeZoneMode: "manual",
-        manualTimeZone: "UTC",
-      },
-    );
+    const formatted = formatDateWithPrefs("2026-08-12T06:00:00.000Z", {
+      format: "iso",
+      timeZoneMode: "manual",
+      manualTimeZone: "UTC",
+    });
     expect(formatted).toBe("2026-08-12");
   });
 

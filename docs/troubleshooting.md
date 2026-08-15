@@ -56,6 +56,12 @@ MCF_ENABLED=0
 
 Then recreate or restart the backend so `ScraperManager` rebuilds without the source. `GET /jobs/sources` will omit `mycareersfuture`.
 
+### Empty results with location Singapore
+
+Jobs search with only MyCareersFuture selected can return 0 jobs even though the portal has matches. The default location is Singapore. MCF listings used district names (`Islandwide`, `D01 Marina...`) that do not contain "Singapore", so the post-filter dropped every row.
+
+MyCareersFuture and Careers@Gov are Singapore-scoped: they match Singapore/SG (and Remote when the job is remote or hybrid) by source policy, not district text. Other countries skip these boards. Recreate the backend overlay after pulling that change.
+
 ### Symptoms of rate limiting or blocks
 
 - Jobs search with only MyCareersFuture selected returns 0 jobs.
@@ -64,7 +70,13 @@ Then recreate or restart the backend so `ScraperManager` rebuilds without the so
 
 ### Careers@Gov and JobStreet (deferred)
 
-Live scrapers for Careers@Gov and a dedicated JobStreet SG adapter are not implemented. Use JSearch for JobStreet-adjacent coverage. Revisit only after MCF is reliable in daily use (see `tasks/todo.md`).
+Live scrapers for Careers@Gov and a dedicated JobStreet adapter are not implemented. Use JSearch for JobStreet-adjacent coverage. A later dedicated JobStreet adapter is Singapore-only; do not add other JobStreet country sites until Singapore is fully working.
+
+### Applied elsewhere returns HTTP 500
+
+Marking a job as applied elsewhere writes `data/applications/{job_id}.json`. Some job IDs (especially JSearch) are longer than the OS filename limit, which raises `OSError: [Errno 36] File name too long`.
+
+Long or unsafe IDs are hashed for the filename. The original id remains in the JSON. Recreate the backend overlay after pulling that change.
 
 ### Degraded Health: Data Directories Missing
 

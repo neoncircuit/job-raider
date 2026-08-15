@@ -769,13 +769,9 @@ _WORD_YEAR_VALUES: dict[str, float] = {
 _DURATION_CLAIM_RE = re.compile(
     r"(?P<prefix>over|more than|nearly|about|approximately|around|at least)?"
     r"\s*"
-    r"(?P<low>\d+(?:\.\d+)?|"
-    + "|".join(_WORD_YEAR_VALUES.keys())
-    + r")"
+    r"(?P<low>\d+(?:\.\d+)?|" + "|".join(_WORD_YEAR_VALUES.keys()) + r")"
     r"(?:\s*(?:[-–—]|to)\s*"
-    r"(?P<high>\d+(?:\.\d+)?|"
-    + "|".join(_WORD_YEAR_VALUES.keys())
-    + r"))?"
+    r"(?P<high>\d+(?:\.\d+)?|" + "|".join(_WORD_YEAR_VALUES.keys()) + r"))?"
     r"\s*\+?\s*years?(?:\s+of)?",
     re.IGNORECASE,
 )
@@ -933,21 +929,16 @@ def flag_inconsistent_percent_claims(letter_text: str) -> List[dict]:
         if not gain_match:
             continue
         claimed_raw = (
-            gain_match.group("z1")
-            or gain_match.group("z2")
-            or gain_match.group("z3")
+            gain_match.group("z1") or gain_match.group("z2") or gain_match.group("z3")
         )
         if claimed_raw is None:
             continue
         claimed = float(claimed_raw)
         absolute = abs(end_pct - start_pct)
-        relative = (
-            abs((end_pct - start_pct) / start_pct) * 100.0 if start_pct else None
-        )
+        relative = abs((end_pct - start_pct) / start_pct) * 100.0 if start_pct else None
         matches_absolute = abs(claimed - absolute) <= _PERCENT_TOLERANCE
         matches_relative = (
-            relative is not None
-            and abs(claimed - relative) <= _PERCENT_TOLERANCE
+            relative is not None and abs(claimed - relative) <= _PERCENT_TOLERANCE
         )
         if matches_absolute or matches_relative:
             continue
@@ -1292,9 +1283,7 @@ def flag_analogical_claims(
         if not target_words:
             continue
         jd_only = [
-            word
-            for word in target_words
-            if word in jd_words and word not in allowed
+            word for word in target_words if word in jd_words and word not in allowed
         ]
         if not jd_only:
             continue

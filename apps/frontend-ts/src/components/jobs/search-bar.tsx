@@ -31,6 +31,10 @@ interface SearchBarProps {
   onSearch: (request: JobSearchRequest) => void;
   /** Called with a Google query string when no sources are selected. */
   onGoogleSearch: (query: string) => void;
+  /** Restored Jobs search so the form matches the last committed query. */
+  initialRequest?: JobSearchRequest | null;
+  /** Restored Google fallback query when no structured search is active. */
+  initialGoogleQuery?: string | null;
 }
 
 /**
@@ -40,13 +44,21 @@ interface SearchBarProps {
  * The form only collects inputs and delegates execution to the parent page,
  * which owns the TanStack Query search state.
  */
-export function SearchBar({ onSearch, onGoogleSearch }: SearchBarProps) {
+export function SearchBar({
+  onSearch,
+  onGoogleSearch,
+  initialRequest = null,
+  initialGoogleQuery = null,
+}: SearchBarProps) {
+  const restoredKeywords =
+    initialRequest?.keywords.join(", ") ??
+    (initialGoogleQuery ? initialGoogleQuery.replace(/\s+jobs$/i, "") : "");
   const { register, handleSubmit, control, setValue } = useForm<SearchValues>({
     defaultValues: {
-      keywords: "",
-      location: "Singapore",
-      remoteOnly: false,
-      limit: 50,
+      keywords: restoredKeywords,
+      location: initialRequest?.locations?.[0] ?? "Singapore",
+      remoteOnly: initialRequest?.remote_only ?? false,
+      limit: initialRequest?.limit ?? 50,
     },
   });
 
@@ -60,8 +72,10 @@ export function SearchBar({ onSearch, onGoogleSearch }: SearchBarProps) {
   });
 
   const available = sourcesQuery.data?.sources ?? DEFAULT_SOURCES;
-  const [manualSources, setManualSources] = useState<string[] | null>(null);
-  const initializedRef = useRef(false);
+  const [manualSources, setManualSources] = useState<string[] | null>(
+    initialRequest?.sources ?? null,
+  );
+  const initializedRef = useRef(initialRequest?.sources != null);
 
   // Initialize the manual selection to the resolved available sources exactly
   // once, preventing the selection from drifting back to defaults after the

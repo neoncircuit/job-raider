@@ -546,9 +546,7 @@ class TestGroundingHardFails:
         letter.word_count = len(letter.content.split())
 
         validator = CoverLetterValidator()
-        result = validator.validate(
-            letter, job, sample_profile, sample_selection
-        )
+        result = validator.validate(letter, job, sample_profile, sample_selection)
 
         assert CoverLetterIssue.FABRICATED_TECHNOLOGY in result.issues
         assert result.is_valid is False
@@ -556,10 +554,13 @@ class TestGroundingHardFails:
         assert "tensorflow" in result.details["fabricated_technologies"]
         assert "aws" in result.details["fabricated_technologies"]
         # Soft check must not treat missing JD skills as grounded vocabulary.
-        assert any(
-            "tensorflow" in s.lower() or "aws" in s.lower()
-            for s in result.details.get("ungrounded_sentences", [])
-        ) or CoverLetterIssue.UNGROUNDED_CLAIMS in result.issues
+        assert (
+            any(
+                "tensorflow" in s.lower() or "aws" in s.lower()
+                for s in result.details.get("ungrounded_sentences", [])
+            )
+            or CoverLetterIssue.UNGROUNDED_CLAIMS in result.issues
+        )
 
     def test_inflated_duration_and_bad_percent_flagged(
         self, sample_job, sample_selection

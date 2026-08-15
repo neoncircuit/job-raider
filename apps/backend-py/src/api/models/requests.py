@@ -13,6 +13,37 @@ from pydantic import BaseModel, Field, field_validator
 
 from ...utils.text_normalizer import normalize_user_prose
 
+# Accepted by pipeline/search request models. Scrapers may ignore reserved ids
+# (careersatgov, jobstreet) until those adapters exist.
+KNOWN_JOB_SOURCES = frozenset(
+    {
+        "linkedin",
+        "jsearch",
+        "mycareersfuture",
+        "careersatgov",
+        "jobstreet",
+    }
+)
+
+
+def _validate_known_job_sources(v: Optional[List[str]]) -> Optional[List[str]]:
+    """Reject source ids that are not known or reserved.
+
+    Args:
+        v: Source ids from the client, or None for defaults.
+
+    Returns:
+        The same list when every id is known.
+
+    Raises:
+        ValueError: If any id is outside ``KNOWN_JOB_SOURCES``.
+    """
+    if v is not None:
+        invalid = set(v) - KNOWN_JOB_SOURCES
+        if invalid:
+            raise ValueError(f"Invalid sources: {invalid}")
+    return v
+
 
 def _normalize_cover_letter_content(value: str) -> str:
     """Normalize cover letter body text for validate/explain/export requests.
@@ -38,7 +69,10 @@ class PipelineStartRequest(BaseModel):
     locations: List[str] = Field(..., description="Job locations to search in")
     sources: Optional[List[str]] = Field(
         default=None,
-        description="Job sources (linkedin, jsearch)",
+        description=(
+            "Job sources (linkedin, jsearch, mycareersfuture; "
+            "careersatgov and jobstreet are reserved)"
+        ),
     )
 
     # Pipeline options
@@ -80,13 +114,8 @@ class PipelineStartRequest(BaseModel):
     @field_validator("sources")
     @classmethod
     def validate_sources(cls, v: Optional[List[str]]) -> Optional[List[str]]:
-        """Validate sources are known values."""
-        if v is not None:
-            valid_sources = {"linkedin", "jsearch"}
-            invalid = set(v) - valid_sources
-            if invalid:
-                raise ValueError(f"Invalid sources: {invalid}")
-        return v
+        """Validate sources are known or reserved values."""
+        return _validate_known_job_sources(v)
 
     @field_validator("mode")
     @classmethod
@@ -128,7 +157,10 @@ class JobSearchRequest(BaseModel):
     locations: List[str] = Field(..., description="Job locations to search in")
     sources: Optional[List[str]] = Field(
         default=None,
-        description="Job sources (linkedin, jsearch)",
+        description=(
+            "Job sources (linkedin, jsearch, mycareersfuture; "
+            "careersatgov and jobstreet are reserved)"
+        ),
     )
     limit: int = Field(default=50, ge=1, le=200, description="Maximum results")
     remote_only: bool = Field(default=False, description="Remote positions only")
@@ -147,6 +179,12 @@ class JobSearchRequest(BaseModel):
             )
         # Filter out empty strings
         return [k for k in v if k.strip()]
+
+    @field_validator("sources")
+    @classmethod
+    def validate_sources(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate sources are known or reserved values."""
+        return _validate_known_job_sources(v)
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -198,7 +236,7 @@ class JobActionRequest(BaseModel):
     """Request to perform quick action on a job."""
 
     job_id: str = Field(..., description="Job ID")
-    action: str = Field(..., description="Action: save, unsave, hide, unhide")
+    action: str = Field(..., description="Action: save, unsave, hide, unhide, untrack")
     note: Optional[str] = Field(None, description="Optional note")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
@@ -206,7 +244,7 @@ class JobActionRequest(BaseModel):
     @classmethod
     def validate_action(cls, v: str) -> str:
         """Validate action is a known value."""
-        valid_actions = {"save", "unsave", "hide", "unhide"}
+        valid_actions = {"save", "unsave", "hide", "unhide", "untrack"}
         if v not in valid_actions:
             raise ValueError(f"Invalid action: {v}. Must be one of {valid_actions}")
         return v
@@ -252,6 +290,10 @@ class UpdateApplicationStatusRequest(BaseModel):
     job_id: str = Field(..., description="Job ID")
     status: str = Field(..., description="New status")
     note: Optional[str] = Field(None, description="Optional note about the change")
+    metadata: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Optional metadata to merge (for example a job description)",
+    )
 
 
 class DashboardQueryRequest(BaseModel):

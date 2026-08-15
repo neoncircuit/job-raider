@@ -347,7 +347,12 @@ class TestGenerateCoverLetterService:
         assert "review" not in response.validation.details
 
     def test_hard_fail_triggers_grounding_rewrite(
-        self, sample_job, sample_profile, patch_dependencies, mock_writer, mock_validator
+        self,
+        sample_job,
+        sample_profile,
+        patch_dependencies,
+        mock_writer,
+        mock_validator,
     ):
         """Fabricated-tech proofread must rewrite once even when review is off."""
         writer, _, rewritten_draft = mock_writer
@@ -388,7 +393,12 @@ class TestGenerateCoverLetterService:
         assert response.validation.details["grounding_rewrite"]["applied"] is True
 
     def test_analogical_hard_fail_triggers_grounding_rewrite(
-        self, sample_job, sample_profile, patch_dependencies, mock_writer, mock_validator
+        self,
+        sample_job,
+        sample_profile,
+        patch_dependencies,
+        mock_writer,
+        mock_validator,
     ):
         """Analogical-claim proofread must rewrite once even when review is off."""
         writer, _, rewritten_draft = mock_writer

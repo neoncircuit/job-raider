@@ -161,7 +161,9 @@ export function CoverLetterValidationDisplay({
   const fabricatedTechnologies = Array.isArray(details?.fabricated_technologies)
     ? (details.fabricated_technologies as string[])
     : [];
-  const inflatedDurationClaims = Array.isArray(details?.inflated_duration_claims)
+  const inflatedDurationClaims = Array.isArray(
+    details?.inflated_duration_claims,
+  )
     ? (
         details.inflated_duration_claims as Array<{
           sentence?: string;
@@ -369,8 +371,8 @@ export function CoverLetterValidationDisplay({
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
                   These technologies appear in the letter but are not listed in
-                  your Technical Skills. Remove them or add them to your
-                  profile before sending.
+                  your Technical Skills. Remove them or add them to your profile
+                  before sending.
                 </p>
                 <ul className="flex flex-wrap gap-1.5">
                   {fabricatedTechnologies.map((tech) => (
@@ -386,8 +388,8 @@ export function CoverLetterValidationDisplay({
             {inflatedDurationClaims.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  These sentences claim more years of experience than your
-                  dated roles (merged, non-overlapping) support.
+                  These sentences claim more years of experience than your dated
+                  roles (merged, non-overlapping) support.
                 </p>
                 <ul className="space-y-2">
                   {inflatedDurationClaims.map((item, i) => (

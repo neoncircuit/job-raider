@@ -152,7 +152,9 @@ export function CinematicAtmosphereToggle() {
 
       <div className="space-y-3 border-t border-border pt-4">
         <div>
-          <h3 className="text-sm font-medium text-foreground">Date &amp; time</h3>
+          <h3 className="text-sm font-medium text-foreground">
+            Date &amp; time
+          </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Applies to dates and timestamps across the app (Profile, Pipeline,
             Dashboard, Jobs, Metrics, Career Coach, Applications, and more).

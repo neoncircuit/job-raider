@@ -4164,7 +4164,7 @@ flowchart TD
 ### Deferred (do not implement yet)
 
 - **Phase 2 — Careers@Gov:** Spike public listing vs HTML. Same adapter checklist only if public JSON and personal-use ToS are acceptable. Prefer paste/import if scrape is blocked. Credentials (if ever required) go in Settings/env/session, never on resume profiles.
-- **Phase 3 — JobStreet SG:** Decide if a dedicated Seek/JobStreet adapter is still needed given JSearch. Prefer official/partner HTTP; dedup against JSearch in catalog.
+- **Phase 3 — JobStreet SG:** Dedicated adapter, if still needed after JSearch, is JobStreet Singapore only (`jobstreet.com.sg`). Do not add other JobStreet country sites until Singapore is fully working. Dedup against JSearch in catalog.
 
 ### Verification
 
@@ -4192,4 +4192,163 @@ flowchart TD
 - MCF is personal-use tooling against the website JSON service, not an official API.
 - Kill switch: `MCF_ENABLED=0`. Caps: 20 per page, max 3 pages, max 60 results.
 - Careers@Gov and JobStreet live scrapers remain out of scope until MCF is proven in daily Jobs search.
+
+## Singapore-scoped geography override [COMPLETED] (2026-08-15)
+
+**Problem:** Default Jobs location Singapore dropped every MCF listing because districts do not contain "Singapore".
+
+### Plan
+
+- [x] Source policy: MyCareersFuture, Careers@Gov, and JobStreet SG are Singapore / remote only.
+- [x] Post-filter and scoring use the override. MCF skips HTTP for other countries.
+- [x] Careers@Gov and dedicated JobStreet scrapers still deferred. JobStreet, if added, is SG-only until Singapore is fully working. Do not add other JobStreet country sites.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Loc["Requested location"] --> Policy{"MCF, Careers@Gov, or JobStreet?"}
+  Policy -->|Singapore or Remote| Keep["Keep SG / remote listings"]
+  Policy -->|other country| Skip["Do not query / drop"]
+```
+
+## Discover / Jobs / Applications bugfix [COMPLETED] (2026-08-15)
+
+**Problem:** Discover toast said the backend was down (MCF 422). Jobs search reset on navigate. Applied-elsewhere toast succeeded but All Applications did not show the row.
+
+### Plan
+
+- [x] Allow `mycareersfuture` plus reserved `careersatgov` / `jobstreet` on pipeline and search request models.
+- [x] Show `ApiError.detail` on Discover start failure; keep backend-down copy for network errors only.
+- [x] Persist Jobs search/filters in AppState so leaving the tab restores the query.
+- [x] Share `["applications", "dashboard"]` and refetch inactive application queries after mark-applied.
+- [x] Confirm hashed `id_*.json` files load by `application_id` and appear on the dashboard All / External summary.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Discover["Start Discover with MCF"] --> Validate{"PipelineStartRequest sources"}
+  Validate -->|known or reserved| Start["Pipeline starts"]
+  Validate -->|unknown| Toast["Toast shows API detail"]
+  Jobs["Jobs search"] --> AppState["AppState search params"]
+  AppState --> Return["Navigate away and back"]
+  Apply["Applied elsewhere"] --> DashKey["applications dashboard key"]
+  DashKey --> AllTab["Applications All and External tile"]
+```
+
+### Review
+
+- Pipeline no longer 422s when MyCareersFuture is selected. Reserved board ids are accepted and ignored by source_map until scrapers exist.
+- Jobs search, Google fallback, Show expired, and Scraped today survive in-app navigation.
+- Applied-elsewhere rows share the Jobs dashboard cache and are included when `include_external` is true, including hashed long ids.
+
+## Applications placeholders and untrack [COMPLETED] (2026-08-15)
+
+**Problem:** The Applications All tab showed 12 leftover or bookmark rows next to two real applied-elsewhere jobs. There was no way to remove an accidental apply.
+
+### Plan
+
+- [x] Inspect live `data/applications` records and confirm what the All tab renders.
+- [x] Add `OutcomeTracker.delete_application` and an `untrack` action that removes the JSON file and cache entry (short ids and hashed `id_*.json`).
+- [x] Filter All Applications to tracked statuses. Keep bookmarks on Saved and hidden jobs on Hidden.
+- [x] Show honest labels for empty or Unknown title/company. Add a confirm dialog for Remove.
+- [x] Invalidate the shared `["applications"]` dashboard query so the Jobs applied-elsewhere badge is not stale.
+- [x] Isolate application integration tests so they do not write to live storage.
+- [x] Add unit tests. Run focused pytest via WSL. Overlay backend. Rebuild frontend.
+
+### Flow
+
+```mermaid
+flowchart TD
+  AllTab["All Applications"] --> Filter["Exclude saved_bookmarked and not_interested"]
+  Filter --> Cards["Tracked rows"]
+  Cards --> Confirm["Confirm Remove"]
+  Confirm --> Untrack["POST /applications/actions untrack"]
+  Untrack --> Disk["Delete JSON and cache"]
+  Disk --> Invalidate["Invalidate applications queries"]
+  Invalidate --> JobsBadge["Jobs applied-elsewhere badge"]
+```
+
+### Review
+
+- The 12 placeholders were leftover integration-test JSON files plus bookmark-only rows on All. Two real applied-elsewhere jobs (EY and Seacare, hashed `id_*.json`) remain.
+- All Applications now excludes `saved_bookmarked` and `not_interested`. Remove calls `POST /applications/actions` with `untrack` after a confirm dialog.
+- Pytest: 37 passed (tracker, lifecycle, isolated integration). Overlay backend and rebuilt frontend are healthy.
+- Frontend Vitest did not run on Windows (missing Rollup optional binary). Filter tests were added.
+- Hard-refresh Applications after the frontend recreate. Use Remove to delete an accidental apply. The Jobs applied-elsewhere badge refreshes from the shared dashboard query.
+
+## Applied-elsewhere interview prep [COMPLETED] (2026-08-15)
+
+**Problem:** Jobs marked applied-elsewhere could not advance to interview prep. AppCard only offered "Proceed to interview" for `applied`. Jobs-originated rows stored no job description.
+
+### Plan
+
+- [x] Treat `applied_elsewhere` like `applied` for Proceed to interview. Keep bookmarks and hidden rows out of that path.
+- [x] Persist listing description (and source URL) when marking applied-elsewhere from Jobs.
+- [x] Backfill a catalog JD on GET detail when metadata has none. Allow paste on the card when JD is still missing.
+- [x] Do not reset an interview-stage status if the external track API is called again.
+- [x] Keep the Jobs applied badge after the row leaves `applied_elsewhere`.
+- [x] Add unit tests. Run focused pytest via WSL. Overlay backend. Rebuild frontend.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Jobs["Jobs: Applied Elsewhere"] --> Persist["POST /applications/external with JD"]
+  Persist --> AllTab["Applications All: applied_elsewhere"]
+  AllTab --> Proceed["Proceed to interview"]
+  Proceed --> Status["PUT /applications/status screening_scheduled"]
+  Status --> PrepBtn["Prep for interview"]
+  PrepBtn --> Detail["GET application detail"]
+  Detail --> HasJD{"metadata.description 50+ chars?"}
+  HasJD -->|yes| PrepAPI["POST /cover-letter/prep"]
+  HasJD -->|no| Catalog{"Catalog has JD?"}
+  Catalog -->|yes| Backfill["Persist catalog JD"]
+  Backfill --> PrepAPI
+  Catalog -->|no| Paste["Paste JD on card"]
+  Paste --> Status
+```
+
+### Review
+
+- Live EY and Seacare records had empty `metadata`. AppCard treated only `applied` as able to proceed. That blocked interview prep.
+- New Jobs apply-elsewhere calls store the listing description. GET detail copies a catalog JD when metadata has none. The card shows a paste field when no JD is available.
+- EY is still in the catalog (5570 characters). Seacare is not. Seacare needs a paste or a re-mark from Jobs if the listing is still visible.
+- Pytest: 44 passed (tracker, lifecycle, isolated integration). Backend and frontend containers are healthy.
+- Hard-refresh Applications. On an applied-elsewhere card, select Proceed to interview, then Prep for interview. Do not re-mark EY. For Seacare, paste the JD or re-mark from Jobs.
+
+## Optional listing link on Applications [IN PROGRESS] (2026-08-15)
+
+**Scope:** Quiet Open listing on application cards. Optional URL on Track External. No JobStreet or Careers@Gov work.
+
+### Plan
+
+- [x] Confirm Jobs `markAppliedExternally` stores listing JD and `metadata.source_url`.
+- [x] Show Open listing only when a safe http(s) URL exists. Hide the control when it does not.
+- [x] Add an optional listing-link field on Track External Application.
+- [x] Clean and persist `source_url` on `/applications/external` (and status metadata). Drop empty and unsafe schemes.
+- [x] Dashboard and detail can fall back to the catalog URL when metadata has none.
+- [x] Run the same local CI checks as GitHub Actions until they pass.
+- [x] Overlay backend and rebuild frontend after the Python and TS changes.
+- [x] Commit and push only after the checks pass.
+
+### Review
+
+- Listing URL is optional. Jobs apply-elsewhere and Track External store it in `metadata.source_url`. Cards show Open listing only when a cleaned http(s) URL exists.
+- Local CI: backend Black/Ruff plus 758 pytest; frontend lint, type-check, Prettier, 121 Vitest, Next build. Overlay backend and rebuilt frontend containers.
+- JobStreet and Careers@Gov scrapers were not started.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Jobs["Jobs: Applied Elsewhere"] --> Persist["metadata.source_url"]
+  Track["Track External: optional URL"] --> Clean["Clean http(s) URL"]
+  Clean --> Persist
+  Persist --> Card{"source_url present?"}
+  Card -->|yes| Link["Open listing"]
+  Card -->|no| Hide["Hide control"]
+  Catalog["Catalog URL"] --> Card
+```
 

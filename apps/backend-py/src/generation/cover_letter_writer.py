@@ -313,9 +313,10 @@ class CoverLetterWriter:
             if not content:
                 raise ValueError("Cover letter model returned empty content")
             word_count = len(content.split())
-            model_used = response.model or self.llm_router.routes[
-                TaskType.COVER_LETTER_WRITING
-            ].primary_model
+            model_used = (
+                response.model
+                or self.llm_router.routes[TaskType.COVER_LETTER_WRITING].primary_model
+            )
 
             highlighted = self._extract_highlighted_experiences(content, selection)
 
@@ -414,9 +415,10 @@ class CoverLetterWriter:
             if not content:
                 raise ValueError("Cover letter rewrite returned empty content")
             word_count = len(content.split())
-            model_used = response.model or self.llm_router.routes[
-                TaskType.COVER_LETTER_WRITING
-            ].primary_model
+            model_used = (
+                response.model
+                or self.llm_router.routes[TaskType.COVER_LETTER_WRITING].primary_model
+            )
 
             highlighted = self._extract_highlighted_experiences(content, selection)
 
@@ -644,7 +646,9 @@ class CoverLetterWriter:
             mismatch = is_domain_mismatch(job, profile)
             for proj in selection.selected_projects[:2]:
                 if mismatch:
-                    project_parts.append(f"My work on {proj['name']} is listed on my resume")
+                    project_parts.append(
+                        f"My work on {proj['name']} is listed on my resume"
+                    )
                 else:
                     project_parts.append(
                         f"My work on {proj['name']} has given me direct experience "

@@ -12,13 +12,27 @@ import {
   Sparkles,
   Loader2,
   Clock,
+  Trash2,
 } from "lucide-react";
-import { applicationsApi } from "@/lib/api/applications";
+import {
+  APPLICATIONS_DASHBOARD_QUERY_KEY,
+  applicationsApi,
+} from "@/lib/api/applications";
 import { coverLetterApi } from "@/lib/api/coverLetter";
 import type { ApplicationSummary } from "@/lib/types/api";
 import type { PrepSheetResponse } from "@/lib/api/coverLetter";
 import { PrepSheetDisplay } from "@/components/prep-sheet-display";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +44,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate } from "@/lib/utils/format";
 import { STATUS_COLORS } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
-import { filterExpiredApplications } from "@/lib/applications-filters";
+import {
+  canAdvanceToInterview,
+  displayApplicationCompany,
+  displayApplicationTitle,
+  filterExpiredApplications,
+  filterTrackedApplications,
+  isInterviewStage,
+  MIN_JOB_DESCRIPTION_CHARS,
+  safeListingUrl,
+} from "@/lib/applications-filters";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/layout/EmptyState";
@@ -38,35 +61,36 @@ import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
 
 // ── Application card ──────────────────────────────────────────────────────────
 
-// Statuses that mean the company has come back and interview prep is relevant.
-const INTERVIEW_STATUSES = new Set([
-  "under_review",
-  "screening_scheduled",
-  "screening_completed",
-  "technical_scheduled",
-  "technical_completed",
-  "onsite_scheduled",
-  "onsite_completed",
-  "final",
-]);
-
 function AppCard({
   app,
   onUnsave,
   onUnhide,
+  onUntrack,
+  untrackPending,
 }: {
   app: ApplicationSummary;
   onUnsave?: () => void;
   onUnhide?: () => void;
+  onUntrack?: () => void;
+  untrackPending?: boolean;
 }) {
   const qc = useQueryClient();
   const [prepOpen, setPrepOpen] = useState(false);
   const [prep, setPrep] = useState<PrepSheetResponse | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pastedDescription, setPastedDescription] = useState("");
+  const [needsDescription, setNeedsDescription] = useState(false);
 
   const status = app.current_status.toLowerCase();
   const statusColor = STATUS_COLORS[status] ?? "bg-muted text-foreground";
-  const canRespond = status === "applied";
-  const inInterview = INTERVIEW_STATUSES.has(status);
+  const canRespond = canAdvanceToInterview(status);
+  const inInterview = isInterviewStage(status);
+  const title = displayApplicationTitle(app.job_title);
+  const company = displayApplicationCompany(app.company);
+  const listingHref = safeListingUrl(app.source_url);
+  const showDescriptionPaste =
+    (canRespond || inInterview) &&
+    (app.has_job_description === false || needsDescription);
 
   const setStatus = useMutation({
     mutationFn: (s: string) =>
@@ -75,7 +99,10 @@ function AppCard({
       toast.success(
         s === "rejected" ? "Marked as rejected" : "Moved to interview stage",
       );
-      qc.invalidateQueries({ queryKey: ["applications"] });
+      qc.invalidateQueries({
+        queryKey: ["applications"],
+        refetchType: "all",
+      });
     },
     onError: () => toast.error("Failed to update status"),
   });
@@ -84,7 +111,7 @@ function AppCard({
     mutationFn: async () => {
       const detail = await applicationsApi.getDetail(app.application_id);
       const description = String(detail.metadata?.description ?? "");
-      if (description.trim().length < 50) {
+      if (description.trim().length < MIN_JOB_DESCRIPTION_CHARS) {
         throw new Error("No saved job description for this listing");
       }
       return coverLetterApi.prep({
@@ -97,8 +124,32 @@ function AppCard({
       setPrep(data);
       setPrepOpen(true);
     },
-    onError: (err: Error) =>
-      toast.error(err.message || "Failed to generate prep sheet"),
+    onError: (err: Error) => {
+      if (err.message.includes("No saved job description")) {
+        setNeedsDescription(true);
+      }
+      toast.error(err.message || "Failed to generate prep sheet");
+    },
+  });
+
+  const saveDescription = useMutation({
+    mutationFn: (description: string) =>
+      applicationsApi.updateStatus(
+        app.application_id,
+        app.current_status,
+        undefined,
+        { description },
+      ),
+    onSuccess: () => {
+      toast.success("Job description saved");
+      setNeedsDescription(false);
+      setPastedDescription("");
+      qc.invalidateQueries({
+        queryKey: ["applications"],
+        refetchType: "all",
+      });
+    },
+    onError: () => toast.error("Failed to save job description"),
   });
 
   return (
@@ -106,14 +157,12 @@ function AppCard({
       <CardContent className="flex items-center justify-between gap-4 pt-4 pb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-medium text-foreground truncate">
-              {app.job_title}
-            </p>
+            <p className="font-medium text-foreground truncate">{title}</p>
             {app.is_bookmarked && (
               <Bookmark className="h-3.5 w-3.5 shrink-0 text-info" />
             )}
           </div>
-          <p className="text-sm text-muted-foreground">{app.company}</p>
+          <p className="text-sm text-muted-foreground">{company}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <Badge className={cn("text-xs", statusColor)}>
               {app.current_status.replace(/_/g, " ")}
@@ -136,14 +185,15 @@ function AppCard({
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          {app.source_url && (
+          {listingHref && (
             <a
-              href={app.source_url}
+              href={listingHref}
               target="_blank"
               rel="noreferrer"
-              className="text-muted-foreground hover:text-primary"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open listing
             </a>
           )}
           {canRespond && (
@@ -203,8 +253,48 @@ function AppCard({
               Unhide
             </Button>
           )}
+          {onUntrack && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirmOpen(true)}
+              disabled={untrackPending}
+              className="text-xs text-red-500"
+            >
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Remove
+            </Button>
+          )}
         </div>
       </CardContent>
+      {showDescriptionPaste && (
+        <CardContent className="space-y-2 pt-0">
+          <Label className="text-sm">Job description</Label>
+          <Textarea
+            value={pastedDescription}
+            onChange={(e) => setPastedDescription(e.target.value)}
+            placeholder="Paste the job description to enable interview prep…"
+            className="min-h-[100px] resize-y"
+          />
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              Required ({MIN_JOB_DESCRIPTION_CHARS}+ characters) to run
+              interview prep.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => saveDescription.mutate(pastedDescription.trim())}
+              disabled={
+                pastedDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ||
+                saveDescription.isPending
+              }
+            >
+              {saveDescription.isPending ? "Saving…" : "Save description"}
+            </Button>
+          </div>
+        </CardContent>
+      )}
 
       <Dialog open={prepOpen} onOpenChange={setPrepOpen}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
@@ -212,13 +302,38 @@ function AppCard({
             <div>
               <h3 className="text-base font-semibold">Interview prep</h3>
               <p className="text-sm text-muted-foreground">
-                {app.job_title} · {app.company}
+                {title} · {company}
               </p>
             </div>
             {prep && <PrepSheetDisplay prep={prep} />}
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this application?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes the tracking record for {title} at {company}. It does
+              not withdraw an application you already sent.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={untrackPending}
+              onClick={() => {
+                setConfirmOpen(false);
+                onUntrack?.();
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
@@ -230,6 +345,7 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState("");
   const [method, setMethod] = useState("");
+  const [listingUrl, setListingUrl] = useState("");
   const [description, setDescription] = useState("");
   const [atInterview, setAtInterview] = useState(false);
 
@@ -237,6 +353,7 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
     setTitle("");
     setCompany("");
     setMethod("");
+    setListingUrl("");
     setDescription("");
     setAtInterview(false);
   };
@@ -246,13 +363,21 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
       const jobId = `ext-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 8)}`;
+      const metadata: Record<string, unknown> = {};
+      if (description.trim()) {
+        metadata.description = description.trim();
+      }
+      const cleanedUrl = safeListingUrl(listingUrl);
+      if (cleanedUrl) {
+        metadata.source_url = cleanedUrl;
+      }
       await applicationsApi.trackExternal({
         job_id: jobId,
         job_title: title,
         company,
         application_date: new Date().toISOString(),
         application_method: method || "External site",
-        metadata: description.trim() ? { description: description.trim() } : {},
+        metadata,
       });
       // If they already have an interview invite, jump straight to that stage
       // so "Prep for interview" is immediately available on the card.
@@ -280,7 +405,7 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
 
   // A saved job description is required before an external listing can enter the
   // interview-prep flow, so gate the toggle on having enough text.
-  const canPrep = description.trim().length >= 50;
+  const canPrep = description.trim().length >= MIN_JOB_DESCRIPTION_CHARS;
   const blockedByPrep = atInterview && !canPrep;
 
   return (
@@ -314,6 +439,19 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
             onChange={(e) => setMethod(e.target.value)}
             placeholder="Company website, referral…"
           />
+        </div>
+        <div className="space-y-1">
+          <Label>Listing link</Label>
+          <Input
+            value={listingUrl}
+            onChange={(e) => setListingUrl(e.target.value)}
+            placeholder="https://… (optional)"
+            inputMode="url"
+            autoComplete="url"
+          />
+          <p className="text-xs text-muted-foreground">
+            Optional. Shown as Open listing on the application card.
+          </p>
         </div>
         <div className="space-y-1">
           <Label>Job description</Label>
@@ -367,8 +505,12 @@ export default function ApplicationsPage() {
   const qc = useQueryClient();
 
   const allQuery = useQuery({
-    queryKey: ["applications", "all"],
-    queryFn: () => applicationsApi.getDashboard({ include_hidden: false }),
+    queryKey: APPLICATIONS_DASHBOARD_QUERY_KEY,
+    queryFn: () =>
+      applicationsApi.getDashboard({
+        include_hidden: false,
+        include_external: true,
+      }),
     staleTime: 30_000,
   });
 
@@ -388,7 +530,7 @@ export default function ApplicationsPage() {
     mutationFn: (id: string) => applicationsApi.action(id, "unsave"),
     onSuccess: () => {
       toast.success("Removed from saved");
-      qc.invalidateQueries({ queryKey: ["applications"] });
+      qc.invalidateQueries({ queryKey: ["applications"], refetchType: "all" });
     },
   });
 
@@ -396,11 +538,23 @@ export default function ApplicationsPage() {
     mutationFn: (id: string) => applicationsApi.action(id, "unhide"),
     onSuccess: () => {
       toast.success("Job unhidden");
-      qc.invalidateQueries({ queryKey: ["applications"] });
+      qc.invalidateQueries({ queryKey: ["applications"], refetchType: "all" });
     },
   });
 
+  const untrack = useMutation({
+    mutationFn: (id: string) => applicationsApi.action(id, "untrack"),
+    onSuccess: () => {
+      toast.success("Application removed");
+      qc.invalidateQueries({ queryKey: ["applications"], refetchType: "all" });
+    },
+    onError: () => toast.error("Failed to remove application"),
+  });
+
   const summary = allQuery.data?.summary;
+  const trackedApplications = filterTrackedApplications(
+    allQuery.data?.applications ?? [],
+  );
   const dashboardError =
     allQuery.error ?? savedQuery.error ?? hiddenQuery.error;
 
@@ -422,7 +576,7 @@ export default function ApplicationsPage() {
       {summary && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {[
-            { label: "Total", value: summary.total_applications },
+            { label: "Total", value: trackedApplications.length },
             { label: "Bookmarked", value: summary.bookmarked },
             { label: "Hidden", value: summary.hidden },
             { label: "External", value: summary.external },
@@ -440,7 +594,12 @@ export default function ApplicationsPage() {
       )}
 
       <TrackExternalForm
-        onSuccess={() => qc.invalidateQueries({ queryKey: ["applications"] })}
+        onSuccess={() =>
+          qc.invalidateQueries({
+            queryKey: ["applications"],
+            refetchType: "all",
+          })
+        }
       />
 
       <Tabs defaultValue="all">
@@ -464,7 +623,7 @@ export default function ApplicationsPage() {
           {allQuery.isLoading && (
             <p className="text-sm text-muted-foreground">Loading…</p>
           )}
-          {(allQuery.data?.applications ?? []).length === 0 &&
+          {trackedApplications.length === 0 &&
             !allQuery.isLoading &&
             !allQuery.isError && (
               <EmptyState
@@ -473,8 +632,13 @@ export default function ApplicationsPage() {
                 action={{ label: "Browse jobs", href: "/jobs" }}
               />
             )}
-          {(allQuery.data?.applications ?? []).map((app) => (
-            <AppCard key={app.application_id} app={app} />
+          {trackedApplications.map((app) => (
+            <AppCard
+              key={app.application_id}
+              app={app}
+              onUntrack={() => untrack.mutate(app.application_id)}
+              untrackPending={untrack.isPending}
+            />
           ))}
         </TabsContent>
 
@@ -499,6 +663,8 @@ export default function ApplicationsPage() {
                 key={app.application_id}
                 app={app}
                 onUnsave={() => unsave.mutate(app.application_id)}
+                onUntrack={() => untrack.mutate(app.application_id)}
+                untrackPending={untrack.isPending}
               />
             ))}
         </TabsContent>
@@ -524,6 +690,8 @@ export default function ApplicationsPage() {
                 key={app.application_id}
                 app={app}
                 onUnhide={() => unhide.mutate(app.application_id)}
+                onUntrack={() => untrack.mutate(app.application_id)}
+                untrackPending={untrack.isPending}
               />
             ))}
         </TabsContent>
@@ -544,7 +712,12 @@ export default function ApplicationsPage() {
             )}
           {filterExpiredApplications(allQuery.data?.applications ?? []).map(
             (app) => (
-              <AppCard key={app.application_id} app={app} />
+              <AppCard
+                key={app.application_id}
+                app={app}
+                onUntrack={() => untrack.mutate(app.application_id)}
+                untrackPending={untrack.isPending}
+              />
             ),
           )}
         </TabsContent>

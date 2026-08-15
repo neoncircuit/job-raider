@@ -54,15 +54,20 @@ class JDExtractor:
             r"qualifications?",
             r"basic qualifications?",
             r"minimum qualifications?",
+            r"job requirements?",
             r"what you'll need",
             r"what we're looking for",
             r"must have",
+            r"pre-?requisites?",
         ],
         "responsibilities": [
             r"responsibilities?",
+            r"roles and responsibilities",
+            r"key responsibilities",
             r"what you'll do",
             r"you will",
             r"role overview",
+            r"role summary",
             r"about the role",
             r"about the job",
         ],
@@ -451,10 +456,14 @@ Return a JSON object with these exact fields:
         Returns:
             Section key (``requirements``, ``responsibilities``, ...) or None.
         """
-        if not line_stripped or len(line_stripped) > 60:
+        if not line_stripped or len(line_stripped) > 80:
             return None
         if re.match(r"^[-*•◦▪▸►]\s+", line_stripped):
             return None
+        line_stripped = re.sub(r"^#{1,6}\s*", "", line_stripped).strip()
+        bold = re.match(r"^\*\*(.+)\*\*$", line_stripped)
+        if bold:
+            line_stripped = bold.group(1).strip()
 
         for section_name, patterns in self.SECTION_PATTERNS.items():
             for pattern in patterns:

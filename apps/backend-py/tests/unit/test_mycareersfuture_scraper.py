@@ -21,6 +21,8 @@ from src.scrapers.mycareersfuture_scraper import (
     MyCareersFutureScraper,
     mcf_enabled,
 )
+from src.utils.location_normalizer import location_matches
+from src.utils.source_geography import listing_matches_requested_locations
 
 FIXTURE_PATH = (
     Path(__file__).resolve().parents[1]
@@ -63,7 +65,7 @@ class TestParseJob:
         assert job.source == JobSource.MYCAREERSFUTURE.value
         assert job.title == "Software Engineer"
         assert job.company == "Example Pte Ltd"
-        assert job.location == "Central"
+        assert job.location == "Central, Singapore"
         assert job.work_mode == WorkMode.HYBRID.value
         assert job.job_type == JobType.FULL_TIME.value
         assert job.experience_level == ExperienceLevel.MID.value
@@ -79,6 +81,33 @@ class TestParseJob:
         assert job.posted_date is not None
         assert "mycareersfuture.gov.sg" in str(job.source_url or "")
         assert job.metadata["mcf_uuid"] == raw["uuid"]
+        assert job.description is not None
+        assert "Build APIs with Python and Docker." in job.description
+        assert "Degree in Computer Science." in job.description
+        assert "## Requirements" in job.description
+
+    def test_compact_html_description_keeps_paragraphs(self) -> None:
+        """MCF compact HTML becomes readable paragraphs, not one blob."""
+        scraper = MyCareersFutureScraper(rate_limit=0)
+        job = scraper._parse_job(
+            {
+                "uuid": "dddddddd-eeee-ffff-aaaa-bbbbbbbbbbbb",
+                "title": "AI Engineer",
+                "postedCompany": {"name": "Acme"},
+                "description": (
+                    "<p><strong>Role Summary</strong></p>"
+                    "<p>We are seeking an AI Engineer.</p>"
+                    "<p><strong>Responsibilities:</strong></p>"
+                    "<ul><li>Build agents</li><li>Ship to production</li></ul>"
+                ),
+                "metadata": {},
+            }
+        )
+        assert "Role SummaryWe are" not in (job.description or "")
+        assert "## Role Summary" in (job.description or "")
+        assert "We are seeking an AI Engineer." in (job.description or "")
+        assert "- Build agents" in (job.description or "")
+        assert "\n" in (job.description or "")
 
     def test_missing_uuid_raises(self) -> None:
         """Rows without uuid are rejected."""
@@ -102,6 +131,54 @@ class TestParseJob:
         )
         assert job.job_type == JobType.FULL_TIME.value
         assert job.experience_level == ExperienceLevel.NOT_SPECIFIED.value
+
+    def test_district_and_islandwide_match_singapore_filter(self) -> None:
+        """MCF district names must survive the default Singapore post-filter."""
+        scraper = MyCareersFutureScraper(rate_limit=0)
+        district = scraper._parse_job(
+            {
+                "uuid": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "title": "AI Engineer",
+                "postedCompany": {"name": "Acme"},
+                "address": {
+                    "isOverseas": False,
+                    "districts": [{"location": "D07 Middle Road, Golden Mile"}],
+                },
+                "metadata": {},
+            }
+        )
+        islandwide = scraper._parse_job(
+            {
+                "uuid": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                "title": "AI Engineer",
+                "postedCompany": {"name": "Acme"},
+                "address": {
+                    "isOverseas": False,
+                    "districts": [{"location": "Islandwide"}],
+                },
+                "metadata": {},
+            }
+        )
+        overseas = scraper._parse_job(
+            {
+                "uuid": "cccccccc-dddd-eeee-ffff-111111111111",
+                "title": "AI Engineer",
+                "postedCompany": {"name": "Acme"},
+                "address": {"isOverseas": True, "overseasCountry": "Malaysia"},
+                "metadata": {},
+            }
+        )
+        assert location_matches("Singapore", district.location)
+        assert location_matches("Singapore", islandwide.location)
+        assert not location_matches("Singapore", overseas.location)
+        assert listing_matches_requested_locations(district, ["Singapore"])
+        assert listing_matches_requested_locations(islandwide, ["SG"])
+        assert listing_matches_requested_locations(islandwide, ["Remote"]) is False
+        assert not listing_matches_requested_locations(overseas, ["Singapore"])
+        assert listing_matches_requested_locations(overseas, ["Malaysia"])
+        assert not listing_matches_requested_locations(district, ["New York"])
+        assert overseas.metadata["sg_board_overseas"] is True
+        assert district.metadata["sg_board_overseas"] is False
 
 
 class TestSearchCaps:
@@ -129,6 +206,20 @@ class TestSearchCaps:
         scraper = MyCareersFutureScraper(rate_limit=0)
         with pytest.raises(ScrapingException, match="disabled"):
             scraper.search(SearchParams(keywords=["software"]))
+
+    def test_search_skips_non_singapore_location(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """US/UK searches do not call the MCF API."""
+        monkeypatch.setenv("MCF_ENABLED", "true")
+        scraper = MyCareersFutureScraper(rate_limit=0)
+        with patch.object(scraper, "_fetch_page") as fetch:
+            collection = scraper.search(
+                SearchParams(keywords=["AI", "Engineer"], location="New York")
+            )
+        fetch.assert_not_called()
+        assert collection.listings == []
+        assert collection.metadata.get("skipped") is True
 
     def test_max_results_constant(self) -> None:
         """Hard cap stays conservative for personal-use tooling."""

@@ -5,7 +5,13 @@ import type {
   CustomStatus,
 } from "@/lib/types/api";
 
-export type JobAction = "save" | "unsave" | "hide" | "unhide";
+export type JobAction = "save" | "unsave" | "hide" | "unhide" | "untrack";
+
+/** Shared TanStack Query key for the All / Jobs dashboard payload. */
+export const APPLICATIONS_DASHBOARD_QUERY_KEY = [
+  "applications",
+  "dashboard",
+] as const;
 
 export interface DashboardFilters {
   status?: string;
@@ -58,7 +64,12 @@ export const applicationsApi = {
       message: string;
     }>("POST", "/applications/external", { body: data }),
 
-  markAppliedExternally: (jobId: string, jobTitle?: string, company?: string) =>
+  markAppliedExternally: (
+    jobId: string,
+    jobTitle?: string,
+    company?: string,
+    metadata?: Record<string, unknown>,
+  ) =>
     request<{ success: boolean; message: string }>(
       "POST",
       "/applications/external",
@@ -68,6 +79,7 @@ export const applicationsApi = {
           job_title: jobTitle || "Unknown",
           company: company || "Unknown",
           application_method: "External site",
+          metadata: metadata ?? {},
         },
       },
     ),
@@ -92,8 +104,13 @@ export const applicationsApi = {
       body: { job_id: jobId, custom_status_id: customStatusId, note },
     }),
 
-  updateStatus: (jobId: string, status: string, note?: string) =>
+  updateStatus: (
+    jobId: string,
+    status: string,
+    note?: string,
+    metadata?: Record<string, unknown>,
+  ) =>
     request<{ success: boolean }>("PUT", "/applications/status", {
-      body: { job_id: jobId, status, note },
+      body: { job_id: jobId, status, note, metadata },
     }),
 };

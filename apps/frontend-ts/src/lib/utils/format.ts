@@ -90,13 +90,7 @@ export function formatSalaryRange(
     new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: normalizedCurrency as
-        | "USD"
-        | "EUR"
-        | "GBP"
-        | "SGD"
-        | "CAD"
-        | "AUD"
-        | "INR",
+        "USD" | "EUR" | "GBP" | "SGD" | "CAD" | "AUD" | "INR",
       maximumFractionDigits: 0,
     }).format(v);
   if (min_amount && max_amount)

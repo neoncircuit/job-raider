@@ -2,6 +2,8 @@
 Unit tests for application tracker feature.
 """
 
+import json
+
 import pytest
 
 from src.metrics.outcome_tracker import (
@@ -74,6 +76,38 @@ class TestApplicationTracker:
         assert outcome.external_application_details is not None
         assert outcome.external_application_details["application_method"] == "referral"
         assert "tracked_at" in outcome.external_application_details
+
+    def test_long_job_id_saves_without_enametoolong(self, temp_data_dir):
+        """JSearch-style ids must not be used as the raw filename."""
+        from src.metrics.outcome_tracker import application_filename_stem
+
+        long_id = "b29x" + "A" * 400 + ":colon"
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        outcome = tracker.track_external_application(
+            job_id=long_id,
+            job_title="AI Engineer",
+            company="Acme",
+            application_method="External site",
+        )
+        assert outcome.application_id == long_id
+        stem = application_filename_stem(long_id)
+        assert len(stem) < 80
+        assert stem.startswith("id_")
+        path = temp_data_dir / f"{stem}.json"
+        assert path.exists()
+        loaded_on_disk = json.loads(path.read_text(encoding="utf-8"))
+        assert loaded_on_disk["application_id"] == long_id
+
+        reloaded = OutcomeTracker(storage_dir=str(temp_data_dir))
+        loaded = reloaded.get_application(long_id)
+        assert loaded is not None
+        assert loaded.job_title == "AI Engineer"
+        assert loaded.current_status == ApplicationStatus.APPLIED_ELSEWHERE
+
+        all_apps = reloaded.get_all_applications()
+        assert any(o.application_id == long_id for o in all_apps)
+        external = reloaded.get_external_applications()
+        assert any(o.application_id == long_id for o in external)
 
     def test_create_custom_status(self, temp_data_dir):
         """Test creating custom status."""
@@ -174,6 +208,69 @@ class TestApplicationTracker:
         apps = reader.get_all_applications()
         assert any(o.application_id == "ext_peer" for o in apps)
 
+    def test_applied_elsewhere_transitions_to_interview(self, temp_data_dir):
+        """Applied-elsewhere rows can move to the same interview stage as regular apps."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            "ext_interview",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+            metadata={"description": "A" * 60},
+        )
+
+        success = tracker.update_status(
+            "ext_interview",
+            ApplicationStatus.SCREENING_SCHEDULED,
+        )
+        assert success is True
+        outcome = tracker.get_application("ext_interview")
+        assert outcome is not None
+        assert outcome.current_status == ApplicationStatus.SCREENING_SCHEDULED
+        assert len(outcome.metadata.get("description", "")) >= 50
+
+    def test_update_status_merges_job_description(self, temp_data_dir):
+        """A later JD paste must merge into metadata without dropping the row."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            "ext_paste",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+        )
+
+        success = tracker.update_status(
+            "ext_paste",
+            ApplicationStatus.APPLIED_ELSEWHERE,
+            metadata={"description": "B" * 80},
+        )
+        assert success is True
+        outcome = tracker.get_application("ext_paste")
+        assert outcome is not None
+        assert outcome.current_status == ApplicationStatus.APPLIED_ELSEWHERE
+        assert outcome.metadata["description"] == "B" * 80
+
+    def test_retrack_does_not_reset_interview_status(self, temp_data_dir):
+        """Re-tracking an interview-stage row must keep the interview status."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            "ext_keep",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+        )
+        tracker.update_status("ext_keep", ApplicationStatus.SCREENING_SCHEDULED)
+
+        updated = tracker.track_external_application(
+            "ext_keep",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+            metadata={"description": "C" * 70},
+        )
+        assert updated.current_status == ApplicationStatus.SCREENING_SCHEDULED
+        assert updated.metadata["description"] == "C" * 70
+
     def test_external_preserves_bookmark(self, temp_data_dir):
         """Marking applied elsewhere should not drop an existing bookmark."""
         tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
@@ -183,6 +280,42 @@ class TestApplicationTracker:
         )
         assert outcome.current_status == ApplicationStatus.APPLIED_ELSEWHERE
         assert outcome.is_bookmarked is True
+
+    def test_delete_application_short_id(self, temp_data_dir):
+        """Untrack must remove the cache entry and the short-id JSON file."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            "ext_del_1", "Developer", "Startup", application_method="External site"
+        )
+        path = temp_data_dir / "ext_del_1.json"
+        assert path.exists()
+
+        assert tracker.delete_application("ext_del_1") is True
+        assert tracker.get_application("ext_del_1") is None
+        assert not path.exists()
+        assert tracker.delete_application("ext_del_1") is False
+
+    def test_delete_application_hashed_id(self, temp_data_dir):
+        """Untrack must resolve hashed id_*.json stems from the logical job id."""
+        from src.metrics.outcome_tracker import application_filename_stem
+
+        long_id = "b29x" + "B" * 400 + ":colon"
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            long_id, "AI Engineer", "Acme", application_method="External site"
+        )
+        path = temp_data_dir / f"{application_filename_stem(long_id)}.json"
+        assert path.exists()
+        assert path.name.startswith("id_")
+
+        assert tracker.delete_application(long_id) is True
+        assert tracker.get_application(long_id) is None
+        assert not path.exists()
+        remaining = OutcomeTracker(storage_dir=str(temp_data_dir))
+        assert remaining.get_application(long_id) is None
+        assert all(
+            o.application_id != long_id for o in remaining.get_all_applications()
+        )
 
     def test_unsave_job(self, temp_data_dir):
         """Test unsaving a job."""

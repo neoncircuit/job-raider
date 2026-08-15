@@ -22,11 +22,7 @@ import { CoverLetterValidationDisplay } from "@/components/cover-letter-validati
 import { ScoreExplanationDisplay } from "@/components/score-explanation";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatSalaryRange } from "@/lib/utils/format";
-import {
-  formatJobDescription,
-  isBulletPoint,
-  cleanBulletPoint,
-} from "@/lib/utils/job-description";
+import { JobDescriptionBody } from "@/components/jobs/job-description-body";
 import { SOURCE_COLORS } from "@/lib/utils/constants";
 import { toast } from "sonner";
 import type { JobListing } from "@/lib/types/api";
@@ -298,42 +294,7 @@ export function JobDetail({
             <p className="text-xs font-semibold uppercase tracking-wide text-foreground mb-4 border-b border-border pb-2">
               Job Description
             </p>
-            <div className="space-y-5">
-              {formatJobDescription(job.description).map((section, idx) => (
-                <div key={idx} className="space-y-3">
-                  {section.title && (
-                    <h3 className="text-lg font-bold capitalize border-l-4 border-primary pl-3 py-2 bg-muted rounded-r shadow-sm">
-                      {section.title}
-                    </h3>
-                  )}
-                  <div className="space-y-2">
-                    {section.content.map((line, lineIdx) => {
-                      const isBullet = isBulletPoint(line);
-                      const cleanText = cleanBulletPoint(line);
-
-                      return (
-                        <div
-                          key={lineIdx}
-                          className={cn(
-                            "text-sm text-foreground",
-                            isBullet
-                              ? "flex gap-3 items-start"
-                              : "leading-relaxed",
-                          )}
-                        >
-                          {isBullet && (
-                            <span className="shrink-0 font-bold mt-0.5 text-lg text-primary">
-                              •
-                            </span>
-                          )}
-                          <span className="flex-1">{cleanText}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <JobDescriptionBody markdown={job.description} />
           </div>
         ) : (
           <div>

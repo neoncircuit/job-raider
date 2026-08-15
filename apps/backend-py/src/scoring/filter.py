@@ -14,8 +14,8 @@ from typing import List, Optional, Set
 
 from ..models.job_listing import ExperienceLevel, JobListing, JobListingCollection
 from ..models.user_profile import UserProfile
-from ..utils.location_normalizer import location_matches
 from ..utils.logger import Components, get_logger
+from ..utils.source_geography import listing_matches_requested_locations
 
 
 class MatchReason(str, Enum):
@@ -154,12 +154,11 @@ class JobFilter:
 
         # Check location
         if self.locations:
-            if listing.location:
-                for loc in self.locations:
-                    if location_matches(loc, listing.location):
-                        match_reasons.append(MatchReason.LOCATION)
-                        score += 10
-                        break
+            if listing_matches_requested_locations(
+                listing, self.locations, include_missing=False
+            ):
+                match_reasons.append(MatchReason.LOCATION)
+                score += 10
 
         # Check remote
         if self.remote_only and listing.is_remote:

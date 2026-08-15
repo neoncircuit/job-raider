@@ -125,7 +125,9 @@ function descriptionDuplicatesTechnologies(
  * @param durationMs - Elapsed parse time in milliseconds.
  * @returns Human-readable duration string, or null when missing.
  */
-function formatParseDuration(durationMs: number | null | undefined): string | null {
+function formatParseDuration(
+  durationMs: number | null | undefined,
+): string | null {
   if (durationMs == null || Number.isNaN(durationMs) || durationMs < 0) {
     return null;
   }
@@ -686,10 +688,10 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
                           p.description,
                           p.technologies,
                         ) && (
-                        <p className="mt-1.5 text-sm text-muted-foreground dark:text-muted-foreground leading-relaxed">
-                          {p.description}
-                        </p>
-                      )}
+                          <p className="mt-1.5 text-sm text-muted-foreground dark:text-muted-foreground leading-relaxed">
+                            {p.description}
+                          </p>
+                        )}
                       {(() => {
                         const displayDescription =
                           p.description &&

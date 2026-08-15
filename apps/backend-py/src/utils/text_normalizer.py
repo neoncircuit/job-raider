@@ -9,7 +9,7 @@ consumers work with clean text.
 
 import html
 import re
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 # Bullet characters to normalize to a consistent dash
 _BULLET_CHARS = re.compile(r"[•◦▪▸►‣⋅∙]")
@@ -111,10 +111,15 @@ _SECTION_KEYWORDS = [
     "requirements",
     "qualifications",
     "responsibilities",
+    "roles and responsibilities",
+    "key responsibilities",
     "what you'll do",
     "what you will do",
+    "what you will be working on",
     "about the role",
     "about the position",
+    "role summary",
+    "job summary",
     "job description",
     "position summary",
     "the basics",
@@ -125,6 +130,10 @@ _SECTION_KEYWORDS = [
     "preferred experience",
     "basic qualifications",
     "minimum qualifications",
+    "job requirements",
+    "minimum requirements",
+    "prerequisites",
+    "pre-requisites",
     "education",
     "benefits",
     "what we offer",
@@ -135,6 +144,28 @@ _SECTION_KEYWORDS = [
     "who we are",
     "our mission",
 ]
+
+_BLOCK_TAGS = (
+    "p",
+    "div",
+    "section",
+    "article",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "ul",
+    "ol",
+    "table",
+    "tr",
+    "blockquote",
+    "pre",
+    "hr",
+    "thead",
+    "tbody",
+)
 
 
 def normalize_job_description(raw_text: str) -> str:
@@ -159,8 +190,9 @@ def normalize_job_description(raw_text: str) -> str:
 
     text = raw_text
 
-    # 1. HTML cleanup
+    # 1. HTML cleanup: convert compact HTML to markdown, then strip leftovers
     text = html.unescape(text)
+    text = _html_to_markdown(text)
     text = _HTML_TAG_RE.sub("", text)
 
     # 2. Bullet normalization
@@ -264,6 +296,104 @@ def normalize_user_prose(raw_text: str, *, max_chars: int = 20000) -> str:
     return text if text else original
 
 
+def _html_to_markdown(raw: str) -> str:
+    """
+    Convert HTML job descriptions to Markdown.
+
+    Compact HTML (MyCareersFuture) has no whitespace between tags.
+    Block tags become paragraphs or ATX headings. Lists become ``- ``
+    items. Bold, italic, and http(s) links are preserved.
+
+    Args:
+        raw: Description that may contain HTML.
+
+    Returns:
+        Markdown text.
+    """
+    if "<" not in raw:
+        return raw
+
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(raw, "html.parser")
+
+    for anchor in soup.find_all("a"):
+        href = (anchor.get("href") or "").strip()
+        label = anchor.get_text(" ", strip=True)
+        if href.startswith(("http://", "https://", "mailto:")) and label:
+            anchor.replace_with(f"[{label}]({href})")
+        else:
+            anchor.replace_with(label)
+
+    for tag in soup.find_all(["strong", "b"]):
+        inner = tag.get_text().strip()
+        tag.replace_with(f"**{inner}**" if inner else "")
+
+    for tag in soup.find_all(["em", "i"]):
+        inner = tag.get_text().strip()
+        tag.replace_with(f"*{inner}*" if inner else "")
+
+    for br in soup.find_all("br"):
+        br.replace_with("\n")
+
+    for level, name in enumerate(["h1", "h2", "h3", "h4", "h5", "h6"], start=1):
+        hashes = "#" * min(level, 3)
+        for tag in soup.find_all(name):
+            title = tag.get_text(" ", strip=True)
+            tag.replace_with(f"\n\n{hashes} {title}\n\n" if title else "")
+
+    for li in soup.find_all("li"):
+        item = li.get_text(" ", strip=True)
+        li.replace_with(f"\n- {item}\n" if item else "")
+
+    for tag in soup.find_all(["p", "div", "section", "article"]):
+        block = tag.get_text(" ", strip=True)
+        heading = _markdown_heading_from_block(block)
+        if heading:
+            tag.replace_with(f"\n\n{heading}\n\n")
+        else:
+            tag.insert_before("\n")
+            tag.append("\n")
+
+    return soup.get_text()
+
+
+def _header_plain_text(line: str) -> str:
+    """
+    Strip markdown heading marks and bold wrappers from a header line.
+
+    Args:
+        line: A single line that may include ``##`` or ``**``.
+
+    Returns:
+        Plain header text.
+    """
+    text = line.strip()
+    text = re.sub(r"^#{1,6}\s*", "", text)
+    text = re.sub(r"^\*\*(.+)\*\*$", r"\1", text).strip()
+    return text
+
+
+def _markdown_heading_from_block(text: str) -> Optional[str]:
+    """
+    Return an ATX heading when a block is a section title.
+
+    Args:
+        text: Plain or bold-only block text.
+
+    Returns:
+        ``## Title`` or None.
+    """
+    if not text:
+        return None
+    stripped = _header_plain_text(text).rstrip(":").strip()
+    if not stripped or len(stripped) > 80:
+        return None
+    if _is_section_header(stripped) or _is_section_header(f"{stripped}:"):
+        return f"## {stripped}"
+    return None
+
+
 def _truncate_near_paragraph(text: str, max_chars: int) -> str:
     """Truncate text at a paragraph boundary when near max_chars.
 
@@ -325,7 +455,11 @@ def _separate_sections(text: str) -> str:
         if _is_section_header(stripped):
             if result_lines and result_lines[-1].strip():
                 result_lines.append("")
-            result_lines.append(stripped)
+            heading = stripped
+            if not heading.startswith("#"):
+                plain = _header_plain_text(heading).rstrip(":").strip()
+                heading = f"## {plain}" if plain else stripped
+            result_lines.append(heading)
             if i + 1 < len(lines) and lines[i + 1].strip():
                 result_lines.append("")
         else:
@@ -346,17 +480,21 @@ def _is_section_header(line: str) -> bool:
     if not line:
         return False
 
+    plain = _header_plain_text(line)
+    if not plain:
+        return False
+
     # Lines ending with colon
-    if line.endswith(":") and len(line) > 3:
+    if plain.endswith(":") and len(plain) > 3:
         return True
 
     # ALL CAPS lines (at least 3 alpha chars, not just separators)
-    if line == line.upper() and len(re.findall(r"[A-Z]", line)) >= 3:
-        if not re.match(r"^[\s\-_=*]+$", line):
+    if plain == plain.upper() and len(re.findall(r"[A-Z]", plain)) >= 3:
+        if not re.match(r"^[\s\-_=*]+$", plain):
             return True
 
     # Known section keywords (case-insensitive)
-    lower = line.lower().rstrip(":")
+    lower = plain.lower().rstrip(":")
     for keyword in _SECTION_KEYWORDS:
         if lower == keyword:
             return True

@@ -462,7 +462,9 @@ def test_calc_grounding_penalty_includes_duration_and_metric():
             "sentence": "Over 2 years of ML deployment",
             "claimed_years": 2.0,
             "cap_years": 1.0,
-            "flags": ["Inflated duration: claimed 2 years exceeds resume cap of 1 years"],
+            "flags": [
+                "Inflated duration: claimed 2 years exceeds resume cap of 1 years"
+            ],
         }
     ]
     metrics = [
@@ -496,10 +498,7 @@ def test_redact_unsupported_technologies_strips_jd_only_stack():
             Skill(name="Python", category=SkillCategory.PROGRAMMING_LANGUAGE),
         ],
     )
-    text = (
-        "We need Python, TensorFlow, AWS, and Kubernetes. "
-        "React is a plus."
-    )
+    text = "We need Python, TensorFlow, AWS, and Kubernetes. " "React is a plus."
     redacted = redact_unsupported_technologies(text, profile)
     lowered = redacted.lower()
     assert "python" in lowered
@@ -596,7 +595,11 @@ def test_flag_analogical_claims_facilities_bridge():
         f"{item['sentence']} {' '.join(item['flags'])}" for item in findings
     ).lower()
     assert "work" in joined or "orders" in joined or "facility" in joined
-    assert any("analogical claim" in flag.lower() for item in findings for flag in item["flags"])
+    assert any(
+        "analogical claim" in flag.lower()
+        for item in findings
+        for flag in item["flags"]
+    )
 
 
 def test_flag_analogical_claims_allows_in_domain_prepared_me_for():
@@ -656,7 +659,9 @@ def test_calc_grounding_penalty_includes_analogical_claims():
     analogical = [
         {
             "sentence": sentence,
-            "flags": ["Analogical claim: resume work is mapped onto JD-only duties (orders)"],
+            "flags": [
+                "Analogical claim: resume work is mapped onto JD-only duties (orders)"
+            ],
         }
     ]
     penalty, breakdown = calc_grounding_penalty(

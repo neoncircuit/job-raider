@@ -8,7 +8,9 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
+import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -155,6 +157,34 @@ class ConversionMetrics:
     avg_time_to_reject: float  # days
 
 
+# Linux NAME_MAX is 255; keep a margin for ``.json`` and Windows MAX_PATH.
+_MAX_APPLICATION_FILENAME_STEM = 180
+_SAFE_FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def application_filename_stem(application_id: str) -> str:
+    """
+    Return a filesystem-safe stem for an application JSON file.
+
+    Long or unsafe job IDs (JSearch base64, characters like ``:``) are
+    hashed. The original id stays in the JSON ``application_id`` field.
+
+    Args:
+        application_id: Job / application id used as the logical key.
+
+    Returns:
+        Filename stem without ``.json``.
+    """
+    if (
+        application_id
+        and _SAFE_FILENAME_RE.match(application_id)
+        and len(application_id) <= _MAX_APPLICATION_FILENAME_STEM
+    ):
+        return application_id
+    digest = hashlib.sha256(application_id.encode("utf-8")).hexdigest()
+    return f"id_{digest}"
+
+
 class OutcomeTracker:
     """
     Track job application outcomes and conversion metrics.
@@ -229,24 +259,33 @@ class OutcomeTracker:
         application_id: str,
         status: ApplicationStatus,
         note: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Update application status.
+
+        Reloads from disk first so a peer API worker can update a record
+        that another worker created.
 
         Args:
             application_id: Application ID
             status: New status
             note: Optional note about the change
+            metadata: Optional metadata keys to merge (for example a JD)
 
         Returns:
             True if update successful
         """
+        self._reload_cache()
         outcome = self._outcomes.get(application_id)
         if not outcome:
             self.logger.warning(f"Application not found: {application_id}")
             return False
 
         outcome.current_status = status
+
+        if metadata:
+            outcome.metadata.update(metadata)
 
         if note:
             outcome.timeline_notes.append(
@@ -957,7 +996,14 @@ class OutcomeTracker:
         if existing:
             existing.job_title = job_title or existing.job_title
             existing.company = company or existing.company
-            existing.current_status = ApplicationStatus.APPLIED_ELSEWHERE
+            # Keep interview and outcome stages. Re-track must not reset them.
+            pre_apply = {
+                ApplicationStatus.SAVED_BOOKMARKED,
+                ApplicationStatus.NOT_INTERESTED,
+                ApplicationStatus.APPLIED_ELSEWHERE,
+            }
+            if existing.current_status in pre_apply:
+                existing.current_status = ApplicationStatus.APPLIED_ELSEWHERE
             existing.applied_date = application_date or existing.applied_date
             existing.external_application_details = details
             if metadata:
@@ -1065,6 +1111,36 @@ class OutcomeTracker:
             if o.current_status == ApplicationStatus.APPLIED_ELSEWHERE
         ]
 
+    def delete_application(self, application_id: str) -> bool:
+        """
+        Permanently remove an application record from cache and disk.
+
+        Uses the same filename stem as save, so hashed ``id_*.json`` files
+        are removed when the logical job id is passed.
+
+        Args:
+            application_id: Logical job / application id.
+
+        Returns:
+            True if a cache entry or file was removed.
+        """
+        self._reload_cache()
+        existed_in_cache = application_id in self._outcomes
+        if existed_in_cache:
+            del self._outcomes[application_id]
+
+        filepath = (
+            self.storage_dir / f"{application_filename_stem(application_id)}.json"
+        )
+        existed_on_disk = filepath.exists()
+        if existed_on_disk:
+            filepath.unlink()
+
+        if existed_in_cache or existed_on_disk:
+            self.logger.info(f"Deleted application: {application_id}")
+            return True
+        return False
+
     def unsave_job(self, job_id: str) -> bool:
         """
         Unsave/remove bookmark from a job.
@@ -1144,7 +1220,10 @@ class OutcomeTracker:
 
     def _save_outcome(self, outcome: ApplicationOutcome) -> None:
         """Save outcome to file."""
-        filepath = self.storage_dir / f"{outcome.application_id}.json"
+        filepath = (
+            self.storage_dir
+            / f"{application_filename_stem(outcome.application_id)}.json"
+        )
 
         data = self._serialize_outcome(outcome)
 

@@ -48,12 +48,8 @@ class TestListingCatalog:
         storage = JobListingStorage(str(tmp_path))
         first = datetime(2026, 8, 1, 12, 0, 0)
         second = datetime(2026, 8, 13, 12, 0, 0)
-        storage.upsert_listings(
-            [_listing("job-1", description="A" * 200)], now=first
-        )
-        storage.upsert_listings(
-            [_listing("job-1", description="short")], now=second
-        )
+        storage.upsert_listings([_listing("job-1", description="A" * 200)], now=first)
+        storage.upsert_listings([_listing("job-1", description="short")], now=second)
 
         loaded = storage.get_by_id("job-1")
         assert loaded is not None

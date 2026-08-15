@@ -36,7 +36,8 @@ class TestHTMLTagStripping:
             "We need a <strong>Python</strong> developer"
         )
         assert "<strong>" not in result
-        assert "Python developer" in result
+        assert "**Python**" in result
+        assert "developer" in result
 
     def test_strips_div_span(self):
         """div and span tags are removed."""
@@ -95,17 +96,20 @@ class TestSectionHeaderSeparation:
     def test_colon_ending_line_becomes_header(self):
         """Lines ending with colon get blank line separation."""
         result = normalize_job_description("Some intro\nRequirements:\n- Python\n- SQL")
-        assert "Requirements:\n\n- Python" in result
+        assert "## Requirements" in result
+        assert "- Python" in result
 
     def test_all_caps_line_becomes_header(self):
         """ALL CAPS lines get blank line separation."""
         result = normalize_job_description("Intro text\nREQUIREMENTS\n- Python")
-        assert "REQUIREMENTS\n\n- Python" in result
+        assert "## REQUIREMENTS" in result
+        assert "- Python" in result
 
     def test_known_keyword_becomes_header(self):
         """Known section keywords get blank line separation."""
         result = normalize_job_description("Intro\nresponsibilities\n- Build things")
-        assert "responsibilities\n\n- Build things" in result
+        assert "## responsibilities" in result
+        assert "- Build things" in result
 
 
 class TestBoilerplateRemoval:
@@ -176,9 +180,9 @@ class TestFullPipeline:
         # Whitespace collapsed
         assert "\n\n\n" not in result
 
-        # Section headers separated
-        assert "Requirements:\n\n-" in result
-        assert "RESPONSIBILITIES\n\n-" in result
+        # Section headers promoted to markdown
+        assert "## Requirements" in result
+        assert "## RESPONSIBILITIES" in result
 
         # Boilerplate removed
         assert "equal opportunity" not in result.lower()
@@ -186,3 +190,31 @@ class TestFullPipeline:
         # Core content preserved
         assert "Senior Python Developer" in result
         assert "San Francisco" in result
+
+
+class TestCompactHtmlJobDescriptions:
+    """MyCareersFuture-style HTML has no whitespace between tags."""
+
+    def test_block_tags_become_paragraphs(self) -> None:
+        """Compact <p> tags do not concatenate sentences."""
+        raw = (
+            "<p><strong>Role Summary</strong></p>"
+            "<p>We are seeking a Principal AI Engineer.</p>"
+            "<p><strong>Requirements:</strong></p>"
+            "<ul><li>Python</li><li>Docker</li></ul>"
+        )
+        result = normalize_job_description(raw)
+        assert "Role SummaryWe are" not in result
+        assert "## Role Summary" in result
+        assert "We are seeking a Principal AI Engineer." in result
+        assert "\n" in result
+        assert "- Python" in result
+        assert "- Docker" in result
+        assert "## Requirements" in result
+
+    def test_inline_tags_stay_in_flow(self) -> None:
+        """strong/em inside a sentence do not force a line break."""
+        result = normalize_job_description(
+            "We need a <strong>Python</strong> developer with <em>Docker</em>."
+        )
+        assert "We need a **Python** developer with *Docker*." in result

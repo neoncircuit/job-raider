@@ -377,9 +377,7 @@ class TestCoverLetterWriter:
         assert "AWS" not in context
         assert "Kubernetes" not in context
 
-    def test_prepare_job_context_mismatch_note(
-        self, mock_llm_router, sample_profile
-    ):
+    def test_prepare_job_context_mismatch_note(self, mock_llm_router, sample_profile):
         """Low JD overlap injects a domain-mismatch instruction into job context."""
         job = JobListing(
             title="Facilities Coordinator",

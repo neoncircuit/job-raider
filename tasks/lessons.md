@@ -890,6 +890,10 @@
 - Cap pages/results; default `MCF_ENABLED` with easy `0`/`false` disable
 - Register in manager only when enabled so `GET /jobs/sources` stays accurate
 - Document personal-use stance in decision-log and troubleshooting
+- Map board-specific locations so they match the Jobs default location filter. MCF districts (`Islandwide`, `D01 Marina...`) do not contain "Singapore"; without a suffix the post-filter drops every listing.
+- Prefer a source geography override for Singapore-only boards (MCF, Careers@Gov, JobStreet SG): match Singapore/remote by source, skip other countries, do not rely on district text. Do not add JobStreet country sites until Singapore is fully working.
+- Compact HTML JDs (MCF) concatenate into one blob if tags are stripped without converting block tags to newlines. Convert HTML to Markdown (headings, lists, bold, links) at ingest and render it in the Jobs panel.
+- Do not use raw job IDs as application filenames. JSearch IDs can exceed OS name limits (Errno 36). Hash long or unsafe IDs; keep the original id in JSON.
 
 #### Graceful Degradation When External APIs Are Unavailable
 
@@ -3102,6 +3106,63 @@
 - Join catalog `listing_status` by job_id. Missing catalog row is unknown, not expired.
 - Badge on All plus an Expired tab. No live URL HEAD.
 
+## Discover toast and Applications cache (2026-08-15)
 
+### Do not treat every mutation onError as "backend down"
+
+**Lesson:** A generic "Is the backend running?" toast hid a Pydantic 422 when Discover sent `mycareersfuture`. Health was fine.
+
+**How to apply:**
+- Keep request allowlists in sync with `GET /jobs/sources` and SourceSelector.
+- Show `ApiError.detail` for HTTP errors. Use the backend-down copy only for `ConnectionError`.
+- Flatten Pydantic 422 `detail` arrays so toasts are not `[object Object]`.
+
+### Share the applications dashboard query key
+
+**Lesson:** Jobs and Applications used different TanStack keys for the same dashboard GET. Mark-applied refreshed Jobs, then Applications remounted with a stale `["applications", "all"]` cache.
+
+**How to apply:**
+- Use one key (`["applications", "dashboard"]`) for the All payload.
+- Invalidate with `refetchType: "all"` so hidden tabs refetch too.
+
+### Isolate application API tests from live storage
+
+**Lesson:** `tests/integration/test_application_api.py` used the global `OutcomeTracker()` and wrote `dash_ext_1.json`, `nonexistent_job.json`, and similar stubs into `data/applications`. Those rows appeared on All Applications as 12 placeholders next to two real applied-elsewhere jobs.
+
+**How to apply:**
+- Patch `src.api.routes.applications.outcome_tracker` to a `tmp_path` tracker in API tests.
+- Do not use short test ids against the default `data/applications` directory.
+- All Applications must filter out `saved_bookmarked` and `not_interested`. Use Remove / untrack to delete accidental applies.
+
+## Applied-elsewhere interview path (2026-08-15)
+
+### Jobs apply-elsewhere is the real apply path
+
+**Lesson:** If in-app apply is dry-run only, `applied_elsewhere` is the tracked apply status. Interview UI that keys only on `applied` silently dead-ends those rows.
+
+**How to apply:**
+- Treat `applied` and `applied_elsewhere` the same for Proceed to interview.
+- Persist the listing description when marking applied-elsewhere from Jobs.
+- Do not reset an interview-stage status if `/applications/external` is called again.
+
+### Compose build frontend also rebuilds backend
+
+**Lesson:** `docker compose up --build --force-recreate frontend` rebuilds every image in the file, including the CUDA backend.
+
+**How to apply:**
+- Overlay backend with `docker/Dockerfile.overlay`, then `up --no-build --force-recreate backend`.
+- Build frontend alone: `docker compose build frontend` then `up -d --no-build --force-recreate frontend`.
+
+## Optional listing URL (2026-08-15)
+
+### Do not require a listing URL on applications
+
+**Lesson:** Applied-elsewhere and Track External must work without a URL. Show Open listing only when a cleaned http(s) URL exists.
+
+**How to apply:**
+- Store the URL in `metadata.source_url`. Do not add a required API field.
+- Add `https://` when the user pastes a host without a scheme.
+- Drop `javascript:`, `data:`, `file:`, and empty values before persist or render.
+- Run frontend Vitest through WSL or Docker when the Windows host is missing the Rollup optional binary.
 
 

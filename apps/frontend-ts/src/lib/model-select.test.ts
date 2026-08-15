@@ -51,9 +51,9 @@ describe("buildModelSelectOptions", () => {
     const selectable = options.filter((o) => !o.disabled).map((o) => o.value);
     expect(selectable).toContain("qwen2.5:7b");
     expect(selectable).not.toContain("catalog-only:1b");
-    expect(options.some((o) => o.value === "claude-sonnet-4-6" && o.disabled)).toBe(
-      true,
-    );
+    expect(
+      options.some((o) => o.value === "claude-sonnet-4-6" && o.disabled),
+    ).toBe(true);
   });
 });
 

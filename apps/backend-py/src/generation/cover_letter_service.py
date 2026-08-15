@@ -167,8 +167,7 @@ async def generate_cover_letter_for_profile(
                 critique = (
                     "DOMAIN MISMATCH: Do not invent job fit or analogical "
                     "bridges. Only delete invented claims and fix structure "
-                    "or tone.\n"
-                    + critique
+                    "or tone.\n" + critique
                 )
             rewrite_started = time.perf_counter()
             result = writer.rewrite(
@@ -251,9 +250,7 @@ async def generate_cover_letter_for_profile(
                     style=letter_style,
                 )
         except Exception as exc:
-            logger.error(
-                "Cover letter re-validation failed: %s", exc, exc_info=True
-            )
+            logger.error("Cover letter re-validation failed: %s", exc, exc_info=True)
             validation = _build_fallback_validation(result)
         validation.details["grounding_rewrite"] = {
             "applied": True,

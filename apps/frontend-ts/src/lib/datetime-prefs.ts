@@ -89,32 +89,43 @@ const TIME_ZONE_MODES = new Set<TimeZoneMode>(
 );
 
 /** Heuristic location fragment → IANA zone. */
-const LOCATION_TIME_ZONE_RULES: ReadonlyArray<{ pattern: RegExp; tz: string }> = [
-  { pattern: /\bsingapore\b/i, tz: "Asia/Singapore" },
-  { pattern: /\bkuala\s*lumpur\b|\bmalaysia\b/i, tz: "Asia/Kuala_Lumpur" },
-  { pattern: /\bjakarta\b|\bindonesia\b/i, tz: "Asia/Jakarta" },
-  { pattern: /\bbangkok\b|\bthailand\b/i, tz: "Asia/Bangkok" },
-  { pattern: /\bhong\s*kong\b/i, tz: "Asia/Hong_Kong" },
-  { pattern: /\btokyo\b|\bjapan\b/i, tz: "Asia/Tokyo" },
-  { pattern: /\bseoul\b|\bkorea\b/i, tz: "Asia/Seoul" },
-  { pattern: /\bshanghai\b|\bbeijing\b|\bchina\b/i, tz: "Asia/Shanghai" },
-  { pattern: /\bmumbai\b|\bdelhi\b|\bbengaluru\b|\bindia\b/i, tz: "Asia/Kolkata" },
-  { pattern: /\bsydney\b|\bmelbourne\b|\baustralia\b/i, tz: "Australia/Sydney" },
-  { pattern: /\blondon\b|\bunited\s*kingdom\b|\bengland\b|\buk\b/i, tz: "Europe/London" },
-  { pattern: /\bparis\b|\bfrance\b/i, tz: "Europe/Paris" },
-  { pattern: /\bberlin\b|\bgermany\b/i, tz: "Europe/Berlin" },
-  {
-    pattern: /\bnew\s*york\b|\bnyc\b|\bboston\b|\bwashington\b/i,
-    tz: "America/New_York",
-  },
-  { pattern: /\bchicago\b/i, tz: "America/Chicago" },
-  { pattern: /\bdenver\b|\bcolorado\b/i, tz: "America/Denver" },
-  {
-    pattern: /\blos\s*angeles\b|\bsan\s*francisco\b|\bseattle\b|\bcalifornia\b/i,
-    tz: "America/Los_Angeles",
-  },
-  { pattern: /\btoronto\b|\bcanada\b/i, tz: "America/Toronto" },
-];
+const LOCATION_TIME_ZONE_RULES: ReadonlyArray<{ pattern: RegExp; tz: string }> =
+  [
+    { pattern: /\bsingapore\b/i, tz: "Asia/Singapore" },
+    { pattern: /\bkuala\s*lumpur\b|\bmalaysia\b/i, tz: "Asia/Kuala_Lumpur" },
+    { pattern: /\bjakarta\b|\bindonesia\b/i, tz: "Asia/Jakarta" },
+    { pattern: /\bbangkok\b|\bthailand\b/i, tz: "Asia/Bangkok" },
+    { pattern: /\bhong\s*kong\b/i, tz: "Asia/Hong_Kong" },
+    { pattern: /\btokyo\b|\bjapan\b/i, tz: "Asia/Tokyo" },
+    { pattern: /\bseoul\b|\bkorea\b/i, tz: "Asia/Seoul" },
+    { pattern: /\bshanghai\b|\bbeijing\b|\bchina\b/i, tz: "Asia/Shanghai" },
+    {
+      pattern: /\bmumbai\b|\bdelhi\b|\bbengaluru\b|\bindia\b/i,
+      tz: "Asia/Kolkata",
+    },
+    {
+      pattern: /\bsydney\b|\bmelbourne\b|\baustralia\b/i,
+      tz: "Australia/Sydney",
+    },
+    {
+      pattern: /\blondon\b|\bunited\s*kingdom\b|\bengland\b|\buk\b/i,
+      tz: "Europe/London",
+    },
+    { pattern: /\bparis\b|\bfrance\b/i, tz: "Europe/Paris" },
+    { pattern: /\bberlin\b|\bgermany\b/i, tz: "Europe/Berlin" },
+    {
+      pattern: /\bnew\s*york\b|\bnyc\b|\bboston\b|\bwashington\b/i,
+      tz: "America/New_York",
+    },
+    { pattern: /\bchicago\b/i, tz: "America/Chicago" },
+    { pattern: /\bdenver\b|\bcolorado\b/i, tz: "America/Denver" },
+    {
+      pattern:
+        /\blos\s*angeles\b|\bsan\s*francisco\b|\bseattle\b|\bcalifornia\b/i,
+      tz: "America/Los_Angeles",
+    },
+    { pattern: /\btoronto\b|\bcanada\b/i, tz: "America/Toronto" },
+  ];
 
 /**
  * Return whether a value is a known datetime format id.
@@ -133,7 +144,9 @@ export function isDateTimeFormatId(value: unknown): value is DateTimeFormatId {
  * @returns True when the mode is supported.
  */
 export function isTimeZoneMode(value: unknown): value is TimeZoneMode {
-  return typeof value === "string" && TIME_ZONE_MODES.has(value as TimeZoneMode);
+  return (
+    typeof value === "string" && TIME_ZONE_MODES.has(value as TimeZoneMode)
+  );
 }
 
 /**

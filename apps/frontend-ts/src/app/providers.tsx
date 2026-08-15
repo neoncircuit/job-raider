@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { createContext, useContext, useMemo, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import type { JobSearchRequest } from "@/lib/api/jobs";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("Providers");
@@ -27,6 +28,26 @@ interface AppState {
   activeRunId: string | null;
   /** Set the active automation run ID. */
   setActiveRunId: Dispatch<SetStateAction<string | null>>;
+  /** Last committed Jobs search request, or null for the shortlist feed. */
+  jobsSearchParams: JobSearchRequest | null;
+  /** Set the last committed Jobs search request. */
+  setJobsSearchParams: Dispatch<SetStateAction<JobSearchRequest | null>>;
+  /** When true, Jobs ignores the shortlist and waits for a live search. */
+  jobsPreferSearch: boolean;
+  /** Set whether Jobs prefers a live search over the shortlist. */
+  setJobsPreferSearch: Dispatch<SetStateAction<boolean>>;
+  /** Google Jobs fallback query, or null when unused. */
+  jobsGoogleQuery: string | null;
+  /** Set the Google Jobs fallback query. */
+  setJobsGoogleQuery: Dispatch<SetStateAction<string | null>>;
+  /** When true, Jobs list includes expired catalog listings. */
+  jobsShowExpired: boolean;
+  /** Set whether expired Jobs listings are shown. */
+  setJobsShowExpired: Dispatch<SetStateAction<boolean>>;
+  /** When true, Jobs list keeps only listings scraped today. */
+  jobsScrapedTodayOnly: boolean;
+  /** Set whether Jobs is limited to listings scraped today. */
+  setJobsScrapedTodayOnly: Dispatch<SetStateAction<boolean>>;
 }
 
 const AppStateContext = createContext<AppState | null>(null);
@@ -74,6 +95,12 @@ export function Providers({ children }: ProvidersProps) {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [jobsPage, setJobsPage] = useState(0);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [jobsSearchParams, setJobsSearchParams] =
+    useState<JobSearchRequest | null>(null);
+  const [jobsPreferSearch, setJobsPreferSearch] = useState(false);
+  const [jobsGoogleQuery, setJobsGoogleQuery] = useState<string | null>(null);
+  const [jobsShowExpired, setJobsShowExpired] = useState(false);
+  const [jobsScrapedTodayOnly, setJobsScrapedTodayOnly] = useState(false);
 
   logger.info("Providers mounted");
 
@@ -93,6 +120,16 @@ export function Providers({ children }: ProvidersProps) {
             setJobsPage,
             activeRunId,
             setActiveRunId,
+            jobsSearchParams,
+            setJobsSearchParams,
+            jobsPreferSearch,
+            setJobsPreferSearch,
+            jobsGoogleQuery,
+            setJobsGoogleQuery,
+            jobsShowExpired,
+            setJobsShowExpired,
+            jobsScrapedTodayOnly,
+            setJobsScrapedTodayOnly,
           }}
         >
           {children}

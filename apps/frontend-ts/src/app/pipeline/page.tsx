@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
 import { toast } from "sonner";
 import { Play, Square, Wifi, WifiOff } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { pipelineApi } from "@/lib/api/pipeline";
 import { jobsApi } from "@/lib/api/jobs";
 import type { WSMessage } from "@/lib/types/websocket";
@@ -151,8 +152,13 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
         skip_submission: v.mode === "discover" ? true : v.skipSubmission,
       }),
     onSuccess: (data) => onStarted(data.run_id),
-    onError: () =>
-      toast.error("Failed to start pipeline. Is the backend running?"),
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Failed to start pipeline. Is the backend running?",
+        ),
+      ),
   });
 
   const dryRun = useWatch({ control, name: "dryRun" });

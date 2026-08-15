@@ -47,6 +47,9 @@ export const STATUS_COLORS: Record<string, string> = {
   degraded: "bg-warning/10 text-warning border-warning/30",
   unhealthy: "bg-destructive/10 text-destructive border-destructive/30",
   unknown: "bg-muted text-muted-foreground",
+  applied: "bg-info/10 text-info border-info/30",
+  applied_elsewhere: "bg-success/10 text-success border-success/30",
+  saved_bookmarked: "bg-info/10 text-info border-info/30",
 };
 
 export const DEFAULT_SOURCES = ["linkedin", "jsearch"];

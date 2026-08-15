@@ -16,8 +16,8 @@ from ...pipeline.shortlist import serialize_listing, serialize_scored_job
 from ...scoring.matcher import JobMatcher
 from ...scrapers.manager import ScraperManager
 from ...scrapers.storage import JobListingStorage
-from ...utils.location_normalizer import location_matches
 from ...utils.logger import Components, get_logger
+from ...utils.source_geography import listing_matches_requested_locations
 from ..models.requests import JobSearchRequest, SemanticSearchRequest
 from ..models.responses import SemanticSearchResult
 from . import profile as profile_state
@@ -132,6 +132,7 @@ async def search_jobs(
         keywords=request.keywords,
         location=location,
         limit=request.limit,
+        remote=request.remote_only,
     )
 
     # Scrape jobs
@@ -150,16 +151,11 @@ async def search_jobs(
         # Filter by location if specified (post-filter to ensure API results match)
         if request.locations:
             logger.info(f"[JOBS_SEARCH] Applying location filter: {request.locations}")
-            filtered_listings = []
-            for listing in all_listings:
-                # Include listings with no location; otherwise match any requested
-                # location using alias-aware matching.
-                if not listing.location or any(
-                    location_matches(req_loc, listing.location)
-                    for req_loc in request.locations
-                ):
-                    filtered_listings.append(listing)
-            all_listings = filtered_listings
+            all_listings = [
+                listing
+                for listing in all_listings
+                if listing_matches_requested_locations(listing, request.locations)
+            ]
             logger.info(f"After location filtering: {len(all_listings)} jobs")
 
         logger.info(

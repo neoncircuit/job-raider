@@ -1,10 +1,99 @@
 /**
- * Job description formatting utilities
+ * Job description formatting utilities.
+ *
+ * Scraped listings are stored as Markdown (ATX headings, lists, bold).
+ * The Jobs panel renders that Markdown; these helpers also keep a
+ * section-parser fallback for older plain-text listings.
  */
 
 export interface JobDescriptionSection {
   title: string;
   content: string[];
+}
+
+export type JobMarkdownBlock =
+  | { type: "heading"; text: string }
+  | { type: "paragraph"; text: string }
+  | { type: "list"; ordered: boolean; items: string[] };
+
+/**
+ * Parse stored job-description Markdown into render blocks.
+ *
+ * Args:
+ *   markdown: Description text from the Jobs API.
+ *
+ * Returns:
+ *   Heading, paragraph, and list blocks in document order.
+ */
+export function parseJobMarkdown(markdown: string): JobMarkdownBlock[] {
+  if (!markdown || !markdown.trim()) {
+    return [];
+  }
+
+  const blocks: JobMarkdownBlock[] = [];
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  let paragraph: string[] = [];
+  let list: { ordered: boolean; items: string[] } | null = null;
+
+  const flushParagraph = () => {
+    if (paragraph.length === 0) return;
+    const text = paragraph.join(" ").trim();
+    paragraph = [];
+    if (text) {
+      blocks.push({ type: "paragraph", text });
+    }
+  };
+
+  const flushList = () => {
+    if (!list) return;
+    if (list.items.length > 0) {
+      blocks.push({ type: "list", ordered: list.ordered, items: list.items });
+    }
+    list = null;
+  };
+
+  for (const raw of lines) {
+    const heading = raw.match(/^#{1,6}\s+(.+)$/);
+    const unordered = raw.match(/^[-*+]\s+(.+)$/);
+    const ordered = raw.match(/^\d+[.)]\s+(.+)$/);
+
+    if (!raw.trim()) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+    if (heading) {
+      flushParagraph();
+      flushList();
+      blocks.push({ type: "heading", text: heading[1].trim() });
+      continue;
+    }
+    if (unordered) {
+      flushParagraph();
+      if (!list || list.ordered) {
+        flushList();
+        list = { ordered: false, items: [] };
+      }
+      list.items.push(unordered[1].trim());
+      continue;
+    }
+    if (ordered) {
+      flushParagraph();
+      if (!list || !list.ordered) {
+        flushList();
+        list = { ordered: true, items: [] };
+      }
+      list.items.push(ordered[1].trim());
+      continue;
+    }
+
+    flushList();
+    paragraph.push(raw.trim());
+  }
+
+  flushParagraph();
+  flushList();
+  return blocks;
 }
 
 /**
@@ -49,9 +138,9 @@ function cleanDescription(text: string): string {
  */
 const SECTION_PATTERNS = [
   // Only match clear, unambiguous section headers
-  /^(About (the )?(role|job|position|us|company|team))/i,
-  /^(Responsibilities|What you'll do|What you will do|Key responsibilities|Your role)/i,
-  /^(Requirements|Qualifications|What you'll need|What you will need|Must have|Required skills)/i,
+  /^(About (the )?(role|job|position|us|company|team)|Role summary|Job summary)/i,
+  /^(Responsibilities|Roles and responsibilities|What you'll do|What you will do|Key responsibilities|Your role)/i,
+  /^(Requirements|Qualifications|Job requirements|Minimum requirements|What you'll need|What you will need|Must have|Required skills|Pre-?requisites)/i,
   /^(Nice to have|Preferred qualifications|Bonus points|Plus)/i,
   /^(Benefits|Perks|What we offer|Compensation|What you get)/i,
   /(About you|Your profile)/i,
@@ -75,7 +164,7 @@ function parseSections(text: string): JobDescriptionSection[] {
   const sections: JobDescriptionSection[] = [];
   const lines = text
     .split("\n")
-    .map((l) => l.trim())
+    .map((l) => l.replace(/^#{1,6}\s*/, "").trim())
     .filter((l) => l.length > 0);
 
   let currentSection: JobDescriptionSection = {

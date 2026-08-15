@@ -29,6 +29,7 @@ from ..models.job_listing import (
     Skill,
     WorkMode,
 )
+from ..utils.source_geography import singapore_board_applies
 from .base import BaseScraper, ScrapingException, SearchParams
 
 logger = logging.getLogger(__name__)
@@ -138,6 +139,22 @@ class MyCareersFutureScraper(BaseScraper):
         if not mcf_enabled():
             raise ScrapingException(
                 "MyCareersFuture adapter is disabled (MCF_ENABLED=0)"
+            )
+
+        if not singapore_board_applies(params.location, remote=params.remote):
+            logger.info(
+                "Skipping MyCareersFuture: location %r is outside Singapore/remote",
+                params.location,
+            )
+            return JobListingCollection(
+                listings=[],
+                source=self.source_name,
+                metadata={
+                    "search_params": params.model_dump(),
+                    "skipped": True,
+                    "skip_reason": "location_outside_singapore",
+                    "searched_at": datetime.now().isoformat(),
+                },
             )
 
         query = " ".join(params.keywords).strip() or "software"
@@ -282,14 +299,25 @@ class MyCareersFutureScraper(BaseScraper):
             slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or "job"
             source_url = f"{MCF_PUBLIC_JOB_BASE}/{slug}/{uuid}"
 
-        location = self._format_location(raw.get("address") or {})
+        address = raw.get("address") or {}
+        location = self._format_location(address)
         description = raw.get("description") or ""
+        other_req = (raw.get("otherRequirements") or "").strip()
+        description_parts: List[str] = []
+        if description:
+            cleaned = self._clean_description(description)
+            if cleaned:
+                description_parts.append(cleaned)
+        if other_req:
+            cleaned_req = self._clean_description(other_req)
+            if cleaned_req:
+                description_parts.append("Requirements:\n\n" + cleaned_req)
+        description = "\n\n".join(description_parts)
         if description:
             description = self._clean_description(description)
-            if len(description) > 10000:
-                description = description[:10000]
+        if len(description) > 10000:
+            description = description[:10000]
 
-        other_req = (raw.get("otherRequirements") or "").strip()
         requirements: List[JobRequirement] = []
         if other_req:
             cleaned = self._clean_description(other_req)
@@ -361,8 +389,28 @@ class MyCareersFutureScraper(BaseScraper):
                     if isinstance(c, dict) and c.get("category")
                 ],
                 "mcf_uen": company_obj.get("uen"),
+                "sg_board_overseas": bool(address.get("isOverseas")),
             },
         )
+
+    @staticmethod
+    def _with_singapore(text: str) -> str:
+        """
+        Append Singapore for display. Geography matching uses source
+        policy (Singapore-scoped boards), not this suffix.
+
+        MCF districts are local names (``Islandwide``, ``D01 Marina...``).
+
+        Args:
+            text: District or street location.
+
+        Returns:
+            Location string that includes Singapore when missing.
+        """
+        cleaned = text.strip()
+        if "singapore" in cleaned.lower():
+            return cleaned
+        return f"{cleaned}, Singapore"
 
     @staticmethod
     def _format_location(address: Dict[str, Any]) -> Optional[str]:
@@ -382,7 +430,7 @@ class MyCareersFutureScraper(BaseScraper):
         if districts and isinstance(districts[0], dict):
             loc = districts[0].get("location")
             if loc:
-                return str(loc)
+                return MyCareersFutureScraper._with_singapore(str(loc))
         parts = [
             p
             for p in [
@@ -393,7 +441,9 @@ class MyCareersFutureScraper(BaseScraper):
             if p
         ]
         if parts:
-            return ", ".join(str(p) for p in parts) + ", Singapore"
+            return MyCareersFutureScraper._with_singapore(
+                ", ".join(str(p) for p in parts)
+            )
         return None
 
     @staticmethod

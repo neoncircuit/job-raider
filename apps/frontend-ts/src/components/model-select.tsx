@@ -76,9 +76,7 @@ export function TaskModelSelect({
   const valueAllowed = options.some(
     (opt) => opt.value === value && !opt.disabled,
   );
-  const effectiveValue = valueAllowed
-    ? value
-    : SETTINGS_DEFAULT_MODEL_VALUE;
+  const effectiveValue = valueAllowed ? value : SETTINGS_DEFAULT_MODEL_VALUE;
 
   useEffect(() => {
     if (isLoading || options.length === 0) return;

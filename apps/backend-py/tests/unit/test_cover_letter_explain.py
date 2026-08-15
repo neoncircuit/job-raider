@@ -126,9 +126,7 @@ class TestExplainFit:
         assert isinstance(data["fit_score"], int)
         assert 0 <= data["fit_score"] <= 100
 
-    def test_matching_python_job_omits_weak_fit_guard(
-        self, client: TestClient
-    ) -> None:
+    def test_matching_python_job_omits_weak_fit_guard(self, client: TestClient) -> None:
         """An overlapping software JD must not inject the skip/mismatch guard."""
         router = _mock_router(VALID_EXPLANATION_JSON)
         with patch(
