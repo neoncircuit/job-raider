@@ -32,6 +32,7 @@ export const SOURCE_COLORS: Record<string, string> = {
   jsearch: "bg-primary text-primary-foreground",
   mycareersfuture: "bg-success text-success-foreground",
   jobstreet: "bg-warning text-warning-foreground",
+  careersatgov: "bg-accent text-accent-foreground",
   manual: "bg-muted text-muted-foreground",
 };
 

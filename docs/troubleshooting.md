@@ -93,9 +93,30 @@ Then recreate the backend so `ScraperManager` rebuilds without the source. `GET 
 - Backend logs: `JobStreet API returned HTTP 429` or timeouts.
 - Increase delay in `config/scrapers_config.yaml` under `jobstreet.rate_limit_delay`, or disable with `JOBSTREET_ENABLED=0`.
 
-### Careers@Gov (deferred)
+### Careers@Gov delayed dump
 
-A live Careers@Gov scraper is not implemented. Phase 0 found no public search JSON on `jobs.careers.gov.sg`. Do not scrape HTML or confidential OData. Use paste or Track External until a documented public API exists.
+Live search JSON on `jobs.careers.gov.sg` is still absent. Phase 1 uses the public OpenGovSG dump (`job-listings.json`), not HTML, Playwright, or unpublished OData. The dump is typically 0.5-2 days behind the live board. Rows carry `catalog_kind=delayed_dump` and `dump_snapshot_at`. `last_seen_at` is the dump snapshot, not the scrape clock, so old dumps do not show as Scraped today.
+
+Default is **off**. To enable:
+
+```bash
+# In apps/backend-py/.env (or container env)
+CAREERSATGOV_ENABLED=1
+```
+
+Then recreate the backend so `ScraperManager` rebuilds. `GET /jobs/sources` lists `careersatgov` only when enabled. Singapore / remote searches can return CAG rows. Other countries skip the board.
+
+To disable:
+
+```bash
+CAREERSATGOV_ENABLED=0
+```
+
+### Symptoms of dump failures
+
+- Jobs search with only Careers@Gov selected returns 0 jobs, or the backend logs `Careers@Gov dump returned HTTP` / timeout.
+- GitHub raw may rate-limit. Wait and retry, or disable with `CAREERSATGOV_ENABLED=0`.
+- Results can omit roles posted after the dump snapshot. Check listing metadata `dump_snapshot_at`.
 
 ### Applied elsewhere returns HTTP 500
 

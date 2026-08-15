@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
 from ..utils.logger import Components, get_logger
 from .base import BaseScraper, SearchParams
+from .careersatgov_scraper import CareersAtGovScraper, careersatgov_enabled
 from .jobstreet_scraper import JobStreetScraper, jobstreet_enabled
 from .jsearch_scraper import JSearchScraper
 from .linkedin_scraper import LinkedInScraper
@@ -50,7 +51,7 @@ class ScraperManager:
         self.max_workers = max_workers
         self.deduplicate = deduplicate
 
-        # Initialize scrapers (MCF / JobStreet are kill-switched via env)
+        # Initialize scrapers (MCF / JobStreet / CAG are kill-switched via env)
         self.scrapers: Dict[JobSource, BaseScraper] = {
             JobSource.LINKEDIN: LinkedInScraper(),
             JobSource.JSEARCH: JSearchScraper(),
@@ -59,6 +60,8 @@ class ScraperManager:
             self.scrapers[JobSource.MYCAREERSFUTURE] = MyCareersFutureScraper()
         if jobstreet_enabled():
             self.scrapers[JobSource.JOBSTREET] = JobStreetScraper()
+        if careersatgov_enabled():
+            self.scrapers[JobSource.CAREERSATGOV] = CareersAtGovScraper()
 
         self.logger = get_logger(Components.SCRAPERS)
 

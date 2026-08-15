@@ -46,6 +46,18 @@ sources:
       developer API. Personal-use tooling only; keep caps low. Do not add
       MY/PH/ID JobStreet hosts.
 
+  careersatgov:
+    enabled: false  # Opt-in via CAREERSATGOV_ENABLED=1 (delayed dump)
+    base_url: https://raw.githubusercontent.com/opengovsg/careersgovsg-jobs-data
+    requires_auth: false
+    rate_limit_delay: 1.5
+    timeout: 60
+    max_results: 60
+    notes: >
+      Delayed OpenGovSG dump (data/job-listings.json), not live search.
+      Default off. Do not use unpublished OData URLs. Snapshot time is
+      HTTP Last-Modified. Local keyword filter after one dump download.
+
   indeed:
     enabled: false  # Blocked by Cloudflare bot detection
     base_url: https://www.indeed.com

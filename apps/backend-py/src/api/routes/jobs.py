@@ -112,6 +112,7 @@ async def search_jobs(
         "jsearch": JobSource.JSEARCH,
         "mycareersfuture": JobSource.MYCAREERSFUTURE,
         "jobstreet": JobSource.JOBSTREET,
+        "careersatgov": JobSource.CAREERSATGOV,
     }
     source_names = request.sources or ["linkedin", "jsearch"]
     sources = [source_map[s] for s in source_names if s in source_map]

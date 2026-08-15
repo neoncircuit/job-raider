@@ -272,6 +272,7 @@ class TestEnums:
         assert JobSource.JSEARCH.value == "jsearch"
         assert JobSource.MYCAREERSFUTURE.value == "mycareersfuture"
         assert JobSource.JOBSTREET.value == "jobstreet"
+        assert JobSource.CAREERSATGOV.value == "careersatgov"
         assert JobSource.MANUAL.value == "manual"
         assert JobSource.OTHER.value == "other"
 

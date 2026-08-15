@@ -136,6 +136,7 @@ class JobSource(str, Enum):
     JSEARCH = "jsearch"
     MYCAREERSFUTURE = "mycareersfuture"
     JOBSTREET = "jobstreet"
+    CAREERSATGOV = "careersatgov"
     MANUAL = "manual"
     OTHER = "other"
 

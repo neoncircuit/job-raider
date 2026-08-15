@@ -4370,7 +4370,7 @@ flowchart TD
 
 ### Deferred
 
-- Careers@Gov live scraper until a documented public JSON API exists, or the user accepts the OpenGovSG published dump as a delayed catalog.
+- Careers@Gov live search JSON (still absent). Delayed dump shipped in the following section.
 - JobStreet full-JD fetch on every search row (GraphQL `jobDetails.content`). Search uses teaser plus bullets. `get_job_details` can load HTML content later.
 - JobStreet MY/PH/ID. JSearch stays the cross-border JobStreet-adjacent path.
 - Official SEEK partner API (OAuth partnership).
@@ -4386,7 +4386,7 @@ flowchart TD
   Geo -->|yes| V5["Capped v5 JSON on sg.jobstreet.com"]
   V5 --> Catalog["catalog upsert"]
   Catalog --> UI["GET /jobs/sources"]
-  CAG["Careers@Gov"] --> NoGo["Spike no-go"]
+  CAG["Careers@Gov live JSON"] --> NoGo["Spike no-go"]
 ```
 
 ### Review
@@ -4396,6 +4396,53 @@ flowchart TD
 - Must use `sg.jobstreet.com` for search. `www.jobstreet.com.sg/api` returns Australian jobs.
 - Overlay backend and rebuild frontend completed. `ScraperManager` in the container lists `jobstreet`.
 - Focused pytest: 76 passed.
+
+## Careers@Gov delayed dump Phase 1 [COMPLETED] (2026-08-15)
+
+**Scope:** Public HTTP only. No login. No Playwright. No unpublished OData. Live Careers@Gov search remains no-go. Phase 1 is the published OpenGovSG dump as a delayed catalog.
+
+### Plan
+
+- [x] Re-spike `jobs.careers.gov.sg`: App Router RSC, sitemap (~2,182 URLs), robots Disallow `/api/`, guessed `/api/v1/*` HTML 404. No public search JSON.
+- [x] Confirm `data.gov.sg` has no Careers@Gov job-listings dataset (workforce stats only).
+- [x] Accept public OpenGovSG `job-listings.json` (about 11 MB, twice-daily, MIT). Do not read OData URLs from env.
+- [x] Add `JobSource.CAREERSATGOV` and `CareersAtGovScraper` with local keyword filter, cap 60, 6-hour dump cache.
+- [x] Kill switch `CAREERSATGOV_ENABLED` default off (delayed dump).
+- [x] Register in manager / source maps when enabled. Singapore geography skip already reserved.
+- [x] `last_seen_at` = dump Last-Modified. Metadata `catalog_kind=delayed_dump`.
+- [x] Frontend `SOURCE_COLORS` and Apply on Careers@Gov label.
+- [x] Unit tests with dump fixture (no live network).
+- [x] Decision-log + troubleshooting. Overlay backend. Rebuild frontend.
+- [x] Focused pytest via WSL.
+
+### Deferred
+
+- Live Careers@Gov search or detail JSON if PSD later publishes one.
+- Playwright / login / confidential OData.
+- Presenting dump rows as live "just posted".
+
+### Flow
+
+```mermaid
+flowchart TD
+  Search["Jobs or Pipeline"] --> Geo{"Singapore or remote?"}
+  Geo -->|no| Skip["Skip Careers@Gov"]
+  Geo -->|yes| Flag{"CAREERSATGOV_ENABLED?"}
+  Flag -->|no| Unreg["Omitted from GET /jobs/sources"]
+  Flag -->|yes| Dump["GET public OpenGovSG dump"]
+  Dump --> Filter["Local keyword filter cap 60"]
+  Filter --> Catalog["catalog upsert last_seen_at = snapshot"]
+  Catalog --> UI["SourceSelector careersatgov"]
+```
+
+### Review
+
+- Live adapter: no-go. Delayed dump: go.
+- Default off. Set `CAREERSATGOV_ENABLED=1` then recreate backend.
+- Dump freshness is typically 0.5-2 days. Listing metadata records `dump_snapshot_at`.
+- Focused pytest: 22 Careers@Gov tests plus apply-method and JobSource enum (29 passed).
+- Overlay/full backend recreate: `ScraperManager` omits `careersatgov` by default and lists it when `CAREERSATGOV_ENABLED=true`.
+- Frontend rebuilt for `SOURCE_COLORS` and Apply on Careers@Gov.
 
 ## Revert accidental interview or rejected status [COMPLETED] (2026-08-15)
 

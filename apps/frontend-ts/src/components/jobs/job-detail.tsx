@@ -346,7 +346,9 @@ export function JobDetail({
                       ? "MyCareersFuture"
                       : job.source === "jobstreet"
                         ? "JobStreet"
-                        : job.source}
+                        : job.source === "careersatgov"
+                          ? "Careers@Gov"
+                          : job.source}
                 </Button>
               </a>
               <Button size="sm" variant="outline" onClick={handleCopyLink}>

@@ -134,7 +134,7 @@ class TestStartPipeline:
         assert "profile data" in resp.json()["message"].lower()
 
     def test_start_accepts_mycareersfuture_and_reserved_sources(self, client):
-        """Discover may send MCF, JobStreet, and reserved Careers@Gov ids."""
+        """Discover may send MCF, JobStreet, and Careers@Gov ids."""
         resp = client.post(
             "/api/pipeline/start",
             json={

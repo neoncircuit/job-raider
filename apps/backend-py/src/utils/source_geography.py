@@ -16,8 +16,8 @@ from typing import Any, Iterable, Optional
 
 from .location_normalizer import expand_location_aliases, location_matches
 
-# Careers@Gov remains reserved (no live scraper yet). JobStreet is SG-only;
-# do not add MY/PH/ID JobStreet sites.
+# Careers@Gov uses a delayed public dump, not live search. JobStreet is
+# SG-only; do not add MY/PH/ID JobStreet sites.
 SINGAPORE_SCOPED_SOURCES = frozenset({"mycareersfuture", "careersatgov", "jobstreet"})
 
 _SINGAPORE_ALIASES = frozenset({"singapore", "sg"})

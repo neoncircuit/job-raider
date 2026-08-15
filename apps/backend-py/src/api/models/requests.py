@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from ...utils.text_normalizer import normalize_user_prose
 
-# Accepted by pipeline/search request models. Scrapers may ignore reserved
-# ids (careersatgov) until that adapter exists.
+# Accepted by pipeline/search request models. Careers@Gov is a delayed
+# dump adapter (opt-in via CAREERSATGOV_ENABLED).
 KNOWN_JOB_SOURCES = frozenset(
     {
         "linkedin",
@@ -70,8 +70,8 @@ class PipelineStartRequest(BaseModel):
     sources: Optional[List[str]] = Field(
         default=None,
         description=(
-            "Job sources (linkedin, jsearch, mycareersfuture, jobstreet; "
-            "careersatgov is reserved)"
+            "Job sources (linkedin, jsearch, mycareersfuture, jobstreet, "
+            "careersatgov)"
         ),
     )
 
@@ -158,8 +158,8 @@ class JobSearchRequest(BaseModel):
     sources: Optional[List[str]] = Field(
         default=None,
         description=(
-            "Job sources (linkedin, jsearch, mycareersfuture, jobstreet; "
-            "careersatgov is reserved)"
+            "Job sources (linkedin, jsearch, mycareersfuture, jobstreet, "
+            "careersatgov)"
         ),
     )
     limit: int = Field(default=50, ge=1, le=200, description="Maximum results")

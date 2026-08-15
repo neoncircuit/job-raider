@@ -1,5 +1,66 @@
 # Job Raider Decision Log
 
+## 2026-08-15 - Careers@Gov delayed OpenGovSG dump (Phase 1)
+
+### Context
+
+Source id `careersatgov` was reserved. JobStreet Singapore is already shipped. The user asked to continue Careers@Gov on a public path: re-spike live JSON, then accept a delayed public dump if live search is still no-go. No Playwright, no login, no OData URLs from env.
+
+### Spike (Phase 0 repeat) — live search no-go; delayed dump go
+
+Live `jobs.careers.gov.sg`:
+
+- Next.js App Router HTML (RSC `self.__next_f.push`). No `__NEXT_DATA__`. No `/_next/data/` JSON.
+- Homepage is a large shell. Job cards are not inlined as `jobTitle` / `postingNo` JSON.
+- `robots.txt` allows `/`, disallows `/api/`, and points to `sitemap.xml`.
+- Sitemap (2026-08-15) lists about 2,182 public job URLs (about 1,889 `hrp`, 293 `greenhouse`). That is a URL index, not a search JSON contract.
+- Guessed `/api`, `/api/jobs`, `/odata`, `/graphql`, `/api/v1/jobs`, `/api/v1/search` return HTML 404. HTML mentions `/api/v1/auth` only.
+- Job HTML and `RSC: 1` payloads are Flight/RSC chunk graphs, not a documented job JSON API.
+- Do not scrape those HTML/RSC pages. Do not call `/api/` (robots disallow). Do not hunt OData secrets.
+
+`data.gov.sg`:
+
+- Public catalogue search returns workforce statistics (staff strength, inflow/outflow, MOM vacancy counts). There is no Careers@Gov job-listings dataset.
+
+OpenGovSG delayed dump (go):
+
+- Public processed file: `https://raw.githubusercontent.com/opengovsg/careersgovsg-jobs-data/main/data/job-listings.json` (MIT).
+- About 11 MB, about 1,900 rows. Schema is documented in that repository. Fields include title, agency, dates, JD text, platform (`hrp` / `greenhouse` / `workable`).
+- Git history shows updates about twice per day. Last dump commit seen in the spike: 2026-08-14 08:10 UTC (about 0.5-2 days behind the live board).
+- Upstream OData URLs stay unpublished. Job Raider must not read them from env.
+
+Rate / ToS: one dump download, local keyword filter, cap 60 rows. Cache the dump in process for 6 hours. Personal-use tooling.
+
+### Decision
+
+- Ship `JobSource.CAREERSATGOV` + `CareersAtGovScraper` as a **delayed catalog**, not live search.
+- Default `CAREERSATGOV_ENABLED` off. Operators must set `CAREERSATGOV_ENABLED=1` to register the source.
+- Skip HTTP when the search location is outside Singapore or remote (`SINGAPORE_SCOPED_SOURCES`).
+- Set `last_seen_at` from dump `Last-Modified`, not wall-clock now. Store `catalog_kind=delayed_dump` and `dump_snapshot_at` on listing metadata.
+- Do not present dump rows as live "just posted".
+- Do not implement Playwright, login, or international JobStreet.
+
+### Consequences
+
+- SourceSelector shows `careersatgov` via `GET /jobs/sources` only when the kill switch is on.
+- Singapore Jobs search can return CAG rows after opt-in, with snapshot time in metadata.
+- Catalog may mix MCF, JobStreet, and delayed CAG rows for related vacancies. Existing dedupe applies.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Search["Jobs or Pipeline search"] --> Geo{"Singapore or remote?"}
+  Geo -->|no| Skip["Skip Careers@Gov"]
+  Geo -->|yes| Enabled{"CAREERSATGOV_ENABLED?"}
+  Enabled -->|no| Unreg["Not in ScraperManager"]
+  Enabled -->|yes| Dump["GET public OpenGovSG job-listings.json"]
+  Dump --> Filter["Local keyword filter cap 60"]
+  Filter --> Map["Map row to JobListing last_seen_at = dump snapshot"]
+  Map --> Catalog["catalog.json upsert"]
+  Catalog --> UI["SourceSelector careersatgov"]
+```
+
 ## 2026-08-15 - JobStreet Singapore public JSON adapter (Phase 1)
 
 ### Context
