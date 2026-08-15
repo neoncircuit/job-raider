@@ -58,7 +58,7 @@ export const COLOR_SCHEME_SWATCHES: Record<
   ColorScheme,
   readonly [string, string, string]
 > = {
-  default: ["#0f0f0f", "#ff6b6b", "#e63946"],
+  default: ["#0f0f0f", "#ff6b6b", "#c5303e"],
   neon: ["#050510", "#00f0ff", "#ff2bd6"],
   retrowave: ["#12081f", "#ff2a6d", "#05d9e8"],
   gunmetal: ["#12151a", "#8b9bb4", "#c5d0e0"],

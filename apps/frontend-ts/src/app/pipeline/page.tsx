@@ -407,7 +407,7 @@ function LiveMonitor({ runId }: { runId: string }) {
         <div className="flex items-center justify-between rounded-lg border bg-card p-3">
           <div className="flex items-center gap-2">
             {wsStatus === "connected" && !isComplete ? (
-              <Wifi className="h-4 w-4 text-green-500 animate-pulse" />
+              <Wifi className="h-4 w-4 text-success animate-pulse" />
             ) : (
               <WifiOff
                 className={cn(
@@ -577,7 +577,7 @@ function HistoryPanel({ onResume }: { onResume: (id: string) => void }) {
       {data.runs.map((r) => (
         <div
           key={r.run_id}
-          className="flex items-center justify-between rounded-lg border bg-card p-3"
+          className="flex items-center justify-between rounded-lg border bg-card p-3 transition-all duration-150 hover:border-ring hover:ring-2 hover:ring-ring/40"
         >
           <div>
             <p className="text-sm font-mono text-foreground">

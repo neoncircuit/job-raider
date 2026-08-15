@@ -53,6 +53,52 @@ class TestJobMatcher:
         assert score.total_score < 70  # Should be lower for partial fit
         assert score.breakdown["skills"] < 30  # Lower skill match
 
+    def test_full_time_graduate_demotes_intern_jobs(self, sample_user_profile):
+        """Intern listings must fail the threshold for full-time-seeking grads."""
+        from datetime import datetime
+
+        from src.models.job_listing import ExperienceLevel
+        from src.models.user_profile import Education, TargetJob, WorkExperience
+
+        now = datetime.now()
+        sample_user_profile.experience = [
+            WorkExperience(
+                title="Software Engineering Trainee",
+                company="GovTech",
+                start_date=datetime(now.year - 1, 7, 1),
+                end_date=datetime(now.year, 6, 1),
+            )
+        ]
+        sample_user_profile.education = [
+            Education(
+                degree="BSc Computer Science",
+                school="NUS",
+                start_date=datetime(now.year - 4, 8, 1),
+                end_date=datetime(now.year - 1, 6, 1),
+            )
+        ]
+        sample_user_profile.apprenticeship = None
+        sample_user_profile.targets = TargetJob(
+            keywords=["python"],
+            experience_levels=[ExperienceLevel.ENTRY],
+            exclude_internships=False,
+        )
+
+        intern = JobListing(
+            title="Python Internship",
+            company="Lab",
+            location="Remote",
+            description="Summer internship in python.",
+            skills=[JobSkill(name="python")],
+            source=JobSource.MANUAL,
+            job_id="intern_score_1",
+            experience_level=ExperienceLevel.INTERNSHIP,
+        )
+        matcher = JobMatcher()
+        score = matcher.score_job(intern, sample_user_profile)
+        assert score.passed_threshold is False
+        assert score.total_score < matcher.threshold
+
     def test_score_breakdown(self, sample_user_profile, sample_job_listing):
         """Test score breakdown components."""
         matcher = JobMatcher()
@@ -250,6 +296,128 @@ class TestJobFilter:
         assert entry in filtered.listings
         assert senior not in filtered.listings
         assert unknown in filtered.listings
+
+    def test_full_time_graduate_filters_intern_listings(self, sample_user_profile):
+        """Traineeship plus entry target should drop intern-only listings."""
+        from datetime import datetime
+
+        from src.models.job_listing import (
+            ExperienceLevel,
+            JobListingCollection,
+            JobSource,
+        )
+        from src.models.user_profile import (
+            ApprenticeshipContract,
+            Education,
+            TargetJob,
+            WorkExperience,
+        )
+
+        now = datetime.now()
+        sample_user_profile.experience = [
+            WorkExperience(
+                title="Software Engineering Trainee",
+                company="GovTech",
+                start_date=datetime(now.year - 1, 7, 1),
+                end_date=datetime(now.year, 6, 1),
+                description="Completed traineeship.",
+            )
+        ]
+        sample_user_profile.education = [
+            Education(
+                degree="BSc Computer Science",
+                school="NUS",
+                start_date=datetime(now.year - 4, 8, 1),
+                end_date=datetime(now.year - 1, 6, 1),
+            )
+        ]
+        sample_user_profile.apprenticeship = ApprenticeshipContract(
+            field="Software Engineering",
+            is_active=True,
+        )
+        sample_user_profile.targets = TargetJob(
+            keywords=["python"],
+            experience_levels=[ExperienceLevel.ENTRY],
+            exclude_internships=False,
+            constraint_mode="boost",
+        )
+
+        intern = JobListing(
+            title="Python Internship",
+            company="Lab",
+            location="Remote",
+            description="Summer internship in python.",
+            skills=[],
+            source=JobSource.MANUAL,
+            job_id="intern_ft_1",
+            experience_level=ExperienceLevel.INTERNSHIP,
+        )
+        entry = JobListing(
+            title="Python Engineer",
+            company="Lab",
+            location="Remote",
+            description="Junior python role.",
+            skills=[],
+            source=JobSource.MANUAL,
+            job_id="entry_ft_1",
+            experience_level=ExperienceLevel.ENTRY,
+        )
+        collection = JobListingCollection(listings=[intern, entry])
+        filtered = JobFilter().filter_by_profile(collection, sample_user_profile)
+
+        assert intern not in filtered.listings
+        assert entry in filtered.listings
+
+    def test_intern_target_keeps_intern_listings(self, sample_user_profile):
+        """Explicit intern target should still keep intern listings."""
+        from datetime import datetime
+
+        from src.models.job_listing import (
+            ExperienceLevel,
+            JobListingCollection,
+            JobSource,
+        )
+        from src.models.user_profile import Education, TargetJob, WorkExperience
+
+        now = datetime.now()
+        sample_user_profile.experience = [
+            WorkExperience(
+                title="Product Intern",
+                company="Campus",
+                start_date=datetime(now.year - 1, 5, 1),
+                end_date=datetime(now.year - 1, 8, 1),
+            )
+        ]
+        sample_user_profile.education = [
+            Education(
+                degree="BSc Computer Science",
+                school="NUS",
+                start_date=datetime(now.year - 3, 8, 1),
+                end_date=datetime(now.year, 6, 1),
+            )
+        ]
+        sample_user_profile.apprenticeship = None
+        sample_user_profile.targets = TargetJob(
+            keywords=["python"],
+            experience_levels=[ExperienceLevel.INTERNSHIP],
+            exclude_internships=False,
+            constraint_mode="boost",
+        )
+
+        intern = JobListing(
+            title="Python Internship",
+            company="Lab",
+            location="Remote",
+            description="Summer internship in python.",
+            skills=[],
+            source=JobSource.MANUAL,
+            job_id="intern_keep_1",
+            experience_level=ExperienceLevel.INTERNSHIP,
+        )
+        collection = JobListingCollection(listings=[intern])
+        filtered = JobFilter().filter_by_profile(collection, sample_user_profile)
+
+        assert intern in filtered.listings
 
 
 @pytest.mark.unit

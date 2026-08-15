@@ -886,6 +886,9 @@ export interface LinkedInProfileAnalysis {
   analyzed_at: string;
   overall_score: number;
   summary: string;
+  career_stage?: "early_career" | "experienced" | null;
+  intern_seeking?: boolean | null;
+  career_stage_label?: string | null;
   section_scores: ProfileSectionScore[];
   insights: InboundAttractionInsight[];
   keyword_recommendations: string[];

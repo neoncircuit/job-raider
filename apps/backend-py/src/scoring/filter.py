@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional, Set
 
+from ..generation.career_stage import should_exclude_intern_listings
 from ..models.job_listing import ExperienceLevel, JobListing, JobListingCollection
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
@@ -262,6 +263,8 @@ class JobFilter:
         exclude_internships = bool(
             getattr(profile.targets, "exclude_internships", False)
         )
+        if not exclude_internships:
+            exclude_internships = should_exclude_intern_listings(profile)
         allowed_levels = list(profile.targets.experience_levels or [])
         hard_level_filter = profile.targets.constraint_mode == "filter" and bool(
             allowed_levels

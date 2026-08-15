@@ -3166,4 +3166,17 @@
 - Drop `javascript:`, `data:`, `file:`, and empty values before persist or render.
 - Run frontend Vitest through WSL or Docker when the Windows host is missing the Rollup optional binary.
 
+## LinkedIn analysis must use career stage (2026-08-15)
+
+### Do not invent tenure or ignore graduate context
+
+**Lesson:** Generic LinkedIn-optimization prompts default to mid-career advice. If the analyzer does not receive education dates, internships, projects, and years of experience, the model will invent tenure such as "with over 10 years of experience".
+
+**How to apply:**
+- Infer `early_career` vs `experienced` from the stored Job Raider profile and the LinkedIn payload before the LLM call.
+- Pass that framing into the prompt. Forbid invented years, titles, and employers.
+- Score graduates on first-role headline, projects, internships, and honest summary. Keep quantified-achievement guidance only when work history is substantial.
+- Do not treat missing full-time leadership as a failed mid-career profile.
+- Split intern-seeking vs full-time first-role inside early_career. A finished traineeship plus an entry/full-time target must not keep recommending internships.
+
 

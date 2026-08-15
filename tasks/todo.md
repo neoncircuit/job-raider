@@ -4485,4 +4485,151 @@ flowchart TD
 - Tests: 55 pytest passed (tracker, lifecycle, metrics). 10 Vitest passed. Backend overlay and frontend image rebuilt.
 - Hard-refresh Applications. On a card, use Proceed or Rejected, then Revert. Legacy rows that were already interview or rejected before this change have no history, so Revert stays hidden.
 
+## Contrast and motion polish [COMPLETED] (2026-08-15)
+
+**Scope:** Improve light and dark readability without a new visual identity. Tune shared tokens first. Touch only high-traffic surfaces when tokens are not enough.
+
+### Plan
+
+- [x] Audit Raid light/dark tokens (muted text, borders, inputs, semantic fills).
+- [x] Darken light muted-foreground, success, warning, info, and primary so chip text meets WCAG-ish AA.
+- [x] Strengthen light and dark borders. Map `--destructive-foreground`. Treat `--input` as a visible field border.
+- [x] Switch source badges to tinted chips. Give `applied_elsewhere` a distinct secondary chip.
+- [x] Add short 150ms hover/focus/tab transitions. No new animation library.
+- [x] Frontend type-check and lint via WSL nvm. Rebuild and recreate `job-raider-frontend`.
+
+### Contrast before / after (Raid default)
+
+| Token | Light before | Light after | Dark before | Dark after |
+| --- | --- | --- | --- | --- |
+| `--muted-foreground` | `#6b7280` (~4.4:1 on page) | `#4b5563` (~7:1) | `#9ca3af` | `#c4c9d1` |
+| `--border` / `--input` | `#e0dcd6` / `#f0ece8` (near-invisible fields) | `#b8b2aa` | `#333333` / `#1f1f1f` | `#5a5a5a` |
+| `--success` / `--warning` / `--info` | `#22c55e` / `#f59e0b` / `#3b82f6` (fail as 12px text) | `#15803d` / `#b45309` / `#1d4ed8` | already readable | unchanged fills |
+| `--primary` (light) | `#e63946` (~3.9:1 on white) | `#c5303e` (~5:1) | `#ff6b6b` | unchanged |
+
+### Flow
+
+```mermaid
+flowchart TD
+  Tokens["globals.css Raid tokens"] --> Chips["SOURCE_COLORS and STATUS_COLORS"]
+  Tokens --> Surfaces["Jobs Applications Pipeline nav"]
+  Chips --> Jobs["Job list and detail badges"]
+  Chips --> Apps["Application status chips"]
+  Surfaces --> Motion["150ms hover focus tab"]
+  Motion --> Verify["Hard-refresh and toggle theme"]
+```
+
+### Review
+
+- Light muted labels, dashed empty states, and input borders were the main failures. Dark cards blended into the page because borders sat at `#333333`.
+- Solid JobStreet/MyCareersFuture/LinkedIn badges used warning/success/info fills with white text below AA. They are now tinted chips with the same semantic text color.
+- `applied_elsewhere` no longer shares the success chip with completed. Jobs list no longer uses a muted "disabled" chip for that status.
+- Expired badges now resolve `text-destructive-foreground` (the token was missing from `@theme`).
+- Motion is 150ms on links, buttons, tabs, cards, inputs, and badges. Theme switch still uses `disableTransitionOnChange`.
+- Named color schemes keep their identity. They inherit the improved success/warning/info tokens. Their own muted/border values were not fully retuned except Retrowave light muted text.
+- Verify: hard-refresh `http://127.0.0.1:3000/jobs`, `/applications`, and `/pipeline`. Toggle Light Mode / Dark Mode in the sidebar. Check source chips, Applied Elsewhere, status chips, form borders, and tab hover.
+- Frontend Docker image rebuilt. `job-raider-frontend` recreated. Backend overlay not used.
+
+## Honest AI wait progress [COMPLETED] (2026-08-15)
+
+**Scope:** Show a real wait bar (not a fake 0–100%) during long AI calls: cover letter generate, profile/resume analysis, LinkedIn analysis, interview prep. Reuse pipeline look (Raid primary on muted track). Do not add a second orchestrator.
+
+### Plan
+
+- [x] Shared `AiWaitProgress`: indeterminate bar + stage label; determinate only when a real 0–100 value is passed.
+- [x] Wire cover letter generate (page + Jobs detail), resume analysis, profile parse, LinkedIn analysis, interview prep (cover letter + Applications).
+- [x] Keep generate/analyze buttons disabled while pending. No new cancel (none existed on these calls).
+- [x] Accessibility: `role="progressbar"`, `aria-busy`, no invented `aria-valuenow`.
+- [x] Focused Vitest. Rebuild `job-raider-frontend`. Leave stack up.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Click["User starts AI action"] --> Pending["Mutation isPending"]
+  Pending --> Bar["AiWaitProgress indeterminate plus stage label"]
+  Pending --> Disable["Button stays disabled"]
+  Bar --> HTTP["Single blocking HTTP call"]
+  HTTP --> Done["Result replaces wait UI"]
+  Pipeline["Pipeline run"] --> WS["Existing WebSocket progress"]
+  WS --> Determinate["Unchanged determinate bar"]
+```
+
+### Review
+
+- These waits are one blocking HTTP call each. The bar is indeterminate with an honest stage label. Pipeline WebSocket progress is unchanged.
+- Wired: Cover Letter generate, Jobs detail generate, Resume Analysis, Profile resume parse, LinkedIn Analysis, interview prep on Cover Letter and Applications.
+- Left without a bar: job classify/trust/explain, letter validate/explain, fit assess, LinkedIn people search, Career Coach (already polls task status).
+- Vitest: 24 passed. `tsc --noEmit` passed. Frontend image rebuilt and `job-raider-frontend` recreated. No backend overlay.
+- Try: hard-refresh Cover Letter, Resume Analysis, LinkedIn Analysis, Profile upload, and Applications interview prep. Confirm a sliding bar and stage text, not a percent.
+
+## LinkedIn analysis career-stage framing [COMPLETED] (2026-08-15)
+
+**Scope:** Stop mid-career LinkedIn advice (invented "10 years" summaries, endorsement drives, senior leadership metrics) for fresh graduates. Pass stored profile plus LinkedIn signals into analysis. Keep experienced-hire guidance when work history is substantial.
+
+### Plan
+
+- [x] Infer `early_career` vs `experienced` from stored Job Raider profile and LinkedIn payload (education dates, internships, projects, professional years).
+- [x] Inject career-stage scoring weights and a ban on invented tenure into the LinkedIn analysis prompt.
+- [x] Adjust rule-based fallback copy and weights for graduates vs experienced hires.
+- [x] Surface `career_stage` on the API and a short note on the results page.
+- [x] Unit tests for graduate vs experienced prompt framing. Overlay backend. Rebuild frontend (UI copy).
+
+### Flow
+
+```mermaid
+flowchart TD
+  Request["POST /profile/analyze-linkedin"] --> Stored["Load active UserProfile"]
+  Request --> Payload["LinkedIn text and sections"]
+  Stored --> Infer["infer_career_stage"]
+  Payload --> Infer
+  Infer -->|early_career| Grad["First-role weights: headline, projects, internships, honest summary"]
+  Infer -->|experienced| Exp["Experienced weights: quantified achievements"]
+  Grad --> LLM["LLM analysis"]
+  Exp --> LLM
+  LLM --> Result["Analysis plus career_stage"]
+```
+
+### Review
+
+- Root cause: the analyzer scored only the pasted/fetched LinkedIn text against a generic mid-career rubric. It never received the stored graduate profile, and the system prompt asked for quantified achievements and endorsements. The model then invented "10 years of experience".
+- Pytest via WSL: 40 passed (`test_linkedin_analyzer.py` + `test_profile_routes.py`) after Black.
+- Overlay: `docker/Dockerfile.overlay` rebuilt; `job-raider-backend` recreated and healthy.
+- Frontend rebuilt (career-stage note on the results page); `job-raider-frontend` recreated and healthy.
+- Re-run LinkedIn Analysis after a hard refresh. Confirm the results page shows early-career framing for a graduate profile.
+
+## Early-career intern-seeking vs full-time first role [COMPLETED] (2026-08-15)
+
+**Scope:** Graduates who finished a traineeship (or equivalent) and must seek full-time work still received intern-seeking LinkedIn advice and intern-friendly matching. Keep first-job difficulty, but stop pushing internships when intent is full-time.
+
+### Plan
+
+- [x] Infer intern-seeking vs full-time from stored targets (intern vs entry), `exclude_internships`, active traineeship obligation, and completed intern/traineeship history.
+- [x] Split early-career LinkedIn guidance and fallback copy. Full-time grads: junior/entry headlines; frame training as done; forbid "get an internship".
+- [x] Filter intern-only listings for full-time-seeking early-career profiles. Keep intern listings when the target is internship. Demote intern jobs in the matcher.
+- [x] Career-coach entry advice no longer recommends internships once experience exists. LinkedIn system prompt matches the split.
+- [x] Frontend career-stage note: intern-seeking vs full-time first role.
+- [x] Tests, overlay backend, rebuild frontend.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Profile["Stored profile plus LinkedIn"] --> Stage["infer_career_stage"]
+  Stage -->|experienced| Exp["Experienced hire framing"]
+  Stage -->|early_career| Intent["infer_intern_seeking"]
+  Intent -->|intern target or intern language| Intern["Intern-seeking advice and intern listings"]
+  Intent -->|entry target, traineeship, exclude internships| FT["Full-time first-role advice"]
+  FT --> Filter["Drop intern-only listings"]
+  FT --> LinkedIn["Headline and summary for junior/entry"]
+```
+
+### Review
+
+- Inference: internship in target levels stays intern-seeking. Entry/full-time levels, `exclude_internships`, an active apprenticeship obligation, or a completed intern/traineeship without intern language selects full-time. Experienced profiles are unchanged.
+- Matching: `should_exclude_intern_listings` auto-applies the existing intern filter for early-career full-time seekers. Matcher also fails intern listings on the apply threshold.
+- Pytest via WSL: 58 passed (`test_linkedin_analyzer.py`, `test_scorer.py`, `test_profile_targets.py`) after Black.
+- Overlay: `docker/Dockerfile.overlay` rebuilt; backend recreated. Frontend rebuilt for the career-stage note.
+- Try: set target experience to Entry Level (not Internship), refresh profile, re-run LinkedIn analysis and a job search.
+
 

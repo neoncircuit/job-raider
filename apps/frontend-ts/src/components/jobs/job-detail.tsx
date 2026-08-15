@@ -20,10 +20,11 @@ import {
 } from "@/components/trust-analysis";
 import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
 import { ScoreExplanationDisplay } from "@/components/score-explanation";
+import { AiWaitProgress } from "@/components/ai-wait-progress";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatSalaryRange } from "@/lib/utils/format";
 import { JobDescriptionBody } from "@/components/jobs/job-description-body";
-import { SOURCE_COLORS } from "@/lib/utils/constants";
+import { SOURCE_COLORS, STATUS_COLORS } from "@/lib/utils/constants";
 import { toast } from "sonner";
 import type { JobListing } from "@/lib/types/api";
 import {
@@ -92,7 +93,7 @@ export function JobDetail({
   return (
     <div className="flex flex-col h-full rounded-lg border bg-card">
       {/* Fixed header section */}
-      <div className="p-5 space-y-4 border-b border-border/50">
+      <div className="p-5 space-y-4 border-b border-border">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-semibold text-foreground truncate">
@@ -144,6 +145,12 @@ export function JobDetail({
           {job.already_applied && (
             <Badge className="text-xs bg-success text-success-foreground">
               Applied
+            </Badge>
+          )}
+
+          {isAppliedExternally && (
+            <Badge className={cn("text-xs", STATUS_COLORS.applied_elsewhere)}>
+              Applied Elsewhere
             </Badge>
           )}
 
@@ -495,6 +502,13 @@ export function JobDetail({
                 ? "Generating..."
                 : "Generate Cover Letter"}
             </Button>
+            {generateCoverLetter.isPending ? (
+              <AiWaitProgress
+                label="Writing cover letter…"
+                hint="The model is working. This can take a minute."
+                size="compact"
+              />
+            ) : null}
           </div>
         )}
       </div>

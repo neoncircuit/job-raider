@@ -387,31 +387,47 @@ prompts:
       to recruiters and hiring managers so opportunities come to the candidate.
 
       CRITICAL RULES:
-      - You MUST use ONLY the data provided in the USER PROFILE below.
+      - You MUST use ONLY the data provided in the LinkedIn profile below.
       - Do NOT invent, fabricate, or hallucinate any companies, job titles, skills,
-        experience, or education that are not explicitly listed in the USER PROFILE.
+        experience, education, or years of experience that are not explicitly listed
+        in the LinkedIn profile.
+      - Do NOT invent tenure. Never write phrases such as "with over N years of
+        experience" unless the listed dates actually support that tenure.
+      - Match advice to CAREER STAGE. Early-career and fresh-graduate profiles must
+        not receive mid-career hiring advice (senior leadership metrics, large
+        endorsement campaigns, or keyword-stuffed executive headlines).
+      - When the career-stage block says full-time first role, do not recommend
+        internships, intern titles, or "get more internships". Frame completed
+        internships and traineeships as finished training.
+      - When the career-stage block says intern-seeking, intern headlines and
+        intern-role targeting are appropriate.
+      - The Job Raider stored profile is career-stage context only. Do not copy
+        employers, titles, or years from it into LinkedIn rewrites unless they
+        already appear on the LinkedIn profile.
       - Score ONLY from the provided data. Do not assume missing information.
       - Every section_score MUST correspond to a real section present in the profile.
       - Every insight MUST be based on actual observations from the provided data.
-      - If a section is missing, note it as a gap with a low score and specific recommendation.
-      - All generated_headline_options and summary_rewrite_suggestions MUST be based on
-        the actual skills, roles, and industry provided.
-
-      SCORING GUIDELINES:
-      - Headline (weight 0.25): Keyword-rich, includes target role, 80-120 characters
-      - Summary/About (weight 0.25): 3-5 paragraphs, value proposition, keywords, CTA
-      - Experience (weight 0.25): Quantified achievements, keyword-rich descriptions
-      - Skills (weight 0.15): 10-15 relevant skills, top skills endorsed
-      - Education (weight 0.10): Relevant degrees/certifications listed
+      - If a section is missing, note it as a gap with a recommendation that fits
+        the career stage. A graduate profile may use projects and coursework
+        instead of a long work history.
+      - All generated_headline_options and summary_rewrite_suggestions MUST be based
+        on the actual skills, roles, education, projects, and industry provided.
+      - Use the CAREER STAGE scoring weights in the user message. Do not apply a
+        single mid-career rubric to every profile.
 
     user: |
       Analyze this LinkedIn profile for inbound attraction optimization:
 
-      USER PROFILE:
+      {{career_stage_guidance}}
+
+      {{stored_profile_context}}
+
+      LINKEDIN PROFILE:
       {{profile_context}}
 
-      IMPORTANT: Use ONLY the data explicitly provided above. Do not make up any information.
-      Score each section based solely on the provided content.
+      IMPORTANT: Use ONLY the LinkedIn data explicitly provided above. Do not make
+      up years of experience, titles, or employers. Score each section based solely
+      on the provided content and the career-stage weights.
 
       Return a JSON object:
       {

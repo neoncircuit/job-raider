@@ -95,6 +95,35 @@ _llm_router: Optional[LLMRouter] = None
 _linkedin_analyzer: Optional[LinkedInAnalyzer] = None
 
 
+def _active_user_profile() -> Optional[UserProfile]:
+    """
+    Return the active stored UserProfile when one exists.
+
+    Used to pass career-stage context (education dates, internships,
+    projects, years of experience) into LinkedIn analysis.
+
+    Returns:
+        UserProfile instance, or None when no active profile is stored.
+    """
+    if not active_profile_id or active_profile_id not in stored_profiles:
+        return None
+    entry = stored_profiles[active_profile_id]
+    if not isinstance(entry, dict):
+        return None
+    profile_data = entry.get("profile")
+    if profile_data is None:
+        return None
+    if isinstance(profile_data, UserProfile):
+        return profile_data
+    try:
+        if isinstance(profile_data, dict):
+            return UserProfile(**profile_data)
+        return UserProfile.model_validate(profile_data)
+    except Exception as exc:
+        logger.warning("Could not parse stored profile for LinkedIn analysis: %s", exc)
+        return None
+
+
 def _get_linkedin_analyzer() -> LinkedInAnalyzer:
     """
     Return a shared LinkedInAnalyzer instance.
@@ -847,13 +876,18 @@ async def analyze_linkedin(input_data: LinkedInProfileInput):
                     f"{fetched_text}\n\n{existing_raw}"
                 ).strip()
 
-        analysis = await analyzer.analyze_async(input_data)
+        analysis = await analyzer.analyze_async(
+            input_data, user_profile=_active_user_profile()
+        )
 
         logger.info("Completed LinkedIn profile analysis")
 
         return {
             "overall_score": analysis.overall_score,
             "summary": analysis.summary,
+            "career_stage": analysis.career_stage,
+            "intern_seeking": analysis.intern_seeking,
+            "career_stage_label": analysis.career_stage_label,
             "section_scores": [
                 {
                     "section_name": s.section_name,

@@ -18,7 +18,7 @@ export function MobileNav() {
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
-          className="rounded-md p-2 text-sidebar-foreground hover:bg-muted"
+          className="rounded-md border border-transparent p-2 text-sidebar-foreground transition-all duration-150 hover:border-sidebar-ring hover:bg-foreground/5"
           aria-label="Open navigation"
         >
           <Menu size={18} />

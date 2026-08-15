@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils/cn";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { AiWaitProgress } from "@/components/ai-wait-progress";
 
 /**
  * Render a circular score indicator for the LinkedIn profile analysis.
@@ -111,6 +112,33 @@ function AnalysisDisplay({ analysis }: { analysis: LinkedInProfileAnalysis }) {
             <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
               {analysis.summary}
             </p>
+            {analysis.career_stage === "early_career" &&
+              analysis.intern_seeking === true && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Early career, intern-seeking. Advice targets intern and
+                  first-role discovery, not mid-career hiring.
+                </p>
+              )}
+            {analysis.career_stage === "early_career" &&
+              analysis.intern_seeking === false && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Early career, full-time first role. Advice targets junior or
+                  entry roles, not internships.
+                </p>
+              )}
+            {analysis.career_stage === "early_career" &&
+              analysis.intern_seeking == null && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  This analysis used early-career / fresh-graduate framing.
+                  Advice targets a first role, not mid-career hiring.
+                </p>
+              )}
+            {analysis.career_stage === "experienced" && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                This analysis used experienced-hire framing based on the work
+                history in the profile.
+              </p>
+            )}
             {analysis.competitive_edge && (
               <p className="mt-2 text-sm text-foreground">
                 <span className="font-semibold">Competitive edge:</span>{" "}
@@ -563,7 +591,12 @@ function AnalysisForm({
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) => {
+          if (!analyze.isPending) setActiveTab(tab);
+        }}
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="url">LinkedIn URL</TabsTrigger>
           <TabsTrigger value="search">Search Profiles</TabsTrigger>
@@ -892,6 +925,16 @@ function AnalysisForm({
           {analyze.isPending ? "Analyzing..." : "Analyze LinkedIn Profile"}
         </Button>
       )}
+      {analyze.isPending ? (
+        <AiWaitProgress
+          label={
+            activeTab === "url"
+              ? "Fetching and analyzing LinkedIn profile…"
+              : "Analyzing LinkedIn profile…"
+          }
+          hint="The model is working. This can take a minute."
+        />
+      ) : null}
     </div>
   );
 }

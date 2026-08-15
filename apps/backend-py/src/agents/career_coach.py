@@ -664,18 +664,32 @@ class CareerCoachAgent(BaseAgent):
 
         # Entry-level recommendations
         if experience_years < 2:
+            experience = profile.get("experience") or []
+            intern_seeking = len(experience) == 0
             recommendations.append(
                 {
                     "category": "entry_strategy",
                     "title": "Entry-Level Focus",
-                    "description": "Focus on entry-level positions or internships",
+                    "description": (
+                        "Focus on internships or entry-level positions"
+                        if intern_seeking
+                        else "Focus on junior or entry-level full-time positions"
+                    ),
                     "priority": "high",
-                    "actions": [
-                        "Apply to junior developer positions",
-                        "Consider internship opportunities",
-                        "Build portfolio projects",
-                        "Contribute to open source",
-                    ],
+                    "actions": (
+                        [
+                            "Apply to junior developer positions",
+                            "Consider internship opportunities",
+                            "Build portfolio projects",
+                            "Contribute to open source",
+                        ]
+                        if intern_seeking
+                        else [
+                            "Apply to junior or entry-level full-time roles",
+                            "Build portfolio projects",
+                            "Contribute to open source",
+                        ]
+                    ),
                 }
             )
 

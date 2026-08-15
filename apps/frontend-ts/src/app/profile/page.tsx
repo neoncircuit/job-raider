@@ -37,6 +37,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useDateTimePrefs } from "@/lib/hooks/use-datetime-prefs";
 import { writeProfileLocationCache } from "@/lib/datetime-prefs";
+import { AiWaitProgress } from "@/components/ai-wait-progress";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -214,7 +215,8 @@ function ResumeDropzone({ onUploaded }: { onUploaded: () => void }) {
     <div
       {...getRootProps()}
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors",
+        "flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors",
+        upload.isPending ? "cursor-wait" : "cursor-pointer",
         isDragActive
           ? "border-primary bg-primary/10"
           : "border-border dark:border-border bg-muted dark:bg-muted hover:border-border dark:hover:border-muted-foreground/50",
@@ -223,9 +225,11 @@ function ResumeDropzone({ onUploaded }: { onUploaded: () => void }) {
       <input {...getInputProps()} />
       <Upload className="mb-3 h-8 w-8 text-muted-foreground dark:text-muted-foreground" />
       {upload.isPending ? (
-        <p className="text-sm text-primary">
-          Parsing resume… this may take 30–60 s
-        </p>
+        <AiWaitProgress
+          className="max-w-sm"
+          label="Parsing resume…"
+          hint="Extracting profile fields. This can take 30–60 seconds."
+        />
       ) : (
         <>
           <p className="text-sm font-medium text-foreground dark:text-muted-foreground">

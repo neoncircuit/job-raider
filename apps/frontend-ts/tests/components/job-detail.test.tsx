@@ -18,6 +18,7 @@ const mockAnalyzeTrustMutate = vi.hoisted(() => vi.fn());
 const mockGenerateCoverLetterMutate = vi.hoisted(() => vi.fn());
 
 let explainFitState = { isPending: false };
+let generateCoverLetterState = { isPending: false };
 let cachedExplainFitData: ScoreExplanation | null = null;
 
 vi.mock("@/lib/hooks/use-jobs", () => ({
@@ -31,7 +32,7 @@ vi.mock("@/lib/hooks/use-jobs", () => ({
   }),
   useGenerateCoverLetter: () => ({
     mutate: mockGenerateCoverLetterMutate,
-    isPending: false,
+    isPending: generateCoverLetterState.isPending,
   }),
   useExplainJobFit: () => ({
     mutate: mockExplainMutate,
@@ -73,6 +74,7 @@ describe("JobDetail explain-fit wiring", () => {
   beforeEach(() => {
     mockExplainMutate.mockReset();
     explainFitState = { isPending: false };
+    generateCoverLetterState = { isPending: false };
     cachedExplainFitData = null;
   });
 
@@ -128,5 +130,16 @@ describe("JobDetail explain-fit wiring", () => {
     expect(screen.getByText("Why This Match")).toBeInTheDocument();
     expect(screen.getByText("Matches required skills")).toBeInTheDocument();
     expect(screen.queryByText("Explain This Match")).not.toBeInTheDocument();
+  });
+
+  it("shows an indeterminate wait bar while generating a cover letter", () => {
+    generateCoverLetterState = { isPending: true };
+    render(<JobDetail job={baseJob} {...noopHandlers} />);
+
+    expect(screen.getByText("Writing cover letter…")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).not.toHaveAttribute(
+      "aria-valuenow",
+    );
+    expect(screen.getByRole("button", { name: /generating/i })).toBeDisabled();
   });
 });

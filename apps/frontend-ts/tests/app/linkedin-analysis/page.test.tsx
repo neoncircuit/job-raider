@@ -44,6 +44,7 @@ describe("LinkedInAnalysisPage", () => {
     mockAnalyzeLinkedIn.mockResolvedValue({
       overall_score: 78,
       summary: "Strong profile with good keywords.",
+      career_stage: "early_career",
       section_scores: [],
       insights: [],
       keyword_recommendations: [],
@@ -110,6 +111,82 @@ describe("LinkedInAnalysisPage", () => {
     expect(
       await screen.findByText(/strong profile with good keywords/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/early-career \/ fresh-graduate framing/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows intern-seeking framing when intern_seeking is true", async () => {
+    mockAnalyzeLinkedIn.mockResolvedValueOnce({
+      overall_score: 70,
+      summary: "Graduate intern-seeking profile.",
+      career_stage: "early_career",
+      intern_seeking: true,
+      career_stage_label: "early career, intern-seeking",
+      section_scores: [],
+      insights: [],
+      keyword_recommendations: [],
+      action_plan: [],
+      generated_headline_options: [],
+      summary_rewrite_suggestions: [],
+      competitive_edge: "",
+      metadata: {},
+      analyzed_at: "2026-08-15T12:00:00Z",
+    });
+    const user = userEvent.setup();
+    renderWithClient(<LinkedInAnalysisPage />);
+
+    await user.click(screen.getByRole("tab", { name: /paste profile text/i }));
+    await user.type(
+      screen.getByPlaceholderText(
+        /copy and paste your linkedin profile content/i,
+      ),
+      "CS student seeking internships.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /analyze linkedin profile/i }),
+    );
+
+    expect(
+      await screen.findByText(/early career, intern-seeking/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows full-time first-role framing when intern_seeking is false", async () => {
+    mockAnalyzeLinkedIn.mockResolvedValueOnce({
+      overall_score: 70,
+      summary: "Graduate full-time profile.",
+      career_stage: "early_career",
+      intern_seeking: false,
+      career_stage_label: "early career, full-time first role",
+      section_scores: [],
+      insights: [],
+      keyword_recommendations: [],
+      action_plan: [],
+      generated_headline_options: [],
+      summary_rewrite_suggestions: [],
+      competitive_edge: "",
+      metadata: {},
+      analyzed_at: "2026-08-15T12:00:00Z",
+    });
+    const user = userEvent.setup();
+    renderWithClient(<LinkedInAnalysisPage />);
+
+    await user.click(screen.getByRole("tab", { name: /paste profile text/i }));
+    await user.type(
+      screen.getByPlaceholderText(
+        /copy and paste your linkedin profile content/i,
+      ),
+      "Graduate after traineeship seeking full-time work.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /analyze linkedin profile/i }),
+    );
+
+    expect(
+      await screen.findByText(/early career, full-time first role/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/intern-seeking/i)).not.toBeInTheDocument();
   });
 
   it("submits pasted profile text for analysis", async () => {
@@ -174,5 +251,27 @@ describe("LinkedInAnalysisPage", () => {
       /https:\/\/www\.linkedin\.com\/in/i,
     );
     expect(urlInput).toHaveValue("https://www.linkedin.com/in/janedoe");
+  });
+
+  it("shows an indeterminate wait bar while analyzing", async () => {
+    mockAnalyzeLinkedIn.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    renderWithClient(<LinkedInAnalysisPage />);
+
+    const urlInput = screen.getByPlaceholderText(
+      /https:\/\/www\.linkedin\.com\/in/i,
+    );
+    await user.type(urlInput, "https://www.linkedin.com/in/testuser");
+
+    await user.click(
+      screen.getByRole("button", { name: /analyze linkedin profile/i }),
+    );
+
+    expect(
+      await screen.findByText(/fetching and analyzing linkedin profile/i),
+    ).toBeInTheDocument();
+    const bar = screen.getByRole("progressbar");
+    expect(bar).not.toHaveAttribute("aria-valuenow");
+    expect(screen.getByRole("button", { name: /analyzing/i })).toBeDisabled();
   });
 });

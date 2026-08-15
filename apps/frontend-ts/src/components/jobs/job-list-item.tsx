@@ -3,7 +3,7 @@
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
-import { SOURCE_COLORS } from "@/lib/utils/constants";
+import { SOURCE_COLORS, STATUS_COLORS } from "@/lib/utils/constants";
 import type { JobListing } from "@/lib/types/api";
 
 interface JobListItemProps {
@@ -45,10 +45,10 @@ export function JobListItem({
         type="button"
         onClick={onClick}
         className={cn(
-          "absolute inset-0 z-0 w-full rounded border transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
+          "absolute inset-0 z-0 w-full rounded border transition-all duration-150 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary/70 focus-visible:ring-offset-1",
           isSelected
             ? "border-primary bg-primary/5 shadow-sm"
-            : "border-border bg-card hover:border-primary/30 hover:shadow-sm",
+            : "border-border bg-card hover:border-primary hover:ring-2 hover:ring-primary/40",
         )}
         aria-label={`View ${job.title} at ${job.company}`}
       />
@@ -67,7 +67,7 @@ export function JobListItem({
             type="button"
             onClick={onSave}
             className={cn(
-              "pointer-events-auto shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded",
+              "pointer-events-auto shrink-0 rounded border border-transparent p-0.5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 hover:border-primary hover:ring-2 hover:ring-primary/40",
               isSaved
                 ? "text-primary"
                 : "text-muted-foreground hover:text-primary",
@@ -94,7 +94,12 @@ export function JobListItem({
             </Badge>
           )}
           {isAppliedExternally && (
-            <Badge className="text-[10px] px-1.5 py-0 bg-muted text-muted-foreground">
+            <Badge
+              className={cn(
+                "text-[10px] px-1.5 py-0",
+                STATUS_COLORS.applied_elsewhere,
+              )}
+            >
               Applied Elsewhere
             </Badge>
           )}

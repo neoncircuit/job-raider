@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils/cn";
 import { getJdPasteHint } from "@/lib/utils/jd-paste-hint";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { AiWaitProgress } from "@/components/ai-wait-progress";
 
 // ── Score ring ────────────────────────────────────────────────────────────────
 
@@ -253,6 +254,7 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
         [".docx"],
     },
     maxFiles: 1,
+    disabled: analyze.isPending,
   });
 
   return (
@@ -261,7 +263,8 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
         <div
           {...getRootProps()}
           className={cn(
-            "flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors",
+            "flex min-h-[220px] flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors",
+            analyze.isPending ? "cursor-wait" : "cursor-pointer",
             isDragActive
               ? "border-primary bg-primary/10"
               : "border-border bg-muted hover:border-border",
@@ -289,6 +292,7 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
             placeholder="Paste the job description to get a tailored gap analysis…"
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
+            disabled={analyze.isPending}
           />
           {jdPasteHint && (
             <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -305,6 +309,16 @@ function AnalysisForm({ onResult }: { onResult: (r: ResumeAnalysis) => void }) {
       >
         {analyze.isPending ? "Analyzing…" : "Analyze Resume"}
       </Button>
+      {analyze.isPending ? (
+        <AiWaitProgress
+          label={
+            jobDescription.trim()
+              ? "Analyzing profile against the job…"
+              : "Analyzing profile…"
+          }
+          hint="Parsing the resume, then running the analysis. This can take a minute."
+        />
+      ) : null}
     </div>
   );
 }

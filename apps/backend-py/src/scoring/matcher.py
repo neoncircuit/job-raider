@@ -12,10 +12,12 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from ..generation.career_stage import should_exclude_intern_listings
 from ..models.job_listing import ExperienceLevel, JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
 from ..utils.source_geography import listing_matches_requested_locations
+from .filter import JobFilter
 
 
 class ScoreCategory(str, Enum):
@@ -172,6 +174,13 @@ class JobMatcher:
         if apprenticeship_bonus:
             total_score += apprenticeship_bonus
 
+        intern_mismatch = False
+        if should_exclude_intern_listings(profile) and JobFilter._looks_like_internship(
+            job
+        ):
+            intern_mismatch = True
+            total_score = min(total_score, max(self.threshold - 15, 0))
+
         # Determine recommendation
         recommendation, reasoning = self._get_recommendation(
             total_score,
@@ -187,7 +196,9 @@ class JobMatcher:
             job=job,
             total_score=total_score,
             passed_threshold=(
-                total_score >= self.threshold and not apprenticeship_blocked
+                total_score >= self.threshold
+                and not apprenticeship_blocked
+                and not intern_mismatch
             ),
             breakdown=breakdown,
             matched_keywords=matched_keywords,

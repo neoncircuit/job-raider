@@ -196,6 +196,24 @@ class LinkedInProfileAnalysis(BaseModel):
     summary: str = Field(
         description="Executive summary of the LinkedIn profile analysis"
     )
+    career_stage: Optional[Literal["early_career", "experienced"]] = Field(
+        default=None,
+        description=(
+            "Framing used for scoring and recommendations: early_career "
+            "(fresh graduate / first role) or experienced hire"
+        ),
+    )
+    intern_seeking: Optional[bool] = Field(
+        default=None,
+        description=(
+            "When career_stage is early_career, whether advice targets "
+            "internships rather than a full-time first role"
+        ),
+    )
+    career_stage_label: Optional[str] = Field(
+        default=None,
+        description="Short UI label for the inferred career-stage framing",
+    )
 
     # Detailed Sections
     section_scores: List[ProfileSectionScore] = Field(

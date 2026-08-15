@@ -365,4 +365,36 @@ describe("CoverLetterPage", () => {
     );
     expect(await screen.findByText("82/100")).toBeInTheDocument();
   });
+
+  it("shows an indeterminate wait bar while generating", async () => {
+    mockGenerate.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    renderWithClient(<CoverLetterPage />);
+
+    await user.type(
+      screen.getByLabelText(/job title/i),
+      "Senior Software Engineer",
+    );
+    await user.type(screen.getByLabelText(/company/i), "Tech Innovations Inc");
+    await user.type(
+      screen.getByLabelText(/job description/i),
+      "We are seeking a talented Senior Software Engineer to join our team. " +
+        "Requirements include 5+ years of React and TypeScript experience and strong architecture skills.",
+    );
+
+    const generateButton = screen.getByRole("button", {
+      name: /generate cover letter/i,
+    });
+    await waitFor(() => expect(generateButton).not.toBeDisabled());
+    await user.click(generateButton);
+
+    const labels = await screen.findAllByText(/writing cover letter/i);
+    expect(labels.length).toBeGreaterThan(0);
+    const bars = screen.getAllByRole("progressbar");
+    expect(bars.length).toBeGreaterThan(0);
+    bars.forEach((bar) => {
+      expect(bar).not.toHaveAttribute("aria-valuenow");
+    });
+    expect(generateButton).toBeDisabled();
+  });
 });

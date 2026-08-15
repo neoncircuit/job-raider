@@ -29,6 +29,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -82,54 +83,59 @@
   --popover: #ffffff;
   --popover-foreground: #1a1a1a;
 
-  /* Primary — red accent (raid CTA) */
-  --primary: #e63946;
+  /* Primary — slightly deeper raid red so small text and CTAs meet AA */
+  --primary: #c5303e;
   --primary-foreground: #ffffff;
 
   /* Secondary */
   --secondary: #efece8;
   --secondary-foreground: #1a1a1a;
 
-  /* Muted */
+  /* Muted — gray-600 so labels stay readable on card and muted fills */
   --muted: #ebe7e2;
-  --muted-foreground: #6b7280;
+  --muted-foreground: #4b5563;
 
   /* Accent */
-  --accent: #e63946;
+  --accent: #c5303e;
   --accent-foreground: #ffffff;
 
   /* Destructive */
-  --destructive: #dc2626;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
 
-  /* Semantic states */
-  --success: #22c55e;
+  /* Semantic states — dark enough for 12px chip text and solid fills */
+  --success: #15803d;
   --success-foreground: #ffffff;
-  --warning: #f59e0b;
+  --warning: #b45309;
   --warning-foreground: #ffffff;
-  --info: #3b82f6;
+  --info: #1d4ed8;
   --info-foreground: #ffffff;
 
-  /* Borders & inputs */
-  --border: #e0dcd6;
-  --input: #f0ece8;
-  --ring: #e63946;
+  /* Borders & inputs — --input is the field border color */
+  --border: #b8b2aa;
+  --input: #b8b2aa;
+  --ring: #c5303e;
 
   /* Charts - red-accented palette */
-  --chart-1: #e63946;
+  --chart-1: #c5303e;
   --chart-2: #efece8;
-  --chart-3: #6b7280;
-  --chart-4: #9ca3af;
+  --chart-3: #4b5563;
+  --chart-4: #6b7280;
   --chart-5: #d1d5db;
 
   /* Profile chart colors — primary-aligned */
-  --chart-grid: #e5e1db;
-  --chart-axis: #6b7280;
-  --chart-radar-stroke: #e63946;
-  --chart-radar-fill: #e63946;
-  --chart-timeline-fill: #e63946;
-  --chart-cursor: rgba(230, 57, 70, 0.1);
+  --chart-grid: #d4cfc8;
+  --chart-axis: #4b5563;
+  --chart-radar-stroke: #c5303e;
+  --chart-radar-fill: #c5303e;
+  --chart-timeline-fill: #c5303e;
+  --chart-cursor: rgba(197, 48, 62, 0.1);
 
   --radius: 0.25rem;
+
+  /* Motion — short, shared easing for hover/focus/tab */
+  --duration-fast: 150ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Layout */
   --sidebar-width: 14rem;
@@ -137,16 +143,16 @@
   /* Sidebar */
   --sidebar: #f0ece8;
   --sidebar-foreground: #1a1a1a;
-  --sidebar-primary: #e63946;
+  --sidebar-primary: #c5303e;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e63946;
+  --sidebar-accent: #c5303e;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #e0dcd6;
-  --sidebar-ring: #e63946;
+  --sidebar-border: #b8b2aa;
+  --sidebar-ring: #c5303e;
 
-  --border-subtle: #ebe7e2;
+  --border-subtle: #d0cbc4;
   --panel: #ffffff;
-  --raid-wash: rgba(230, 57, 70, 0.06);
+  --raid-wash: rgba(197, 48, 62, 0.08);
 }
 
 .dark {
@@ -168,12 +174,13 @@
   --secondary-foreground: #f0f0f0;
 
   --muted: #2a2a2a;
-  --muted-foreground: #9ca3af;
+  --muted-foreground: #c4c9d1;
 
   --accent: #ff6b6b;
   --accent-foreground: #0f0f0f;
 
-  --destructive: #ef4444;
+  --destructive: #f87171;
+  --destructive-foreground: #0f0f0f;
 
   --success: #4ade80;
   --success-foreground: #0f0f0f;
@@ -182,8 +189,8 @@
   --info: #60a5fa;
   --info-foreground: #0f0f0f;
 
-  --border: #333333;
-  --input: #1f1f1f;
+  --border: #5a5a5a;
+  --input: #5a5a5a;
   --ring: #ff6b6b;
 
   --chart-1: #ff6b6b;
@@ -205,10 +212,10 @@
   --sidebar-primary-foreground: #0f0f0f;
   --sidebar-accent: #ff6b6b;
   --sidebar-accent-foreground: #0f0f0f;
-  --sidebar-border: #333333;
+  --sidebar-border: #5a5a5a;
   --sidebar-ring: #ff6b6b;
 
-  --border-subtle: #2a2a2a;
+  --border-subtle: #3f3f3f;
   --panel: #1a1a1a;
   --raid-wash: rgba(255, 107, 107, 0.1);
 
@@ -319,7 +326,7 @@ html[data-scheme="retrowave"] {
   --secondary: #f3e8ff;
   --secondary-foreground: #1a0a2e;
   --muted: #efe6f8;
-  --muted-foreground: #6b5a7a;
+  --muted-foreground: #4e3f5c;
   --accent: #0e8fa8;
   --accent-foreground: #ffffff;
   --destructive: #dc2626;
@@ -1179,6 +1186,22 @@ html.dark[data-scheme="stained-glass"] {
   }
 }
 
+/* Quiet hover/focus motion. Reduced-motion users skip it. */
+@media (prefers-reduced-motion: no-preference) {
+  a,
+  button,
+  [role="button"],
+  [data-slot="tabs-trigger"],
+  [data-slot="card"],
+  [data-slot="input"],
+  [data-slot="badge"] {
+    transition-property:
+      color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+}
+
 /* ── Scrollbar ─────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 5px;
@@ -1188,11 +1211,11 @@ html.dark[data-scheme="stained-glass"] {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.75 0.008 264);
+  background: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.6 0.012 264);
+  background: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
 }
 
 /* ── Raid atmosphere (quiet wash, no neon) ─────────────────────────────────── */
@@ -1374,11 +1397,31 @@ html.dark[data-scheme="stained-glass"] {
   }
 }
 
+/* Indeterminate AI wait bar — slides without inventing a percent */
+@keyframes aiWaitIndeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.ai-wait-indeterminate-bar {
+  animation: aiWaitIndeterminate 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stagger-in {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  .ai-wait-indeterminate-bar {
+    animation: none;
+    width: 100%;
+    opacity: 0.55;
   }
 }
 

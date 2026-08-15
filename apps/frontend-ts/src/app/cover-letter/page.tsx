@@ -46,6 +46,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
+import { AiWaitProgress } from "@/components/ai-wait-progress";
 import { ScoreExplanationDisplay } from "@/components/score-explanation";
 import {
   TaskModelSelect,
@@ -646,6 +647,16 @@ export default function CoverLetterPage() {
                 </>
               )}
             </Button>
+            {generateMutation.isPending ? (
+              <AiWaitProgress
+                label={
+                  form.review
+                    ? "Writing and reviewing cover letter…"
+                    : "Writing cover letter…"
+                }
+                hint="The model is working. This can take a minute."
+              />
+            ) : null}
           </CardContent>
         </Card>
 
@@ -996,6 +1007,14 @@ export default function CoverLetterPage() {
                     </Button>
                   </CardTitle>
                 </CardHeader>
+                {prepMutation.isPending ? (
+                  <CardContent>
+                    <AiWaitProgress
+                      label="Generating interview prep…"
+                      hint="The model is drafting questions and talking points."
+                    />
+                  </CardContent>
+                ) : null}
                 {prepSheet && (
                   <CardContent className="space-y-4 text-sm">
                     {prepSheet.likely_questions.length > 0 && (
@@ -1043,16 +1062,29 @@ export default function CoverLetterPage() {
             </>
           ) : (
             <Card className="h-full min-h-[400px] flex items-center justify-center">
-              <CardContent className="text-center space-y-3">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                  <Mail className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium">No cover letter yet</p>
-                  <p className="text-sm text-muted-foreground">
-                    Fill in the job details and click generate.
-                  </p>
-                </div>
+              <CardContent className="text-center space-y-3 w-full max-w-md">
+                {generateMutation.isPending ? (
+                  <AiWaitProgress
+                    label={
+                      form.review
+                        ? "Writing and reviewing cover letter…"
+                        : "Writing cover letter…"
+                    }
+                    hint="The model is working. This can take a minute."
+                  />
+                ) : (
+                  <>
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                      <Mail className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium">No cover letter yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Fill in the job details and click generate.
+                      </p>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}

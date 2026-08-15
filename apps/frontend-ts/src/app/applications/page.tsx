@@ -60,6 +60,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
+import { AiWaitProgress } from "@/components/ai-wait-progress";
 
 // ── Application card ──────────────────────────────────────────────────────────
 
@@ -172,130 +173,139 @@ function AppCard({
   });
 
   return (
-    <Card>
-      <CardContent className="flex items-center justify-between gap-4 pt-4 pb-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-foreground truncate">{title}</p>
-            {app.is_bookmarked && (
-              <Bookmark className="h-3.5 w-3.5 shrink-0 text-info" />
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground">{company}</p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <Badge className={cn("text-xs", statusColor)}>
-              {app.current_status.replace(/_/g, " ")}
-            </Badge>
-            {app.listing_status === "expired" && (
-              <Badge className="text-xs bg-destructive text-destructive-foreground">
-                Expired
-              </Badge>
-            )}
-            {app.applied_date && (
-              <span className="text-xs text-muted-foreground">
-                {formatDate(app.applied_date)}
-              </span>
-            )}
-            {app.days_since_application != null && (
-              <span className="text-xs text-muted-foreground">
-                {app.days_since_application}d ago
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          {listingHref && (
-            <a
-              href={listingHref}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Open listing
-            </a>
-          )}
-          {canRespond && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setStatus.mutate("screening_scheduled")}
-              disabled={statusPending}
-            >
-              <CalendarCheck className="mr-1.5 h-3.5 w-3.5" />
-              Proceed to interview
-            </Button>
-          )}
-          {inInterview && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => prepMutation.mutate()}
-              disabled={prepMutation.isPending || statusPending}
-            >
-              {prepMutation.isPending ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+    <Card className="transition-all duration-150 hover:ring-2 hover:ring-ring/50">
+      <CardContent className="space-y-3 pt-4 pb-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-foreground truncate">{title}</p>
+              {app.is_bookmarked && (
+                <Bookmark className="h-3.5 w-3.5 shrink-0 text-info" />
               )}
-              Prep for interview
-            </Button>
-          )}
-          {(canRespond || inInterview) && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs text-red-500"
-              onClick={() => setRejectConfirmOpen(true)}
-              disabled={statusPending}
-            >
-              Rejected
-            </Button>
-          )}
-          {canRevert && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => revertStatus.mutate()}
-              disabled={statusPending}
-            >
-              <Undo2 className="mr-1.5 h-3.5 w-3.5" />
-              Revert
-            </Button>
-          )}
-          {onUnsave && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onUnsave}
-              className="text-xs text-muted-foreground"
-            >
-              Unsave
-            </Button>
-          )}
-          {onUnhide && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onUnhide}
-              className="text-xs text-muted-foreground"
-            >
-              Unhide
-            </Button>
-          )}
-          {onUntrack && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setConfirmOpen(true)}
-              disabled={untrackPending}
-              className="text-xs text-red-500"
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Remove
-            </Button>
-          )}
+            </div>
+            <p className="text-sm text-muted-foreground">{company}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <Badge className={cn("text-xs", statusColor)}>
+                {app.current_status.replace(/_/g, " ")}
+              </Badge>
+              {app.listing_status === "expired" && (
+                <Badge className="text-xs bg-destructive text-destructive-foreground">
+                  Expired
+                </Badge>
+              )}
+              {app.applied_date && (
+                <span className="text-xs text-muted-foreground">
+                  {formatDate(app.applied_date)}
+                </span>
+              )}
+              {app.days_since_application != null && (
+                <span className="text-xs text-muted-foreground">
+                  {app.days_since_application}d ago
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {listingHref && (
+              <a
+                href={listingHref}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open listing
+              </a>
+            )}
+            {canRespond && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setStatus.mutate("screening_scheduled")}
+                disabled={statusPending}
+              >
+                <CalendarCheck className="mr-1.5 h-3.5 w-3.5" />
+                Proceed to interview
+              </Button>
+            )}
+            {inInterview && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => prepMutation.mutate()}
+                disabled={prepMutation.isPending || statusPending}
+              >
+                {prepMutation.isPending ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Prep for interview
+              </Button>
+            )}
+            {(canRespond || inInterview) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-destructive"
+                onClick={() => setRejectConfirmOpen(true)}
+                disabled={statusPending}
+              >
+                Rejected
+              </Button>
+            )}
+            {canRevert && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => revertStatus.mutate()}
+                disabled={statusPending}
+              >
+                <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+                Revert
+              </Button>
+            )}
+            {onUnsave && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onUnsave}
+                className="text-xs text-muted-foreground"
+              >
+                Unsave
+              </Button>
+            )}
+            {onUnhide && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onUnhide}
+                className="text-xs text-muted-foreground"
+              >
+                Unhide
+              </Button>
+            )}
+            {onUntrack && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setConfirmOpen(true)}
+                disabled={untrackPending}
+                className="text-xs text-destructive"
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Remove
+              </Button>
+            )}
+          </div>
         </div>
+        {prepMutation.isPending ? (
+          <AiWaitProgress
+            label="Generating interview prep…"
+            hint="The model is drafting questions and talking points."
+            size="compact"
+          />
+        ) : null}
       </CardContent>
       {showDescriptionPaste && (
         <CardContent className="space-y-2 pt-0">

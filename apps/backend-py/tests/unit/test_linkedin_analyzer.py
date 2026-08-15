@@ -13,6 +13,7 @@ Date: 2026-06-25
 """
 
 import json
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -505,3 +506,386 @@ class TestLinkedInProfileAnalysisProperties:
         analysis = LinkedInProfileAnalysis(overall_score=65, summary="Test")
 
         assert analysis.weighted_overall_score == 65
+
+
+def _graduate_linkedin_input() -> LinkedInProfileInput:
+    """Education-only plus internship LinkedIn payload."""
+    return LinkedInProfileInput(
+        headline="CS Graduate | Seeking first product role",
+        summary="Recent computer science graduate. Open to internships and junior PM roles.",
+        education_entries=[
+            {
+                "school": "National University of Singapore",
+                "degree": "BSc Computer Science",
+                "dates": "2022-2026",
+            }
+        ],
+        experience_entries=[
+            {
+                "title": "Product Management Intern",
+                "company": "Campus Startup",
+                "dates": "May 2025 - Aug 2025",
+                "description": "Supported sprint planning for a student app.",
+            }
+        ],
+        skills=["Python", "SQL", "Figma"],
+        target_roles=["Associate Product Manager", "Product Intern"],
+    )
+
+
+def _experienced_linkedin_input() -> LinkedInProfileInput:
+    """LinkedIn payload with substantial professional work history."""
+    return LinkedInProfileInput(
+        headline="Senior Product Manager | B2B SaaS",
+        summary="Product leader focused on workflow platforms.",
+        experience_entries=[
+            {
+                "title": "Senior Product Manager",
+                "company": "Tech Corp",
+                "dates": "2020-present",
+                "description": "Owned checkout conversion for a B2B platform.",
+            },
+            {
+                "title": "Product Manager",
+                "company": "Startup Inc",
+                "dates": "2016-2020",
+                "description": "Launched two paid features.",
+            },
+        ],
+        education_entries=[
+            {"school": "MIT", "degree": "MBA", "dates": "2014-2016"},
+        ],
+        skills=["Roadmapping", "SQL", "Stakeholder management"],
+        target_roles=["Director of Product"],
+    )
+
+
+def _graduate_user_profile():
+    """Stored Job Raider profile for a fresh graduate."""
+    from src.models.job_listing import ExperienceLevel
+    from src.models.user_profile import (
+        ContactInfo,
+        Education,
+        Project,
+        TargetJob,
+        UserProfile,
+        WorkExperience,
+    )
+
+    now = datetime.now()
+    return UserProfile(
+        name="Alex Tan",
+        contact=ContactInfo(email="alex@example.com", location="Singapore"),
+        education=[
+            Education(
+                degree="BSc Computer Science",
+                school="National University of Singapore",
+                start_date=datetime(now.year - 4, 8, 1),
+                end_date=datetime(now.year, 6, 1),
+            )
+        ],
+        experience=[
+            WorkExperience(
+                title="Product Intern",
+                company="Campus Startup",
+                start_date=datetime(now.year - 1, 5, 1),
+                end_date=datetime(now.year - 1, 8, 1),
+                description="Internship supporting a student product.",
+            )
+        ],
+        projects=[
+            Project(
+                name="Campus Marketplace",
+                description="Peer-to-peer listing app for students.",
+            )
+        ],
+        targets=TargetJob(experience_levels=[ExperienceLevel.ENTRY]),
+    )
+
+
+def _intern_seeking_user_profile():
+    """Stored profile that still targets internships."""
+    from src.models.job_listing import ExperienceLevel
+    from src.models.user_profile import (
+        ContactInfo,
+        Education,
+        TargetJob,
+        UserProfile,
+        WorkExperience,
+    )
+
+    now = datetime.now()
+    return UserProfile(
+        name="Alex Tan",
+        contact=ContactInfo(email="alex@example.com", location="Singapore"),
+        education=[
+            Education(
+                degree="BSc Computer Science",
+                school="National University of Singapore",
+                start_date=datetime(now.year - 3, 8, 1),
+                end_date=datetime(now.year, 6, 1),
+            )
+        ],
+        experience=[
+            WorkExperience(
+                title="Product Intern",
+                company="Campus Startup",
+                start_date=datetime(now.year - 1, 5, 1),
+                end_date=datetime(now.year - 1, 8, 1),
+                description="Internship supporting a student product.",
+            )
+        ],
+        targets=TargetJob(experience_levels=[ExperienceLevel.INTERNSHIP]),
+    )
+
+
+def _traineeship_full_time_user_profile():
+    """Graduate who finished a traineeship and targets full-time entry roles."""
+    from src.models.job_listing import ExperienceLevel
+    from src.models.user_profile import (
+        ApprenticeshipContract,
+        ContactInfo,
+        Education,
+        TargetJob,
+        UserProfile,
+        WorkExperience,
+    )
+
+    now = datetime.now()
+    return UserProfile(
+        name="Alex Tan",
+        contact=ContactInfo(email="alex@example.com", location="Singapore"),
+        education=[
+            Education(
+                degree="BSc Computer Science",
+                school="National University of Singapore",
+                start_date=datetime(now.year - 4, 8, 1),
+                end_date=datetime(now.year - 1, 6, 1),
+            )
+        ],
+        experience=[
+            WorkExperience(
+                title="Software Engineering Trainee",
+                company="GovTech",
+                start_date=datetime(now.year - 1, 7, 1),
+                end_date=datetime(now.year, 6, 1),
+                description="Completed traineeship in product engineering.",
+            )
+        ],
+        apprenticeship=ApprenticeshipContract(
+            field="Software Engineering",
+            is_active=True,
+        ),
+        targets=TargetJob(experience_levels=[ExperienceLevel.ENTRY]),
+    )
+
+
+class TestLinkedInCareerStage:
+    """Career-stage framing for LinkedIn analysis prompts and fallback."""
+
+    def test_education_and_intern_fixture_is_early_career(self) -> None:
+        """Education plus internship should use early-career framing."""
+        from src.generation.career_stage import infer_career_stage
+
+        ctx = infer_career_stage(_graduate_linkedin_input())
+        assert ctx.stage == "early_career"
+        assert ctx.intern_seeking is True
+        assert "intern-seeking" in ctx.label
+
+    def test_stored_graduate_profile_is_early_career(self) -> None:
+        """Stored graduate profile should select early-career even on thin LinkedIn."""
+        from src.generation.career_stage import infer_career_stage
+
+        ctx = infer_career_stage(
+            LinkedInProfileInput(raw_text="LinkedIn profile of a student"),
+            user_profile=_graduate_user_profile(),
+        )
+        assert ctx.stage == "early_career"
+        assert ctx.intern_seeking is False
+        assert "full-time" in ctx.label
+
+    def test_experienced_fixture_is_experienced(self) -> None:
+        """Multi-year non-intern roles should use experienced-hire framing."""
+        from src.generation.career_stage import infer_career_stage
+
+        ctx = infer_career_stage(_experienced_linkedin_input())
+        assert ctx.stage == "experienced"
+        assert ctx.intern_seeking is False
+
+    def test_graduate_prompt_includes_early_career_and_not_ten_years(
+        self,
+    ) -> None:
+        """Graduate prompt must frame first-role advice and not invent tenure."""
+        llm_router = MagicMock(spec=LLMRouter)
+        analyzer = LinkedInAnalyzer(llm_router)
+        messages, stage_ctx = analyzer._build_messages(
+            _graduate_linkedin_input(), _graduate_user_profile()
+        )
+        system = messages[0].content
+        user = messages[1].content
+        instructions = f"{system}\n{stage_ctx.guidance}"
+
+        assert stage_ctx.stage == "early_career"
+        assert stage_ctx.intern_seeking is False
+        assert "early_career" in user
+        assert "full-time first role" in user.lower()
+        assert "get more internships" in user.lower()
+        assert "do not recommend internships" in user.lower()
+        assert "JOB RAIDER STORED PROFILE" in user
+        assert "Campus Marketplace" in user
+        assert "10 years" not in instructions.lower()
+        assert "over 10" not in instructions.lower()
+        assert "top skills endorsed" not in instructions.lower()
+        assert "do not invent" in instructions.lower()
+
+    def test_experienced_prompt_keeps_achievement_depth(self) -> None:
+        """Experienced profiles still receive achievement-depth guidance."""
+        llm_router = MagicMock(spec=LLMRouter)
+        analyzer = LinkedInAnalyzer(llm_router)
+        messages, stage_ctx = analyzer._build_messages(_experienced_linkedin_input())
+        prompt = f"{messages[0].content}\n{messages[1].content}"
+
+        assert stage_ctx.stage == "experienced"
+        assert "quantified achievements" in prompt.lower()
+        assert "achievement-depth" in prompt.lower()
+        assert "experienced" in prompt.lower()
+
+    def test_rule_based_graduate_does_not_demand_mid_career_proof(self) -> None:
+        """Fallback copy for graduates must not demand endorsements or invented tenure."""
+        llm_router = MagicMock(spec=LLMRouter)
+        analyzer = LinkedInAnalyzer(llm_router)
+        result = analyzer._rule_based_analysis(_graduate_linkedin_input())
+        blob = json.dumps(result).lower()
+
+        assert result["career_stage"] == "early_career"
+        assert "10 years" not in blob
+        assert "endorsement" not in blob
+        experience_feedback = " ".join(
+            s["feedback"]
+            for s in result["section_scores"]
+            if s["section_name"] == "Experience"
+        ).lower()
+        assert "intern" in experience_feedback
+
+    def test_analyze_attaches_career_stage(self) -> None:
+        """Full analyze flow should persist inferred career_stage on the result."""
+        llm_router = MagicMock(spec=LLMRouter)
+        llm_router.generate.return_value = LLMResponse(
+            content=json.dumps(
+                {
+                    "overall_score": 70,
+                    "summary": "Graduate-ready profile.",
+                    "section_scores": [],
+                    "insights": [],
+                    "keyword_recommendations": [],
+                    "action_plan": [],
+                    "generated_headline_options": [],
+                    "summary_rewrite_suggestions": [],
+                    "competitive_edge": "",
+                    "metadata": {},
+                }
+            ),
+            model="test-model",
+            provider="test",
+        )
+        analyzer = LinkedInAnalyzer(llm_router)
+        result = analyzer.analyze(_graduate_linkedin_input(), _graduate_user_profile())
+        assert result.career_stage == "early_career"
+        assert result.intern_seeking is False
+        assert result.metadata.get("career_stage") == "early_career"
+        assert result.metadata.get("intern_seeking") is False
+
+    def test_traineeship_plus_entry_target_is_full_time_not_intern_seeking(
+        self,
+    ) -> None:
+        """Finished traineeship plus entry target must not push internships."""
+        from src.generation.career_stage import infer_career_stage
+
+        ctx = infer_career_stage(
+            LinkedInProfileInput(
+                headline="CS graduate seeking full-time software role",
+                summary="Completed a software engineering traineeship.",
+                experience_entries=[
+                    {
+                        "title": "Software Engineering Trainee",
+                        "company": "GovTech",
+                        "dates": "2025-2026",
+                    }
+                ],
+            ),
+            user_profile=_traineeship_full_time_user_profile(),
+        )
+        assert ctx.stage == "early_career"
+        assert ctx.intern_seeking is False
+        assert "full-time" in ctx.label
+        assert "get an internship" not in ctx.guidance.lower()
+        assert "do not recommend internships" in ctx.guidance.lower()
+
+    def test_intern_target_stays_intern_seeking(self) -> None:
+        """Explicit intern target keeps intern-seeking framing."""
+        from src.generation.career_stage import infer_career_stage
+
+        ctx = infer_career_stage(
+            _graduate_linkedin_input(),
+            user_profile=_intern_seeking_user_profile(),
+        )
+        assert ctx.stage == "early_career"
+        assert ctx.intern_seeking is True
+        assert "intern-seeking" in ctx.label
+        assert "intern/junior/graduate" in ctx.guidance.lower()
+
+    def test_full_time_graduate_prompt_forbids_get_an_internship(self) -> None:
+        """LinkedIn prompt for full-time grads must forbid internship next steps."""
+        llm_router = MagicMock(spec=LLMRouter)
+        analyzer = LinkedInAnalyzer(llm_router)
+        messages, stage_ctx = analyzer._build_messages(
+            LinkedInProfileInput(
+                headline="CS graduate | Seeking first full-time role",
+                summary="Finished a traineeship. Targeting junior engineering roles.",
+                experience_entries=[
+                    {
+                        "title": "Software Engineering Trainee",
+                        "company": "GovTech",
+                        "dates": "2025-2026",
+                    }
+                ],
+                target_roles=["Junior Software Engineer"],
+            ),
+            _traineeship_full_time_user_profile(),
+        )
+        blob = f"{messages[0].content}\n{messages[1].content}\n{stage_ctx.guidance}"
+        lower = blob.lower()
+        assert stage_ctx.intern_seeking is False
+        assert "do not recommend internships" in lower
+        assert "get more internships" in lower
+        assert "open to intern and junior" not in lower
+
+    def test_rule_based_full_time_grad_does_not_push_internships(self) -> None:
+        """Fallback copy for full-time graduates must not recommend internships."""
+        llm_router = MagicMock(spec=LLMRouter)
+        analyzer = LinkedInAnalyzer(llm_router)
+        stage_ctx = None
+        from src.generation.career_stage import infer_career_stage
+
+        input_data = LinkedInProfileInput(
+            headline="CS graduate seeking first full-time role",
+            summary="Completed traineeship. Targeting junior roles.",
+            experience_entries=[
+                {
+                    "title": "Software Engineering Trainee",
+                    "company": "GovTech",
+                    "dates": "2025-2026",
+                }
+            ],
+            skills=["Python"],
+            target_roles=["Junior Software Engineer"],
+        )
+        stage_ctx = infer_career_stage(
+            input_data, _traineeship_full_time_user_profile()
+        )
+        result = analyzer._rule_based_analysis(input_data, stage_ctx)
+        blob = json.dumps(result).lower()
+        assert result["intern_seeking"] is False
+        assert "get an internship" not in blob
+        assert "open to intern" not in blob
+        assert "add internships" not in blob
