@@ -119,6 +119,14 @@ class ApplicationOutcome:
     is_hidden: bool = False
     bookmark_date: Optional[datetime] = None
     hidden_date: Optional[datetime] = None
+    status_history: List[str] = field(default_factory=list)
+
+    @property
+    def previous_status(self) -> Optional[str]:
+        """Last status before the current one, if a revert is possible."""
+        if not self.status_history:
+            return None
+        return self.status_history[-1]
 
     @property
     def days_since_application(self) -> int:
@@ -282,7 +290,10 @@ class OutcomeTracker:
             self.logger.warning(f"Application not found: {application_id}")
             return False
 
-        outcome.current_status = status
+        if outcome.current_status != status:
+            outcome.status_history.append(outcome.current_status.value)
+            outcome.current_status = status
+            self._sync_final_outcome(outcome)
 
         if metadata:
             outcome.metadata.update(metadata)
@@ -295,19 +306,71 @@ class OutcomeTracker:
                 }
             )
 
-        # Auto-detect final outcome
+        self._save_outcome(outcome)
+
+        self.logger.info(f"Updated application {application_id} to {status.value}")
+
+        return True
+
+    def revert_status(self, application_id: str) -> Optional[ApplicationStatus]:
+        """
+        Restore the previous application status from stored history.
+
+        Reloads from disk first so a peer API worker sees the latest stack.
+        Same-status metadata updates do not write history, so a job-description
+        paste cannot invent a revert target.
+
+        Args:
+            application_id: Application ID
+
+        Returns:
+            Restored status, or None when the row is missing or has no history
+        """
+        self._reload_cache()
+        outcome = self._outcomes.get(application_id)
+        if not outcome or not outcome.status_history:
+            self.logger.warning(
+                f"Cannot revert application {application_id}: no status history"
+            )
+            return None
+
+        previous = outcome.status_history.pop()
+        try:
+            outcome.current_status = ApplicationStatus(previous)
+        except ValueError:
+            outcome.status_history.append(previous)
+            self.logger.warning(
+                f"Cannot revert application {application_id}: invalid status {previous}"
+            )
+            return None
+
+        self._sync_final_outcome(outcome)
+        self._save_outcome(outcome)
+
+        self.logger.info(
+            f"Reverted application {application_id} to {outcome.current_status.value}"
+        )
+        return outcome.current_status
+
+    def _sync_final_outcome(self, outcome: ApplicationOutcome) -> None:
+        """
+        Keep final_outcome aligned with the current status.
+
+        Terminal statuses set a matching outcome. All other statuses return
+        to pending so a revert away from rejected or withdrawn is usable.
+
+        Args:
+            outcome: Application record to update
+        """
+        status = outcome.current_status
         if status == ApplicationStatus.OFFER_ACCEPTED:
             outcome.final_outcome = Outcome.OFFER
         elif status == ApplicationStatus.REJECTED:
             outcome.final_outcome = Outcome.REJECT
         elif status == ApplicationStatus.WITHDRAWN:
             outcome.final_outcome = Outcome.WITHDRAW
-
-        self._save_outcome(outcome)
-
-        self.logger.info(f"Updated application {application_id} to {status.value}")
-
-        return True
+        else:
+            outcome.final_outcome = Outcome.PENDING
 
     def add_interview(
         self,
@@ -1278,6 +1341,7 @@ class OutcomeTracker:
             "hidden_date": (
                 outcome.hidden_date.isoformat() if outcome.hidden_date else None
             ),
+            "status_history": list(outcome.status_history),
         }
 
     def _deserialize_outcome(
@@ -1349,6 +1413,11 @@ class OutcomeTracker:
                     if data.get("hidden_date")
                     else None
                 ),
+                status_history=[
+                    str(item)
+                    for item in data.get("status_history", [])
+                    if item is not None and str(item).strip()
+                ],
             )
 
         except Exception as e:

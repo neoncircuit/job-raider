@@ -12,6 +12,11 @@ class TestComputeApplyMethod:
         """JSearch jobs are always external (link to original posting)."""
         assert _apply_method("jsearch", False) == "external_site"
 
+    def test_singapore_boards_return_external_site(self) -> None:
+        """MCF and JobStreet open the public listing, not Easy Apply."""
+        assert _apply_method("mycareersfuture", False) == "external_site"
+        assert _apply_method("jobstreet", False) == "external_site"
+
     def test_linkedin_returns_easy_apply(self):
         """LinkedIn jobs default to easy_apply (optimistic)."""
         assert _apply_method("linkedin", False) == "easy_apply"

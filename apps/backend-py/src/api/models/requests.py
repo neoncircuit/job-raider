@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from ...utils.text_normalizer import normalize_user_prose
 
-# Accepted by pipeline/search request models. Scrapers may ignore reserved ids
-# (careersatgov, jobstreet) until those adapters exist.
+# Accepted by pipeline/search request models. Scrapers may ignore reserved
+# ids (careersatgov) until that adapter exists.
 KNOWN_JOB_SOURCES = frozenset(
     {
         "linkedin",
@@ -70,8 +70,8 @@ class PipelineStartRequest(BaseModel):
     sources: Optional[List[str]] = Field(
         default=None,
         description=(
-            "Job sources (linkedin, jsearch, mycareersfuture; "
-            "careersatgov and jobstreet are reserved)"
+            "Job sources (linkedin, jsearch, mycareersfuture, jobstreet; "
+            "careersatgov is reserved)"
         ),
     )
 
@@ -158,8 +158,8 @@ class JobSearchRequest(BaseModel):
     sources: Optional[List[str]] = Field(
         default=None,
         description=(
-            "Job sources (linkedin, jsearch, mycareersfuture; "
-            "careersatgov and jobstreet are reserved)"
+            "Job sources (linkedin, jsearch, mycareersfuture, jobstreet; "
+            "careersatgov is reserved)"
         ),
     )
     limit: int = Field(default=50, ge=1, le=200, description="Maximum results")
@@ -288,11 +288,17 @@ class UpdateApplicationStatusRequest(BaseModel):
     """Request to update application status."""
 
     job_id: str = Field(..., description="Job ID")
-    status: str = Field(..., description="New status")
+    status: Optional[str] = Field(
+        None, description="New status. Ignored when revert is true."
+    )
     note: Optional[str] = Field(None, description="Optional note about the change")
     metadata: Optional[Dict[str, Any]] = Field(
         None,
         description="Optional metadata to merge (for example a job description)",
+    )
+    revert: bool = Field(
+        False,
+        description="Restore the previous status from stored history",
     )
 
 

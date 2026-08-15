@@ -110,7 +110,20 @@ export const applicationsApi = {
     note?: string,
     metadata?: Record<string, unknown>,
   ) =>
-    request<{ success: boolean }>("PUT", "/applications/status", {
-      body: { job_id: jobId, status, note, metadata },
-    }),
+    request<{ success: boolean; new_status?: string }>(
+      "PUT",
+      "/applications/status",
+      {
+        body: { job_id: jobId, status, note, metadata },
+      },
+    ),
+
+  revertStatus: (jobId: string) =>
+    request<{ success: boolean; new_status?: string }>(
+      "PUT",
+      "/applications/status",
+      {
+        body: { job_id: jobId, revert: true },
+      },
+    ),
 };

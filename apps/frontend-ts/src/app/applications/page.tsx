@@ -13,6 +13,7 @@ import {
   Loader2,
   Clock,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import {
   APPLICATIONS_DASHBOARD_QUERY_KEY,
@@ -46,6 +47,7 @@ import { STATUS_COLORS } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
 import {
   canAdvanceToInterview,
+  canRevertStatus,
   displayApplicationCompany,
   displayApplicationTitle,
   filterExpiredApplications,
@@ -78,6 +80,7 @@ function AppCard({
   const [prepOpen, setPrepOpen] = useState(false);
   const [prep, setPrep] = useState<PrepSheetResponse | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
   const [pastedDescription, setPastedDescription] = useState("");
   const [needsDescription, setNeedsDescription] = useState(false);
 
@@ -85,6 +88,7 @@ function AppCard({
   const statusColor = STATUS_COLORS[status] ?? "bg-muted text-foreground";
   const canRespond = canAdvanceToInterview(status);
   const inInterview = isInterviewStage(status);
+  const canRevert = canRevertStatus(status, app.previous_status);
   const title = displayApplicationTitle(app.job_title);
   const company = displayApplicationCompany(app.company);
   const listingHref = safeListingUrl(app.source_url);
@@ -106,6 +110,21 @@ function AppCard({
     },
     onError: () => toast.error("Failed to update status"),
   });
+
+  const revertStatus = useMutation({
+    mutationFn: () => applicationsApi.revertStatus(app.application_id),
+    onSuccess: (data) => {
+      const restored = data.new_status?.replace(/_/g, " ") ?? "previous status";
+      toast.success(`Restored to ${restored}`);
+      qc.invalidateQueries({
+        queryKey: ["applications"],
+        refetchType: "all",
+      });
+    },
+    onError: () => toast.error("Failed to revert status"),
+  });
+
+  const statusPending = setStatus.isPending || revertStatus.isPending;
 
   const prepMutation = useMutation({
     mutationFn: async () => {
@@ -201,7 +220,7 @@ function AppCard({
               size="sm"
               variant="outline"
               onClick={() => setStatus.mutate("screening_scheduled")}
-              disabled={setStatus.isPending}
+              disabled={statusPending}
             >
               <CalendarCheck className="mr-1.5 h-3.5 w-3.5" />
               Proceed to interview
@@ -212,7 +231,7 @@ function AppCard({
               size="sm"
               variant="outline"
               onClick={() => prepMutation.mutate()}
-              disabled={prepMutation.isPending}
+              disabled={prepMutation.isPending || statusPending}
             >
               {prepMutation.isPending ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -227,10 +246,21 @@ function AppCard({
               size="sm"
               variant="ghost"
               className="text-xs text-red-500"
-              onClick={() => setStatus.mutate("rejected")}
-              disabled={setStatus.isPending}
+              onClick={() => setRejectConfirmOpen(true)}
+              disabled={statusPending}
             >
               Rejected
+            </Button>
+          )}
+          {canRevert && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => revertStatus.mutate()}
+              disabled={statusPending}
+            >
+              <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+              Revert
             </Button>
           )}
           {onUnsave && (
@@ -330,6 +360,33 @@ function AppCard({
               }}
             >
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={rejectConfirmOpen} onOpenChange={setRejectConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Mark this application as rejected?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This marks {title} at {company} as rejected. You can revert the
+              status later. Remove deletes the tracking record instead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={statusPending}
+              onClick={() => {
+                setRejectConfirmOpen(false);
+                setStatus.mutate("rejected");
+              }}
+            >
+              Rejected
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

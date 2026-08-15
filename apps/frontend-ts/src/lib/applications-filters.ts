@@ -69,6 +69,26 @@ export function isInterviewStage(status: string): boolean {
 }
 
 /**
+ * Return whether an accidental interview or rejected mark can be undone.
+ *
+ * Revert is only offered after Proceed or Rejected. Remove stays a delete.
+ *
+ * @param status - Current application status.
+ * @param previousStatus - Last stored status, if any.
+ * @returns True when history exists and the current status is reversible.
+ */
+export function canRevertStatus(
+  status: string,
+  previousStatus?: string | null,
+): boolean {
+  if (!previousStatus?.trim()) {
+    return false;
+  }
+  const current = status.toLowerCase();
+  return isInterviewStage(current) || current === "rejected";
+}
+
+/**
  * Applications that belong on the All Applications tab.
  *
  * @param apps - Dashboard application summaries.

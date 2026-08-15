@@ -50,7 +50,7 @@ def _apply_method(source: str, already_applied: bool) -> str:
     """
     if already_applied:
         return "already_applied"
-    if source == "jsearch":
+    if source in {"jsearch", "mycareersfuture", "jobstreet", "careersatgov"}:
         return "external_site"
     return "easy_apply"
 

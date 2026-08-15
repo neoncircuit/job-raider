@@ -236,6 +236,7 @@ class ApplicationDetailResponse(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
     listing_status: Optional[str] = None
     source_url: Optional[str] = None
+    previous_status: Optional[str] = None
 
 
 class SemanticSearchResult(BaseModel):

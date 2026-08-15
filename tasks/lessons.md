@@ -892,6 +892,7 @@
 - Document personal-use stance in decision-log and troubleshooting
 - Map board-specific locations so they match the Jobs default location filter. MCF districts (`Islandwide`, `D01 Marina...`) do not contain "Singapore"; without a suffix the post-filter drops every listing.
 - Prefer a source geography override for Singapore-only boards (MCF, Careers@Gov, JobStreet SG): match Singapore/remote by source, skip other countries, do not rely on district text. Do not add JobStreet country sites until Singapore is fully working.
+- JobStreet Singapore search JSON lives on `sg.jobstreet.com/api/jobsearch/v5/search`. The same path on `www.jobstreet.com.sg` ignores keywords and `where` and returns Australian jobs. Pin the API host. Keep public listing URLs on `www.jobstreet.com.sg/job/{id}`.
 - Compact HTML JDs (MCF) concatenate into one blob if tags are stripped without converting block tags to newlines. Convert HTML to Markdown (headings, lists, bold, links) at ingest and render it in the Jobs panel.
 - Do not use raw job IDs as application filenames. JSearch IDs can exceed OS name limits (Errno 36). Hash long or unsafe IDs; keep the original id in JSON.
 

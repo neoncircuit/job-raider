@@ -410,6 +410,119 @@ class TestApplicationTracker:
         active_statuses = tracker.get_custom_statuses(active_only=True)
         assert len(active_statuses) == 0
 
+    def test_update_status_stores_history_for_revert(self, temp_data_dir):
+        """A real status change must persist enough history to revert."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_application("app_hist", "Engineer", "Acme")
+
+        assert tracker.update_status("app_hist", ApplicationStatus.SCREENING_SCHEDULED)
+        outcome = tracker.get_application("app_hist")
+        assert outcome is not None
+        assert outcome.current_status == ApplicationStatus.SCREENING_SCHEDULED
+        assert outcome.status_history == ["applied"]
+        assert outcome.previous_status == "applied"
+
+        path = temp_data_dir / "app_hist.json"
+        stored = json.loads(path.read_text(encoding="utf-8"))
+        assert stored["status_history"] == ["applied"]
+
+    def test_same_status_update_does_not_push_history(self, temp_data_dir):
+        """A job-description paste must not invent a revert target."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            "ext_same",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+        )
+
+        assert tracker.update_status(
+            "ext_same",
+            ApplicationStatus.APPLIED_ELSEWHERE,
+            metadata={"description": "D" * 80},
+        )
+        outcome = tracker.get_application("ext_same")
+        assert outcome is not None
+        assert outcome.status_history == []
+        assert outcome.previous_status is None
+        assert outcome.metadata["description"] == "D" * 80
+
+    def test_revert_from_screening_scheduled_to_applied(self, temp_data_dir):
+        """Revert from interview must restore applied and hide interview prep."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_application("app_rev", "Engineer", "Acme")
+        tracker.update_status("app_rev", ApplicationStatus.SCREENING_SCHEDULED)
+
+        restored = tracker.revert_status("app_rev")
+        assert restored == ApplicationStatus.APPLIED
+        outcome = tracker.get_application("app_rev")
+        assert outcome is not None
+        assert outcome.current_status == ApplicationStatus.APPLIED
+        assert outcome.status_history == []
+        assert outcome.final_outcome.value == "pending"
+
+    def test_revert_from_rejected_applied_elsewhere_origin(self, temp_data_dir):
+        """Revert from rejected must restore applied_elsewhere and clear reject."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            "ext_rej",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+        )
+        tracker.update_status("ext_rej", ApplicationStatus.REJECTED)
+
+        restored = tracker.revert_status("ext_rej")
+        assert restored == ApplicationStatus.APPLIED_ELSEWHERE
+        outcome = tracker.get_application("ext_rej")
+        assert outcome is not None
+        assert outcome.current_status == ApplicationStatus.APPLIED_ELSEWHERE
+        assert outcome.status_history == []
+        assert outcome.final_outcome.value == "pending"
+
+    def test_revert_from_rejected_after_interview(self, temp_data_dir):
+        """A second revert must walk the stack: rejected to interview to applied."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_application("app_stack", "Engineer", "Acme")
+        tracker.update_status("app_stack", ApplicationStatus.SCREENING_SCHEDULED)
+        tracker.update_status("app_stack", ApplicationStatus.REJECTED)
+
+        first = tracker.revert_status("app_stack")
+        assert first == ApplicationStatus.SCREENING_SCHEDULED
+        second = tracker.revert_status("app_stack")
+        assert second == ApplicationStatus.APPLIED
+        assert tracker.revert_status("app_stack") is None
+
+    def test_revert_status_hashed_filename(self, temp_data_dir):
+        """History and revert must persist on hashed id_*.json files."""
+        from src.metrics.outcome_tracker import application_filename_stem
+
+        long_id = "b29x" + "C" * 400 + ":colon"
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            long_id, "AI Engineer", "Acme", application_method="External site"
+        )
+        tracker.update_status(long_id, ApplicationStatus.SCREENING_SCHEDULED)
+
+        path = temp_data_dir / f"{application_filename_stem(long_id)}.json"
+        assert path.exists()
+        assert path.name.startswith("id_")
+        stored = json.loads(path.read_text(encoding="utf-8"))
+        assert stored["application_id"] == long_id
+        assert stored["status_history"] == ["applied_elsewhere"]
+
+        restored = tracker.revert_status(long_id)
+        assert restored == ApplicationStatus.APPLIED_ELSEWHERE
+        reloaded = json.loads(path.read_text(encoding="utf-8"))
+        assert reloaded["current_status"] == "applied_elsewhere"
+        assert reloaded["status_history"] == []
+
+        peer = OutcomeTracker(storage_dir=str(temp_data_dir))
+        loaded = peer.get_application(long_id)
+        assert loaded is not None
+        assert loaded.current_status == ApplicationStatus.APPLIED_ELSEWHERE
+        assert loaded.status_history == []
+
     def test_get_all_applications_with_new_filters(self, temp_data_dir):
         """Test get_all_applications respects new field filters."""
         tracker = OutcomeTracker(storage_dir=str(temp_data_dir))

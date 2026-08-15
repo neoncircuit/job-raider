@@ -60,7 +60,7 @@ Then recreate or restart the backend so `ScraperManager` rebuilds without the so
 
 Jobs search with only MyCareersFuture selected can return 0 jobs even though the portal has matches. The default location is Singapore. MCF listings used district names (`Islandwide`, `D01 Marina...`) that do not contain "Singapore", so the post-filter dropped every row.
 
-MyCareersFuture and Careers@Gov are Singapore-scoped: they match Singapore/SG (and Remote when the job is remote or hybrid) by source policy, not district text. Other countries skip these boards. Recreate the backend overlay after pulling that change.
+MyCareersFuture, JobStreet Singapore, and Careers@Gov are Singapore-scoped: they match Singapore/SG (and Remote when the job is remote or hybrid) by source policy, not district text. Other countries skip these boards. Recreate the backend overlay after pulling that change.
 
 ### Symptoms of rate limiting or blocks
 
@@ -68,9 +68,34 @@ MyCareersFuture and Careers@Gov are Singapore-scoped: they match Singapore/SG (a
 - Backend logs: `MyCareersFuture API returned HTTP 429` or timeouts.
 - Increase delay in `config/scrapers_config.yaml` under `mycareersfuture.rate_limit_delay`, or disable with `MCF_ENABLED=0`.
 
-### Careers@Gov and JobStreet (deferred)
+## JobStreet Singapore adapter
 
-Live scrapers for Careers@Gov and a dedicated JobStreet adapter are not implemented. Use JSearch for JobStreet-adjacent coverage. A later dedicated JobStreet adapter is Singapore-only; do not add other JobStreet country sites until Singapore is fully working.
+### Not an official developer API
+
+JobStreet Singapore search uses the same public JSON service as the website (`sg.jobstreet.com/api/jobsearch/v5/search`). It is not a formally documented developer API. Job Raider treats it as personal-use tooling: low rate limits, capped pages, and an easy kill switch.
+
+Do not call `www.jobstreet.com.sg/api/jobsearch/v5/search`. That host ignores keywords and location and returns Australian jobs.
+
+### Enable / disable
+
+Default is enabled after the Phase 0 spike passed. To disable:
+
+```bash
+# In apps/backend-py/.env (or container env)
+JOBSTREET_ENABLED=0
+```
+
+Then recreate the backend so `ScraperManager` rebuilds without the source. `GET /jobs/sources` will omit `jobstreet`.
+
+### Symptoms of rate limiting or blocks
+
+- Jobs search with only JobStreet selected returns 0 jobs.
+- Backend logs: `JobStreet API returned HTTP 429` or timeouts.
+- Increase delay in `config/scrapers_config.yaml` under `jobstreet.rate_limit_delay`, or disable with `JOBSTREET_ENABLED=0`.
+
+### Careers@Gov (deferred)
+
+A live Careers@Gov scraper is not implemented. Phase 0 found no public search JSON on `jobs.careers.gov.sg`. Do not scrape HTML or confidential OData. Use paste or Track External until a documented public API exists.
 
 ### Applied elsewhere returns HTTP 500
 

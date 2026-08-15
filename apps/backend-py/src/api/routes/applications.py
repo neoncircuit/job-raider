@@ -428,8 +428,27 @@ async def update_application_status(
     request: UpdateApplicationStatusRequest,
 ) -> Dict[str, Any]:
     """
-    Update application status.
+    Update application status, or restore the previous status.
+
+    When ``revert`` is true, ignore ``status`` and pop the stored history
+    stack. Remove / untrack stays a separate delete action.
     """
+    if request.revert:
+        if outcome_tracker.get_application(request.job_id) is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        restored = outcome_tracker.revert_status(request.job_id)
+        if restored is None:
+            raise HTTPException(status_code=400, detail="Nothing to revert")
+        return {
+            "success": True,
+            "job_id": request.job_id,
+            "new_status": restored.value,
+            "message": "Status reverted successfully",
+        }
+
+    if not request.status:
+        raise HTTPException(status_code=400, detail="Status is required")
+
     try:
         status = ApplicationStatus(request.status)
     except ValueError:
@@ -551,6 +570,7 @@ async def get_dashboard(
                 "has_job_description": _has_prep_description(
                     metadata, catalog_description
                 ),
+                "previous_status": app.previous_status,
             }
         )
 
@@ -655,4 +675,5 @@ async def get_application_details(job_id: str) -> ApplicationDetailResponse:
         source_url=_resolve_source_url(
             outcome.metadata or {}, catalog.get(outcome.application_id)
         ),
+        previous_status=outcome.previous_status,
     )

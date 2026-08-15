@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ApplicationSummary } from "@/lib/types/api";
 import {
   canAdvanceToInterview,
+  canRevertStatus,
   displayApplicationCompany,
   displayApplicationTitle,
   filterExpiredApplications,
@@ -99,6 +100,19 @@ describe("interview eligibility", () => {
     expect(isInterviewStage("applied_elsewhere")).toBe(false);
     expect(isInterviewStage("applied")).toBe(false);
     expect(isInterviewStage("saved_bookmarked")).toBe(false);
+  });
+
+  it("allows revert from interview or rejected when history exists", () => {
+    expect(canRevertStatus("screening_scheduled", "applied")).toBe(true);
+    expect(canRevertStatus("screening_scheduled", "applied_elsewhere")).toBe(
+      true,
+    );
+    expect(canRevertStatus("rejected", "applied")).toBe(true);
+    expect(canRevertStatus("rejected", "applied_elsewhere")).toBe(true);
+    expect(canRevertStatus("rejected", "screening_scheduled")).toBe(true);
+    expect(canRevertStatus("applied", "screening_scheduled")).toBe(false);
+    expect(canRevertStatus("screening_scheduled", null)).toBe(false);
+    expect(canRevertStatus("saved_bookmarked", "applied")).toBe(false);
   });
 });
 

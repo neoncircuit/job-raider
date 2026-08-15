@@ -1,5 +1,87 @@
 # Job Raider Decision Log
 
+## 2026-08-15 - JobStreet Singapore public JSON adapter (Phase 1)
+
+### Context
+
+MCF Phase 1 is in daily use. The user asked to look into JobStreet, then Careers@Gov. Source id `jobstreet` was already reserved. JSearch remains the JobStreet-adjacent path for other countries. Dedicated JobStreet must be Singapore only (`jobstreet.com.sg` / `sg.jobstreet.com`). No login, no Playwright, no MY/PH/ID hosts.
+
+### Spike (Phase 0) — go
+
+- Official SEEK partner GraphQL requires a partnership and OAuth. Out of scope.
+- Deprecated Chalice v4 (`/api/chalice-search/v4/search`) returns HTTP 404.
+- Public v5 search is live: `GET https://sg.jobstreet.com/api/jobsearch/v5/search`.
+- Required query params: `siteKey=SG-Main`, `sourcesystem=houston`, `keywords`, `where=Singapore`, `page` (one-based), `pageSize`, `locale=en-SG`.
+- No login or session cookie on a capped probe. Caps stay at 20 per page, max 3 pages, max 60 results.
+- Search card fields: `id`, `title`, `companyName` / `advertiser`, `locations` (`countryCode`, `label`), `teaser`, `bulletPoints`, `salaryLabel`, `workTypes`, `workArrangements`, `listingDate`.
+- Full JD is not in the search payload. Public GraphQL `POST https://sg.jobstreet.com/graphql` accepts `{ jobDetails(id) { job { id title content abstract } } }` without login. `content` is HTML.
+- Host rule: `www.jobstreet.com.sg/api/jobsearch/v5/search` ignores keywords and `where` and returns about 170k Australian jobs. The adapter must call `sg.jobstreet.com` only. Public listing URLs stay on `www.jobstreet.com.sg/job/{id}`.
+- Rate and ToS: same personal-use stance as MCF. Prefer stop over aggressive pagination. Official partner API is the long-term documented path if SEEK grants access.
+
+### Decision
+
+- Ship `JobSource.JOBSTREET` + `JobStreetScraper` with the same caps and kill switch pattern as MCF (`JOBSTREET_ENABLED`).
+- Skip HTTP when the search location is outside Singapore or remote.
+- Drop cards whose `countryCode` is not `SG`.
+- Map teaser plus bullet points as the search description. Optional GraphQL detail fetch is for `get_job_details` only (not every search row).
+- Do not add Malaysia, Philippines, or Indonesia JobStreet sources.
+- JSearch stays enabled and still follows the search location.
+
+### Consequences
+
+- SourceSelector shows `jobstreet` via `GET /jobs/sources` when enabled.
+- Set `JOBSTREET_ENABLED=0` to unregister the scraper without code changes.
+- Catalog may contain both JSearch and JobStreet rows for the same vacancy. Existing catalog dedupe applies.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Search["Jobs or Pipeline search"] --> Geo{"Singapore or remote?"}
+  Geo -->|no| Skip["Skip JobStreet HTTP"]
+  Geo -->|yes| Host["GET sg.jobstreet.com v5 search"]
+  Host --> Filter["Keep countryCode SG only"]
+  Filter --> Map["Map card to JobListing"]
+  Map --> Catalog["catalog.json upsert"]
+  Catalog --> UI["SourceSelector jobstreet"]
+  Detail["GET job details"] --> GQL["POST sg.jobstreet.com/graphql jobDetails"]
+```
+
+## 2026-08-15 - Careers@Gov Phase 0 spike (no-go for live adapter)
+
+### Context
+
+Careers@Gov source id `careersatgov` is reserved. Geography policy already treats it as Singapore-scoped. The user asked for a public-JSON spike after JobStreet.
+
+### Spike (Phase 0) — no-go
+
+- `https://www.careers.gov.sg/` and `https://jobs.careers.gov.sg/` are Next.js HTML shells.
+- Guessed public paths (`/api`, `/odata`, `/api/jobs`) return HTML 404. No MCF-style search JSON on the public host.
+- OpenGovSG publishes a processed dump at `github.com/opengovsg/careersgovsg-jobs-data` (`data/job-listings.json`). That is a third-party daily snapshot, not a live board search API. The repo treats the upstream OData URLs as confidential secrets. Do not hunt for or hardcode those URLs.
+- Some agencies also post via public Greenhouse or Workable APIs. That is a partial inventory, not Careers@Gov search.
+
+### Decision
+
+- Do not ship a Careers@Gov scraper in this pass.
+- Do not scrape HTML, logins, or confidential OData.
+- Keep `careersatgov` reserved on request models and in `SINGAPORE_SCOPED_SOURCES`.
+
+### What would unblock
+
+- A documented public search or detail JSON on `jobs.careers.gov.sg` that works with capped anonymous HTTP, or
+- An official PSD open-data API, or
+- An explicit later decision to consume the published OpenGovSG dump as a delayed catalog (full-file download, not keyword search).
+
+### Flow
+
+```mermaid
+flowchart TD
+  Spike["Careers@Gov Phase 0"] --> Hosts["careers.gov.sg and jobs.careers.gov.sg"]
+  Hosts --> HTML["Next.js HTML only"]
+  HTML --> NoGo["No live adapter"]
+  Dump["OpenGovSG published dump"] --> Later["Optional later catalog path"]
+```
+
 ## 2026-08-15 - Singapore boards are Singapore/remote only
 
 ### Context

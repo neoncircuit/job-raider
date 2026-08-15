@@ -1,0 +1,84 @@
+{
+  "data": [
+    {
+      "advertiser": { "id": "62437933", "description": "AlwaysHired Pte. Ltd." },
+      "bulletPoints": [
+        "Develop scalable cloud applications used by thousands of daily users.",
+        "Up to $4,000 plus AWS certification support."
+      ],
+      "classifications": [
+        {
+          "classification": {
+            "id": "6281",
+            "description": "Information & Communication Technology"
+          },
+          "subclassification": {
+            "id": "6287",
+            "description": "Developers/Programmers"
+          }
+        }
+      ],
+      "companyName": "AlwaysHired",
+      "displayType": "standard",
+      "employer": { "id": "699022", "name": "AlwaysHired" },
+      "id": "93962024",
+      "isFeatured": false,
+      "listingDate": "2026-08-13T10:29:33.000Z",
+      "listingDateDisplay": "1d ago",
+      "locations": [
+        {
+          "countryCode": "SG",
+          "label": "Kallang, Central Region",
+          "seoHierarchy": [
+            { "contextualName": "Kallang Central Region" },
+            { "contextualName": "Central Region" }
+          ]
+        }
+      ],
+      "roleId": "software-engineer",
+      "salaryLabel": "$3,500 – $4,000 per month",
+      "teaser": "Software Engineer | Up to $4K | AWS + Bonus | Mon–Fri | Cloud Development | Kallang",
+      "title": "Software Engineer",
+      "workTypes": ["Full time"],
+      "workArrangements": {
+        "data": [{ "id": "1", "label": { "text": "On-site" } }]
+      }
+    },
+    {
+      "advertiser": { "id": "1", "description": "Example Pte Ltd" },
+      "bulletPoints": [],
+      "companyName": "Example Pte Ltd",
+      "displayType": "standard",
+      "id": "11111111",
+      "listingDate": "2026-08-12T00:00:00Z",
+      "locations": [
+        { "countryCode": "SG", "label": "East Region" }
+      ],
+      "roleId": "data-intern",
+      "salaryLabel": "",
+      "teaser": "Support data pipelines.",
+      "title": "Software Engineer Intern",
+      "workTypes": ["Full time"],
+      "workArrangements": {
+        "data": [{ "id": "3", "label": { "text": "Hybrid" } }]
+      }
+    },
+    {
+      "advertiser": { "id": "2", "description": "CNS Australia Pty Ltd" },
+      "bulletPoints": [],
+      "companyName": "CNS Australia Pty Ltd",
+      "displayType": "promoted",
+      "id": "22222222",
+      "listingDate": "2026-08-10T00:00:00Z",
+      "locations": [
+        { "countryCode": "AU", "label": "North Sydney, Sydney NSW" }
+      ],
+      "salaryLabel": "",
+      "teaser": "Australian listing that must be dropped.",
+      "title": "Head of Recruitment",
+      "workTypes": ["Full time"],
+      "workArrangements": { "data": [] }
+    }
+  ],
+  "totalCount": 3
+}

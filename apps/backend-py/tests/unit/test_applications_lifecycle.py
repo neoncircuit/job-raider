@@ -318,6 +318,66 @@ class TestApplicationsExpiredJoin:
         data = detail.json()
         assert data["current_status"] == "screening_scheduled"
         assert len(str(data["metadata"].get("description", ""))) >= 50
+        assert data["previous_status"] == "applied_elsewhere"
+
+        dash = client.get("/api/applications/dashboard")
+        assert dash.status_code == 200
+        by_id = {row["application_id"]: row for row in dash.json()["applications"]}
+        assert by_id["ext-interview-1"]["previous_status"] == "applied_elsewhere"
+
+    def test_revert_status_from_interview_and_rejected(
+        self, client: TestClient
+    ) -> None:
+        """PUT revert restores history for applied_elsewhere interview and reject."""
+        client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "ext-revert-1",
+                "job_title": "AI Engineer",
+                "company": "Acme",
+                "application_method": "External site",
+            },
+        )
+        client.put(
+            "/api/applications/status",
+            json={"job_id": "ext-revert-1", "status": "screening_scheduled"},
+        )
+        reverted = client.put(
+            "/api/applications/status",
+            json={"job_id": "ext-revert-1", "revert": True},
+        )
+        assert reverted.status_code == 200
+        assert reverted.json()["new_status"] == "applied_elsewhere"
+
+        detail = client.get("/api/applications/ext-revert-1")
+        assert detail.status_code == 200
+        assert detail.json()["current_status"] == "applied_elsewhere"
+        assert detail.json()["previous_status"] is None
+
+        client.put(
+            "/api/applications/status",
+            json={"job_id": "ext-revert-1", "status": "rejected"},
+        )
+        rejected_detail = client.get("/api/applications/ext-revert-1")
+        assert rejected_detail.json()["current_status"] == "rejected"
+        assert rejected_detail.json()["previous_status"] == "applied_elsewhere"
+        assert rejected_detail.json()["final_outcome"] == "reject"
+
+        restored = client.put(
+            "/api/applications/status",
+            json={"job_id": "ext-revert-1", "revert": True},
+        )
+        assert restored.status_code == 200
+        assert restored.json()["new_status"] == "applied_elsewhere"
+        usable = client.get("/api/applications/ext-revert-1")
+        assert usable.json()["current_status"] == "applied_elsewhere"
+        assert usable.json()["final_outcome"] == "pending"
+
+        empty = client.put(
+            "/api/applications/status",
+            json={"job_id": "ext-revert-1", "revert": True},
+        )
+        assert empty.status_code == 400
 
     def test_track_external_backfills_catalog_description(
         self, client: TestClient

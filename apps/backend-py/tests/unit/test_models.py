@@ -270,6 +270,8 @@ class TestEnums:
         """Test JobSource enum values."""
         assert JobSource.LINKEDIN.value == "linkedin"
         assert JobSource.JSEARCH.value == "jsearch"
+        assert JobSource.MYCAREERSFUTURE.value == "mycareersfuture"
+        assert JobSource.JOBSTREET.value == "jobstreet"
         assert JobSource.MANUAL.value == "manual"
         assert JobSource.OTHER.value == "other"
 

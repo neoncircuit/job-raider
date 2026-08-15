@@ -151,6 +151,7 @@ class PipelineStages:
                 "linkedin": JobSource.LINKEDIN,
                 "jsearch": JobSource.JSEARCH,
                 "mycareersfuture": JobSource.MYCAREERSFUTURE,
+                "jobstreet": JobSource.JOBSTREET,
             }
             source_enums = (
                 [source_map[s] for s in sources if s in source_map] if sources else None

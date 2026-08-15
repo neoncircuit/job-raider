@@ -4163,8 +4163,8 @@ flowchart TD
 
 ### Deferred (do not implement yet)
 
-- **Phase 2 — Careers@Gov:** Spike public listing vs HTML. Same adapter checklist only if public JSON and personal-use ToS are acceptable. Prefer paste/import if scrape is blocked. Credentials (if ever required) go in Settings/env/session, never on resume profiles.
-- **Phase 3 — JobStreet SG:** Dedicated adapter, if still needed after JSearch, is JobStreet Singapore only (`jobstreet.com.sg`). Do not add other JobStreet country sites until Singapore is fully working. Dedup against JSearch in catalog.
+- **Phase 2 — Careers@Gov:** Spike completed 2026-08-15: no-go for live adapter. See later section.
+- **Phase 3 — JobStreet SG:** Implemented 2026-08-15. Singapore only. See later section.
 
 ### Verification
 
@@ -4201,7 +4201,7 @@ flowchart TD
 
 - [x] Source policy: MyCareersFuture, Careers@Gov, and JobStreet SG are Singapore / remote only.
 - [x] Post-filter and scoring use the override. MCF skips HTTP for other countries.
-- [x] Careers@Gov and dedicated JobStreet scrapers still deferred. JobStreet, if added, is SG-only until Singapore is fully working. Do not add other JobStreet country sites.
+- [x] Careers@Gov scraper still deferred (Phase 0 no-go). JobStreet SG Phase 1 shipped 2026-08-15. Do not add other JobStreet country sites.
 
 ### Flow
 
@@ -4351,4 +4351,91 @@ flowchart TD
   Card -->|no| Hide["Hide control"]
   Catalog["Catalog URL"] --> Card
 ```
+
+## JobStreet Singapore Phase 1 + Careers@Gov spike [COMPLETED] (2026-08-15)
+
+**Scope:** Public HTTP/JSON only. No login. No Playwright. JobStreet Singapore only. No MY/PH/ID JobStreet. Careers@Gov spike-only unless the contract is as clean as MCF.
+
+### Plan
+
+- [x] Phase 0 JobStreet: confirm `sg.jobstreet.com/api/jobsearch/v5/search` needs no auth; record host pitfall on `www.jobstreet.com.sg/api`.
+- [x] Phase 0 Careers@Gov: no public search JSON on `jobs.careers.gov.sg`; no-go for live adapter.
+- [x] Add `JobSource.JOBSTREET` and `JobStreetScraper` with page/result caps and `JOBSTREET_ENABLED` kill switch.
+- [x] Register in `ScraperManager`, `jobs.py` / `pipeline/stages.py` source maps, scrapers `__init__`, YAML, `.env.example`.
+- [x] Frontend `SOURCE_COLORS` and Apply label for `jobstreet`.
+- [x] Unit tests with JSON fixtures (no live network).
+- [x] Decision-log + troubleshooting. Careers@Gov remains reserved.
+- [x] Overlay backend after Python change. Rebuild frontend for source color/label.
+- [x] Focused pytest via WSL.
+
+### Deferred
+
+- Careers@Gov live scraper until a documented public JSON API exists, or the user accepts the OpenGovSG published dump as a delayed catalog.
+- JobStreet full-JD fetch on every search row (GraphQL `jobDetails.content`). Search uses teaser plus bullets. `get_job_details` can load HTML content later.
+- JobStreet MY/PH/ID. JSearch stays the cross-border JobStreet-adjacent path.
+- Official SEEK partner API (OAuth partnership).
+
+### Flow
+
+```mermaid
+flowchart TD
+  Search["Jobs or Pipeline"] --> Manager["ScraperManager"]
+  Manager --> JS["JobStreet SG"]
+  JS --> Geo{"Singapore or remote?"}
+  Geo -->|no| Skip["Skip HTTP"]
+  Geo -->|yes| V5["Capped v5 JSON on sg.jobstreet.com"]
+  V5 --> Catalog["catalog upsert"]
+  Catalog --> UI["GET /jobs/sources"]
+  CAG["Careers@Gov"] --> NoGo["Spike no-go"]
+```
+
+### Review
+
+- JobStreet is personal-use tooling against the website JSON service, not an official API.
+- Kill switch: `JOBSTREET_ENABLED=0`. Caps: 20 per page, max 3 pages, max 60 results.
+- Must use `sg.jobstreet.com` for search. `www.jobstreet.com.sg/api` returns Australian jobs.
+- Overlay backend and rebuild frontend completed. `ScraperManager` in the container lists `jobstreet`.
+- Focused pytest: 76 passed.
+
+## Revert accidental interview or rejected status [COMPLETED] (2026-08-15)
+
+**Scope:** Restore the previous application status after an accidental Proceed to interview or Rejected click. Confirm Rejected. Keep Remove as a full delete. Do not add Careers@Gov. Do not expand JobStreet.
+
+### Plan
+
+- [x] Persist a short `status_history` stack on status change in `OutcomeTracker`.
+- [x] Add `revert` on `PUT /applications/status`. Expose `previous_status` on dashboard and detail.
+- [x] AppCard: Revert after interview or rejected. Confirm on Rejected. No confirm on Proceed.
+- [x] Invalidate the shared applications dashboard query with `refetchType: "all"`.
+- [x] Unit tests: history, revert from screening and rejected, hashed filenames, applied_elsewhere origin.
+- [x] Frontend filter tests for revert eligibility.
+- [x] WSL pytest and frontend Vitest. Overlay backend. Rebuild frontend.
+- [x] Short review in this file.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Applied["applied or applied_elsewhere"] --> Proceed["Proceed to interview"]
+  Applied --> RejectConfirm["Confirm Rejected"]
+  Proceed --> Interview["screening_scheduled plus history"]
+  RejectConfirm --> Rejected["rejected plus history"]
+  Interview --> Revert["Revert"]
+  Rejected --> Revert
+  Revert --> Restore["Pop status_history"]
+  Restore --> Applied
+  Interview --> Prep["Prep for interview"]
+  Restore -.->|away from interview| HidePrep["Prep hides"]
+  Remove["Remove"] --> Delete["delete_application"]
+```
+
+### Review
+
+- Status changes now append the prior status to `status_history` on the JSON record, including hashed `id_*.json` files. Same-status JD pastes do not write history.
+- `PUT /applications/status` with `revert: true` pops that stack. Applied and applied-elsewhere origins both restore. Rejected clears `final_outcome` back to pending.
+- AppCard shows Revert after Proceed or Rejected when history exists. Rejected asks for confirm. Proceed does not. Remove remains a full delete.
+- Shared applications dashboard query invalidates with `refetchType: "all"` so Jobs badges stay consistent.
+- Tests: 55 pytest passed (tracker, lifecycle, metrics). 10 Vitest passed. Backend overlay and frontend image rebuilt.
+- Hard-refresh Applications. On a card, use Proceed or Rejected, then Revert. Legacy rows that were already interview or rejected before this change have no history, so Revert stays hidden.
+
 

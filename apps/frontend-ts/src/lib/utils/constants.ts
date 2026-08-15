@@ -31,6 +31,7 @@ export const SOURCE_COLORS: Record<string, string> = {
   linkedin: "bg-info text-info-foreground",
   jsearch: "bg-primary text-primary-foreground",
   mycareersfuture: "bg-success text-success-foreground",
+  jobstreet: "bg-warning text-warning-foreground",
   manual: "bg-muted text-muted-foreground",
 };
 

@@ -32,6 +32,20 @@ sources:
       Public JSON search used by the MCF website. Not a formal developer API.
       Personal-use tooling only; keep caps low.
 
+  jobstreet:
+    enabled: true  # Kill switch via env JOBSTREET_ENABLED=0 (registration is code-driven)
+    base_url: https://sg.jobstreet.com
+    requires_auth: false
+    rate_limit_delay: 1.5
+    timeout: 30
+    max_results: 60
+    max_pages: 3
+    notes: >
+      JobStreet Singapore only. Use sg.jobstreet.com/api/jobsearch/v5/search.
+      www.jobstreet.com.sg/api returns Australian inventory. Not a formal
+      developer API. Personal-use tooling only; keep caps low. Do not add
+      MY/PH/ID JobStreet hosts.
+
   indeed:
     enabled: false  # Blocked by Cloudflare bot detection
     base_url: https://www.indeed.com
