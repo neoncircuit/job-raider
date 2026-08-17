@@ -3179,4 +3179,24 @@
 - Do not treat missing full-time leadership as a failed mid-career profile.
 - Split intern-seeking vs full-time first-role inside early_career. A finished traineeship plus an entry/full-time target must not keep recommending internships.
 
+## Inbound interviews and duplicate listings (2026-08-17)
+
+### Do not fake an apply for recruiter inbound
+
+**Lesson:** Track External always wrote `applied_elsewhere`. Recruiter approaches with no prior apply then looked like an apply, and Revert restored a status that never happened.
+
+**How to apply:**
+- Use `inbound=true` so the row starts at `screening_scheduled` with method `inbound/recruiter`.
+- Do not write `applied_elsewhere` unless they applied.
+- Keep Proceed on `applied` / `applied_elsewhere`. Put `interview_invite` on the same `POST /applications/external` so a merge cannot call status on a new `ext-*` id.
+
+### Match duplicates by URL and company+title, not only JSearch ids
+
+**Lesson:** Track External generated a new `ext-*` id every save. The same company and listing then produced two prep cards because storage keyed only on job id, including huge hashed JSearch ids.
+
+**How to apply:**
+- Before create, match existing rows by real job id, cleaned listing URL, then normalized company+title when URL identity is missing.
+- Merge into the existing card: advance to interview if inbound/invite, attach missing JD/URL, keep hashed `id_*.json`.
+- Tell the user the existing listing was updated.
+
 

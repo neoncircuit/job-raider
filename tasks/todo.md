@@ -4632,4 +4632,45 @@ flowchart TD
 - Overlay: `docker/Dockerfile.overlay` rebuilt; backend recreated. Frontend rebuilt for the career-stage note.
 - Try: set target experience to Entry Level (not Internship), refresh profile, re-run LinkedIn analysis and a job search.
 
+## Inbound interviews and duplicate merge [COMPLETED] (2026-08-17)
+
+**Scope:** Track listings that never entered the apply pipeline: applied-elsewhere then invite, recruiter inbound with no apply, and duplicate cards for the same job. Reuse `screening_scheduled`. Do not add Careers@Gov or scrapers.
+
+### Plan
+
+- [x] Confirm Proceed on `applied_elsewhere` still reaches interview prep. Fold invite into `POST /applications/external` so merge cannot call status on a synthetic id.
+- [x] Add inbound track (`inbound=true`) that lands on `screening_scheduled` with method `inbound/recruiter`. Do not write `applied_elsewhere` when they never applied.
+- [x] Before create, match by real job id, cleaned listing URL, then normalized company+title. Merge: advance to interview if inbound/invite, attach missing JD/URL, keep hashed `id_*.json`.
+- [x] Applications UI: Track External mode for recruiter inbound. Toast when an existing listing is updated. Show an inbound chip. Keep Remove, Revert, Open listing.
+- [x] Unit tests, WSL pytest, overlay backend, rebuild frontend.
+
+### Flow
+
+```mermaid
+flowchart TD
+  Track["Track External"] --> Kind{Applied or inbound?}
+  Kind -->|applied elsewhere| Applied["applied_elsewhere"]
+  Kind -->|recruiter approached| Inbound["screening_scheduled plus inbound/recruiter"]
+  Applied --> Invite{"Interview invite?"}
+  Invite -->|yes| Screen["screening_scheduled"]
+  Invite -->|no| Proceed["Proceed to interview"]
+  Proceed --> Screen
+  Track --> Match{"Same id, URL, or company+title?"}
+  Match -->|yes| Merge["Update existing card"]
+  Match -->|no| Create["New JSON row"]
+  Merge --> Screen
+  Inbound --> Prep{"JD 50+ chars?"}
+  Screen --> Prep
+  Prep -->|yes| PrepAPI["POST /cover-letter/prep"]
+  Prep -->|no| Paste["Paste JD on card"]
+```
+
+### Review
+
+- Applied-elsewhere still uses Proceed to interview, then Prep for interview when the JD is 50+ characters. Track External can also set "I already have an interview invite" in the same POST.
+- Recruiter approached creates `screening_scheduled` with method `inbound/recruiter`. It does not write `applied_elsewhere`.
+- Duplicates merge by job id, cleaned URL, or company+title. The toast is "Updated the existing listing." Hashed `id_*.json` files keep the logical id.
+- Pytest via WSL: 64 passed (tracker, lifecycle, isolated integration). Overlay backend and rebuilt frontend. Host Vitest did not run (no local node_modules); Docker Next.js type-check passed.
+- Hard-refresh Applications. Use Recruiter approached for inbound invites. Re-enter the same company, title, or URL to merge instead of a second card.
+
 

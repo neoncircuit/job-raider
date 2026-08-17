@@ -517,6 +517,7 @@ export interface ApplicationSummary {
   listing_status?: "active" | "expired" | null;
   has_job_description?: boolean;
   previous_status?: string | null;
+  application_method?: string | null;
 }
 
 export interface ApplicationDetail extends ApplicationSummary {

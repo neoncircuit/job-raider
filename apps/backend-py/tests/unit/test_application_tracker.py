@@ -523,6 +523,178 @@ class TestApplicationTracker:
         assert loaded.current_status == ApplicationStatus.APPLIED_ELSEWHERE
         assert loaded.status_history == []
 
+    def test_inbound_creates_interview_without_applied_status(self, temp_data_dir):
+        """Inbound recruiter approaches land on interview without applied_elsewhere."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        outcome = tracker.track_external_application(
+            "ext-inbound-1",
+            "Engineer",
+            "Acme",
+            application_method="manual",
+            metadata={"description": "D" * 60},
+            inbound=True,
+        )
+        assert outcome.application_id == "ext-inbound-1"
+        assert outcome.current_status == ApplicationStatus.SCREENING_SCHEDULED
+        assert outcome.status_history == []
+        assert outcome.external_application_details is not None
+        assert (
+            outcome.external_application_details["application_method"]
+            == "inbound/recruiter"
+        )
+        assert outcome.external_application_details.get("origin") == "inbound"
+
+    def test_interview_invite_on_new_applied_elsewhere_keeps_history(
+        self, temp_data_dir
+    ):
+        """Applied-elsewhere plus invite uses screening_scheduled and revert history."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        outcome = tracker.track_external_application(
+            "ext-invite-new",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+            metadata={"description": "H" * 60},
+            interview_invite=True,
+        )
+        assert outcome.current_status == ApplicationStatus.SCREENING_SCHEDULED
+        assert outcome.status_history == ["applied_elsewhere"]
+        assert (
+            outcome.external_application_details["application_method"]
+            == "External site"
+        )
+
+    def test_different_listing_urls_do_not_merge(self, temp_data_dir):
+        """Two listings at the same company with different URLs stay separate."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            "job-url-one",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+            metadata={"source_url": "https://example.com/role-a"},
+        )
+        other = tracker.track_external_application(
+            "job-url-two",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+            metadata={"source_url": "https://example.com/role-b"},
+        )
+        assert other.application_id == "job-url-two"
+        assert other.current_status == ApplicationStatus.APPLIED_ELSEWHERE
+        assert len(tracker.get_all_applications()) == 2
+
+    def test_applied_elsewhere_invite_advances_existing_row(self, temp_data_dir):
+        """An interview invite on an applied-elsewhere row advances that row."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            "job-applied-1",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+            metadata={"source_url": "https://example.com/role"},
+        )
+        updated = tracker.track_external_application(
+            "ext-invite-dup",
+            "Engineer",
+            "Acme",
+            application_method="inbound/recruiter",
+            metadata={"source_url": "https://example.com/role"},
+            inbound=True,
+        )
+        assert updated.application_id == "job-applied-1"
+        assert updated.current_status == ApplicationStatus.SCREENING_SCHEDULED
+        assert updated.status_history == ["applied_elsewhere"]
+        assert (
+            updated.external_application_details["application_method"]
+            == "External site"
+        )
+        assert len(tracker.get_all_applications()) == 1
+
+    def test_duplicate_url_merges_into_existing(self, temp_data_dir):
+        """The same cleaned listing URL must update the existing card."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            "job-url-a",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+            metadata={"source_url": "https://example.com/jobs/1"},
+        )
+        merged = tracker.track_external_application(
+            "ext-url-b",
+            "Engineer",
+            "Acme",
+            application_method="External site",
+            metadata={
+                "source_url": "https://example.com/jobs/1/",
+                "description": "E" * 60,
+            },
+            interview_invite=True,
+        )
+        assert merged.application_id == "job-url-a"
+        assert merged.current_status == ApplicationStatus.SCREENING_SCHEDULED
+        assert merged.metadata.get("description") == "E" * 60
+        assert len(tracker.get_all_applications()) == 1
+
+    def test_duplicate_company_title_merges_when_url_missing(self, temp_data_dir):
+        """Company+title match merges when neither row has a listing URL."""
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            "job-name-a",
+            "Staff Engineer",
+            "Peer Co",
+            application_method="External site",
+        )
+        merged = tracker.track_external_application(
+            "ext-name-b",
+            "  Staff Engineer  ",
+            "peer co",
+            application_method="inbound/recruiter",
+            inbound=True,
+            metadata={"description": "F" * 55},
+        )
+        assert merged.application_id == "job-name-a"
+        assert merged.current_status == ApplicationStatus.SCREENING_SCHEDULED
+        assert len(str(merged.metadata.get("description", ""))) >= 50
+        assert len(tracker.get_all_applications()) == 1
+
+    def test_duplicate_url_merge_keeps_hashed_filename(self, temp_data_dir):
+        """Merging into a hashed JSearch id must keep id_*.json and the logical id."""
+        from src.metrics.outcome_tracker import application_filename_stem
+
+        long_id = "b29x" + "D" * 400 + ":colon"
+        tracker = OutcomeTracker(storage_dir=str(temp_data_dir))
+        tracker.track_external_application(
+            long_id,
+            "AI Engineer",
+            "Acme",
+            application_method="External site",
+            metadata={"source_url": "https://example.com/hashed-role"},
+        )
+        stem = application_filename_stem(long_id)
+        path = temp_data_dir / f"{stem}.json"
+        assert path.exists()
+        assert stem.startswith("id_")
+
+        merged = tracker.track_external_application(
+            "ext-hashed-dup",
+            "AI Engineer",
+            "Acme",
+            application_method="inbound/recruiter",
+            inbound=True,
+            metadata={"source_url": "https://example.com/hashed-role"},
+        )
+        assert merged.application_id == long_id
+        assert merged.current_status == ApplicationStatus.SCREENING_SCHEDULED
+        assert path.exists()
+        stored = json.loads(path.read_text(encoding="utf-8"))
+        assert stored["application_id"] == long_id
+        synthetic = temp_data_dir / "ext-hashed-dup.json"
+        assert not synthetic.exists()
+        assert len(tracker.get_all_applications()) == 1
+
     def test_get_all_applications_with_new_filters(self, temp_data_dir):
         """Test get_all_applications respects new field filters."""
         tracker = OutcomeTracker(storage_dir=str(temp_data_dir))

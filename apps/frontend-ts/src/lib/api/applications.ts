@@ -56,11 +56,14 @@ export const applicationsApi = {
     application_date?: string;
     application_method?: string;
     metadata?: Record<string, unknown>;
+    inbound?: boolean;
+    interview_invite?: boolean;
   }) =>
     request<{
       success: boolean;
       application_id: string;
       status: string;
+      merged?: boolean;
       message: string;
     }>("POST", "/applications/external", { body: data }),
 

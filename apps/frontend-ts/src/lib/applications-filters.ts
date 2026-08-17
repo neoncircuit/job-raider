@@ -21,6 +21,16 @@ const INTERVIEW_STATUSES = new Set([
 /** Minimum stored JD length required by interview prep. */
 export const MIN_JOB_DESCRIPTION_CHARS = 50;
 
+/** Canonical method label for recruiter-approached listings. */
+export const INBOUND_APPLICATION_METHOD = "inbound/recruiter";
+
+/** Apply-method values that add no information beyond the status badge. */
+const GENERIC_APPLICATION_METHODS = new Set([
+  "external site",
+  "manual",
+  "cover_letter",
+]);
+
 /** Title or company values that should not be shown as real labels. */
 const PLACEHOLDER_LABELS = new Set(["", "unknown", "n/a", "none"]);
 
@@ -128,6 +138,40 @@ export function displayApplicationCompany(
   const trimmed = company?.trim() ?? "";
   if (!trimmed || PLACEHOLDER_LABELS.has(trimmed.toLowerCase())) {
     return "Unknown company";
+  }
+  return trimmed;
+}
+
+/**
+ * Return whether a stored method is an inbound recruiter approach.
+ *
+ * @param method - Application method from the dashboard row.
+ * @returns True for inbound/recruiter.
+ */
+export function isInboundApplicationMethod(
+  method: string | null | undefined,
+): boolean {
+  return (method ?? "").trim().toLowerCase() === INBOUND_APPLICATION_METHOD;
+}
+
+/**
+ * Short label for a non-generic application method, or null to hide.
+ *
+ * @param method - Stored application method.
+ * @returns Display text, or null when the card should omit the chip.
+ */
+export function displayApplicationMethod(
+  method: string | null | undefined,
+): string | null {
+  const trimmed = method?.trim() ?? "";
+  if (!trimmed) {
+    return null;
+  }
+  if (isInboundApplicationMethod(trimmed)) {
+    return "Inbound / recruiter";
+  }
+  if (GENERIC_APPLICATION_METHODS.has(trimmed.toLowerCase())) {
+    return null;
   }
   return trimmed;
 }

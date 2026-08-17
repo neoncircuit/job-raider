@@ -49,9 +49,12 @@ import {
   canAdvanceToInterview,
   canRevertStatus,
   displayApplicationCompany,
+  displayApplicationMethod,
   displayApplicationTitle,
   filterExpiredApplications,
   filterTrackedApplications,
+  INBOUND_APPLICATION_METHOD,
+  isInboundApplicationMethod,
   isInterviewStage,
   MIN_JOB_DESCRIPTION_CHARS,
   safeListingUrl,
@@ -93,6 +96,8 @@ function AppCard({
   const title = displayApplicationTitle(app.job_title);
   const company = displayApplicationCompany(app.company);
   const listingHref = safeListingUrl(app.source_url);
+  const methodLabel = displayApplicationMethod(app.application_method);
+  const inbound = isInboundApplicationMethod(app.application_method);
   const showDescriptionPaste =
     (canRespond || inInterview) &&
     (app.has_job_description === false || needsDescription);
@@ -188,6 +193,19 @@ function AppCard({
               <Badge className={cn("text-xs", statusColor)}>
                 {app.current_status.replace(/_/g, " ")}
               </Badge>
+              {methodLabel && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    inbound
+                      ? "border-info/30 bg-info/10 text-info"
+                      : "border-border bg-secondary text-secondary-foreground",
+                  )}
+                >
+                  {methodLabel}
+                </Badge>
+              )}
               {app.listing_status === "expired" && (
                 <Badge className="text-xs bg-destructive text-destructive-foreground">
                   Expired
@@ -409,6 +427,7 @@ function AppCard({
 
 function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<"applied" | "inbound">("applied");
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState("");
   const [method, setMethod] = useState("");
@@ -416,7 +435,10 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
   const [description, setDescription] = useState("");
   const [atInterview, setAtInterview] = useState(false);
 
+  const inbound = kind === "inbound";
+
   const reset = () => {
+    setKind("applied");
     setTitle("");
     setCompany("");
     setMethod("");
@@ -438,22 +460,27 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
       if (cleanedUrl) {
         metadata.source_url = cleanedUrl;
       }
-      await applicationsApi.trackExternal({
+      return applicationsApi.trackExternal({
         job_id: jobId,
         job_title: title,
         company,
         application_date: new Date().toISOString(),
-        application_method: method || "External site",
+        application_method: inbound
+          ? INBOUND_APPLICATION_METHOD
+          : method || "External site",
         metadata,
+        inbound,
+        interview_invite: inbound || atInterview,
       });
-      // If they already have an interview invite, jump straight to that stage
-      // so "Prep for interview" is immediately available on the card.
-      if (atInterview) {
-        await applicationsApi.updateStatus(jobId, "screening_scheduled");
-      }
     },
-    onSuccess: () => {
-      toast.success("External application tracked.");
+    onSuccess: (data) => {
+      toast.success(
+        data.merged
+          ? "Updated the existing listing."
+          : inbound
+            ? "Inbound interview tracked."
+            : "External application tracked.",
+      );
       setOpen(false);
       reset();
       onSuccess();
@@ -471,9 +498,10 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
   }
 
   // A saved job description is required before an external listing can enter the
-  // interview-prep flow, so gate the toggle on having enough text.
+  // interview-prep flow, so gate interview tracking on having enough text.
   const canPrep = description.trim().length >= MIN_JOB_DESCRIPTION_CHARS;
-  const blockedByPrep = atInterview && !canPrep;
+  const wantsInterview = inbound || atInterview;
+  const blockedByPrep = wantsInterview && !canPrep;
 
   return (
     <Card>
@@ -481,6 +509,35 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
         <CardTitle className="text-base">Track External Application</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={kind === "applied" ? "default" : "outline"}
+            onClick={() => {
+              setKind("applied");
+              setAtInterview(false);
+            }}
+          >
+            I applied elsewhere
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={inbound ? "default" : "outline"}
+            onClick={() => {
+              setKind("inbound");
+              setAtInterview(true);
+            }}
+          >
+            Recruiter approached
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {inbound
+            ? "Log an interview invite with no prior apply. This does not mark the listing as applied."
+            : "Track a role you applied to outside Job Raider. Use Recruiter approached if you never applied."}
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label>Job Title *</Label>
@@ -499,14 +556,16 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
             />
           </div>
         </div>
-        <div className="space-y-1">
-          <Label>How did you apply?</Label>
-          <Input
-            value={method}
-            onChange={(e) => setMethod(e.target.value)}
-            placeholder="Company website, referral…"
-          />
-        </div>
+        {!inbound && (
+          <div className="space-y-1">
+            <Label>How did you apply?</Label>
+            <Input
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
+              placeholder="Company website, referral…"
+            />
+          </div>
+        )}
         <div className="space-y-1">
           <Label>Listing link</Label>
           <Input
@@ -517,7 +576,8 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
             autoComplete="url"
           />
           <p className="text-xs text-muted-foreground">
-            Optional. Shown as Open listing on the application card.
+            Optional. Shown as Open listing on the application card. Used to
+            merge duplicates.
           </p>
         </div>
         <div className="space-y-1">
@@ -529,27 +589,34 @@ function TrackExternalForm({ onSuccess }: { onSuccess: () => void }) {
             className="min-h-[120px] resize-y"
           />
           <p className="text-xs text-muted-foreground">
-            Optional, but required (50+ characters) to run interview prep later.
+            Optional, but required ({MIN_JOB_DESCRIPTION_CHARS}+ characters) to
+            run interview prep later.
           </p>
         </div>
-        <div className="flex items-center justify-between rounded-lg border p-3">
-          <div className="space-y-0.5">
-            <Label className="text-sm font-medium">
-              I already have an interview invite
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Marks this as an interview stage so you can prep right away.
-            </p>
+        {!inbound && (
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">
+                I already have an interview invite
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Marks this as an interview stage so you can prep right away.
+              </p>
+            </div>
+            <Switch checked={atInterview} onCheckedChange={setAtInterview} />
           </div>
-          <Switch checked={atInterview} onCheckedChange={setAtInterview} />
-        </div>
+        )}
         <div className="flex gap-2">
           <Button
             size="sm"
             onClick={() => track.mutate()}
             disabled={!title || !company || blockedByPrep || track.isPending}
           >
-            {track.isPending ? "Saving…" : "Save"}
+            {track.isPending
+              ? "Saving…"
+              : inbound
+                ? "Save inbound interview"
+                : "Save"}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
             Cancel
@@ -695,7 +762,7 @@ export default function ApplicationsPage() {
             !allQuery.isError && (
               <EmptyState
                 title="No applications tracked yet"
-                description="Search and apply to jobs, or track an external application above."
+                description="Search and apply to jobs, or track an external or inbound interview above."
                 action={{ label: "Browse jobs", href: "/jobs" }}
               />
             )}

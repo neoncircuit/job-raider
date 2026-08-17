@@ -263,6 +263,14 @@ class TrackExternalApplicationRequest(BaseModel):
         default="manual", description="How application was made"
     )
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    inbound: bool = Field(
+        default=False,
+        description="Recruiter approached / interview invite without applying",
+    )
+    interview_invite: bool = Field(
+        default=False,
+        description="Advance to screening_scheduled; used after applied-elsewhere",
+    )
 
 
 class CreateCustomStatusRequest(BaseModel):

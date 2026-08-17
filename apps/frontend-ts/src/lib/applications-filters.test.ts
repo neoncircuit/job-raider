@@ -5,10 +5,12 @@ import {
   canAdvanceToInterview,
   canRevertStatus,
   displayApplicationCompany,
+  displayApplicationMethod,
   displayApplicationTitle,
   filterExpiredApplications,
   filterTrackedApplications,
   isExpiredApplication,
+  isInboundApplicationMethod,
   isInterviewStage,
   isTrackedApplication,
   safeListingUrl,
@@ -124,6 +126,18 @@ describe("displayApplicationTitle and company", () => {
     expect(displayApplicationCompany(undefined)).toBe("Unknown company");
     expect(displayApplicationCompany("Unknown")).toBe("Unknown company");
     expect(displayApplicationCompany("Acme")).toBe("Acme");
+  });
+});
+
+describe("application method labels", () => {
+  it("labels inbound recruiter methods and hides generic apply methods", () => {
+    expect(displayApplicationMethod("inbound/recruiter")).toBe(
+      "Inbound / recruiter",
+    );
+    expect(isInboundApplicationMethod("inbound/recruiter")).toBe(true);
+    expect(displayApplicationMethod("External site")).toBeNull();
+    expect(displayApplicationMethod("referral")).toBe("referral");
+    expect(isInboundApplicationMethod("External site")).toBe(false);
   });
 });
 

@@ -229,8 +229,8 @@ class TestApplicationsExpiredJoin:
             "/api/applications/external",
             json={
                 "job_id": "ext-url-1",
-                "job_title": "Engineer",
-                "company": "Acme",
+                "job_title": "Engineer URL One",
+                "company": "Acme URL",
                 "application_method": "External site",
                 "metadata": {"source_url": "example.com/jobs/1"},
             },
@@ -244,8 +244,8 @@ class TestApplicationsExpiredJoin:
             "/api/applications/external",
             json={
                 "job_id": "ext-url-2",
-                "job_title": "Engineer",
-                "company": "Acme",
+                "job_title": "Engineer URL Two",
+                "company": "Acme URL Two",
                 "application_method": "External site",
                 "metadata": {"source_url": "  "},
             },
@@ -259,8 +259,8 @@ class TestApplicationsExpiredJoin:
             "/api/applications/external",
             json={
                 "job_id": "ext-url-3",
-                "job_title": "Engineer",
-                "company": "Acme",
+                "job_title": "Engineer URL Unsafe",
+                "company": "Acme URL Three",
                 "application_method": "External site",
                 "metadata": {"source_url": "javascript:alert(1)"},
             },
@@ -439,3 +439,163 @@ class TestApplicationsExpiredJoin:
         resp = client.get("/api/applications/stale-job")
         assert resp.status_code == 200
         assert resp.json()["listing_status"] == "expired"
+
+    def test_inbound_creates_interview_without_applied_status(
+        self, client: TestClient
+    ) -> None:
+        """Inbound track lands on interview prep without writing applied_elsewhere."""
+        description = (
+            "Own model evaluation, prompt tests, and reporting for client AI "
+            "engagements. Python and SQL are required every week."
+        )
+        created = client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "ext-inbound-api",
+                "job_title": "Inbound Engineer",
+                "company": "Recruit Co",
+                "inbound": True,
+                "metadata": {"description": description},
+            },
+        )
+        assert created.status_code == 200
+        body = created.json()
+        assert body["status"] == "screening_scheduled"
+        assert body["merged"] is False
+        assert body["application_id"] == "ext-inbound-api"
+
+        detail = client.get("/api/applications/ext-inbound-api")
+        assert detail.status_code == 200
+        data = detail.json()
+        assert data["current_status"] == "screening_scheduled"
+        assert data["previous_status"] is None
+        assert (
+            data["external_application_details"]["application_method"]
+            == "inbound/recruiter"
+        )
+
+        dash = client.get("/api/applications/dashboard")
+        assert dash.status_code == 200
+        by_id = {row["application_id"]: row for row in dash.json()["applications"]}
+        assert by_id["ext-inbound-api"]["application_method"] == "inbound/recruiter"
+        assert by_id["ext-inbound-api"]["has_job_description"] is True
+
+    def test_applied_elsewhere_invite_merges_and_advances(
+        self, client: TestClient
+    ) -> None:
+        """Invite on an existing applied-elsewhere row advances that card."""
+        description = (
+            "Own model evaluation, prompt tests, and reporting for client AI "
+            "engagements. Python and SQL are required every week."
+        )
+        client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "job-applied-api",
+                "job_title": "Merge Engineer",
+                "company": "Merge Co",
+                "application_method": "External site",
+                "metadata": {
+                    "description": description,
+                    "source_url": "https://example.com/merge-role",
+                },
+            },
+        )
+        updated = client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "ext-new-invite",
+                "job_title": "Merge Engineer",
+                "company": "Merge Co",
+                "inbound": True,
+                "metadata": {"source_url": "https://example.com/merge-role"},
+            },
+        )
+        assert updated.status_code == 200
+        body = updated.json()
+        assert body["merged"] is True
+        assert body["application_id"] == "job-applied-api"
+        assert body["status"] == "screening_scheduled"
+        assert body["message"] == "Updated the existing listing"
+
+        dash = client.get("/api/applications/dashboard")
+        ids = [row["application_id"] for row in dash.json()["applications"]]
+        assert ids.count("job-applied-api") == 1
+        assert "ext-new-invite" not in ids
+
+    def test_duplicate_company_title_merges_via_api(self, client: TestClient) -> None:
+        """Company+title without a URL updates the existing listing."""
+        first = client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "name-row-1",
+                "job_title": "Staff Engineer",
+                "company": "Peer Co",
+                "application_method": "External site",
+            },
+        )
+        assert first.status_code == 200
+        second = client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "ext-name-row-2",
+                "job_title": "Staff Engineer",
+                "company": "peer co",
+                "inbound": True,
+                "metadata": {"description": "G" * 60},
+            },
+        )
+        assert second.status_code == 200
+        body = second.json()
+        assert body["merged"] is True
+        assert body["application_id"] == "name-row-1"
+        assert body["status"] == "screening_scheduled"
+
+        dash = client.get("/api/applications/dashboard")
+        ids = [row["application_id"] for row in dash.json()["applications"]]
+        assert "ext-name-row-2" not in ids
+        by_id = {row["application_id"]: row for row in dash.json()["applications"]}
+        assert by_id["name-row-1"]["has_job_description"] is True
+
+    def test_hashed_id_survives_url_merge(self, client: TestClient, tracker) -> None:
+        """Merging into a hashed JSearch id keeps id_*.json and the logical id."""
+        from src.metrics.outcome_tracker import application_filename_stem
+
+        long_id = "b29x" + "E" * 400 + ":colon"
+        created = client.post(
+            "/api/applications/external",
+            json={
+                "job_id": long_id,
+                "job_title": "Hashed Engineer",
+                "company": "Hash Co",
+                "application_method": "External site",
+                "metadata": {"source_url": "https://example.com/hashed-api"},
+            },
+        )
+        assert created.status_code == 200
+        path = tracker.storage_dir / f"{application_filename_stem(long_id)}.json"
+        assert path.exists()
+
+        merged = client.post(
+            "/api/applications/external",
+            json={
+                "job_id": "ext-hash-merge",
+                "job_title": "Hashed Engineer",
+                "company": "Hash Co",
+                "inbound": True,
+                "metadata": {"source_url": "https://example.com/hashed-api"},
+            },
+        )
+        assert merged.status_code == 200
+        assert merged.json()["merged"] is True
+        assert merged.json()["application_id"] == long_id
+        assert path.exists()
+        assert not (tracker.storage_dir / "ext-hash-merge.json").exists()
+
+        dash = client.get(
+            "/api/applications/dashboard",
+            params={"include_hidden": False, "include_external": True},
+        )
+        ids = {row["application_id"] for row in dash.json()["applications"]}
+        assert long_id in ids
+        assert "ext-hash-merge" not in ids

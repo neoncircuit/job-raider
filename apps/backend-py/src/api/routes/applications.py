@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 
 from ...metrics.outcome_tracker import (
+    INBOUND_APPLICATION_METHOD,
     ApplicationOutcome,
     ApplicationStatus,
     OutcomeTracker,
@@ -148,6 +149,23 @@ def _resolve_source_url(
         return cleaned
     if listing is not None and listing.source_url:
         return _clean_listing_url(str(listing.source_url))
+    return None
+
+
+def _application_method(outcome: ApplicationOutcome) -> Optional[str]:
+    """
+    Return the stored application method label, if any.
+
+    Args:
+        outcome: Application outcome record.
+
+    Returns:
+        Method string such as ``inbound/recruiter``, or None.
+    """
+    details = outcome.external_application_details or {}
+    method = details.get("application_method")
+    if isinstance(method, str) and method.strip():
+        return method.strip()
     return None
 
 
@@ -295,12 +313,15 @@ async def track_external_application(
     request: TrackExternalApplicationRequest,
 ) -> Dict[str, Any]:
     """
-    Track an application made outside the system.
+    Track an application made outside the system, or an inbound interview.
 
     When a pasted job description is included in metadata, it is normalized
     before storage so interview prep later sees cleaned text. An optional
     listing URL in metadata is cleaned the same way (scheme added, unsafe
-    schemes dropped).
+    schemes dropped). Duplicate listings merge into the existing row.
+    ``inbound`` lands on ``screening_scheduled`` without writing
+    ``applied_elsewhere``. ``interview_invite`` advances an apply row to
+    the same interview stage.
     """
     app_date = None
     if request.application_date:
@@ -326,20 +347,45 @@ async def track_external_application(
             ):
                 metadata["source_url"] = str(listing.source_url)
 
+    matched = outcome_tracker.find_matching_application(
+        job_id=request.job_id,
+        job_title=request.job_title,
+        company=request.company,
+        source_url=metadata.get("source_url") if metadata else None,
+    )
+    merged = matched is not None
+    inbound = request.inbound
+    interview_invite = request.interview_invite or inbound
+    method = request.application_method
+    if inbound and (
+        not method or method.strip().lower() in {"manual", "external site"}
+    ):
+        method = INBOUND_APPLICATION_METHOD
+
     outcome = outcome_tracker.track_external_application(
         job_id=request.job_id,
         job_title=request.job_title,
         company=request.company,
         application_date=app_date,
-        application_method=request.application_method,
+        application_method=method,
         metadata=metadata or None,
+        inbound=inbound,
+        interview_invite=interview_invite,
     )
+
+    if merged:
+        message = "Updated the existing listing"
+    elif inbound:
+        message = "Inbound interview tracked"
+    else:
+        message = "External application tracked successfully"
 
     return {
         "success": True,
         "application_id": outcome.application_id,
         "status": outcome.current_status.value,
-        "message": "External application tracked successfully",
+        "merged": merged,
+        "message": message,
     }
 
 
@@ -571,6 +617,7 @@ async def get_dashboard(
                     metadata, catalog_description
                 ),
                 "previous_status": app.previous_status,
+                "application_method": _application_method(app),
             }
         )
 
