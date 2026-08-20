@@ -458,21 +458,56 @@ install_playwright() {
     fi
 }
 
-# Pull embedding model for RAG
-pull_embedding_model() {
-    print_status "Checking embedding model for RAG pipeline..."
+# Ensure host Ollama has the default Job Raider models
+ensure_ollama_models() {
+    print_status "Checking host Ollama models..."
 
-    if command -v ollama &> /dev/null; then
-        if ! ollama list 2>/dev/null | grep -q "nomic-embed-text"; then
-            print_status "Pulling nomic-embed-text embedding model (~274MB)..."
-            ollama pull nomic-embed-text
-            print_status "Embedding model installed [OK]"
-        else
-            print_status "Embedding model already available [OK]"
-        fi
-    else
-        print_status "Ollama not found locally - embedding model will be pulled at Docker runtime [SKIP]"
+    if ! command -v ollama &> /dev/null; then
+        print_warning "Ollama CLI not found on PATH."
+        print_warning "Install from https://ollama.com then re-run setup, or pull manually:"
+        print_warning "  ollama pull qwen2.5:3b && ollama pull qwen2.5:7b && ollama pull nomic-embed-text"
+        record_check "WARN" "Ollama models (CLI missing)"
+        return
     fi
+
+    if ! ollama list &> /dev/null; then
+        print_warning "Ollama CLI found but the server is not reachable."
+        print_warning "Start Ollama on the host, then re-run setup or pull models manually."
+        record_check "WARN" "Ollama models (server down)"
+        return
+    fi
+
+    print_status "Ollama CLI and server available [OK]"
+
+    local MODELS=("qwen2.5:3b" "qwen2.5:7b" "nomic-embed-text")
+    local PULLED=0
+    local SKIPPED=0
+
+    for MODEL in "${MODELS[@]}"; do
+        # Match tag with or without a digest suffix in `ollama list` output.
+        if ollama list 2>/dev/null | awk 'NR>1 {print $1}' | grep -qx "$MODEL"; then
+            print_status "Model already installed: $MODEL [OK]"
+            SKIPPED=$((SKIPPED + 1))
+        else
+            print_status "Pulling missing model: $MODEL (this may take a while)..."
+            if ollama pull "$MODEL"; then
+                print_status "Model installed: $MODEL [OK]"
+                PULLED=$((PULLED + 1))
+            else
+                print_warning "Failed to pull $MODEL"
+                record_check "WARN" "Ollama model $MODEL (pull failed)"
+                return
+            fi
+        fi
+    done
+
+    print_status "Ollama models ready (pulled=$PULLED, already present=$SKIPPED) [OK]"
+    record_check "PASS" "Ollama models (qwen2.5:3b, qwen2.5:7b, nomic-embed-text)"
+}
+
+# Pull embedding model for RAG (kept as a thin wrapper for callers / docs)
+pull_embedding_model() {
+    ensure_ollama_models
 }
 
 # Print summary
@@ -590,7 +625,7 @@ main() {
 
     # Tools and frontend
     install_playwright
-    pull_embedding_model
+    ensure_ollama_models
     setup_frontend
 
     # Results

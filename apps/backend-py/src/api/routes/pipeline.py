@@ -21,6 +21,7 @@ from ...pipeline.shortlist import (
     load_latest_shortlist,
     save_latest_shortlist,
 )
+from ...submission.applied_guard import AppliedGuard
 from ...utils.logger import Components, get_logger
 from ..models.requests import PipelineStartRequest
 from ..models.responses import (
@@ -388,6 +389,12 @@ async def get_latest_discover_shortlist():
         data = enrich_shortlist_payload_descriptions(data)
     except Exception as enrich_err:
         logger.warning("Shortlist description backfill failed: %s", enrich_err)
+    jobs = data.get("jobs")
+    if isinstance(jobs, list) and jobs:
+        try:
+            AppliedGuard().annotate_job_dicts(jobs)
+        except Exception as guard_err:
+            logger.warning("Shortlist applied-guard annotate failed: %s", guard_err)
     return data
 
 

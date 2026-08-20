@@ -45,6 +45,8 @@ interface JobDetailProps {
   isSaved: boolean;
   /** Whether this job has been marked as applied elsewhere. */
   isAppliedExternally: boolean;
+  /** Scraper flag or cross-source Applications match. */
+  isAlreadyTracked?: boolean;
   /** Called when the save button is clicked. */
   onSave: () => void;
   /** Called when auto-apply is triggered. */
@@ -60,6 +62,7 @@ export function JobDetail({
   job,
   isSaved,
   isAppliedExternally,
+  isAlreadyTracked = false,
   onSave,
   onApply,
   onMarkAppliedExternally,
@@ -83,6 +86,9 @@ export function JobDetail({
 
   const sourceColor =
     SOURCE_COLORS[job.source.toLowerCase()] ?? "bg-muted text-muted-foreground";
+
+  const alreadyTracked =
+    Boolean(job.already_applied) || isAlreadyTracked || isAppliedExternally;
 
   const handleCopyLink = () => {
     if (!job.source_url) return;
@@ -142,13 +148,13 @@ export function JobDetail({
         <div className="flex flex-wrap gap-2">
           <Badge className={cn("text-xs", sourceColor)}>{job.source}</Badge>
 
-          {job.already_applied && (
+          {alreadyTracked && (
             <Badge className="text-xs bg-success text-success-foreground">
               Applied
             </Badge>
           )}
 
-          {isAppliedExternally && (
+          {isAppliedExternally && !alreadyTracked && (
             <Badge className={cn("text-xs", STATUS_COLORS.applied_elsewhere)}>
               Applied Elsewhere
             </Badge>
@@ -333,7 +339,7 @@ export function JobDetail({
       {/* Fixed footer with actions */}
       <div className="p-4 border-t bg-muted/50 space-y-3">
         <div className="flex gap-2">
-          {job.already_applied ? (
+          {alreadyTracked ? (
             <Button size="sm" disabled className="flex-1" variant="secondary">
               Applied
             </Button>
@@ -372,11 +378,11 @@ export function JobDetail({
           </Button>
           <Button
             size="sm"
-            variant={isAppliedExternally ? "secondary" : "outline"}
+            variant={alreadyTracked ? "secondary" : "outline"}
             onClick={onMarkAppliedExternally}
-            disabled={isAppliedExternally}
+            disabled={alreadyTracked}
           >
-            {isAppliedExternally ? "Applied Elsewhere" : "Applied Elsewhere?"}
+            {alreadyTracked ? "Applied Elsewhere" : "Applied Elsewhere?"}
           </Button>
         </div>
 

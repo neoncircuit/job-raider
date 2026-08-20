@@ -72,6 +72,7 @@ const schema = z.object({
     enable_cache: z.boolean(),
     cache_ttl: z.number().int().min(0),
     enable_jd_llm_extract: z.boolean(),
+    enable_company_mission: z.boolean(),
     enable_prompt_cache: z.boolean(),
     ollama_keep_alive: z.string().optional(),
   }),
@@ -121,6 +122,8 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
         ...initial.cost_limits,
         enable_jd_llm_extract:
           initial.cost_limits.enable_jd_llm_extract ?? false,
+        enable_company_mission:
+          initial.cost_limits.enable_company_mission ?? false,
         enable_prompt_cache: initial.cost_limits.enable_prompt_cache ?? false,
         ollama_keep_alive: initial.cost_limits.ollama_keep_alive ?? "",
       },
@@ -243,7 +246,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 <Label htmlFor="ollama_host">Ollama Host</Label>
                 <Input
                   id="ollama_host"
-                  placeholder="ollama:11434"
+                  placeholder="host.docker.internal:11434"
                   {...register("api_config.ollama_host")}
                 />
                 {errors.api_config?.ollama_host && (
@@ -252,11 +255,9 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Docker Compose: use{" "}
-                  <span className="font-mono">ollama:11434</span>. Ollama on the
-                  host machine:{" "}
+                  Host Ollama from a Docker backend:{" "}
                   <span className="font-mono">host.docker.internal:11434</span>.
-                  Native (no Docker):{" "}
+                  Native backend (venv / WSL, no Docker API):{" "}
                   <span className="font-mono">localhost:11434</span>.
                 </p>
               </div>
@@ -344,11 +345,12 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 <p className="text-xs text-amber-700 dark:text-amber-400">
                   No models detected at the configured Ollama host. Dropdowns
                   may still show your last-saved choices (marked not installed)
-                  until the host is reachable. In Docker use{" "}
-                  <span className="font-mono">ollama:11434</span> for the
-                  Compose service or{" "}
+                  until the host is reachable. With the API in Docker, set the
+                  host to{" "}
                   <span className="font-mono">host.docker.internal:11434</span>{" "}
-                  for desktop Ollama, pull a model if needed, save the host,
+                  for Ollama on the host machine, pull{" "}
+                  <span className="font-mono">qwen2.5:3b</span> /{" "}
+                  <span className="font-mono">qwen2.5:7b</span> if needed, save,
                   then refresh.
                 </p>
               )}
@@ -578,6 +580,28 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   LLM JD extract on paste (when rules find no skills)
                 </Label>
               </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="enable_company_mission"
+                  checked={useWatch({
+                    control,
+                    name: "cost_limits.enable_company_mission",
+                  })}
+                  onCheckedChange={(v) =>
+                    setValue("cost_limits.enable_company_mission", v, {
+                      shouldDirty: true,
+                    })
+                  }
+                />
+                <Label htmlFor="enable_company_mission">
+                  Company mission grounding (cover letter; verify-or-skip)
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                When on, Generate may search the public web for a short verified
+                company-mission brief. Ambiguous matches skip silently into the
+                letter (no invented mission). Default off.
+              </p>
               <div className="space-y-1">
                 <Label htmlFor="ollama_keep_alive">Ollama keep_alive</Label>
                 <Input

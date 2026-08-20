@@ -3,14 +3,16 @@ Tests for deduplicate stage syncing scraper-detected applied jobs to tracker.
 
 Verifies that when the LinkedIn scraper sets already_applied=True on a
 JobListing, the deduplicate stage persists those IDs to the AppliedJobsTracker
-and filters them from the output.
+and filters them via AppliedGuard.
 """
 
 from pathlib import Path
 
 import pytest
 
+from src.metrics.outcome_tracker import OutcomeTracker
 from src.models.job_listing import JobListing, JobSource
+from src.submission.applied_guard import AppliedGuard
 from src.submission.applied_tracker import AppliedJobsTracker
 
 
@@ -18,6 +20,12 @@ from src.submission.applied_tracker import AppliedJobsTracker
 def tracker(tmp_path: Path) -> AppliedJobsTracker:
     """Create an AppliedJobsTracker with a temporary storage directory."""
     return AppliedJobsTracker(storage_dir=str(tmp_path / "applied_jobs"))
+
+
+@pytest.fixture
+def outcomes(tmp_path: Path) -> OutcomeTracker:
+    """Create an OutcomeTracker with a temporary storage directory."""
+    return OutcomeTracker(storage_dir=str(tmp_path / "applications"))
 
 
 def _make_listing(
@@ -70,26 +78,26 @@ class TestDeduplicateAppliedSync:
         assert data["source"] == "linkedin"
 
     def test_already_applied_jobs_filtered_from_results(
-        self, tracker: AppliedJobsTracker
+        self,
+        tracker: AppliedJobsTracker,
+        outcomes: OutcomeTracker,
     ) -> None:
-        """Jobs with already_applied=True should be removed from deduplicated output."""
+        """Jobs with already_applied=True should be removed via AppliedGuard."""
         listings = [
             _make_listing("job_1", "Engineer", "TechCorp", already_applied=True),
             _make_listing("job_2", "Analyst", "DataCo", already_applied=False),
             _make_listing("job_3", "Manager", "BizInc", already_applied=True),
         ]
 
-        # Sync then filter (mirrors stages.py logic)
         for job in listings:
             if job.already_applied and not tracker.is_applied(job.job_id):
                 tracker.mark_applied(job.job_id, job.title, job.company, "linkedin")
 
-        result = [
-            job
-            for job in listings
-            if not job.already_applied and not tracker.is_applied(job.job_id)
-        ]
+        guard = AppliedGuard(outcome_tracker=outcomes, applied_tracker=tracker)
+        annotated = guard.annotate_listings(listings)
+        result, removed = guard.filter_unapplied(annotated)
 
+        assert removed == 2
         assert len(result) == 1
         assert result[0].job_id == "job_2"
 
@@ -115,7 +123,11 @@ class TestDeduplicateAppliedSync:
         data = tracker.get_applied_data("job_1")
         assert data["title"] == "Old Title"
 
-    def test_mixed_applied_sources(self, tracker: AppliedJobsTracker) -> None:
+    def test_mixed_applied_sources(
+        self,
+        tracker: AppliedJobsTracker,
+        outcomes: OutcomeTracker,
+    ) -> None:
         """Mix of badge-detected, tracker-known, and fresh jobs filter correctly."""
         # Pre-seed one job in the tracker
         tracker.mark_applied("job_tracked", "Tracked Job", "TrackerCo", "linkedin")
@@ -137,16 +149,42 @@ class TestDeduplicateAppliedSync:
             if job.already_applied and not tracker.is_applied(job.job_id):
                 tracker.mark_applied(job.job_id, job.title, job.company, "linkedin")
 
-        # Filter
-        result = [
-            job
-            for job in listings
-            if not job.already_applied and not tracker.is_applied(job.job_id)
-        ]
+        guard = AppliedGuard(outcome_tracker=outcomes, applied_tracker=tracker)
+        annotated = guard.annotate_listings(listings)
+        result, removed = guard.filter_unapplied(annotated)
 
         # Only job_fresh should survive
+        assert removed == 3
         assert len(result) == 1
         assert result[0].job_id == "job_fresh"
 
         # Badge-detected job should now be in tracker
         assert tracker.is_applied("job_badge")
+
+    def test_cross_source_outcome_url_filters(
+        self,
+        tracker: AppliedJobsTracker,
+        outcomes: OutcomeTracker,
+    ) -> None:
+        """Outcome URL match removes a listing with a different board id."""
+        outcomes.track_external_application(
+            job_id="board_a",
+            job_title="Engineer",
+            company="Acme",
+            metadata={"source_url": "https://linkedin.com/jobs/view/shared"},
+        )
+        listings = [
+            JobListing(
+                job_id="board_b",
+                title="Engineer",
+                company="Acme",
+                source=JobSource.JSEARCH,
+                source_url="https://linkedin.com/jobs/view/shared",
+                already_applied=False,
+            ),
+        ]
+        guard = AppliedGuard(outcome_tracker=outcomes, applied_tracker=tracker)
+        annotated = guard.annotate_listings(listings)
+        kept, removed = guard.filter_unapplied(annotated)
+        assert removed == 1
+        assert kept == []

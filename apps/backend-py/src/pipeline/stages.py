@@ -37,6 +37,7 @@ from ..scoring.scam_detector import JobScamDetector, ScamFilter
 from ..scrapers.base import SearchParams
 from ..scrapers.manager import ScraperManager
 from ..scrapers.storage import JobListingStorage
+from ..submission.applied_guard import AppliedGuard
 from ..submission.applied_tracker import AppliedJobsTracker
 from ..submission.detector import ApplyMethod, AutoSubmitDetector, SubmissionInfo
 from ..submission.submitter import ApplicationTracker, AutoSubmitter
@@ -244,15 +245,10 @@ class PipelineStages:
                         ),
                     )
 
-            # Filter out already-applied jobs
-            before_filter = len(deduplicated)
-            deduplicated = [
-                job
-                for job in deduplicated
-                if not job.already_applied
-                and not applied_tracker.is_applied(job.job_id)
-            ]
-            applied_removed = before_filter - len(deduplicated)
+            # Cross-source applied guard (outcomes + AppliedJobsTracker)
+            guard = AppliedGuard(applied_tracker=applied_tracker)
+            annotated = guard.annotate_listings(deduplicated)
+            deduplicated, applied_removed = guard.filter_unapplied(annotated)
 
             metadata = {
                 "original_count": len(listings),
@@ -515,6 +511,7 @@ class PipelineStages:
 
         try:
             jobs = self._extract_jobs_from_scored(scored_listings)
+            jobs = AppliedGuard().annotate_listings(jobs)
             self.logger.info(
                 f"Detecting auto-submit opportunities for {len(jobs)} jobs"
             )

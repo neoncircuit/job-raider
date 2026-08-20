@@ -15,6 +15,8 @@ interface JobListItemProps {
   isSaved: boolean;
   /** Whether this job has been marked as applied elsewhere. */
   isAppliedExternally: boolean;
+  /** Whether scraper or cross-source match says already applied. */
+  isAlreadyTracked?: boolean;
   /** Called when the row is clicked. */
   onClick: () => void;
   /** Called when the save button is clicked. */
@@ -33,11 +35,13 @@ export function JobListItem({
   isSelected,
   isSaved,
   isAppliedExternally,
+  isAlreadyTracked = false,
   onClick,
   onSave,
 }: JobListItemProps) {
   const sourceColor =
     SOURCE_COLORS[job.source.toLowerCase()] ?? "bg-muted text-muted-foreground";
+  const showApplied = Boolean(job.already_applied) || isAlreadyTracked;
 
   return (
     <div className="relative">
@@ -93,7 +97,7 @@ export function JobListItem({
               Remote
             </Badge>
           )}
-          {isAppliedExternally && (
+          {isAppliedExternally && !showApplied && (
             <Badge
               className={cn(
                 "text-[10px] px-1.5 py-0",
@@ -116,7 +120,7 @@ export function JobListItem({
               Scraped today
             </Badge>
           )}
-          {job.already_applied && (
+          {showApplied && (
             <Badge className="text-[10px] px-1.5 py-0 bg-success text-success-foreground">
               Applied
             </Badge>

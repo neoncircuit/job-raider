@@ -94,7 +94,7 @@ async def validate_llm_providers():
     missing_providers = []
 
     # Check Ollama
-    ollama_host = os.getenv("OLLAMA_HOST", "localhost:11434")
+    ollama_host = os.getenv("OLLAMA_HOST", "host.docker.internal:11434")
     try:
         import requests  # type: ignore[import-untyped]
 

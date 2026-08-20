@@ -4673,4 +4673,130 @@ flowchart TD
 - Pytest via WSL: 64 passed (tracker, lifecycle, isolated integration). Overlay backend and rebuilt frontend. Host Vitest did not run (no local node_modules); Docker Next.js type-check passed.
 - Hard-refresh Applications. Use Recruiter approached for inbound invites. Re-enter the same company, title, or URL to merge instead of a second card.
 
+- Tests: WSL pytest 14 passed (AppliedGuard + dedupe sync). Vitest 7 passed via `node:20-bookworm-slim`. Overlay backend + rebuilt frontend; both containers healthy.
 
+## Cover Letter: JD Document Ingest + Company Mission Grounding (2026-08-20)
+
+### Goal
+
+Two additive cover-letter improvements, shipped in order:
+
+1. **Phase A — Document-based JD ingestion** (docx/pdf): parse file into the existing JD textarea. No LLM until the user clicks Generate.
+2. **Phase B — Company mission grounding**: optional web search + identity verification; paraphrase mission into the writer only when verification passes. Otherwise silent JD-only fallback.
+
+Local-first and free/open-source-first. Do not use Cursor MCP servers inside the FastAPI backend.
+
+### Constraints
+
+- Human checkpoint before any generate/LLM spend (same principle as not auto-submitting to boards).
+- Wrong-company mission text is worse than a generic letter — verify-or-skip is mandatory for Phase B.
+- Reuse existing resume PDF/DOCX extractors and `build_job_listing_from_paste` where possible.
+- ASD-STE100 for any docs. Type hints + docstrings on new Python APIs.
+
+### Flow
+
+```mermaid
+flowchart TD
+  subgraph phaseA [Phase A JD file]
+    Upload["Upload JD docx/pdf"] --> Parse["Text extract only"]
+    Parse --> Fill["Fill JD textarea"]
+    Fill --> Edit["User reviews/edits"]
+    Edit --> Gen["Generate clicked"]
+  end
+  subgraph phaseB [Phase B mission optional]
+    Gen --> Toggle{"Use company web context?"}
+    Toggle -->|no| WriteJD["Writer: resume + JD only"]
+    Toggle -->|yes| Search["Search company + JD disambiguators"]
+    Search --> Verify{"Candidate matches JD facts?"}
+    Verify -->|fail| Skip["Skip enrichment; log skip"]
+    Skip --> WriteJD
+    Verify -->|pass| Para["Paraphrase mission; no marketing copy"]
+    Para --> WriteMission["Writer: resume + JD + mission brief"]
+  end
+```
+
+### Phase A — JD document ingest (implement first)
+
+#### Scope
+
+- [ ] Backend: `POST /api/cover-letter/parse-jd` (multipart file). Accept `.pdf`, `.docx` (reject `.doc` or convert only if already supported elsewhere). Return `{ text, filename, char_count, warnings[] }`.
+- [ ] Extraction: reuse `pypdf` / `python-docx` patterns from `ResumeParser` (text only; no LLM; no profile mutation).
+- [ ] Frontend Cover Letter page: file input / drop near JD textarea; on success set textarea value; show source filename; user must still click Generate.
+- [ ] Do not call generate, assess, or prep from the upload handler.
+- [ ] Empty/garbled extract: surface a clear warning; leave textarea empty or partial with warning — never invent JD text.
+- [ ] Unit tests: PDF/DOCX fixtures with known text; reject unsupported types; no LLM mock required for happy path.
+- [ ] Frontend test: upload fills textarea; Generate still disabled until other gates pass; Generate not auto-fired.
+- [ ] Docs: short usage note + troubleshooting for scanned/image-only PDFs (text layer empty → ask user to paste).
+- [ ] Overlay backend + rebuild frontend after implementation.
+
+#### Out of scope for Phase A
+
+- OCR / Unlimited-OCR / vision models for scanned JDs.
+- Auto-generate after upload.
+- Changing Applications Track External JD paste flow (optional follow-up later).
+
+### Phase B — Company mission grounding (after Phase A)
+
+#### Spike (go/no-go before full wire)
+
+- [ ] Spike Python search+fetch against 3 real SG-style company+JD pairs (including an ambiguous short name). Record hit rate, false-company risk, and latency.
+- [ ] Choose library: lightweight DuckDuckGo HTML/API client (MIT) or equivalent maintained package — **not** Cursor MCP. Document Brave free-tier as optional fallback only if DDG quality fails the spike.
+- [ ] Write spike findings to `docs/decision-log.md`. Go only if verify-or-skip works on at least the clear cases; ambiguous cases must skip.
+
+#### Design if GO
+
+- [ ] Module e.g. `apps/backend-py/src/generation/company_mission.py`:
+  - Build query from company + JD disambiguators (location, industry tokens, named products).
+  - Fetch top candidates; score against JD facts; require confidence threshold.
+  - On pass: return short paraphrased mission brief (LLM or extractive paraphrase under a hard “do not quote marketing copy” rule).
+  - On fail: return `skipped` + reason; no mission text.
+- [ ] Wire into cover-letter generate path behind request flag / Settings toggle `enable_company_mission` (default off until trusted).
+- [ ] Persist/log skip reasons for review (structured log + optional field on generate response: `mission_context: { status, source_url?, skip_reason? }`).
+- [ ] Writer prompt: use mission brief only when present; forbid inventing mission when skipped.
+- [ ] Unit tests: verify fail → skip; verify pass → brief present and not verbatim scrape dump; generate without toggle unchanged.
+- [ ] Rate-limit / timeout caps so search cannot hang Generate.
+
+#### Out of scope for Phase B
+
+- Full company research dossiers, news scraping, or LinkedIn company pages login.
+- Using mission text for job search ranking.
+- Paying search APIs as the default path.
+
+### Verification (both phases)
+
+- WSL pytest for new backend tests.
+- Frontend vitest / type-check for Cover Letter page changes.
+- Overlay backend; rebuild frontend; hard-refresh Cover Letter.
+- Manual: upload a JD PDF → edit → Generate once; with Phase B off, behavior matches today.
+
+### Check-in
+
+Plan only — **do not implement until the user approves Phase A start** (Phase B spike after A ships).
+
+## Cover Letter Phase C — JD application-instruction adherence (2026-08-21)
+
+### Plan
+
+- [x] `cover_letter_instructions.py` regex detector (why-interest + inclusions); ambiguous → not detected.
+- [x] Why-interest path **replaces** full letter with short answer; inclusion injects profile URLs when present.
+- [x] Soft validation: `INSTRUCTION_LENGTH_MISMATCH`, `MISSING_REQUIRED_INCLUSION`; relax structure checks in short-answer mode.
+- [x] `instructions_context` on generate response; independent of Phase B toggle.
+- [x] Docs + unit tests.
+- [x] Review gate artifact: run detection + fallback short answer on a fixture JD (see Review below).
+- [x] Min-only floor parse for “minimum / at least / no fewer than N” (`max_n=None`).
+
+### Review
+
+Phase C shipped (2026-08-21):
+- Detector + writer short path + validator checks wired; always on (no Settings toggle).
+- Review fixture JD (`scripts/review_phase_c_instructions.py`): “CV plus 3-4 lines on why this mission excites you” + “include a link to your GitHub” → detected why-interest (3–4 lines) and GitHub inclusion; fallback short answer replaced the letter, included mission grounding + GitHub URL, length within range.
+- Clarification: “3–4 lines” is only an example; detector covers other length units (sentences/words) and the Cover Letter UI scans every pasted JD via `POST /cover-letter/detect-instructions` with a banner when matches are found.
+
+Real-JD + banner gate (2026-08-21, before live applications):
+- Live catalog (`data/listings/catalog.json`, 183 listings): **4 inclusion** hits (Ajentik GitHub, GENGIS LinkedIn, WOLA portfolio, …); **0 why-interest length** asks in scraped MCF text.
+- Public real form text via `scripts/review_phase_c_real_jds.py`:
+  - Epoch AI Lever EOI ([apply form](https://jobs.lever.co/epoch-ai/137cb0dc-03a6-4747-b9dc-8255194daee2/apply)): “Why do you want to work at Epoch AI?” + “Minimum **50 words**” → why-interest `50 words` (not “3-4 lines”).
+  - saas.group Greenhouse AI Operator prompts: “**(2-3 sentences)**” near “why” → why-interest `2-3 sentences`.
+  - Ajentik MCF apply tail: GitHub inclusion only (no length range) — expected.
+- Fix (2026-08-21): “Minimum N” / “at least N” / “no fewer than N” now parse as `min_n=N`, `max_n=None` (floor-only). Exact/range stays for “2-3 sentences”, “3-4 lines”, and bare/approx singles like “about 50 words”.
+- UI: rebuilt backend+frontend images; pasted Epoch EOI into Cover Letter → banner **“JD application instructions detected”** with “Length ask: 50 words … (matched “50 words”)”.

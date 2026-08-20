@@ -271,7 +271,7 @@ async def validate_settings(settings: UserSettings) -> Dict[str, Any]:
     ).replace("https://", "")
     if settings.api_config.ollama_host and ":" not in host_without_scheme:
         results["warnings"].append(
-            "Ollama host should be in format 'host:port' (e.g., 'localhost:11434')"
+            "Ollama host should be in format 'host:port' (e.g., 'host.docker.internal:11434')"
         )
 
     if settings.cost_limits.max_api_cost_per_run < 0:

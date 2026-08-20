@@ -1,0 +1,58 @@
+{
+  "cases": [
+    {
+      "id": "golden_agri",
+      "company": "Golden Agri-Resources",
+      "expected_mode": "pass_canary",
+      "jd_facts": [
+        "Singapore",
+        "palm oil",
+        "agribusiness",
+        "sustainability",
+        "plantation"
+      ],
+      "jd_text": "Golden Agri-Resources is hiring in Singapore for a role supporting agribusiness operations across palm oil and related sustainability initiatives. The company is a major plantation and agribusiness group with documented public mission and corporate initiatives."
+    },
+    {
+      "id": "akro_ai",
+      "company": "Akro AI",
+      "expected_mode": "reject_collision",
+      "jd_facts": [
+        "Singapore",
+        "document intelligence",
+        "artificial intelligence",
+        "AI",
+        "pre-seed",
+        "startup"
+      ],
+      "jd_text": "Akro AI is a Singapore pre-seed startup building document intelligence and AI products. The hiring entity is the AI company (not unrelated industrial brands that share the Akro name)."
+    },
+    {
+      "id": "naval_group_far_east",
+      "company": "Naval Group Far East",
+      "expected_mode": "entity_structure",
+      "jd_facts": [
+        "Singapore",
+        "Far East",
+        "Pte Ltd",
+        "defence",
+        "naval",
+        "subsidiary"
+      ],
+      "jd_text": "Naval Group Far East Pte Ltd is hiring in Singapore. The hiring entity is the Singapore subsidiary of Naval Group, not only the global French parent headquarters."
+    },
+    {
+      "id": "summit_soft_skip_probe",
+      "company": "Summit Soft",
+      "expected_mode": "expect_skip",
+      "jd_facts": [
+        "Singapore",
+        "black soldier fly",
+        "insect protein",
+        "aquaculture feed",
+        "pre-seed"
+      ],
+      "jd_text": "Summit Soft is a thin-web-presence probe: Singapore pre-seed role tied to black soldier fly insect protein for aquaculture feed. Generic company name should not clear a confident mission match."
+    }
+  ]
+}

@@ -3199,4 +3199,69 @@
 - Merge into the existing card: advance to interview if inbound/invite, attach missing JD/URL, keep hashed `id_*.json`.
 - Tell the user the existing listing was updated.
 
+## Local LLM host stability (2026-08-18)
+
+### A BSOD during cover-letter generate is a driver crash, not an app bug
+
+**Lesson:** Repeated Windows bugcheck `0xD1` (`DRIVER_IRQL_NOT_LESS_OR_EQUAL`) while generating a cover letter was blamed on `rcbottom.sys` (AMD StoreMI / RAID bottom, dated 2022). Cover-letter generate loads a local GPU model (`qwen2.5:7b` via Ollama) and stresses the machine. That load can trip a bad storage driver. It does not mean Job Raider Python code blue-screens Windows. Many prior cover-letter generates on the same host can succeed; a first BSOD cluster does not mean local generate was always unsafe. Treat it as a newly exposed host fault (driver race, extra GPU load, or concurrent services), not as proof the feature itself regressed.
+
+**Why:**
+- Local-first hosting remains the project mission. API routing is a temporary brake, not a product retreat.
+- Successful history with local cover letters is expected. StoreMI leftovers can stay quiet until a heavier or concurrent GPU/storage load hits the bad path (for example Ollama 7B plus an extra `llama-cpp` container, or a longer generate).
+- On MSI MAG X570S Tomahawk Max WiFi (MS-7D54) with Ryzen 5 5600X, BIOS SATA mode can be **AHCI** while StoreMI devices still show as OK in Device Manager. Apps search for "AMD" may only hit unrelated packages (for example Go amd64). StoreMI often has no clear Apps entry.
+- MSI Support **BIOS** downloads (board id files such as `7D54…`) are not chipset installers. Installing the wrong package wastes time and risks a BIOS flash.
+- Chipset setup alone does not remove StoreMI. After chipset install, StoreMI Bottom / Controller devices can remain on `rcbottom.sys` 9.4.0.59.
+- Aggressive StoreMI uninstall or chipset churn can break USB init (desktop powers on, keyboard and mouse stay dark). Create a restore point first. Prefer recover with System Restore over forced driver deletes when input dies.
+- `llama-cpp` may run from a separate compose project (`docker-services`), not Job Raider compose. Job Raider uses Ollama (`OLLAMA_HOST`). Leaving `llama-cpp` stopped reduces GPU contention and does not abandon local hosting.
+
+**How to apply:**
+- If BSOD recurs on local generate: check Event Viewer for BugCheck / `rcbottom.sys` / StoreMI before changing Job Raider code.
+- Confirm BIOS SATA mode. On AHCI, do not install AMD RAID packages. Prefer chipset from MSI **Driver** tab, then remove StoreMI devices carefully (or use an official StoreMI uninstall) after a restore point.
+- Keep cover-letter writing on a smaller local model or pause heavy GPU jobs until StoreMI is gone. Restore `qwen2.5:7b` (or equivalent) on Ollama when the host is stable.
+- Do not treat API fallback as the default story. Document API as emergency / health fallback only.
+- Keep `llama-cpp` in shared `docker-services` compose, but gate it with profile `llama` so default `docker compose up` does not start it. Enable only when needed: `docker compose --profile llama up -d llama-cpp`. Job Raider uses Ollama as the default local backend.
+- Do not install Ollama inside `job-raider-backend`. Use **host-machine Ollama**. Compose sets `OLLAMA_HOST=host.docker.internal:11434` so the API container reaches the host. Native runs use `localhost:11434`. Baking Ollama into the backend image duplicated ~2GB and did not match how the stack runs.
+- `setup.sh` must ensure `qwen2.5:3b`, `qwen2.5:7b`, and `nomic-embed-text` on the host when the Ollama CLI and server are available. Do not assume a Compose Ollama service will pull them.
+- After storage or chipset driver changes: cold power cycle, use rear motherboard USB ports, and verify keyboard and mouse before another StoreMI pass.
+- Optional WSL Ubuntu size (~150GB `ext4.vhdx`) is unrelated to AMD StoreMI BSODs. Do not chase WSL cleanup for this failure mode.
+
+## Cover letter company-mission spike (2026-08-21)
+
+### Live skip evidence matters more than synthetic skip tests alone
+
+**Lesson:** Three real pipeline companies can all **pass** and still leave the skip path unproven in production conditions. Unit tests that inject Akro-Mils text prove collision logic, but they do not prove that live search + fetch + verify emits a legible `skip_reason` when results are topic-adjacent without a company match.
+
+**How to apply:**
+- Before calling Phase B spike “closed,” run at least one live `expect_skip` probe (generic name + niche JD facts).
+- Prefer seeing the exact `skip_reason` string in a JSON artifact over claiming skip coverage from unit tests only.
+- Keep `enable_company_mission` default **off** until excerpt quality is hardened even if go-criteria pass.
+
+### Footer-tolerant paraphrase is not proof of good extraction
+
+**Lesson:** Golden Agri passed with a sustainability URL, but the excerpt used for paraphrase was footer/cookie-adjacent. Ollama still produced a reasonable brief. That is luck relative to extraction quality, not evidence that main-content selection is solid.
+
+**How to apply:**
+- Treat anti-boilerplate / main-content excerpt selection as a required Design-if-GO hardening item.
+- Do not greenlight default-on toggle based on paraphrase quality alone when the source excerpt was weak.
+
+### Prefer backend `.venv` Python for pytest on this host
+
+**Lesson:** A bare `wsl … python -m pytest` hang (or Windows system Python missing `anthropic`) is an environment quirk. `apps/backend-py/.venv/bin/python -m pytest` is the reliable path.
+
+**How to apply:**
+- Always invoke `.venv/bin/python` (WSL) for backend unit tests and spike scripts.
+- Do not chase app logic when the first WSL pytest invocation hangs with empty output and a later venv run passes.
+
+## Cover letter Phase C length floors (2026-08-21)
+
+### “Minimum N” is not “exactly N”
+
+**Lesson:** Parsing ``Minimum 50 words`` as ``min_n=max_n=50`` makes the soft length validator disagree with the JD. A correct answer slightly over 50 words is then flagged as a mismatch. Soft flags that fire on correct behavior undercut the check.
+
+**How to apply:**
+- Floor cues (`minimum`, `at least`, `no fewer than`) → ``min_n=N``, ``max_n=None``.
+- Keep exact/range only for fixed ranges (`2-3 sentences`, `3-4 lines`) and bare/approx singles (`about 50 words`).
+- Writer prompts and banner copy must say “at least N” when ``max_n`` is null.
+- Never treat a soft validation issue as optional polish when its condition contradicts the JD wording.
+
 

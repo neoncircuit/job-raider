@@ -10,6 +10,7 @@ import {
   applicationsApi,
 } from "@/lib/api/applications";
 import { isTrackedApplication } from "@/lib/applications-filters";
+import { isJobAlreadyApplied } from "@/lib/applied-match";
 import { coverLetterApi } from "@/lib/api/coverLetter";
 import type { JobSearchRequest } from "@/lib/api/jobs";
 import type { ScoreExplanation } from "@/lib/api/coverLetter";
@@ -93,6 +94,12 @@ interface UseSavedAndExternalJobIdsResult {
   savedIds: Set<string>;
   /** Set of externally-applied application IDs. */
   externalIds: Set<string>;
+  /**
+   * True when the listing matches any tracked application by id, URL,
+   * or company+title (same rules as backend AppliedGuard), or when
+   * ``job.already_applied`` is set.
+   */
+  isApplied: (job: JobListing) => boolean;
   /** True during the first dashboard fetch. */
   isLoading: boolean;
   /** Truthy if the dashboard query encountered an error. */
@@ -126,7 +133,10 @@ export function useSavedAndExternalJobIds(): UseSavedAndExternalJobIdsResult {
       applications.filter(isTrackedApplication).map((a) => a.application_id),
     );
 
-    return { savedIds, externalIds, isLoading, error };
+    const isApplied = (job: JobListing): boolean =>
+      isJobAlreadyApplied(job, applications);
+
+    return { savedIds, externalIds, isApplied, isLoading, error };
   }, [data, isLoading, error]);
 }
 

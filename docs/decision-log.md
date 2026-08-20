@@ -1,5 +1,99 @@
 # Job Raider Decision Log
 
+## 2026-08-21 - Cover letter Phase C JD application-instruction adherence
+
+### Context
+
+Phase B grounds optional company-mission briefs. Some JDs instead ask for a short “why this interests you” answer or to include a GitHub/portfolio link. A full grounded letter can still fail that ask.
+
+### Decision
+
+- Ship always-on conservative regex detection for two patterns only: length-constrained why-interest, and explicit inclusion asks.
+- On why-interest detection: **replace** the letter with a short answer sized to the stated range (not append).
+- Mission brief is optional grounding; Phase C does not require `enable_company_mission`.
+- Soft validation issues for length mismatch and missing inclusions; relax TOO_SHORT / FEW_PARAGRAPHS / NO_CALL_TO_ACTION in short-answer mode.
+- No Settings kill switch in v1. Human review gate: inspect one real JD short-answer before live use.
+
+### Consequences
+
+- Generate may silently switch to short-answer format when detection matches.
+- Missed detection still produces a normal letter (safe default).
+
+### Flow
+
+```mermaid
+flowchart TD
+  jd[JD text] --> detect[Regex detect]
+  detect -->|none| standard[Standard letter]
+  detect -->|why_interest| short[Short answer REPLACE]
+  detect -->|inclusion_only| standard
+  mission[Phase B brief if any] -.-> short
+  short --> validate[Length and inclusion checks]
+  standard --> validate
+```
+
+## 2026-08-20 - Cover letter Phase B company-mission spike
+
+### Context
+
+Phase A (JD PDF/DOCX text extract) is shipped. Phase B must not enable a live `enable_company_mission` toggle until the user reviews real search+verify output. Spike axis is name ambiguity and entity structure (not obscure foreign companies), using three pipeline companies.
+
+### Spike method
+
+- Fixtures: `apps/backend-py/scripts/fixtures/company_mission_spike.json` (minimum JD disambiguators; full JD paste optional later).
+- Script: `apps/backend-py/scripts/spike_company_mission_search.py` (DuckDuckGo HTML via `requests` + BeautifulSoup; no Cursor MCP; no new paid search API).
+- Helpers: `apps/backend-py/src/generation/company_mission.py` (verify-against-JD-facts, legible skip reasons, extractive paraphrase fallback). Unwired to cover-letter generate.
+- Artifact: `apps/backend-py/scripts/output/company_mission_spike_20260820T160132Z.json` (gitignored).
+- Unit tests: `tests/unit/test_company_mission.py` (9 passed), including synthetic Akro-Mils collision skip.
+
+### Results (live run)
+
+| Case | Status | Source | Notes |
+|------|--------|--------|-------|
+| Golden Agri-Resources (`pass_canary`) | **pass** | `https://www.golden-agri.com/sustainability/` | fact_match_ratio 1.0. Canary OK. |
+| Akro AI (`reject_collision`) | **pass** (correct entity) | `https://www.thesaasnews.com/news/akro-raises-700000-pre-seed/` | JD-fact query kept results on Singapore AI / document-processing / pre-seed. No Akro-Mils in top fetches. Unit test still proves shelving pages skip. |
+| Naval Group Far East (`entity_structure`) | **pass** (SG entity page) | `https://www.naval-group.com/en/singapore` | Page text names Naval Group Far East and Singapore Navy support; not a generic France-HQ-only blurb. fact_match_ratio 0.5. |
+| Summit Soft (`expect_skip`) | **skip** (live) | — | Generic name + niche JD facts. Search returned topic pages (BSF / aquaculture), not the company. `skip_reason`: "company name ambiguous, no JD-fact match cleared threshold (no candidate cleared company-name and JD-fact gates)". Artifact: `company_mission_spike_20260820T160815Z.json`. |
+
+Paraphrase samples (Ollama `qwen2.5:7b`):
+
+- Golden Agri: focuses on sustainable agriculture and commodity trading / plantation operations.
+- Akro: Singapore-based AI startup for automated document processing; pre-seed context retained.
+- Naval Group Far East: maintenance and support for Formidable frigates and Singapore Navy floating sea barrier.
+
+### User review (2026-08-21)
+
+- Three go-criteria accepted as genuine (not technicalities): canary, collision avoidance with verifiable Akro funding source, subsidiary-specific Naval paraphrase.
+- Known gaps retained: (1) first trio never exercised live skip — addressed by Summit Soft probe above; (2) Golden Agri excerpt was footer-ish — paraphrase luck; harden substantive extraction before trusting default-on.
+- Recommendation accepted: core logic strong enough; keep toggle default **off** until product wire; live skip now observed.
+
+### Decision
+
+- Spike search path (DDG HTML) is **adequate** for these cases; do not add Brave by default.
+- Verify-or-skip helpers are worth keeping. Live skip path rendered a legible `skip_reason`.
+- Product wire shipped (2026-08-21): Settings `cost_limits.enable_company_mission` default **off**; `resolve_company_mission` in cover-letter generate; `mission_context` on response; writer uses brief only when present; 28s resolve deadline + per-request timeouts; main-content / anti-boilerplate excerpt extraction.
+- Do not treat footer-tolerant paraphrase as proof that extraction is production-ready — hardening is in place; re-check Golden Agri excerpts if enabling for daily use.
+
+### Consequences
+
+- Toggle remains default off. Operators opt in from Settings.
+- Cover-letter generate without the toggle behaves as before (`mission_context.status=disabled`).
+- Follow-up: optional UI surfacing of `mission_context` on the Cover Letter page.
+
+### Flow
+
+```mermaid
+flowchart LR
+  fixtures[JD fixtures] --> query[Build search query]
+  query --> search[DuckDuckGo HTML]
+  search --> fetch[Fetch top pages]
+  fetch --> verify[Score vs JD facts]
+  verify -->|pass| paraphrase[Ollama or extractive]
+  verify -->|skip| reason[Legible skip reason]
+  paraphrase --> report[Spike JSON report]
+  reason --> report
+```
+
 ## 2026-08-15 - Careers@Gov delayed OpenGovSG dump (Phase 1)
 
 ### Context

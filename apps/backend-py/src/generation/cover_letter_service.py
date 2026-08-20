@@ -19,7 +19,12 @@ from ..llm.router import create_router
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
+from .company_mission_search import resolve_company_mission
 from .cover_letter_grounding import is_domain_mismatch
+from .cover_letter_instructions import (
+    detect_application_instructions,
+    resolve_inclusion_urls,
+)
 from .cover_letter_reviewer import CoverLetterReviewer
 from .cover_letter_validator import (
     CoverLetterValidationResult,
@@ -129,6 +134,53 @@ async def generate_cover_letter_for_profile(
     llm_router = create_router(prefer_local=True)
     total_started = time.perf_counter()
 
+    mission_brief: Optional[str] = None
+    mission_context: Dict[str, Any] = {"status": "disabled"}
+    try:
+        from ..api.settings import get_storage
+
+        settings = get_storage().load_settings()
+        mission_enabled = bool(settings.cost_limits.enable_company_mission)
+    except Exception as exc:
+        logger.warning("Could not load settings for company mission: %s", exc)
+        mission_enabled = False
+
+    if mission_enabled:
+        mission_started = time.perf_counter()
+        mission_result = resolve_company_mission(
+            job_listing.company or "",
+            jd_text=job_listing.description or "",
+            enabled=True,
+        )
+        mission_context = mission_result.to_mission_context()
+        mission_context["resolve_ms"] = _elapsed_ms(mission_started)
+        if mission_result.status == "pass" and mission_result.brief:
+            mission_brief = mission_result.brief
+        logger.info(
+            "Company mission resolve job_id=%s status=%s elapsed_ms=%s",
+            job_listing.job_id,
+            mission_result.status,
+            mission_result.elapsed_ms,
+        )
+
+    detected_instructions = detect_application_instructions(
+        job_listing.description or ""
+    )
+    contact = user_profile.contact
+    inclusion_urls = resolve_inclusion_urls(
+        detected_instructions.inclusions,
+        github=str(contact.github) if contact and contact.github else None,
+        portfolio=str(contact.portfolio) if contact and contact.portfolio else None,
+        linkedin=str(contact.linkedin) if contact and contact.linkedin else None,
+        website=str(contact.website) if contact and contact.website else None,
+    )
+    short_answer_mode = detected_instructions.has_why_interest
+    instructions_context: Dict[str, Any] = {
+        "detected": detected_instructions.to_dict(),
+        "short_answer_mode": short_answer_mode,
+        "inclusion_urls": inclusion_urls,
+    }
+
     selector = ResumeSelector(llm_router=llm_router)
     selection_started = time.perf_counter()
     selection = selector.select(job_listing, user_profile)
@@ -136,20 +188,33 @@ async def generate_cover_letter_for_profile(
 
     writer = CoverLetterWriter(llm_router=llm_router)
     generation_started = time.perf_counter()
-    result = writer.write(
-        job_listing,
-        user_profile,
-        selection,
-        style=letter_style,
-        model=writer_model,
-    )
+    if short_answer_mode and detected_instructions.why_interest is not None:
+        result = writer.write_why_interest_block(
+            job_listing,
+            user_profile,
+            selection,
+            detected_instructions.why_interest,
+            mission_brief=mission_brief,
+            inclusion_urls=inclusion_urls or None,
+            model=writer_model,
+        )
+    else:
+        result = writer.write(
+            job_listing,
+            user_profile,
+            selection,
+            style=letter_style,
+            model=writer_model,
+            mission_brief=mission_brief,
+            inclusion_urls=inclusion_urls or None,
+        )
     generation_ms = _elapsed_ms(generation_started)
 
     review_metadata: Dict[str, Any] = {}
     review_ms: Optional[float] = None
     rewrite_ms: Optional[float] = None
     domain_mismatch = is_domain_mismatch(job_listing, user_profile)
-    if review:
+    if review and not short_answer_mode:
         reviewer = CoverLetterReviewer(llm_router=llm_router)
         review_started = time.perf_counter()
         review_result = reviewer.review(
@@ -178,6 +243,8 @@ async def generate_cover_letter_for_profile(
                 critique,
                 style=letter_style,
                 model=writer_model,
+                mission_brief=mission_brief,
+                inclusion_urls=inclusion_urls or None,
             )
             rewrite_ms = _elapsed_ms(rewrite_started)
             rewrite_count = 1
@@ -203,6 +270,9 @@ async def generate_cover_letter_for_profile(
                 user_profile,
                 selection,
                 style=letter_style,
+                short_answer_mode=short_answer_mode,
+                detected_instructions=detected_instructions,
+                inclusion_urls=inclusion_urls,
             )
         else:
             validation = validator.validate(
@@ -211,6 +281,9 @@ async def generate_cover_letter_for_profile(
                 user_profile,
                 selection,
                 style=letter_style,
+                short_answer_mode=short_answer_mode,
+                detected_instructions=detected_instructions,
+                inclusion_urls=inclusion_urls,
             )
     except Exception as exc:
         logger.error("Cover letter validation failed: %s", exc, exc_info=True)
@@ -218,7 +291,7 @@ async def generate_cover_letter_for_profile(
     validation_ms = _elapsed_ms(validation_started)
 
     grounding_rewrite_ms: Optional[float] = None
-    if collect_hard_fail_issues(validation.issues):
+    if collect_hard_fail_issues(validation.issues) and not short_answer_mode:
         critique = build_grounding_rewrite_critique(validation)
         rewrite_started = time.perf_counter()
         rewritten = writer.rewrite(
@@ -229,6 +302,8 @@ async def generate_cover_letter_for_profile(
             critique,
             style=letter_style,
             model=writer_model,
+            mission_brief=mission_brief,
+            inclusion_urls=inclusion_urls or None,
         )
         grounding_rewrite_ms = _elapsed_ms(rewrite_started)
         result = rewritten
@@ -240,6 +315,9 @@ async def generate_cover_letter_for_profile(
                     user_profile,
                     selection,
                     style=letter_style,
+                    short_answer_mode=short_answer_mode,
+                    detected_instructions=detected_instructions,
+                    inclusion_urls=inclusion_urls,
                 )
             else:
                 validation = validator.validate(
@@ -248,6 +326,9 @@ async def generate_cover_letter_for_profile(
                     user_profile,
                     selection,
                     style=letter_style,
+                    short_answer_mode=short_answer_mode,
+                    detected_instructions=detected_instructions,
+                    inclusion_urls=inclusion_urls,
                 )
         except Exception as exc:
             logger.error("Cover letter re-validation failed: %s", exc, exc_info=True)
@@ -261,6 +342,14 @@ async def generate_cover_letter_for_profile(
     if review_metadata:
         validation.details["review"] = review_metadata
     validation.details["style"] = letter_style
+    validation.details["mission_context"] = mission_context
+    # Prefer validator-enriched instructions_context when present.
+    if validation.details.get("instructions_context"):
+        instructions_context = {
+            **instructions_context,
+            **validation.details["instructions_context"],
+        }
+    validation.details["instructions_context"] = instructions_context
 
     total_ms = _elapsed_ms(total_started)
     timing = {
@@ -270,6 +359,8 @@ async def generate_cover_letter_for_profile(
         "rewrite_ms": rewrite_ms,
         "grounding_rewrite_ms": grounding_rewrite_ms,
         "validation_ms": validation_ms,
+        "mission_ms": mission_context.get("elapsed_ms")
+        or mission_context.get("resolve_ms"),
         "total_ms": total_ms,
     }
     logger.info(
@@ -288,8 +379,10 @@ async def generate_cover_letter_for_profile(
             "word_count": result.word_count,
             "model_used": result.model_used,
             "highlighted_experiences": result.highlighted_experiences,
-            "style": letter_style,
+            "style": "short_answer" if short_answer_mode else letter_style,
             "timing": timing,
         },
         validation=_adapt_validation_response(validation),
+        mission_context=mission_context,
+        instructions_context=instructions_context,
     )

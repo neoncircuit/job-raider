@@ -18,6 +18,7 @@ from ...metrics.outcome_tracker import (
 from ...models.job_listing import JobListing
 from ...scrapers.listing_lifecycle import listing_status_for_job_id
 from ...scrapers.storage import JobListingStorage
+from ...submission.applied_tracker import AppliedJobsTracker
 from ...utils.logger import Components, get_logger
 from ..models.requests import (
     CreateCustomStatusRequest,
@@ -372,6 +373,21 @@ async def track_external_application(
         inbound=inbound,
         interview_invite=interview_invite,
     )
+
+    # Keep LinkedIn-oriented AppliedJobsTracker in sync for id-only checks.
+    try:
+        AppliedJobsTracker().mark_applied(
+            job_id=request.job_id,
+            job_title=request.job_title or outcome.job_title,
+            company=request.company or outcome.company,
+            source="external",
+        )
+    except Exception as sync_err:
+        logger.warning(
+            "Failed to sync AppliedJobsTracker for %s: %s",
+            request.job_id,
+            sync_err,
+        )
 
     if merged:
         message = "Updated the existing listing"

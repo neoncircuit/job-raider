@@ -23,11 +23,12 @@ services:
       - PYTHONPATH=/app/backend-py
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      # Compose-network default. Do not inherit a host OLLAMA_HOST of 0.0.0.0 /
-      # localhost from the shell or .env — those break in-container health checks.
-      # Runtime LLM + Settings discovery still use api_config.ollama_host
-      # (e.g. host.docker.internal:11434 for desktop Ollama).
-      - OLLAMA_HOST=ollama:11434
+      # Host-machine Ollama (not baked into this image; not a Compose service).
+      # Inside the backend container, localhost is the container itself — use
+      # host.docker.internal to reach Ollama on Windows/macOS Docker Desktop.
+      # Native (non-Docker) runs still use localhost via Settings / .env.
+      # Do not inherit OLLAMA_HOST=0.0.0.0 from the host shell.
+      - OLLAMA_HOST=host.docker.internal:11434
       - MLFLOW_TRACKING_URI=http://mlflow:5000
     restart: unless-stopped
     networks:

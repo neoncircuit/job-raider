@@ -65,6 +65,9 @@ apps/frontend-ts/playwright-report/
 apps/frontend-ts/playwright-results/
 apps/frontend-ts/test-results/
 
+# Phase B company-mission spike artifacts
+apps/backend-py/scripts/output/
+
 # Legacy Jest (replaced by Vitest)
 apps/frontend-ts/jest.config.js
 apps/frontend-ts/jest.setup.js

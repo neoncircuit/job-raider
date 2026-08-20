@@ -1,7 +1,7 @@
 # Job Raider - Dockerfile for Cloud Deployment
 #
-# This Dockerfile sets up Job Raider for automated job application
-# pipeline execution with Ollama for local model inference.
+# Backend API image. Local LLM calls go to the shared Ollama service
+# (compose OLLAMA_HOST=ollama:11434). Do not install Ollama in this image.
 #
 # Author: Job Raider
 # Date: 2026-04-22
@@ -11,14 +11,15 @@
 #   docker run -v ./apps/backend-py/data:/app/backend-py/data --gpus all job-raider:latest
 #
 
-# Base image with CUDA support for GPU inference
+# Base image with CUDA support for GPU-backed Python deps (e.g. torch)
 FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV OLLAMA_HOST=0.0.0.0
+# Overridden by compose to reach Ollama on the Docker host.
+ENV OLLAMA_HOST=host.docker.internal:11434
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -52,7 +53,7 @@ RUN apt-get update && apt-get install -y \
 # Set working directory to match the new monorepo layout
 WORKDIR /app/backend-py
 
-# Copy only requirements first so the dependency and Ollama layers stay cached
+# Copy only requirements first so the dependency layer stays cached
 # across application code changes (source is copied last, below).
 COPY apps/backend-py/requirements.txt .
 
@@ -64,9 +65,6 @@ ENV PATH="/app/backend-py/.venv/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Install Ollama (requires root)
-RUN curl -fsSL https://ollama.com/install.sh | sh
-
 # Create non-root user for security (owns everything copied so far)
 RUN useradd -m -u 1000 jobraider && \
     chown -R jobraider:jobraider /app
@@ -76,7 +74,7 @@ COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Copy application source LAST so editing code does not invalidate the
-# dependency/Ollama layers above, keeping code-only rebuilds fast.
+# dependency layers above, keeping code-only rebuilds fast.
 COPY --chown=jobraider:jobraider apps/backend-py/config/ ./config/
 COPY --chown=jobraider:jobraider apps/backend-py/src/ ./src/
 COPY --chown=jobraider:jobraider apps/backend-py/main.py .
@@ -100,11 +98,8 @@ ENV PYTHONPATH=/app/backend-py
 ENV DATA_DIR=/app/backend-py/data
 ENV RESULTS_DIR=/app/backend-py/data/results
 
-# Expose API port
+# Expose API port (Ollama listens on the shared ollama container, not here)
 EXPOSE 8000
-
-# Expose Ollama port (if needed for external access)
-EXPOSE 11434
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

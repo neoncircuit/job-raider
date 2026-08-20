@@ -68,7 +68,7 @@ export default function JobsPage() {
 
   const shortlist = useLatestShortlist();
   const search = useJobSearch(searchParams);
-  const { savedIds, externalIds } = useSavedAndExternalJobIds();
+  const { savedIds, externalIds, isApplied } = useSavedAndExternalJobIds();
   const save = useSaveJob();
   const markApplied = useMarkAppliedElsewhere();
   const apply = useApplyJob();
@@ -113,6 +113,7 @@ export default function JobsPage() {
       job={job}
       isSaved={isSaved(job.job_id)}
       isAppliedExternally={isAppliedExternally(job.job_id)}
+      isAlreadyTracked={isApplied(job)}
       onSave={() =>
         save.mutate({
           id: job.job_id,
@@ -225,6 +226,7 @@ export default function JobsPage() {
               isSelected={j.job_id === selectedJobId}
               isSaved={isSaved(j.job_id)}
               isAppliedExternally={isAppliedExternally(j.job_id)}
+              isAlreadyTracked={isApplied(j)}
               onClick={() => setSelectedJobId(j.job_id)}
               onSave={(e) => {
                 e.stopPropagation();

@@ -28,6 +28,12 @@ from .cover_letter_grounding import (
     flag_inflated_duration_claims,
     flag_ungrounded_sentences,
 )
+from .cover_letter_instructions import (
+    DetectedInstructions,
+    count_length_units,
+    inclusion_present_in_text,
+    length_within_spec,
+)
 from .cover_letter_writer import GeneratedCoverLetter
 from .selector import SelectionOutput
 
@@ -53,6 +59,8 @@ class CoverLetterIssue(str, Enum):
     INFLATED_DURATION = "inflated_duration"
     INCONSISTENT_METRIC = "inconsistent_metric"
     ANALOGICAL_CLAIM = "analogical_claim"
+    INSTRUCTION_LENGTH_MISMATCH = "instruction_length_mismatch"
+    MISSING_REQUIRED_INCLUSION = "missing_required_inclusion"
 
 
 HARD_FAIL_ISSUES: frozenset[CoverLetterIssue] = frozenset(
@@ -212,6 +220,10 @@ class CoverLetterValidator:
         profile: UserProfile,
         selection: SelectionOutput,
         style: str = "modern",
+        *,
+        short_answer_mode: bool = False,
+        detected_instructions: Optional[DetectedInstructions] = None,
+        inclusion_urls: Optional[Dict[str, Optional[str]]] = None,
     ) -> CoverLetterValidationResult:
         """
         Validate a generated cover letter.
@@ -222,6 +234,9 @@ class CoverLetterValidator:
             profile: Original user profile
             selection: Selection output used for generation
             style: ``modern`` or ``classic`` (classic softens generic-opening checks)
+            short_answer_mode: When True, relax full-letter structure checks
+            detected_instructions: Phase C detected JD instructions
+            inclusion_urls: kind→URL map for inclusion checks
 
         Returns:
             CoverLetterValidationResult with detailed findings
@@ -230,30 +245,49 @@ class CoverLetterValidator:
         content = cover_letter.content
         content_lower = content.lower()
         letter_style = style if style in ("modern", "classic") else "modern"
+        instructions = detected_instructions or DetectedInstructions()
+        urls = inclusion_urls or {}
 
-        structure_issues = self._check_structure(content)
-        issues.extend(structure_issues)
+        if short_answer_mode:
+            structure_issues: List[CoverLetterIssue] = []
+        else:
+            structure_issues = self._check_structure(content)
+            issues.extend(structure_issues)
 
-        content_issues = self._check_content(content_lower, job, selection)
+        content_issues = self._check_content(
+            content_lower,
+            job,
+            selection,
+            short_answer_mode=short_answer_mode,
+        )
         issues.extend(content_issues)
 
-        tone_issues = self._check_tone(content_lower, style=letter_style)
-        issues.extend(tone_issues)
+        if short_answer_mode:
+            tone_issues: List[CoverLetterIssue] = []
+        else:
+            tone_issues = self._check_tone(content_lower, style=letter_style)
+            issues.extend(tone_issues)
 
         accuracy_issues = self._check_accuracy(content_lower, profile, selection)
         issues.extend(accuracy_issues)
 
-        jd_issues, jd_coverage = self._check_jd_coverage(content_lower, job, profile)
-        issues.extend(jd_issues)
+        if short_answer_mode:
+            jd_issues: List[CoverLetterIssue] = []
+            jd_coverage: Dict[str, Any] = {
+                "skipped": True,
+                "reason": "short_answer_mode",
+            }
+        else:
+            jd_issues, jd_coverage = self._check_jd_coverage(
+                content_lower, job, profile
+            )
+            issues.extend(jd_issues)
 
         grounding_terms: List[str] = []
         if job.title:
             grounding_terms.append(job.title)
         if job.company:
             grounding_terms.append(job.company)
-        # Soft overlap may only use company/title. Matched or missing JD
-        # skill terms must not legitimize fabricated resume claims; named
-        # tech is enforced by flag_fabricated_technologies instead.
 
         resume_bullets = collect_resume_bullets(profile, selection)
         ungrounded_sentences = flag_ungrounded_sentences(
@@ -297,6 +331,14 @@ class CoverLetterValidator:
             grounding_issues.append(CoverLetterIssue.INCONSISTENT_METRIC)
         issues.extend(grounding_issues)
 
+        instruction_issues, instructions_context = self._check_instructions(
+            content,
+            instructions=instructions,
+            inclusion_urls=urls,
+            short_answer_mode=short_answer_mode,
+        )
+        issues.extend(instruction_issues)
+
         grounding_penalty, grounding_penalty_breakdown = calc_grounding_penalty(
             ungrounded_sentences,
             claim_overclaims,
@@ -306,13 +348,18 @@ class CoverLetterValidator:
             analogical_claims=analogical_claims,
         )
 
-        structure_score = self._calc_structure_score(content, structure_issues)
+        if short_answer_mode:
+            structure_score = 100
+            tone_score = 100
+        else:
+            structure_score = self._calc_structure_score(content, structure_issues)
+            tone_score = self._calc_tone_score(tone_issues)
+
         content_score = self._calc_content_score(
-            content_issues + jd_issues,
+            content_issues + jd_issues + instruction_issues,
             accuracy_issues,
             grounding_penalty=grounding_penalty,
         )
-        tone_score = self._calc_tone_score(tone_issues)
 
         overall_score = int(
             (structure_score * 0.3) + (content_score * 0.4) + (tone_score * 0.3)
@@ -338,9 +385,10 @@ class CoverLetterValidator:
             "word_count": cover_letter.word_count,
             "paragraph_count": self._count_paragraphs(content),
             "style": letter_style,
+            "short_answer_mode": short_answer_mode,
             "has_generic_opening": (
                 False
-                if letter_style == "classic"
+                if letter_style == "classic" or short_answer_mode
                 else any(phrase in content_lower for phrase in self.GENERIC_OPENINGS)
             ),
             "has_call_to_action": any(
@@ -361,6 +409,7 @@ class CoverLetterValidator:
             "inconsistent_percent_claims": inconsistent_percent_claims,
             "analogical_claims": analogical_claims,
             "grounding_penalty": grounding_penalty_breakdown,
+            "instructions_context": instructions_context,
         }
 
         return CoverLetterValidationResult(
@@ -407,6 +456,8 @@ class CoverLetterValidator:
         content_lower: str,
         job: JobListing,
         selection: SelectionOutput,
+        *,
+        short_answer_mode: bool = False,
     ) -> List[CoverLetterIssue]:
         """
         Check content completeness and relevance.
@@ -415,6 +466,7 @@ class CoverLetterValidator:
             content_lower: Lowercase cover letter text
             job: Target job listing
             selection: Selection output
+            short_answer_mode: When True, skip project-mention requirements
 
         Returns:
             List of content issues found
@@ -424,8 +476,11 @@ class CoverLetterValidator:
         if job.company.lower() not in content_lower:
             issues.append(CoverLetterIssue.MISSING_COMPANY)
 
-        if job.title.lower() not in content_lower:
+        if not short_answer_mode and job.title.lower() not in content_lower:
             issues.append(CoverLetterIssue.MISSING_JOB_TITLE)
+
+        if short_answer_mode:
+            return issues
 
         if selection.selected_projects:
             any_project_mentioned = any(
@@ -436,6 +491,68 @@ class CoverLetterValidator:
                 issues.append(CoverLetterIssue.MISSING_SELECTED_PROJECT)
 
         return issues
+
+    def _check_instructions(
+        self,
+        content: str,
+        *,
+        instructions: DetectedInstructions,
+        inclusion_urls: Dict[str, Optional[str]],
+        short_answer_mode: bool,
+    ) -> tuple[List[CoverLetterIssue], Dict[str, Any]]:
+        """
+        Check Phase C length and inclusion adherence.
+
+        Soft issues only (score penalty); not hard-fail rewrite triggers.
+
+        Args:
+            content: Generated letter / short-answer text.
+            instructions: Detected JD instructions.
+            inclusion_urls: kind→URL map (URL may be None if missing on profile).
+            short_answer_mode: Whether output is the why-interest replace path.
+
+        Returns:
+            Tuple of (issues, instructions_context dict).
+        """
+        issues: List[CoverLetterIssue] = []
+        context: Dict[str, Any] = {
+            "detected": instructions.to_dict(),
+            "short_answer_mode": short_answer_mode,
+            "length_ok": None,
+            "length_count": None,
+            "inclusion_checks": [],
+        }
+
+        if instructions.why_interest is not None and short_answer_mode:
+            spec = instructions.why_interest
+            count = count_length_units(content, spec.unit)
+            ok = length_within_spec(content, spec)
+            context["length_ok"] = ok
+            context["length_count"] = count
+            context["length_unit"] = spec.unit
+            context["length_range"] = [spec.min_n, spec.max_n]
+            if not ok:
+                issues.append(CoverLetterIssue.INSTRUCTION_LENGTH_MISMATCH)
+
+        for kind, url in inclusion_urls.items():
+            entry: Dict[str, Any] = {
+                "kind": kind,
+                "url": url,
+                "present": None,
+                "available_on_profile": bool(url),
+            }
+            if not url:
+                # JD asked but profile has no URL — do not invent; soft flag.
+                issues.append(CoverLetterIssue.MISSING_REQUIRED_INCLUSION)
+                entry["present"] = False
+            else:
+                present = inclusion_present_in_text(content, url)
+                entry["present"] = present
+                if not present:
+                    issues.append(CoverLetterIssue.MISSING_REQUIRED_INCLUSION)
+            context["inclusion_checks"].append(entry)
+
+        return issues, context
 
     def _check_tone(
         self, content_lower: str, style: str = "modern"
@@ -655,6 +772,10 @@ class CoverLetterValidator:
             score -= 15
         if CoverLetterIssue.LOW_JD_COVERAGE in content_issues:
             score -= 15
+        if CoverLetterIssue.INSTRUCTION_LENGTH_MISMATCH in content_issues:
+            score -= 15
+        if CoverLetterIssue.MISSING_REQUIRED_INCLUSION in content_issues:
+            score -= 20
         if grounding_penalty:
             score -= grounding_penalty
         if CoverLetterIssue.FABRICATED_EXPERIENCE in accuracy_issues:
@@ -688,6 +809,10 @@ class CoverLetterValidator:
         profile: UserProfile,
         selection: SelectionOutput,
         style: str = "modern",
+        *,
+        short_answer_mode: bool = False,
+        detected_instructions: Optional[DetectedInstructions] = None,
+        inclusion_urls: Optional[Dict[str, Optional[str]]] = None,
     ) -> CoverLetterValidationResult:
         """
         Validate using LLM for nuanced quality assessment.
@@ -700,17 +825,40 @@ class CoverLetterValidator:
             profile: Original user profile
             selection: Selection output
             style: ``modern`` or ``classic``
+            short_answer_mode: When True, relax full-letter structure checks
+            detected_instructions: Phase C detected JD instructions
+            inclusion_urls: kind→URL map for inclusion checks
 
         Returns:
             CoverLetterValidationResult with detailed findings
         """
         if not self.llm_router:
-            return self.validate(cover_letter, job, profile, selection, style=style)
+            return self.validate(
+                cover_letter,
+                job,
+                profile,
+                selection,
+                style=style,
+                short_answer_mode=short_answer_mode,
+                detected_instructions=detected_instructions,
+                inclusion_urls=inclusion_urls,
+            )
 
         deterministic = self.validate(
-            cover_letter, job, profile, selection, style=style
+            cover_letter,
+            job,
+            profile,
+            selection,
+            style=style,
+            short_answer_mode=short_answer_mode,
+            detected_instructions=detected_instructions,
+            inclusion_urls=inclusion_urls,
         )
         if collect_hard_fail_issues(deterministic.issues):
+            return deterministic
+        if short_answer_mode:
+            # Keep deterministic instruction checks; skip LLM re-score of
+            # full-letter dimensions on short answers.
             return deterministic
 
         messages = [

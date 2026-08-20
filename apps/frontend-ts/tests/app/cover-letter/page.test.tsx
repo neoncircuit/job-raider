@@ -27,6 +27,7 @@ const mockGenerate = vi.hoisted(() => vi.fn());
 const mockExport = vi.hoisted(() => vi.fn());
 const mockAssess = vi.hoisted(() => vi.fn());
 const mockValidate = vi.hoisted(() => vi.fn());
+const mockParseJd = vi.hoisted(() => vi.fn());
 const mockDownloadFile = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api/coverLetter", () => ({
@@ -35,6 +36,13 @@ vi.mock("@/lib/api/coverLetter", () => ({
     export: (...args: unknown[]) => mockExport(...args),
     assess: (...args: unknown[]) => mockAssess(...args),
     validate: (...args: unknown[]) => mockValidate(...args),
+    parseJd: (...args: unknown[]) => mockParseJd(...args),
+    detectInstructions: vi.fn().mockResolvedValue({
+      why_interest: null,
+      inclusions: [],
+      short_answer_mode: false,
+      has_inclusions: false,
+    }),
   },
   downloadFile: (...args: unknown[]) => mockDownloadFile(...args),
 }));
@@ -62,6 +70,7 @@ vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
+    warning: vi.fn(),
   },
 }));
 
@@ -72,6 +81,11 @@ function renderWithClient(ui: React.ReactElement) {
   return render(
     <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
   );
+}
+
+/** Accessible name for the JD textarea (not the upload file input). */
+function getJdTextarea() {
+  return screen.getByRole("textbox", { name: /^job description$/i });
 }
 
 const sampleResponse: CoverLetterResponse = {
@@ -87,6 +101,7 @@ describe("CoverLetterPage", () => {
     mockExport.mockReset();
     mockAssess.mockReset();
     mockValidate.mockReset();
+    mockParseJd.mockReset();
     mockDownloadFile.mockReset();
 
     mockGenerate.mockResolvedValue(sampleResponse);
@@ -108,6 +123,14 @@ describe("CoverLetterPage", () => {
       ...sampleCoverLetterValidation,
       score: 82,
     });
+    mockParseJd.mockResolvedValue({
+      text:
+        "We are seeking a talented Senior Software Engineer to join our team. " +
+        "Requirements include 5+ years of React and TypeScript experience.",
+      filename: "sample-jd.pdf",
+      char_count: 140,
+      warnings: [],
+    });
     mockDownloadFile.mockResolvedValue(undefined);
   });
 
@@ -120,11 +143,50 @@ describe("CoverLetterPage", () => {
     expect(screen.getByLabelText(/job title/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/company/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/location \(optional\)/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/job description/i)).toBeInTheDocument();
+    expect(getJdTextarea()).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/upload job description \(pdf or docx\)/i),
+    ).toBeInTheDocument();
 
     const generateButton = screen.getByRole("button", {
       name: /generate cover letter/i,
     });
+    expect(generateButton).toBeDisabled();
+  });
+
+  it("fills the JD textarea from an uploaded document without auto-generating", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<CoverLetterPage />);
+
+    const file = new File(
+      [new Blob(["fake pdf bytes"], { type: "application/pdf" })],
+      "sample-jd.pdf",
+      { type: "application/pdf" },
+    );
+    const input = screen.getByLabelText(
+      /upload job description \(pdf or docx\)/i,
+    );
+    await user.upload(input, file);
+
+    await waitFor(() => {
+      expect(mockParseJd).toHaveBeenCalledTimes(1);
+    });
+    expect(mockParseJd).toHaveBeenCalledWith(file);
+
+    await waitFor(() => {
+      expect((getJdTextarea() as HTMLTextAreaElement).value).toContain(
+        "Senior Software Engineer",
+      );
+    });
+    expect(
+      screen.getByText(/source file: sample-jd\.pdf/i),
+    ).toBeInTheDocument();
+    expect(mockGenerate).not.toHaveBeenCalled();
+
+    const generateButton = screen.getByRole("button", {
+      name: /generate cover letter/i,
+    });
+    // Title and company still required — Generate stays disabled.
     expect(generateButton).toBeDisabled();
   });
 
@@ -139,7 +201,7 @@ describe("CoverLetterPage", () => {
     await user.type(screen.getByLabelText(/company/i), "Tech Innovations Inc");
     await user.type(screen.getByLabelText(/location \(optional\)/i), "Remote");
     await user.type(
-      screen.getByLabelText(/job description/i),
+      getJdTextarea(),
       "We are seeking a talented Senior Software Engineer to join our team. " +
         "Requirements include 5+ years of React and TypeScript experience and strong architecture skills.",
     );
@@ -191,7 +253,7 @@ describe("CoverLetterPage", () => {
     );
     await user.type(screen.getByLabelText(/company/i), "Tech Innovations Inc");
     await user.type(
-      screen.getByLabelText(/job description/i),
+      getJdTextarea(),
       "We are seeking a talented Senior Software Engineer with React and TypeScript experience.",
     );
 
@@ -221,7 +283,7 @@ describe("CoverLetterPage", () => {
     );
     await user.type(screen.getByLabelText(/company/i), "Tech Innovations Inc");
     await user.type(
-      screen.getByLabelText(/job description/i),
+      getJdTextarea(),
       "We are seeking a talented Senior Software Engineer with React and TypeScript experience.",
     );
 
@@ -254,7 +316,7 @@ describe("CoverLetterPage", () => {
     );
     await user.type(screen.getByLabelText(/company/i), "Tech Innovations Inc");
     await user.type(
-      screen.getByLabelText(/job description/i),
+      getJdTextarea(),
       "We are seeking a talented Senior Software Engineer with React and TypeScript experience.",
     );
 
@@ -308,7 +370,7 @@ describe("CoverLetterPage", () => {
     );
     await user.type(screen.getByLabelText(/company/i), "Tech Innovations Inc");
     await user.type(
-      screen.getByLabelText(/job description/i),
+      getJdTextarea(),
       "We are seeking a talented Senior Software Engineer with React and TypeScript experience.",
     );
 
@@ -330,7 +392,7 @@ describe("CoverLetterPage", () => {
     );
     await user.type(screen.getByLabelText(/company/i), "Tech Innovations Inc");
     await user.type(
-      screen.getByLabelText(/job description/i),
+      getJdTextarea(),
       "We are seeking a talented Senior Software Engineer with React and TypeScript experience.",
     );
 
@@ -377,7 +439,7 @@ describe("CoverLetterPage", () => {
     );
     await user.type(screen.getByLabelText(/company/i), "Tech Innovations Inc");
     await user.type(
-      screen.getByLabelText(/job description/i),
+      getJdTextarea(),
       "We are seeking a talented Senior Software Engineer to join our team. " +
         "Requirements include 5+ years of React and TypeScript experience and strong architecture skills.",
     );

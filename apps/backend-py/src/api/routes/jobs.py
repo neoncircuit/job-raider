@@ -16,6 +16,7 @@ from ...pipeline.shortlist import serialize_listing, serialize_scored_job
 from ...scoring.matcher import JobMatcher
 from ...scrapers.manager import ScraperManager
 from ...scrapers.storage import JobListingStorage
+from ...submission.applied_guard import AppliedGuard
 from ...utils.logger import Components, get_logger
 from ...utils.source_geography import listing_matches_requested_locations
 from ..models.requests import JobSearchRequest, SemanticSearchRequest
@@ -200,6 +201,14 @@ async def search_jobs(
         except Exception as catalog_err:
             logger.warning("Failed to upsert search listings: %s", catalog_err)
 
+        # Cross-source applied annotation before serialize (apply_method)
+        guard = AppliedGuard()
+        annotated_scored = []
+        for listing, score_result in scored_listings:
+            flagged = guard.annotate_listings([listing])[0]
+            annotated_scored.append((flagged, score_result))
+        scored_listings = annotated_scored
+
         # Convert to response format
         jobs_response = []
         for listing, score_result in scored_listings[: request.limit]:
@@ -246,6 +255,7 @@ async def get_job(job_id: str):
             status_code=404,
             detail=("Job not found. Search or run Discover so the listing is stored."),
         )
+    listing = AppliedGuard().annotate_listings([listing])[0]
     return serialize_listing(listing)
 
 
@@ -275,6 +285,8 @@ async def score_job(job_id: str):
             status_code=404,
             detail=("Job not found. Search or run Discover so the listing is stored."),
         )
+
+    listing = AppliedGuard().annotate_listings([listing])[0]
 
     try:
         score_result = JobMatcher().score_job(listing, profile)

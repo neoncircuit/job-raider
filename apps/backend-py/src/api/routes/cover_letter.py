@@ -15,15 +15,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
+from ...extractors.jd_document import extract_jd_document, is_supported_jd_filename
 from ...extractors.paste_job import build_job_listing_from_paste
 from ...generation.cover_letter_formatter import (
     CoverLetterExportOptions,
     CoverLetterFormatter,
 )
 from ...generation.cover_letter_grounding import is_domain_mismatch
+from ...generation.cover_letter_instructions import detect_application_instructions
 from ...generation.cover_letter_service import (
     _adapt_validation_response,
     _build_fallback_validation,
@@ -46,7 +48,10 @@ from ..models.requests import (
 from ..models.responses import (
     CoverLetterResponse,
     CoverLetterValidationResponse,
+    DetectInstructionsRequest,
+    DetectInstructionsResponse,
     JdMatchResponse,
+    ParseJdDocumentResponse,
     PrepSheetResponse,
     ScoreExplanationResponse,
 )
@@ -54,6 +59,9 @@ from . import profile as profile_state
 
 router = APIRouter()
 logger = get_logger(Components.SCRAPERS)
+
+# Cap JD document uploads (bytes). Matches a simple 8 MB limit.
+MAX_JD_UPLOAD_BYTES = 8 * 1024 * 1024
 
 
 def _manual_job_listing(request: ManualCoverLetterRequest):
@@ -127,6 +135,97 @@ def _active_user_profile(profile: Dict[str, Any]) -> UserProfile:
     """
     raw = profile["profile"]
     return raw if isinstance(raw, UserProfile) else UserProfile(**raw)
+
+
+@router.post("/parse-jd", response_model=ParseJdDocumentResponse)
+async def parse_jd_document(
+    file: UploadFile = File(..., description="Job description file (PDF or DOCX)"),
+):
+    """
+    Extract plain text from an uploaded job-description PDF or DOCX.
+
+    Text only. Does not call generate, assess, prep, or any LLM. Empty or
+    near-empty extracts still return HTTP 200 with a warning so the client
+    can ask the user to paste text instead.
+
+    Args:
+        file: Uploaded ``.pdf`` or ``.docx`` file (case-insensitive extension).
+
+    Returns:
+        Extracted text, original filename, character count, and warnings.
+
+    Raises:
+        HTTPException: 400 for missing filename, unsupported type, or oversize
+            upload; 500 if the file cannot be read after validation.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    if not is_supported_jd_filename(file.filename):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Only PDF and DOCX files are supported.",
+        )
+
+    try:
+        data = await file.read()
+    except Exception as exc:
+        logger.error("Failed to read JD upload: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to read uploaded file")
+
+    if len(data) > MAX_JD_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"File too large. Maximum size is "
+                f"{MAX_JD_UPLOAD_BYTES // (1024 * 1024)} MB."
+            ),
+        )
+
+    try:
+        result = extract_jd_document(data, file.filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("JD document parse failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse job description file: {exc}",
+        ) from exc
+
+    return ParseJdDocumentResponse(
+        text=result.text,
+        filename=result.filename,
+        char_count=result.char_count,
+        warnings=result.warnings,
+    )
+
+
+@router.post("/detect-instructions", response_model=DetectInstructionsResponse)
+async def detect_jd_instructions(request: DetectInstructionsRequest):
+    """
+    Scan pasted JD text for Phase C application instructions (no LLM).
+
+    Always safe to call while the user edits the JD field. Detects length-
+    constrained why-interest asks (any confident lines/sentences/words
+    range, not only “3-4 lines”) and explicit inclusion asks. Ambiguous
+    text returns empty detections.
+
+    Args:
+        request: JD description text (may be empty).
+
+    Returns:
+        Structured detection flags for the Cover Letter UI.
+    """
+    detected = detect_application_instructions(request.description or "")
+    return DetectInstructionsResponse(
+        why_interest=(
+            detected.why_interest.to_dict() if detected.why_interest else None
+        ),
+        inclusions=[item.to_dict() for item in detected.inclusions],
+        short_answer_mode=detected.has_why_interest,
+        has_inclusions=detected.has_inclusions,
+    )
 
 
 @router.post("/manual", response_model=CoverLetterResponse)

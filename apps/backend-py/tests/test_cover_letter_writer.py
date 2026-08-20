@@ -14,6 +14,8 @@ from src.generation.cover_letter_writer import (
     _CLASSIC_COVER_LETTER_SYSTEM,
     _COVER_LETTER_SYSTEM,
     _DOMAIN_MISMATCH_RULES,
+    _MISSION_ABSENT_RULES,
+    _MISSION_PRESENT_RULES,
     _SHARED_GROUNDING_MARKERS,
     CoverLetterWriter,
     GeneratedCoverLetter,
@@ -490,8 +492,8 @@ class TestCoverLetterWriter:
         rewrite_messages = mock_llm_router.generate.call_args.kwargs["messages"]
         rewrite_system = rewrite_messages[0].content
 
-        assert write_system == _COVER_LETTER_SYSTEM
-        assert rewrite_system == _COVER_LETTER_SYSTEM
+        assert write_system == _COVER_LETTER_SYSTEM + "\n\n" + _MISSION_ABSENT_RULES
+        assert rewrite_system == _COVER_LETTER_SYSTEM + "\n\n" + _MISSION_ABSENT_RULES
         assert write_system == rewrite_system
 
     def test_classic_system_differs_but_shares_grounding(
@@ -512,10 +514,20 @@ class TestCoverLetterWriter:
             0
         ].content
 
-        assert classic_system == _CLASSIC_COVER_LETTER_SYSTEM
+        assert (
+            classic_system
+            == _CLASSIC_COVER_LETTER_SYSTEM + "\n\n" + _MISSION_ABSENT_RULES
+        )
         assert classic_system != _COVER_LETTER_SYSTEM
-        assert _system_prompt_for_style("modern") == _COVER_LETTER_SYSTEM
-        assert _system_prompt_for_style("classic") == _CLASSIC_COVER_LETTER_SYSTEM
+        assert _system_prompt_for_style("modern") == (
+            _COVER_LETTER_SYSTEM + "\n\n" + _MISSION_ABSENT_RULES
+        )
+        assert _system_prompt_for_style("classic") == (
+            _CLASSIC_COVER_LETTER_SYSTEM + "\n\n" + _MISSION_ABSENT_RULES
+        )
+        assert _MISSION_PRESENT_RULES in _system_prompt_for_style(
+            "modern", has_mission_brief=True
+        )
         for marker in _SHARED_GROUNDING_MARKERS:
             assert marker in _COVER_LETTER_SYSTEM
             assert marker in _CLASSIC_COVER_LETTER_SYSTEM
@@ -537,7 +549,9 @@ class TestCoverLetterWriter:
         rewrite_system = mock_llm_router.generate.call_args.kwargs["messages"][
             0
         ].content
-        assert rewrite_system == _CLASSIC_COVER_LETTER_SYSTEM
+        assert rewrite_system == (
+            _CLASSIC_COVER_LETTER_SYSTEM + "\n\n" + _MISSION_ABSENT_RULES
+        )
 
 
 class TestGeneratedCoverLetter:

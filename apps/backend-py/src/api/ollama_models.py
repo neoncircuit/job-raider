@@ -164,6 +164,8 @@ def resolve_effective_ollama_host(
         return env
     if settings:
         return settings
+    if docker:
+        return "host.docker.internal:11434"
     return "localhost:11434"
 
 

@@ -13,7 +13,7 @@ Date: 2026-05-13
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
@@ -188,9 +188,28 @@ _DOMAIN_MISMATCH_RULES = (
 )
 
 
+_MISSION_PRESENT_RULES = (
+    "COMPANY MISSION CONTEXT:\n"
+    "- A verified COMPANY MISSION brief is included under TARGET JOB. "
+    "You may use it for one specific opening or body detail about the "
+    "employer.\n"
+    "- Paraphrase the brief; do not quote marketing slogans verbatim.\n"
+    "- Do not invent additional mission, product, or initiative claims "
+    "beyond that brief and the job description."
+)
+
+_MISSION_ABSENT_RULES = (
+    "COMPANY MISSION CONTEXT:\n"
+    "- No verified company-mission brief is available.\n"
+    "- Do NOT invent the company's mission, vision, products, or "
+    "initiatives. Open with a resume achievement or a JD-stated fact only."
+)
+
+
 def _system_prompt_for_style(
     style: CoverLetterStyle,
     domain_mismatch: bool = False,
+    has_mission_brief: bool = False,
 ) -> str:
     """
     Return the system prompt for the requested cover-letter style.
@@ -199,6 +218,8 @@ def _system_prompt_for_style(
         style: ``modern`` or ``classic``.
         domain_mismatch: When True, append instructions that forbid
             analogical mapping onto unsupported JD duties.
+        has_mission_brief: When True, allow using the verified mission
+            brief; when False, forbid inventing company mission claims.
 
     Returns:
         Full system prompt string.
@@ -208,7 +229,11 @@ def _system_prompt_for_style(
     else:
         prompt = _COVER_LETTER_SYSTEM
     if domain_mismatch:
-        return prompt + "\n\n" + _DOMAIN_MISMATCH_RULES
+        prompt = prompt + "\n\n" + _DOMAIN_MISMATCH_RULES
+    if has_mission_brief:
+        prompt = prompt + "\n\n" + _MISSION_PRESENT_RULES
+    else:
+        prompt = prompt + "\n\n" + _MISSION_ABSENT_RULES
     return prompt
 
 
@@ -248,6 +273,8 @@ class CoverLetterWriter:
         selection: SelectionOutput,
         style: CoverLetterStyle = "modern",
         model: Optional[str] = None,
+        mission_brief: Optional[str] = None,
+        inclusion_urls: Optional[Dict[str, Optional[str]]] = None,
     ) -> GeneratedCoverLetter:
         """
         Generate a tailored cover letter for a job application.
@@ -258,17 +285,29 @@ class CoverLetterWriter:
             selection: Selection output from selector stage
             style: ``modern`` (achievement-led) or ``classic`` (formal structure)
             model: Optional one-shot writer model override (Settings provider)
+            mission_brief: Optional verified company-mission brief
+            inclusion_urls: Optional kind→URL map for JD inclusion asks
 
         Returns:
             GeneratedCoverLetter with the letter content and metadata
         """
-        job_context = self._prepare_job_context(job, profile)
+        brief = (mission_brief or "").strip() or None
+        job_context = self._prepare_job_context(
+            job,
+            profile,
+            mission_brief=brief,
+            inclusion_urls=inclusion_urls,
+        )
         profile_context = self._prepare_profile_context(profile)
         mismatch = is_domain_mismatch(job, profile)
         selection_context = self._prepare_selection_context(
             selection, profile, domain_mismatch=mismatch
         )
-        system_prompt = _system_prompt_for_style(style, domain_mismatch=mismatch)
+        system_prompt = _system_prompt_for_style(
+            style,
+            domain_mismatch=mismatch,
+            has_mission_brief=bool(brief),
+        )
         if style == "classic":
             user_lead = (
                 "Write a classic formal cover letter for the following "
@@ -338,6 +377,195 @@ class CoverLetterWriter:
             self.logger.error("Cover letter writing failed: %s", str(e))
             return self._fallback_cover_letter(job, profile, selection)
 
+    def write_why_interest_block(
+        self,
+        job: JobListing,
+        profile: UserProfile,
+        selection: SelectionOutput,
+        why_interest: Any,
+        *,
+        mission_brief: Optional[str] = None,
+        inclusion_urls: Optional[Dict[str, Optional[str]]] = None,
+        model: Optional[str] = None,
+    ) -> GeneratedCoverLetter:
+        """
+        Generate a short why-interest answer that replaces a full cover letter.
+
+        Used when the JD asks for a length-constrained "why this interests you"
+        block (Phase C). Does not use modern/classic letter structure rules.
+
+        Args:
+            job: Target job listing.
+            profile: Candidate profile.
+            selection: Selection output (for grounding context).
+            why_interest: ``WhyInterestSpec`` with min/max/unit.
+            mission_brief: Optional verified company-mission brief.
+            inclusion_urls: Optional kind→URL map for required inclusions.
+            model: Optional writer model override.
+
+        Returns:
+            ``GeneratedCoverLetter`` containing only the short answer block.
+        """
+        min_n = int(getattr(why_interest, "min_n", 3))
+        raw_max = getattr(why_interest, "max_n", 4)
+        max_n: Optional[int] = None if raw_max is None else int(raw_max)
+        unit = str(getattr(why_interest, "unit", "lines"))
+        brief = (mission_brief or "").strip() or None
+        job_context = self._prepare_job_context(
+            job,
+            profile,
+            mission_brief=brief,
+            inclusion_urls=inclusion_urls,
+        )
+        profile_context = self._prepare_profile_context(profile)
+        selection_context = self._prepare_selection_context(
+            selection, profile, domain_mismatch=is_domain_mismatch(job, profile)
+        )
+
+        if max_n is None:
+            length_rule = (
+                f"Write at least {min_n} {unit} (this is a minimum floor, "
+                f"not an exact length — slightly over is fine). "
+                f"Do not write a full cover letter. Do not add salutation, "
+                f"signature, or call-to-action beyond the requested block."
+            )
+        else:
+            length_rule = (
+                f"Write between {min_n} and {max_n} {unit} (inclusive). "
+                f"Do not write a full cover letter. Do not add salutation, "
+                f"signature, or call-to-action beyond the requested block."
+            )
+        if unit == "lines":
+            length_rule += (
+                " Prefer one sentence per line, or clear sentence breaks "
+                "so the answer is countable as lines."
+            )
+
+        system_prompt = (
+            "You are writing a short application answer required by a job "
+            "posting — not a full cover letter.\n\n"
+            f"LENGTH RULE: {length_rule}\n"
+            "GROUNDING RULES:\n"
+            "- If COMPANY MISSION (verified) is present, use it as factual "
+            "grounding for why the company interests the candidate.\n"
+            "- If no verified mission is present, ground only in the job "
+            "title, company name, and JD responsibilities already listed.\n"
+            "- Do not invent enthusiasm, products, or initiatives that are "
+            "not in the provided context.\n"
+            "- Do not invent technologies absent from the candidate profile.\n"
+            "- If required inclusion URLs are listed, include each exact URL.\n"
+            "- Return ONLY the short answer as plain text."
+        )
+
+        messages = [
+            Message(role=MessageType.SYSTEM, content=system_prompt),
+            Message(
+                role=MessageType.USER,
+                content=(
+                    f"Write the short answer for why this role/company "
+                    f"interests the candidate.\n\n"
+                    f"TARGET JOB:\n{job_context}\n\n"
+                    f"SELECTION STRATEGY:\n{selection_context}\n\n"
+                    f"CANDIDATE PROFILE:\n{profile_context}"
+                ),
+            ),
+        ]
+
+        try:
+            response = self.llm_router.generate(
+                messages=messages,
+                task_type=TaskType.COVER_LETTER_WRITING,
+                model=model,
+                temperature=0.5,
+                max_tokens=400,
+                think=False,
+            )
+            content = response.content.strip()
+            if not content:
+                raise ValueError("Why-interest model returned empty content")
+            word_count = len(content.split())
+            model_used = (
+                response.model
+                or self.llm_router.routes[TaskType.COVER_LETTER_WRITING].primary_model
+            )
+            self.logger.info(
+                "Why-interest block generated: %d words, model=%s unit=%s "
+                "range=%s-%s",
+                word_count,
+                model_used,
+                unit,
+                min_n,
+                max_n if max_n is not None else "open",
+            )
+            return GeneratedCoverLetter(
+                content=content,
+                highlighted_experiences=[],
+                word_count=word_count,
+                model_used=model_used,
+            )
+        except Exception as e:
+            self.logger.error("Why-interest writing failed: %s", str(e))
+            return self._fallback_why_interest(
+                job, why_interest, mission_brief=brief, inclusion_urls=inclusion_urls
+            )
+
+    def _fallback_why_interest(
+        self,
+        job: JobListing,
+        why_interest: Any,
+        *,
+        mission_brief: Optional[str] = None,
+        inclusion_urls: Optional[Dict[str, Optional[str]]] = None,
+    ) -> GeneratedCoverLetter:
+        """
+        Build a minimal grounded why-interest fallback without an LLM.
+
+        Args:
+            job: Target job listing.
+            why_interest: Length spec (used for rough line count).
+            mission_brief: Optional verified mission brief.
+            inclusion_urls: Optional required URLs.
+
+        Returns:
+            Short ``GeneratedCoverLetter``.
+        """
+        min_n = int(getattr(why_interest, "min_n", 3))
+        raw_max = getattr(why_interest, "max_n", 4)
+        max_n: Optional[int] = None if raw_max is None else int(raw_max)
+        lines: List[str] = []
+        if mission_brief:
+            lines.append(
+                f"I am drawn to {job.company} because of its focus on "
+                f"{mission_brief[:180].rstrip('.')} — relevant to the "
+                f"{job.title} role."
+            )
+        else:
+            lines.append(
+                f"The {job.title} role at {job.company} matches responsibilities "
+                f"described in the posting."
+            )
+        lines.append(
+            "I am interested in contributing to the work outlined in the job "
+            "description using experience already on my resume."
+        )
+        if len(lines) < min_n:
+            lines.append(
+                f"I am applying because the {job.company} opportunity is a "
+                f"clear fit for the skills listed in my profile."
+            )
+        # Cap only when the JD gave an explicit upper bound.
+        body = "\n".join(lines) if max_n is None else "\n".join(lines[:max_n])
+        if inclusion_urls:
+            for url in inclusion_urls.values():
+                if url and url not in body:
+                    body = f"{body}\n{url}"
+        return GeneratedCoverLetter(
+            content=body,
+            highlighted_experiences=[],
+            word_count=len(body.split()),
+            model_used="fallback",
+        )
+
     def rewrite(
         self,
         job: JobListing,
@@ -347,6 +575,8 @@ class CoverLetterWriter:
         critique: str,
         style: CoverLetterStyle = "modern",
         model: Optional[str] = None,
+        mission_brief: Optional[str] = None,
+        inclusion_urls: Optional[Dict[str, Optional[str]]] = None,
     ) -> GeneratedCoverLetter:
         """
         Rewrite a cover letter draft using a reviewer critique.
@@ -359,17 +589,29 @@ class CoverLetterWriter:
             critique: Actionable feedback from the reviewer.
             style: ``modern`` or ``classic`` (must match the original draft style).
             model: Optional one-shot writer model override (Settings provider).
+            mission_brief: Optional verified company-mission brief.
+            inclusion_urls: Optional kind→URL map for JD inclusion asks.
 
         Returns:
             ``GeneratedCoverLetter`` with the rewritten content and metadata.
         """
-        job_context = self._prepare_job_context(job, profile)
+        brief = (mission_brief or "").strip() or None
+        job_context = self._prepare_job_context(
+            job,
+            profile,
+            mission_brief=brief,
+            inclusion_urls=inclusion_urls,
+        )
         profile_context = self._prepare_profile_context(profile)
         mismatch = is_domain_mismatch(job, profile)
         selection_context = self._prepare_selection_context(
             selection, profile, domain_mismatch=mismatch
         )
-        system_prompt = _system_prompt_for_style(style, domain_mismatch=mismatch)
+        system_prompt = _system_prompt_for_style(
+            style,
+            domain_mismatch=mismatch,
+            has_mission_brief=bool(brief),
+        )
         style_note = (
             "Preserve classic formal structure (salutation, sincerely + name). "
             if style == "classic"
@@ -440,7 +682,13 @@ class CoverLetterWriter:
             self.logger.error("Cover letter rewrite failed: %s", str(e))
             return self._fallback_cover_letter(job, profile, selection)
 
-    def _prepare_job_context(self, job: JobListing, profile: UserProfile) -> str:
+    def _prepare_job_context(
+        self,
+        job: JobListing,
+        profile: UserProfile,
+        mission_brief: Optional[str] = None,
+        inclusion_urls: Optional[Dict[str, Optional[str]]] = None,
+    ) -> str:
         """
         Prepare job context for the prompt.
 
@@ -450,6 +698,8 @@ class CoverLetterWriter:
         Args:
             job: Target job listing
             profile: Candidate profile used as the technology allowlist
+            mission_brief: Optional verified company-mission brief
+            inclusion_urls: Optional kind→URL map for JD inclusion asks
 
         Returns:
             Formatted job context string
@@ -483,6 +733,31 @@ class CoverLetterWriter:
             parts.append("\nRequired skills that also appear on the resume:")
             for name in overlap_skills:
                 parts.append(f"- {name}")
+
+        brief = (mission_brief or "").strip()
+        if brief:
+            parts.append(
+                "\nCOMPANY MISSION (verified; paraphrase only, do not invent "
+                f"beyond this):\n{brief}"
+            )
+
+        if inclusion_urls:
+            required = [
+                f"- {kind}: {url}" for kind, url in inclusion_urls.items() if url
+            ]
+            missing = [
+                f"- {kind}: (not on profile — do not invent)"
+                for kind, url in inclusion_urls.items()
+                if not url
+            ]
+            if required:
+                parts.append(
+                    "\nREQUIRED INCLUSIONS (include each exact URL in the output):"
+                )
+                parts.extend(required)
+            if missing:
+                parts.append("\nINCLUSIONS REQUESTED BUT UNAVAILABLE ON PROFILE:")
+                parts.extend(missing)
 
         if is_domain_mismatch(job, profile):
             parts.append(

@@ -21,8 +21,10 @@ import {
   FileUser,
   ClipboardCheck,
 } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { coverLetterApi, downloadFile } from "@/lib/api/coverLetter";
 import type {
+  DetectInstructionsResponse,
   JdMatchResponse,
   PrepSheetResponse,
   ScoreExplanation,
@@ -132,6 +134,13 @@ export default function CoverLetterPage() {
   const [assessLoading, setAssessLoading] = useState(false);
   const [prepSheet, setPrepSheet] = useState<PrepSheetResponse | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [jdUploadFilename, setJdUploadFilename] = useState<string | null>(null);
+  const [jdUploadWarnings, setJdUploadWarnings] = useState<string[]>([]);
+  const [jdUploading, setJdUploading] = useState(false);
+  const jdFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [jdInstructions, setJdInstructions] =
+    useState<DetectInstructionsResponse | null>(null);
+  const detectAbortRef = useRef<AbortController | null>(null);
 
   // Editable letter body + live-revalidated quality metrics, plus on-demand
   // plain-language explanations of the fit and letter scores.
@@ -190,7 +199,11 @@ export default function CoverLetterPage() {
       setLetterExplain(null);
       setAftermath(null);
       trackedJobIdRef.current = null;
-      toast.success("Cover letter generated");
+      toast.success(
+        data.instructions_context?.short_answer_mode
+          ? "Short application answer generated"
+          : "Cover letter generated",
+      );
       logger.info("Generated cover letter", { jobId: data.job_id });
     },
     onError: (err: Error) => {
@@ -311,6 +324,39 @@ export default function CoverLetterPage() {
   const { title, company, location, description } = form;
   const jdPasteHint = getJdPasteHint(description);
 
+  // Scan the pasted JD for application instructions (why-interest length
+  // asks, inclusion asks) while typing. Always runs — not limited to
+  // “3-4 lines”; any confident lines/sentences/words range near interest
+  // cues may match. Empty/ambiguous JD clears the banner.
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      detectAbortRef.current?.abort();
+      const controller = new AbortController();
+      detectAbortRef.current = controller;
+      const text = description.trim();
+      if (text.length < 20) {
+        setJdInstructions(null);
+        return;
+      }
+      try {
+        const detected = await coverLetterApi.detectInstructions(
+          description,
+          controller.signal,
+        );
+        if (!controller.signal.aborted) {
+          setJdInstructions(detected);
+        }
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        logger.error("JD instruction detect failed", err);
+      }
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      detectAbortRef.current?.abort();
+    };
+  }, [description]);
+
   // Auto-assess job fit while the user fills in the form, debounced and
   // aborting any in-flight request that has gone stale. All state updates
   // happen inside the debounced callback so the effect body stays free of
@@ -362,6 +408,42 @@ export default function CoverLetterPage() {
 
     return () => clearTimeout(timer);
   }, [title, company, location, description]);
+
+  /**
+   * Parse an uploaded JD PDF/DOCX into the description textarea.
+   * Does not call generate, assess, or prep — the user must still click Generate.
+   *
+   * @param file - Selected PDF or DOCX file from the file input.
+   */
+  const handleJdUpload = async (file: File) => {
+    setJdUploading(true);
+    setJdUploadWarnings([]);
+    try {
+      const parsed = await coverLetterApi.parseJd(file);
+      setForm((f) => ({ ...f, description: parsed.text }));
+      setJdUploadFilename(parsed.filename);
+      setJdUploadWarnings(parsed.warnings ?? []);
+      if (parsed.warnings?.length) {
+        toast.warning(parsed.warnings[0]);
+      } else {
+        toast.success(`Loaded job description from ${parsed.filename}`);
+      }
+      logger.info("JD document parsed", {
+        filename: parsed.filename,
+        charCount: parsed.char_count,
+      });
+    } catch (err) {
+      logger.error("JD document parse failed", err);
+      toast.error(
+        getApiErrorMessage(err, "Failed to parse job description file"),
+      );
+    } finally {
+      setJdUploading(false);
+      if (jdFileInputRef.current) {
+        jdFileInputRef.current.value = "";
+      }
+    }
+  };
 
   const canGenerate =
     form.title.trim() &&
@@ -520,6 +602,46 @@ export default function CoverLetterPage() {
 
             <div className="space-y-2">
               <Label htmlFor="description">Job Description</Label>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="jd-upload"
+                  className="text-sm font-normal text-muted-foreground"
+                >
+                  Upload job description (PDF or DOCX)
+                </Label>
+                <Input
+                  id="jd-upload"
+                  ref={jdFileInputRef}
+                  type="file"
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  disabled={jdUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      void handleJdUpload(file);
+                    }
+                  }}
+                />
+                {jdUploading && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Extracting text from document...
+                  </p>
+                )}
+                {jdUploadFilename && !jdUploading && (
+                  <p className="text-xs text-muted-foreground">
+                    Source file: {jdUploadFilename}
+                  </p>
+                )}
+                {jdUploadWarnings.map((warning) => (
+                  <p
+                    key={warning}
+                    className="text-xs text-amber-700 dark:text-amber-400"
+                  >
+                    {warning}
+                  </p>
+                ))}
+              </div>
               <Textarea
                 id="description"
                 placeholder="Paste the full job description here..."
@@ -534,8 +656,50 @@ export default function CoverLetterPage() {
                   {jdPasteHint}
                 </p>
               )}
+              {jdInstructions &&
+                (jdInstructions.short_answer_mode ||
+                  jdInstructions.has_inclusions) && (
+                  <div
+                    className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1"
+                    role="status"
+                  >
+                    <p className="font-medium text-foreground">
+                      JD application instructions detected
+                    </p>
+                    {jdInstructions.why_interest && (
+                      <p>
+                        Length ask:{" "}
+                        {jdInstructions.why_interest.max_n == null
+                          ? `at least ${jdInstructions.why_interest.min_n}`
+                          : `${jdInstructions.why_interest.min_n}${
+                              jdInstructions.why_interest.max_n !==
+                              jdInstructions.why_interest.min_n
+                                ? `–${jdInstructions.why_interest.max_n}`
+                                : ""
+                            }`}{" "}
+                        {jdInstructions.why_interest.unit} on why this interests
+                        you (matched “{jdInstructions.why_interest.matched_span}
+                        ”). Generate will replace the full letter with that
+                        short answer.
+                      </p>
+                    )}
+                    {jdInstructions.inclusions.length > 0 && (
+                      <p>
+                        Inclusion ask:{" "}
+                        {jdInstructions.inclusions
+                          .map((item) => item.kind)
+                          .join(", ")}
+                        . Profile links will be injected when available.
+                      </p>
+                    )}
+                  </div>
+                )}
               <p className="text-xs text-muted-foreground">
-                Minimum 50 characters required for meaningful generation.
+                Minimum 50 characters required for meaningful generation. Upload
+                fills this field only; click Generate when ready. The JD is
+                scanned for submission asks (any length unit near
+                interest/mission cues, plus include-link asks)—not only “3-4
+                lines”.
               </p>
             </div>
 

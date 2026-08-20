@@ -73,7 +73,12 @@ class APIConfig(BaseModel):
         description="Cloud provider used when local Ollama fails",
     )
     ollama_host: str = Field(
-        default="localhost:11434", description="Ollama service host:port"
+        default="host.docker.internal:11434",
+        description=(
+            "Ollama host:port. Default reaches host-machine Ollama from a "
+            "Docker Desktop backend. Use localhost:11434 only for a native "
+            "venv/WSL API process."
+        ),
     )
 
     @field_validator("anthropic_api_key", "gemini_api_key", mode="before")
@@ -91,7 +96,7 @@ class APIConfig(BaseModel):
     def validate_ollama_host(cls, v: str) -> str:
         """Validate Ollama host format."""
         if not v:
-            return "localhost:11434"
+            return "host.docker.internal:11434"
         return v
 
 
@@ -132,6 +137,13 @@ class CostLimits(BaseModel):
         description=(
             "When rule-based JD paste extraction finds no skills, optionally "
             "run LLM JD_EXTRACTION (cover-letter manual paste only)"
+        ),
+    )
+    enable_company_mission: bool = Field(
+        default=False,
+        description=(
+            "When generating a cover letter, optionally search and verify a "
+            "short company-mission brief against JD facts (skip on ambiguity)"
         ),
     )
     enable_prompt_cache: bool = Field(

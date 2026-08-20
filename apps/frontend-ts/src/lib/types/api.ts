@@ -348,6 +348,39 @@ export interface CoverLetterResponse {
   job_id: string;
   cover_letter: CoverLetter;
   validation: CoverLetterValidation;
+  /** Present when company-mission grounding ran or was disabled. */
+  mission_context?: {
+    status: string;
+    brief?: string;
+    source_url?: string;
+    skip_reason?: string;
+    elapsed_ms?: number;
+    paraphrase_method?: string;
+    query?: string;
+  } | null;
+  /** Phase C detected JD application instructions and adherence results. */
+  instructions_context?: {
+    detected?: {
+      why_interest?: {
+        min_n: number;
+        /** Null for min-only floors such as "minimum 50 words". */
+        max_n: number | null;
+        unit: string;
+        matched_span: string;
+      } | null;
+      inclusions?: Array<{ kind: string; matched_span: string }>;
+    };
+    short_answer_mode?: boolean;
+    length_ok?: boolean | null;
+    length_count?: number | null;
+    inclusion_urls?: Record<string, string | null>;
+    inclusion_checks?: Array<{
+      kind: string;
+      url?: string | null;
+      present?: boolean | null;
+      available_on_profile?: boolean;
+    }>;
+  } | null;
 }
 
 // ── Profile ───────────────────────────────────────────────────────────────────
@@ -615,6 +648,7 @@ export interface CostLimits {
   enable_cache: boolean;
   cache_ttl: number;
   enable_jd_llm_extract?: boolean;
+  enable_company_mission?: boolean;
   enable_prompt_cache?: boolean;
   ollama_keep_alive?: string | null;
 }

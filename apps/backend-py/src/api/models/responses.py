@@ -291,6 +291,8 @@ class CoverLetterResponse(BaseModel):
     job_id: str
     cover_letter: Dict[str, Any]
     validation: CoverLetterValidationResponse
+    mission_context: Optional[Dict[str, Any]] = None
+    instructions_context: Optional[Dict[str, Any]] = None
 
 
 class JdMatchResponse(BaseModel):
@@ -327,3 +329,38 @@ class PrepSheetResponse(BaseModel):
     likely_questions: List[str] = Field(default_factory=list)
     gaps_to_address: List[str] = Field(default_factory=list)
     talking_points: List[str] = Field(default_factory=list)
+
+
+class ParseJdDocumentResponse(BaseModel):
+    """Response with plain text extracted from an uploaded JD PDF/DOCX."""
+
+    text: str = Field(description="Extracted job description text (may be empty).")
+    filename: str = Field(description="Original upload filename.")
+    char_count: int = Field(description="Character count of extracted text.")
+    warnings: List[str] = Field(
+        default_factory=list,
+        description="Warnings such as empty or near-empty text layer.",
+    )
+
+
+class DetectInstructionsRequest(BaseModel):
+    """Request to scan JD text for Phase C application instructions."""
+
+    description: str = Field(
+        default="",
+        description="Pasted job description text to scan (may be empty).",
+    )
+
+
+class DetectInstructionsResponse(BaseModel):
+    """
+    Conservative detection result for cover-letter application instructions.
+
+    Length asks are not limited to “3-4 lines”; any confident numeric
+    lines/sentences/words range near interest/mission cues may match.
+    """
+
+    why_interest: Optional[Dict[str, Any]] = None
+    inclusions: List[Dict[str, Any]] = Field(default_factory=list)
+    short_answer_mode: bool = False
+    has_inclusions: bool = False

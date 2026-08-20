@@ -49,9 +49,29 @@ export interface ScoreExplanation {
   fit_score?: number | null;
 }
 
+export interface ParseJdDocumentResponse {
+  text: string;
+  filename: string;
+  char_count: number;
+  warnings: string[];
+}
+
 export interface ValidateCoverLetterRequest extends ManualCoverLetterRequest {
   content: string;
   deep?: boolean;
+}
+
+export interface DetectInstructionsResponse {
+  why_interest: {
+    min_n: number;
+    /** Null when the JD only set a floor (e.g. "minimum 50 words"). */
+    max_n: number | null;
+    unit: string;
+    matched_span: string;
+  } | null;
+  inclusions: Array<{ kind: string; matched_span: string }>;
+  short_answer_mode: boolean;
+  has_inclusions: boolean;
 }
 
 export const coverLetterApi = {
@@ -67,6 +87,32 @@ export const coverLetterApi = {
       params: Object.keys(params).length > 0 ? params : undefined,
     });
   },
+
+  /**
+   * Extract plain text from an uploaded JD PDF or DOCX.
+   * Does not generate a letter or call assess/prep.
+   */
+  parseJd: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    return request<ParseJdDocumentResponse>("POST", "/cover-letter/parse-jd", {
+      formData: fd,
+    });
+  },
+
+  /**
+   * Scan pasted JD text for length-constrained why-interest asks and
+   * inclusion asks (no LLM). Safe to call while typing.
+   */
+  detectInstructions: (description: string, signal?: AbortSignal) =>
+    request<DetectInstructionsResponse>(
+      "POST",
+      "/cover-letter/detect-instructions",
+      {
+        body: { description },
+        signal,
+      },
+    ),
 
   /**
    * Score a pasted job description against the stored profile without

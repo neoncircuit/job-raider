@@ -78,6 +78,17 @@ class TestResolveEffectiveOllamaHost:
             == "localhost:11434"
         )
 
+    def test_docker_empty_defaults_to_host_gateway(self):
+        """Inside Docker with no Settings/env, prefer host.docker.internal."""
+        assert (
+            resolve_effective_ollama_host(
+                "",
+                env_host="",
+                in_docker=True,
+            )
+            == "host.docker.internal:11434"
+        )
+
 
 class TestOllamaTierModels:
     """Small/large tier application onto routing maps."""

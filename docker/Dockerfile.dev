@@ -19,8 +19,7 @@ RUN apt-get update && apt-get install -y \
     zstd \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Ollama for local models
-RUN curl -fsSL https://ollama.com/install.sh | sh
+# Local LLMs use the shared Ollama service; do not install Ollama in this image.
 
 # Copy requirements first for better caching
 COPY apps/backend-py/requirements.txt .

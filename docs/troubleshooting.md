@@ -159,27 +159,29 @@ curl -s http://127.0.0.1:8000/api/health | python3 -m json.tool
 ### Settings Shows Few Ollama Models / Wrong Host
 
 **Symptoms:**
-- Settings Ollama dropdowns only list models from the Compose `ollama` service
-- Extra models on desktop Ollama do not appear
-- Empty installed list while last-saved tags still show in the pickers
+- Settings Ollama dropdowns are empty or show last-saved tags as not installed
+- Backend health reports Ollama unreachable while host Ollama works in a terminal
 
 **Root Cause:**
 
-Discovery uses `api_config.ollama_host` from saved settings, rewritten through `resolve_effective_ollama_host` when Settings still say `localhost` inside Docker (then Compose `OLLAMA_HOST`, e.g. `ollama:11434`, is used). Inside Docker, raw `localhost:11434` is the backend container itself and returns an empty model list.
+Job Raider uses **host-machine Ollama**. Discovery uses `api_config.ollama_host`, rewritten through `resolve_effective_ollama_host` when Settings still say `localhost` inside Docker (then Compose `OLLAMA_HOST=host.docker.internal:11434` is used). Inside Docker, raw `localhost:11434` is the backend container itself and returns an empty model list.
 
-There are often **two** Ollama inventories on a Windows desktop setup:
-- Compose/shared container `ollama:11434` (may only have a few pulled tags)
-- Desktop Ollama at `host.docker.internal:11434` / host `127.0.0.1:11434` (full library)
-
-If Settings still look empty after redeploy, set **Ollama Host** to the inventory you want (`ollama:11434` or `host.docker.internal:11434`) and save.
+Do not point Settings at a Compose service name such as `ollama:11434` unless you still run a separate Ollama container on purpose.
 
 **Fix:**
 
-1. Open `/settings` and set **Ollama Host** appropriately:
-   - Compose service: `ollama:11434`
-   - Host desktop Ollama: `host.docker.internal:11434`
-   - Native backend (no Docker): `localhost:11434`
-2. Save, refresh Settings, then choose small/large from the live installed list
+1. Open `/settings` and set **Ollama Host**:
+   - Backend in Docker Desktop: `host.docker.internal:11434`
+   - Native backend (venv / WSL, no Docker API): `localhost:11434`
+2. On the host, ensure models exist (setup does this):
+
+```bash
+ollama pull qwen2.5:3b
+ollama pull qwen2.5:7b
+ollama pull nomic-embed-text
+```
+
+3. Save Settings, refresh, then choose small/large from the live installed list.
 
 The Settings UI lists installed tags only (`ollama_installed`), not the YAML catalog. Saved models missing from that host remain visible as not installed.
 
@@ -937,6 +939,30 @@ Validation failed: 3 issues
 3. **Manual review:**
    - Generate both PDF and DOCX
    - Choose the better one
+
+### Issue: Cover Letter JD upload returns empty text
+
+**Symptoms:**
+- Upload of a PDF or DOCX on Cover Letter leaves the job description empty
+- UI shows a warning about scanned PDF or missing text layer
+
+**Cause:** The parse step reads the document text layer only. It does not run OCR and does not invent JD content.
+
+**Solutions:**
+
+1. Paste the job description into the textarea instead of uploading the scan.
+2. Prefer a DOCX or a PDF that was exported with selectable text.
+3. Confirm the file is `.pdf` or `.docx` (`.doc` is not supported).
+
+```mermaid
+flowchart LR
+  Upload[Upload JD file] --> Extract[Text extract]
+  Extract -->|text found| Fill[Fill textarea]
+  Extract -->|empty| Warn[Show warning]
+  Warn --> Paste[Paste JD manually]
+  Fill --> Generate[User clicks Generate]
+  Paste --> Generate
+```
 
 ## Submission Issues
 
