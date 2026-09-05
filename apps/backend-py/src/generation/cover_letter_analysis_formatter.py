@@ -269,9 +269,7 @@ class CoverLetterAnalysisFormatter:
         story.append(Paragraph("Job", heading))
         story.append(
             Paragraph(
-                _escape(
-                    f"{job.get('title') or '—'} at {job.get('company') or '—'}"
-                ),
+                _escape(f"{job.get('title') or '—'} at {job.get('company') or '—'}"),
                 normal,
             )
         )
@@ -293,10 +291,10 @@ class CoverLetterAnalysisFormatter:
             )
             breakdown = fit.get("breakdown") or {}
             if breakdown:
-                parts = [
-                    f"{key}={value}" for key, value in sorted(breakdown.items())
-                ]
-                story.append(Paragraph(_escape("Breakdown: " + ", ".join(parts)), normal))
+                parts = [f"{key}={value}" for key, value in sorted(breakdown.items())]
+                story.append(
+                    Paragraph(_escape("Breakdown: " + ", ".join(parts)), normal)
+                )
             matched = fit.get("matched_keywords") or []
             missing = fit.get("missing_skills") or []
             if matched:

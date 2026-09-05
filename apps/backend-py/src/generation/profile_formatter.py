@@ -270,8 +270,10 @@ class ProfileFormatter:
             story.append(Paragraph("Experience", heading_style))
             for entry in profile.experience:
                 start = _fmt_date(entry.start_date)
-                end = "Present" if entry.current or not entry.end_date else _fmt_date(
-                    entry.end_date
+                end = (
+                    "Present"
+                    if entry.current or not entry.end_date
+                    else _fmt_date(entry.end_date)
                 )
                 date_range = " – ".join(part for part in (start, end) if part)
                 headline = f"{entry.title} · {entry.company}"

@@ -128,7 +128,11 @@ Return a JSON object:
             prompt_tokens = response.prompt_tokens
             completion_tokens = response.completion_tokens
             tokens_used = response.tokens_used
-            if tokens_used is None and prompt_tokens is not None and completion_tokens is not None:
+            if (
+                tokens_used is None
+                and prompt_tokens is not None
+                and completion_tokens is not None
+            ):
                 tokens_used = prompt_tokens + completion_tokens
 
             return SelectionOutput(

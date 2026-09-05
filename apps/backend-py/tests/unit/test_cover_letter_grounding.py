@@ -338,9 +338,7 @@ def test_flag_fabricated_technologies_still_flags_false_claim():
         contact=ContactInfo(email="a@example.com", location="Singapore"),
         skills=[Skill(name="Python", category=SkillCategory.LANGUAGE)],
     )
-    letter = (
-        "I have strong Java experience and shipped Spring services in production."
-    )
+    letter = "I have strong Java experience and shipped Spring services in production."
     fabricated = flag_fabricated_technologies(letter, profile)
     assert "java" in fabricated
 

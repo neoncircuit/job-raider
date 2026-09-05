@@ -5,11 +5,7 @@
  * scaling so strong categories pull away from weak ones.
  */
 
-import type {
-  ProfileSkill,
-  Project,
-  WorkExperience,
-} from "@/lib/types/api";
+import type { ProfileSkill, Project, WorkExperience } from "@/lib/types/api";
 
 /** One axis on the skills radar chart. */
 export interface RadarCategoryScore {

@@ -269,7 +269,9 @@ describe("CoverLetterPage", () => {
       screen.getByRole("button", { name: /generate cover letter/i }),
     );
     await screen.findByDisplayValue(sampleCoverLetter.content);
-    expect(screen.queryByTestId("cover-letter-sources")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("cover-letter-sources"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a single Sources card when one mission citation is present", async () => {
@@ -305,9 +307,10 @@ describe("CoverLetterPage", () => {
     );
     await screen.findByTestId("cover-letter-sources");
     expect(screen.getByText("Sources")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /about acme/i }),
-    ).toHaveAttribute("href", "https://www.acme.example/about");
+    expect(screen.getByRole("link", { name: /about acme/i })).toHaveAttribute(
+      "href",
+      "https://www.acme.example/about",
+    );
   });
 
   it("shows a collapsible Sources panel for multiple citations", async () => {
@@ -346,10 +349,11 @@ describe("CoverLetterPage", () => {
     const panel = await screen.findByTestId("cover-letter-sources");
     expect(panel).toHaveTextContent(/Sources \(2\)/);
     await user.click(screen.getByText(/Sources \(2\)/i));
+    // Accessible name includes title plus domain (and icon text nodes).
     expect(
-      await screen.findByRole("link", { name: /^about$/i }),
+      await screen.findByRole("link", { name: /about/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /^mission$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /mission/i })).toBeInTheDocument();
   });
 
   it("toggles deep validation and sends deep=true", async () => {
@@ -445,7 +449,10 @@ describe("CoverLetterPage", () => {
     });
     const call = mockExportAnalysis.mock.calls[0][0] as {
       format: string;
-      analysis: { job: { company: string }; settings: { writer_model: string } };
+      analysis: {
+        job: { company: string };
+        settings: { writer_model: string };
+      };
     };
     expect(call.format).toBe("json");
     expect(call.analysis.job.company).toBe("Tech Innovations Inc");

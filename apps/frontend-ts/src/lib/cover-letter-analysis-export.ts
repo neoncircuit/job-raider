@@ -108,7 +108,8 @@ export function buildCoverLetterAnalysisExport(
 ): CoverLetterAnalysisExport {
   const validation = input.validation ?? input.result?.validation ?? null;
   const details = (validation?.details ?? {}) as Record<string, unknown>;
-  const reviewRaw = details.review as CoverLetterAnalysisExport["review"] | undefined;
+  const reviewRaw = details.review as
+    CoverLetterAnalysisExport["review"] | undefined;
 
   return {
     schema_version: COVER_LETTER_ANALYSIS_SCHEMA_VERSION,

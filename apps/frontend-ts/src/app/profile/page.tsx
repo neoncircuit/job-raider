@@ -799,9 +799,7 @@ export default function ProfilePage() {
       await downloadFile(res, "profile_summary.pdf");
       toast.success("Profile PDF downloaded");
     } catch (error) {
-      toast.error(
-        getApiErrorMessage(error, "Could not download profile PDF."),
-      );
+      toast.error(getApiErrorMessage(error, "Could not download profile PDF."));
     } finally {
       setPdfDownloading(false);
     }

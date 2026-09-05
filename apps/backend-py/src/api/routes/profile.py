@@ -709,10 +709,13 @@ async def export_profile_pdf():
     profile_data = stored_profiles[active_profile_id]
     profile = _coerce_user_profile(profile_data["profile"])
 
-    safe_name = "".join(
-        ch if ch.isalnum() or ch in ("-", "_") else "_"
-        for ch in (profile.name or "profile").strip()
-    ).strip("_") or "profile"
+    safe_name = (
+        "".join(
+            ch if ch.isalnum() or ch in ("-", "_") else "_"
+            for ch in (profile.name or "profile").strip()
+        ).strip("_")
+        or "profile"
+    )
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"profile_{safe_name}_{timestamp}"
 

@@ -1145,9 +1145,7 @@ export default function CoverLetterPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => exportAnalysisMutation.mutate("json")}
-                      disabled={
-                        exportAnalysisMutation.isPending || !result
-                      }
+                      disabled={exportAnalysisMutation.isPending || !result}
                     >
                       <Download className="mr-1.5 h-3.5 w-3.5" />
                       Export full analysis

@@ -273,7 +273,11 @@ def _tokens_from_llm_response(
     prompt_tokens = getattr(response, "prompt_tokens", None)
     completion_tokens = getattr(response, "completion_tokens", None)
     tokens_used = getattr(response, "tokens_used", None)
-    if tokens_used is None and prompt_tokens is not None and completion_tokens is not None:
+    if (
+        tokens_used is None
+        and prompt_tokens is not None
+        and completion_tokens is not None
+    ):
         tokens_used = int(prompt_tokens) + int(completion_tokens)
     return prompt_tokens, completion_tokens, tokens_used
 
