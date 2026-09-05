@@ -31,14 +31,12 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils/cn";
 import { DISCAssessment } from "./disc-assessment";
+import {
+  buildCategoryRadarData,
+  type RadarCategoryScore,
+} from "@/lib/skills-radar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-interface SkillScore {
-  category: string;
-  score: number;
-  count: number;
-}
 
 interface DISCProfile {
   dominance: number;
@@ -51,73 +49,34 @@ interface DISCProfile {
 
 interface SkillsRadarProps {
   skills: UserProfile["skills"];
+  core_skills?: UserProfile["core_skills"];
+  work_experience?: UserProfile["work_experience"];
+  projects?: UserProfile["projects"];
 }
 
-export function SkillsRadar({ skills }: SkillsRadarProps) {
-  // Check how many skills have proficiency data
+/**
+ * Category radar for the Profile page.
+ *
+ * Scores use CV evidence and relative scaling so the chart shows
+ * profile shape instead of a near-regular proficiency average.
+ *
+ * @param props - Skills plus optional core skills, experience, and projects.
+ * @returns Skills breakdown card with radar chart.
+ */
+export function SkillsRadar({
+  skills,
+  core_skills,
+  work_experience,
+  projects,
+}: SkillsRadarProps) {
   const skillsWithProficiency = skills.filter((s) => s.proficiency).length;
-
-  // Calculate scores by category using available data
-  const categoryScores = skills.reduce<
-    Record<string, { total: number; count: number; hasExp: boolean }>
-  >((acc, skill) => {
-    const cat = skill.category ?? "other";
-    if (!acc[cat]) acc[cat] = { total: 0, count: 0, hasExp: false };
-
-    let score = 0;
-
-    // If we have proficiency data, use it
-    if (skill.proficiency) {
-      switch (skill.proficiency) {
-        case "Expert":
-          score = 95;
-          break;
-        case "Advanced":
-          score = 80;
-          break;
-        case "Intermediate":
-          score = 60;
-          break;
-        case "Beginner":
-          score = 40;
-          break;
-        default:
-          score = 50;
-      }
-      // Boost by years of experience
-      score += Math.min((skill.years_of_experience || 0) * 5, 20);
-    } else {
-      // No proficiency data - estimate from years of experience
-      const years = skill.years_of_experience || 0;
-      if (years >= 5) score = 85;
-      else if (years >= 3) score = 70;
-      else if (years >= 1) score = 55;
-      else score = 45; // New skill
-    }
-
-    // Mark if any skill in this category has experience data
-    if (skill.years_of_experience && skill.years_of_experience > 0) {
-      acc[cat].hasExp = true;
-    }
-
-    acc[cat].total += score;
-    acc[cat].count += 1;
-    return acc;
-  }, {});
-
-  const data: SkillScore[] = Object.entries(categoryScores)
-    .map(([cat, { total, count }]) => {
-      const avgScore = Math.min(100, Math.round(total / count));
-      const label = cat
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (l) => l.toUpperCase());
-      return {
-        category: label,
-        score: avgScore,
-        count,
-      };
-    })
-    .sort((a, b) => b.score - a.score);
+  const data: RadarCategoryScore[] = buildCategoryRadarData({
+    skills,
+    core_skills,
+    work_experience,
+    projects,
+  });
+  const chartData = data.slice(0, 6);
 
   if (data.length === 0) {
     return (
@@ -147,32 +106,35 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* Scoring explanation */}
           <div className="rounded-md bg-info/10 px-3 py-2 text-xs text-info">
             <p className="font-medium">How scores are calculated:</p>
             <ul className="mt-1 ml-4 list-disc space-y-0.5">
               <li>
-                With proficiency: Expert=95%, Advanced=80%, Intermediate=60%,
-                Beginner=40%
+                Evidence from proficiency, years, core skills, and mentions in
+                experience/projects
               </li>
-              <li>Without proficiency: Based on years of experience</li>
-              <li>5+ yrs=85%, 3+ yrs=70%, 1+ yrs=55%, 0 yrs=45%</li>
+              <li>
+                Each category uses its top skills (not a flat average of every
+                listed skill)
+              </li>
+              <li>
+                Scores are scaled to your profile shape — strongest category
+                near 95%, others relative to it
+              </li>
             </ul>
           </div>
 
-          {/* Note about proficiency levels */}
           {skillsWithProficiency === 0 && (
             <div className="rounded-md bg-amber-50 dark:bg-warning/10 px-3 py-2 text-xs text-amber-800 dark:text-warning">
-              <span className="font-medium">Note:</span> Your resume
-              doesn&apos;t include proficiency levels. Scores are based on years
-              of experience. Add proficiency levels for more accurate results.
+              <span className="font-medium">Note:</span> No proficiency labels
+              on this resume. Scores lean on years and how often each skill
+              appears in experience and projects.
             </div>
           )}
 
-          {/* Radar Chart */}
           <div className="flex justify-center">
             <ResponsiveContainer width="100%" height={220}>
-              <RadarChart data={data.slice(0, 6)}>
+              <RadarChart data={chartData}>
                 <PolarGrid stroke="var(--chart-grid)" />
                 <PolarAngleAxis
                   dataKey="category"
@@ -190,7 +152,6 @@ export function SkillsRadar({ skills }: SkillsRadarProps) {
             </ResponsiveContainer>
           </div>
 
-          {/* Legend */}
           <div className="grid grid-cols-2 gap-2">
             {data.map((item) => (
               <div

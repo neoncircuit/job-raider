@@ -211,3 +211,67 @@ class TestSearchLinkedInNoSession:
 
         assert resp.status_code == 503
         assert "LinkedIn search is unavailable" in resp.json()["message"]
+
+
+class TestExportProfilePdf:
+    """Tests for GET /api/profile/export.pdf."""
+
+    @pytest.fixture
+    def pdf_client(self, tmp_path):
+        """Test client with an active profile and isolated PDF output dir."""
+        from src.models.user_profile import ContactInfo, UserProfile
+
+        profile = UserProfile(
+            name="Alex Chen",
+            contact=ContactInfo(email="alex@example.com", location="Remote"),
+            summary="Builder of APIs.",
+        )
+        stored = {
+            "prof_pdf": {
+                "profile": profile,
+                "resume_path": None,
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+            }
+        }
+
+        with patch(
+            "src.api.routes.profile.stored_profiles", stored, create=True
+        ), patch(
+            "src.api.routes.profile.active_profile_id", "prof_pdf", create=True
+        ), patch(
+            "src.api.routes.profile.ProfileFormatter"
+        ) as mock_formatter_cls:
+            from src.api.auth import verify_api_key
+            from src.api.main import app
+            from src.generation.profile_formatter import FormattedProfile
+
+            pdf_path = tmp_path / "profile_Alex_Chen_test.pdf"
+            pdf_path.write_bytes(b"%PDF-1.4 test")
+            mock_formatter = MagicMock()
+            mock_formatter.format_pdf.return_value = FormattedProfile(
+                pdf_path=str(pdf_path),
+                success=True,
+                sections_included=["Identity", "Summary"],
+            )
+            mock_formatter_cls.return_value = mock_formatter
+
+            app.dependency_overrides[verify_api_key] = lambda: None
+            tc = TestClient(app, raise_server_exceptions=False)
+            yield tc, mock_formatter
+            app.dependency_overrides.clear()
+
+    def test_export_pdf_returns_file(self, pdf_client):
+        """Should stream application/pdf for the active profile."""
+        client, mock_formatter = pdf_client
+        resp = client.get("/api/profile/export.pdf")
+
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("application/pdf")
+        assert resp.content.startswith(b"%PDF")
+        mock_formatter.format_pdf.assert_called_once()
+
+    def test_export_pdf_without_profile_returns_404(self, client):
+        """Should 404 when no active profile exists."""
+        resp = client.get("/api/profile/export.pdf")
+        assert resp.status_code == 404

@@ -16,9 +16,11 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from ...extractors.resume_parser import ResumeParser
 from ...generation.linkedin_analyzer import LinkedInAnalyzer
+from ...generation.profile_formatter import ProfileFormatter
 from ...generation.resume_analyzer import ResumeAnalyzer
 from ...linkedin.session import LinkedInSession, LinkedInSessionConfig
 from ...llm.router import LLMRouter
@@ -652,6 +654,82 @@ async def export_profile():
 
     # Convert to dict (Pydantic model)
     return profile.model_dump()
+
+
+def _coerce_user_profile(raw: Any) -> UserProfile:
+    """
+    Normalize a stored profile value to a ``UserProfile`` instance.
+
+    Args:
+        raw: Stored profile object (``UserProfile`` or dict).
+
+    Returns:
+        Validated ``UserProfile``.
+
+    Raises:
+        HTTPException: When the stored value cannot be parsed.
+    """
+    if isinstance(raw, UserProfile):
+        return raw
+    try:
+        if isinstance(raw, dict):
+            return UserProfile(**raw)
+        return UserProfile.model_validate(raw)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Stored profile could not be parsed for PDF export: {exc}",
+        ) from exc
+
+
+@router.get("/export.pdf")
+async def export_profile_pdf():
+    """
+    Export the active profile as a structured summary PDF.
+
+    Returns a readable profile report (identity, summary, experience,
+    education, skills, certifications). Empty sections are omitted.
+    Existing JSON ``GET /export`` is unchanged.
+
+    Returns:
+        FileResponse streaming ``application/pdf``.
+    """
+    if not active_profile_id:
+        raise HTTPException(
+            status_code=404,
+            detail="No active profile found. Upload a resume first.",
+        )
+
+    if active_profile_id not in stored_profiles:
+        raise HTTPException(
+            status_code=404,
+            detail="Active profile not found in storage.",
+        )
+
+    profile_data = stored_profiles[active_profile_id]
+    profile = _coerce_user_profile(profile_data["profile"])
+
+    safe_name = "".join(
+        ch if ch.isalnum() or ch in ("-", "_") else "_"
+        for ch in (profile.name or "profile").strip()
+    ).strip("_") or "profile"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"profile_{safe_name}_{timestamp}"
+
+    formatter = ProfileFormatter()
+    result = formatter.format_pdf(profile=profile, filename=filename)
+
+    if not result.success or not result.pdf_path:
+        raise HTTPException(
+            status_code=500,
+            detail="; ".join(result.errors) or "PDF generation failed",
+        )
+
+    return FileResponse(
+        path=result.pdf_path,
+        media_type="application/pdf",
+        filename=Path(result.pdf_path).name,
+    )
 
 
 @router.post("/analyze")

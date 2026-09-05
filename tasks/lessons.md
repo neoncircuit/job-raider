@@ -3225,6 +3225,15 @@
 - After storage or chipset driver changes: cold power cycle, use rear motherboard USB ports, and verify keyboard and mouse before another StoreMI pass.
 - Optional WSL Ubuntu size (~150GB `ext4.vhdx`) is unrelated to AMD StoreMI BSODs. Do not chase WSL cleanup for this failure mode.
 
+### Prefer prompt + review over hopping to larger local models
+
+**Lesson:** On this host, `qwen3.5:9b` is a BSOD risk under GPU load. A safer A/B of `qwen2.5:7b` vs `qwen3.5:4b` (one model at a time, unload + cool-down) showed **7b wins** on mean deterministic validator score (83.0 vs 77.67). Quality work should tighten prompts and enable Review & rewrite for 7B, not chase bigger local tags.
+
+**How to apply:**
+- Keep Settings large/writer default on `qwen2.5:7b`.
+- Compare only allow-listed tags via `scripts/compare_cover_letter_models.py`. Never load 9B for cover-letter eval on StoreMI-unstable hosts.
+- Prefer Review & rewrite + grounding rewrite over multi-model hop sessions.
+
 ## Cover letter company-mission spike (2026-08-21)
 
 ### Live skip evidence matters more than synthetic skip tests alone
@@ -3263,5 +3272,29 @@
 - Keep exact/range only for fixed ranges (`2-3 sentences`, `3-4 lines`) and bare/approx singles (`about 50 words`).
 - Writer prompts and banner copy must say “at least N” when ``max_n`` is null.
 - Never treat a soft validation issue as optional polish when its condition contradicts the JD wording.
+
+## Cover letter source citations (2026-08-21)
+
+### User-facing citations need a stricter secondary bar than internal verify
+
+**Lesson:** Once a page is shown as a numbered Source next to the letter, a near-miss that merely cleared the same verify threshold becomes a trust failure (Akro-Mils class). Internal score_details can keep all candidates; citations must not.
+
+**How to apply:**
+- `[1]` = paraphrase winner only.
+- `[2…]` only if verify-pass **and** same registrable domain as the winner.
+- Hard-cap citations (3). Never cite cross-domain near-misses.
+- Do not inject `[n]` into the editable letter body; use a Sources rail/panel.
+
+## Cover letter claim-direction grounding (2026-08-29)
+
+### One real repro is a seed, not the whole test surface
+
+**Lesson:** The NCS Java letter was the bug report that forced claim-direction awareness and active fit-breakdown keys. Verifying that exact letter is necessary, but NCS is only one disclosure phrasing and one JD. Shipping as if that case alone proves the grader is safe underfits every other honest gap disclosure (`don't have`, `new to`, `instead of`, mixed claim+disclaimer, etc.).
+
+**How to apply:**
+- Keep detectors and matcher fixes **pattern-general**; never hard-code company/role-specific wording.
+- Use the reported letter as a regression fixture, then add at least one alternate disclaimer form and one false-claim positive control.
+- When saying “verified on real output,” state what was verified (that letter + shared paths) and what remains general coverage (other phrasings, other stacks).
+- Do not treat a single-job export replay as a substitute for broader grounding regressions.
 
 

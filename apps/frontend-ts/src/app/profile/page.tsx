@@ -18,8 +18,10 @@ import {
   Mail,
   Phone,
   Settings,
+  Download,
 } from "lucide-react";
 import { profileApi } from "@/lib/api/profile";
+import { downloadFile } from "@/lib/api/coverLetter";
 import type { ResumeParseInfo, UserProfile } from "@/lib/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +40,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useDateTimePrefs } from "@/lib/hooks/use-datetime-prefs";
 import { writeProfileLocationCache } from "@/lib/datetime-prefs";
 import { AiWaitProgress } from "@/components/ai-wait-progress";
-
+import { getApiErrorMessage } from "@/lib/api/client";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const PROFICIENCY_COLORS: Record<string, string> = {
@@ -366,7 +368,12 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
       {/* ── Visualizations ── */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div className="lg:col-span-1">
-          <SkillsRadar skills={skills} />
+          <SkillsRadar
+            skills={skills}
+            core_skills={core_skills}
+            work_experience={work_experience}
+            projects={projects}
+          />
         </div>
         <div className="lg:col-span-1">
           <ExperienceTimeline experience={work_experience} />
@@ -769,6 +776,7 @@ function ProfileDisplay({ profile }: { profile: UserProfile }) {
 export default function ProfilePage() {
   const [showUpload, setShowUpload] = useState(false);
   const [showAppSettings, setShowAppSettings] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["profile"],
@@ -779,6 +787,26 @@ export default function ProfilePage() {
 
   const hasProfile = !!data?.contact_info?.name;
 
+  /**
+   * Download the active profile as a structured summary PDF.
+   *
+   * @returns Promise that resolves when the browser download is triggered.
+   */
+  const handleDownloadPdf = async () => {
+    setPdfDownloading(true);
+    try {
+      const res = await profileApi.exportPdf();
+      await downloadFile(res, "profile_summary.pdf");
+      toast.success("Profile PDF downloaded");
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(error, "Could not download profile PDF."),
+      );
+    } finally {
+      setPdfDownloading(false);
+    }
+  };
+
   return (
     <PageContainer variant="wide">
       <PageHeader
@@ -787,14 +815,25 @@ export default function ProfilePage() {
         actions={
           <>
             {hasProfile && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAppSettings(true)}
-              >
-                <Settings className="h-3.5 w-3.5" />
-                Application Settings
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleDownloadPdf()}
+                  disabled={pdfDownloading}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {pdfDownloading ? "Downloading…" : "Download PDF"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAppSettings(true)}
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  Application Settings
+                </Button>
+              </>
             )}
             <Button
               variant="outline"

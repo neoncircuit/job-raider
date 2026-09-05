@@ -17,6 +17,17 @@ export const profileApi = {
 
   export: () => request<UserProfile>("GET", "/profile/export"),
 
+  /**
+   * Export the active profile as a summary PDF.
+   * Returns a raw Response so the caller can stream the file to disk.
+   *
+   * @returns Fetch Response with ``application/pdf`` body.
+   */
+  exportPdf: () =>
+    fetch("/api/proxy/profile/export.pdf", {
+      method: "GET",
+    }),
+
   upload: (file: File) => {
     const fd = new FormData();
     fd.append("file", file, file.name);

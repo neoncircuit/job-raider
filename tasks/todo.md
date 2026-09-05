@@ -4800,3 +4800,88 @@ Real-JD + banner gate (2026-08-21, before live applications):
   - Ajentik MCF apply tail: GitHub inclusion only (no length range) — expected.
 - Fix (2026-08-21): “Minimum N” / “at least N” / “no fewer than N” now parse as `min_n=N`, `max_n=None` (floor-only). Exact/range stays for “2-3 sentences”, “3-4 lines”, and bare/approx singles like “about 50 words”.
 - UI: rebuilt backend+frontend images; pasted Epoch EOI into Cover Letter → banner **“JD application instructions detected”** with “Length ask: 50 words … (matched “50 words”)”.
+
+## Cover Letter Sources citations (2026-08-21)
+
+### Plan
+
+- [x] Backend: `mission_context.sources` — winner + same-domain secondaries, hard cap 3.
+- [x] Frontend: Perplexity-inspired numbered Sources strip/collapsible above letter (no inline `[n]` in textarea).
+- [x] Docs: usage note for Sources trust rules.
+
+### Review
+
+- Unit tests: same-domain secondaries cited; cross-domain near-miss not cited; cap at 3.
+- Cover Letter result shows Sources when mission status is `pass`.
+
+## Profile PDF + safer cover-letter quality (2026-08-25)
+
+### Plan
+
+- [x] Backend: `profile_formatter.py` + `GET /profile/export.pdf` (reportlab summary; empty sections skipped).
+- [x] Frontend: Profile **Download PDF** + API client + page test.
+- [x] Tighten cover-letter writer/rewrite prompts for small local models.
+- [x] Safe sequential A/B harness `qwen2.5:7b` vs `qwen3.5:4b`; document winner protocol (no 9B).
+
+### Review
+
+- Backend unit tests for formatter sections + export.pdf route (passed in container).
+- Frontend: Download PDF wires `GET /api/proxy/profile/export.pdf` through `downloadFile`.
+- Writer/rewrite prompts: paragraph budget + delete-don't-invent rewrite instruction; Cover Letter UI tip + usage note for Review & rewrite on 7B.
+- A/B: `scripts/compare_cover_letter_models.py` allow-lists only 7b/4b. Sequential run (cool-down 30s): **winner `qwen2.5:7b`** (mean 83.0) vs `qwen3.5:4b` (mean 77.67). Report: `apps/backend-py/data/outputs/cover_letter_model_ab.json`. Decision-log updated.
+
+## Cover letter token usage in result details (2026-08-25)
+
+### Plan
+
+- [x] Plumb LLM token counts through selector / writer / reviewer into `cover_letter.token_usage`.
+- [x] Show Tokens (with in/out split when available) next to model + timing on Cover Letter result.
+- [x] Surface review/rewrite tokens in validation review card; tests + usage note.
+
+## Sharper skills radar (2026-08-25)
+
+### Plan
+
+- [x] Evidence-weighted per-skill scores + top-K category blend + relative scaling (`skills-radar.ts`).
+- [x] Wire Profile `SkillsRadar` with experience/projects/core skills; update scoring copy.
+- [x] Vitest helpers + Node smoke check for uneven shape.
+
+## Cover letter analysis export (2026-08-25)
+
+### Plan
+
+- [x] Structured analysis payload builder (job, fit, letter, settings, timing/tokens, proofread, review, timestamp).
+- [x] `POST /cover-letter/export-analysis` JSON primary + PDF secondary (reportlab).
+- [x] Cover Letter UI buttons + tests/docs.
+
+## Claim-direction fabricated tech + fit breakdown (2026-08-29)
+
+### Plan
+
+- [x] `extract_claimed_technologies` ignores disclaimer / learn-intent mentions; `flag_fabricated_technologies` uses claims only.
+- [x] `JobMatcher.score_job` breakdown keys = active weight set only (no inert education/projects zeros in standard mode).
+- [x] Regression tests (NCS-style Java disclaimer; standard vs fresh-grad breakdown keys).
+- [x] Usage + architecture notes.
+
+### Review
+
+- Fresh-grad routing on cover-letter assess left as a separate follow-up (auto-detect vs explicit toggle).
+- NCS-style HTML-entity hypothesis not pursued: paste already unescapes; `missing_skills: java` showed JD skills extraction worked; keyword=0 is target-keyword overlap.
+- **Real-output verify (2026-08-29):** Replayed exact letter body from `cover_letter_analysis_NCS_Software_Engineer_(Java_&_AI_Preferred).pdf` via `scripts/_verify_ncs_fixes.py`.
+  - Present techs include `java`; claimed does not; `fabricated=[]`; validator has no `fabricated_technology` / no `java` in details.
+  - Standard breakdown keys only: `keyword`, `skills`, `experience`, `location` (no education/projects phantom zeros).
+
+### Follow-up (separate plan)
+
+- Cover-letter assess always uses `JobMatcher()` standard mode. Options later: auto-detect early-career via `career_stage` vs explicit UI/API toggle for `fresh_grad_mode`.
+
+## Product version checkpoints (2026-09-02)
+
+### Plan
+
+- [x] Root `VERSION` + backend reader (`get_app_version`) wired to FastAPI and `/api/version`.
+- [x] Dockerfiles copy `VERSION` to `/app/VERSION`.
+- [x] `CHANGELOG.md` with Unreleased + 0.1.0 baseline that credits **pre-Cursor foundation** and later commits through the tag tip.
+- [x] Deployment/usage release ritual; `package.json` remains `0.1.0` in sync.
+- [x] Annotated local tag `v0.1.0` on baseline commit `5732673` (push tag when ready to publish).
+- [ ] Cut `v0.2.0` after pending WIP lands (separate ask).
