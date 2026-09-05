@@ -4884,4 +4884,4 @@ Real-JD + banner gate (2026-08-21, before live applications):
 - [x] `CHANGELOG.md` with Unreleased + 0.1.0 baseline that credits **pre-Cursor foundation** and later commits through the tag tip.
 - [x] Deployment/usage release ritual; `package.json` remains `0.1.0` in sync.
 - [x] Annotated local tag `v0.1.0` on baseline commit `5732673` (push tag when ready to publish).
-- [ ] Cut `v0.2.0` after pending WIP lands (separate ask).
+- [x] Cut `v0.2.0` after pending WIP lands (separate ask).

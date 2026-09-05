@@ -16,6 +16,11 @@ board work. We do not invent earlier `v0.0.x` tags for that history.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-05
+
+Feature checkpoint after landing VERSION plumbing, cover-letter QC exports,
+claim-direction grounding, profile PDF, and skills radar on `main`.
+
 ### Added
 
 - Root `VERSION` file as product semver source of truth; FastAPI and
@@ -84,5 +89,6 @@ Shipped on `main` by the tag tip (after the foundation above), still part of
 - Root `VERSION` and changelog plumbing may land in commits after the tag tip;
   the product label for this checkpoint remains `0.1.0` until the next release.
 
-[Unreleased]: https://github.com/neoncircuit/job-raider/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/neoncircuit/job-raider/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/neoncircuit/job-raider/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/neoncircuit/job-raider/releases/tag/v0.1.0
