@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { formatDurationMs } from "@/lib/utils/format";
+import { formatDurationMs, formatTokenCount } from "@/lib/utils/format";
 
 describe("Formatting Utilities", () => {
   describe("formatDurationMs", () => {
@@ -22,6 +22,16 @@ describe("Formatting Utilities", () => {
 
     it("returns an em dash for invalid values", () => {
       expect(formatDurationMs(Number.NaN)).toBe("—");
+    });
+  });
+
+  describe("formatTokenCount", () => {
+    it("formats token counts with grouping", () => {
+      expect(formatTokenCount(2200)).toBe("2,200");
+    });
+
+    it("returns an em dash for invalid values", () => {
+      expect(formatTokenCount(Number.NaN)).toBe("—");
     });
   });
 

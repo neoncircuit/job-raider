@@ -18,7 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { formatDurationMs } from "@/lib/utils/format";
+import { formatDurationMs, formatTokenCount } from "@/lib/utils/format";
 
 interface CoverLetterValidationDisplayProps {
   validation: CoverLetterValidation;
@@ -597,6 +597,17 @@ export function CoverLetterValidationDisplay({
               {reviewDetails.rewrite_ms != null && (
                 <span className="text-xs text-muted-foreground">
                   Rewrite: {formatDurationMs(reviewDetails.rewrite_ms)}
+                </span>
+              )}
+              {reviewDetails.review_tokens != null && (
+                <span className="text-xs text-muted-foreground">
+                  Review tokens: {formatTokenCount(reviewDetails.review_tokens)}
+                </span>
+              )}
+              {reviewDetails.rewrite_tokens != null && (
+                <span className="text-xs text-muted-foreground">
+                  Rewrite tokens:{" "}
+                  {formatTokenCount(reviewDetails.rewrite_tokens)}
                 </span>
               )}
             </div>

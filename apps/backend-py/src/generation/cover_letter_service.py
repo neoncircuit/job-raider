@@ -51,6 +51,61 @@ def _elapsed_ms(started: float) -> float:
     return round((time.perf_counter() - started) * 1000, 1)
 
 
+def _optional_int(value: Any) -> Optional[int]:
+    """
+    Coerce a value to ``int`` when present.
+
+    Args:
+        value: Raw numeric value or None.
+
+    Returns:
+        Integer value, or None when missing/unusable.
+    """
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _add_token_counts(
+    prompt_total: int,
+    completion_total: int,
+    known_total: int,
+    *,
+    prompt_tokens: Any = None,
+    completion_tokens: Any = None,
+    tokens_used: Any = None,
+) -> tuple[int, int, int]:
+    """
+    Accumulate token counts from one LLM stage into running totals.
+
+    Args:
+        prompt_total: Running prompt-token sum.
+        completion_total: Running completion-token sum.
+        known_total: Running total when stages report ``tokens_used``.
+        prompt_tokens: Stage prompt tokens, if known.
+        completion_tokens: Stage completion tokens, if known.
+        tokens_used: Stage total tokens, if known.
+
+    Returns:
+        Updated ``(prompt_total, completion_total, known_total)``.
+    """
+    prompt = _optional_int(prompt_tokens)
+    completion = _optional_int(completion_tokens)
+    total = _optional_int(tokens_used)
+    if prompt is not None:
+        prompt_total += prompt
+    if completion is not None:
+        completion_total += completion
+    if total is not None:
+        known_total += total
+    elif prompt is not None or completion is not None:
+        known_total += (prompt or 0) + (completion or 0)
+    return prompt_total, completion_total, known_total
+
+
 def _build_fallback_validation(result: Any) -> CoverLetterValidationResult:
     """
     Build a permissive validation result when validation raises an exception.
@@ -186,6 +241,19 @@ async def generate_cover_letter_for_profile(
     selection = selector.select(job_listing, user_profile)
     selection_ms = _elapsed_ms(selection_started)
 
+    prompt_token_total = 0
+    completion_token_total = 0
+    tokens_used_total = 0
+    selection_tokens = _optional_int(getattr(selection, "tokens_used", None))
+    prompt_token_total, completion_token_total, tokens_used_total = _add_token_counts(
+        prompt_token_total,
+        completion_token_total,
+        tokens_used_total,
+        prompt_tokens=getattr(selection, "prompt_tokens", None),
+        completion_tokens=getattr(selection, "completion_tokens", None),
+        tokens_used=selection_tokens,
+    )
+
     writer = CoverLetterWriter(llm_router=llm_router)
     generation_started = time.perf_counter()
     if short_answer_mode and detected_instructions.why_interest is not None:
@@ -209,10 +277,21 @@ async def generate_cover_letter_for_profile(
             inclusion_urls=inclusion_urls or None,
         )
     generation_ms = _elapsed_ms(generation_started)
+    generation_tokens = _optional_int(getattr(result, "tokens_used", None))
+    prompt_token_total, completion_token_total, tokens_used_total = _add_token_counts(
+        prompt_token_total,
+        completion_token_total,
+        tokens_used_total,
+        prompt_tokens=getattr(result, "prompt_tokens", None),
+        completion_tokens=getattr(result, "completion_tokens", None),
+        tokens_used=generation_tokens,
+    )
 
     review_metadata: Dict[str, Any] = {}
     review_ms: Optional[float] = None
     rewrite_ms: Optional[float] = None
+    review_tokens: Optional[int] = None
+    rewrite_tokens: Optional[int] = None
     domain_mismatch = is_domain_mismatch(job_listing, user_profile)
     if review and not short_answer_mode:
         reviewer = CoverLetterReviewer(llm_router=llm_router)
@@ -225,6 +304,17 @@ async def generate_cover_letter_for_profile(
             domain_mismatch=domain_mismatch,
         )
         review_ms = _elapsed_ms(review_started)
+        review_tokens = _optional_int(review_result.tokens_used)
+        prompt_token_total, completion_token_total, tokens_used_total = (
+            _add_token_counts(
+                prompt_token_total,
+                completion_token_total,
+                tokens_used_total,
+                prompt_tokens=review_result.prompt_tokens,
+                completion_tokens=review_result.completion_tokens,
+                tokens_used=review_tokens,
+            )
+        )
         rewrite_count = 0
         if review_result.rewrite_needed:
             critique = review_result.critique
@@ -248,6 +338,17 @@ async def generate_cover_letter_for_profile(
             )
             rewrite_ms = _elapsed_ms(rewrite_started)
             rewrite_count = 1
+            rewrite_tokens = _optional_int(getattr(result, "tokens_used", None))
+            prompt_token_total, completion_token_total, tokens_used_total = (
+                _add_token_counts(
+                    prompt_token_total,
+                    completion_token_total,
+                    tokens_used_total,
+                    prompt_tokens=getattr(result, "prompt_tokens", None),
+                    completion_tokens=getattr(result, "completion_tokens", None),
+                    tokens_used=rewrite_tokens,
+                )
+            )
 
         review_metadata = {
             "critique": review_result.critique,
@@ -256,6 +357,8 @@ async def generate_cover_letter_for_profile(
             "model_used": review_result.model_used,
             "review_ms": review_ms,
             "rewrite_ms": rewrite_ms,
+            "review_tokens": review_tokens,
+            "rewrite_tokens": rewrite_tokens,
         }
         if review_result.error:
             review_metadata["error"] = review_result.error
@@ -291,6 +394,7 @@ async def generate_cover_letter_for_profile(
     validation_ms = _elapsed_ms(validation_started)
 
     grounding_rewrite_ms: Optional[float] = None
+    grounding_rewrite_tokens: Optional[int] = None
     if collect_hard_fail_issues(validation.issues) and not short_answer_mode:
         critique = build_grounding_rewrite_critique(validation)
         rewrite_started = time.perf_counter()
@@ -307,6 +411,17 @@ async def generate_cover_letter_for_profile(
         )
         grounding_rewrite_ms = _elapsed_ms(rewrite_started)
         result = rewritten
+        grounding_rewrite_tokens = _optional_int(getattr(result, "tokens_used", None))
+        prompt_token_total, completion_token_total, tokens_used_total = (
+            _add_token_counts(
+                prompt_token_total,
+                completion_token_total,
+                tokens_used_total,
+                prompt_tokens=getattr(result, "prompt_tokens", None),
+                completion_tokens=getattr(result, "completion_tokens", None),
+                tokens_used=grounding_rewrite_tokens,
+            )
+        )
         try:
             if deep:
                 validation = validator.validate_with_llm(
@@ -337,6 +452,7 @@ async def generate_cover_letter_for_profile(
             "applied": True,
             "critique": critique,
             "rewrite_ms": grounding_rewrite_ms,
+            "rewrite_tokens": grounding_rewrite_tokens,
         }
 
     if review_metadata:
@@ -363,12 +479,24 @@ async def generate_cover_letter_for_profile(
         or mission_context.get("resolve_ms"),
         "total_ms": total_ms,
     }
+    token_usage = {
+        "selection_tokens": selection_tokens,
+        "generation_tokens": generation_tokens,
+        "review_tokens": review_tokens,
+        "rewrite_tokens": rewrite_tokens,
+        "grounding_rewrite_tokens": grounding_rewrite_tokens,
+        "prompt_tokens": prompt_token_total or None,
+        "completion_tokens": completion_token_total or None,
+        "total_tokens": tokens_used_total or None,
+    }
     logger.info(
-        "Cover letter timing job_id=%s generation_ms=%.1f rewrite_ms=%s total_ms=%.1f",
+        "Cover letter timing job_id=%s generation_ms=%.1f rewrite_ms=%s "
+        "total_ms=%.1f total_tokens=%s",
         job_listing.job_id,
         generation_ms,
         rewrite_ms,
         total_ms,
+        token_usage["total_tokens"],
     )
 
     return CoverLetterResponse(
@@ -381,6 +509,7 @@ async def generate_cover_letter_for_profile(
             "highlighted_experiences": result.highlighted_experiences,
             "style": "short_answer" if short_answer_mode else letter_style,
             "timing": timing,
+            "token_usage": token_usage,
         },
         validation=_adapt_validation_response(validation),
         mission_context=mission_context,

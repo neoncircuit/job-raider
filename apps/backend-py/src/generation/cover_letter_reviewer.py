@@ -39,6 +39,9 @@ class CoverLetterReviewResult:
     rewrite_needed: bool
     model_used: str
     error: Optional[str] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    tokens_used: Optional[int] = None
 
 
 class CoverLetterReviewer:
@@ -147,16 +150,30 @@ class CoverLetterReviewer:
                 TaskType.COVER_LETTER_REVIEW
             ].primary_model
 
+            prompt_tokens = response.prompt_tokens
+            completion_tokens = response.completion_tokens
+            tokens_used = response.tokens_used
+            if (
+                tokens_used is None
+                and prompt_tokens is not None
+                and completion_tokens is not None
+            ):
+                tokens_used = prompt_tokens + completion_tokens
+
             self.logger.info(
-                "Cover letter reviewed: rewrite_needed=%s, model=%s",
+                "Cover letter reviewed: rewrite_needed=%s, model=%s tokens=%s",
                 rewrite_needed,
                 model_used,
+                tokens_used,
             )
 
             return CoverLetterReviewResult(
                 critique=critique,
                 rewrite_needed=rewrite_needed,
                 model_used=model_used,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                tokens_used=tokens_used,
             )
 
         except Exception as exc:

@@ -229,3 +229,131 @@ def test_resolve_disabled_returns_disabled_status() -> None:
     assert result.status == "disabled"
     assert result.brief == ""
     assert result.to_mission_context()["status"] == "disabled"
+    assert "sources" not in result.to_mission_context()
+
+
+def _agri_body() -> str:
+    """Shared Golden Agri page body that clears verify thresholds."""
+    return (
+        "Golden Agri-Resources is a leading palm oil agribusiness based in "
+        "Singapore with sustainability and plantation initiatives."
+    )
+
+
+def test_citations_single_passer() -> None:
+    """
+    A single threshold-clearing page yields one numbered citation.
+    """
+    candidate = MissionCandidate(
+        url="https://www.goldenagri.com.sg/about",
+        title="About Golden Agri",
+        text=_agri_body(),
+    )
+    result = verify_mission_candidates(
+        "Golden Agri-Resources",
+        [candidate],
+        jd_facts=["Singapore", "palm oil", "agribusiness", "sustainability"],
+    )
+    assert result.status == "pass"
+    assert len(result.sources) == 1
+    assert result.sources[0]["index"] == 1
+    assert result.sources[0]["url"] == candidate.url
+    assert result.sources[0]["domain"] == "goldenagri.com.sg"
+    assert result.sources[0]["kind"] == "company_mission"
+
+
+def test_citations_same_domain_secondaries() -> None:
+    """
+    Two verify-passers on the same registrable domain both become citations.
+    """
+    winner = MissionCandidate(
+        url="https://www.goldenagri.com.sg/about",
+        title="About",
+        text=_agri_body(),
+    )
+    secondary = MissionCandidate(
+        url="https://careers.goldenagri.com.sg/mission",
+        title="Mission",
+        text=_agri_body() + " More about plantation sustainability programmes.",
+    )
+    result = verify_mission_candidates(
+        "Golden Agri-Resources",
+        [winner, secondary],
+        jd_facts=["Singapore", "palm oil", "agribusiness", "sustainability"],
+    )
+    assert result.status == "pass"
+    assert len(result.sources) == 2
+    assert result.sources[0]["url"] == winner.url
+    assert result.sources[1]["url"] == secondary.url
+    assert result.sources[0]["domain"] == result.sources[1]["domain"]
+
+
+def test_citations_cross_domain_near_miss_not_cited() -> None:
+    """
+    A second verify-passer on a different domain must not appear as [2].
+    """
+    winner = MissionCandidate(
+        url="https://akro.ai/about",
+        title="Akro AI",
+        text=(
+            "Akro AI is a Singapore document intelligence startup building "
+            "artificial intelligence products for enterprises. Pre-seed stage."
+        ),
+    )
+    near_miss = MissionCandidate(
+        url="https://www.akro-mils.com/about",
+        title="Akro Storage",
+        text=(
+            "Akro AI Singapore document intelligence artificial intelligence "
+            "pre-seed products — also sells storage bins."
+        ),
+    )
+    result = verify_mission_candidates(
+        "Akro AI",
+        [winner, near_miss],
+        jd_facts=[
+            "Singapore",
+            "document intelligence",
+            "artificial intelligence",
+            "pre-seed",
+        ],
+    )
+    assert result.status == "pass"
+    assert result.source_url == winner.url
+    # Near-miss may or may not clear verify; either way it must not be cited
+    # when the domain differs from the winner.
+    assert len(result.sources) == 1
+    assert result.sources[0]["url"] == winner.url
+    assert all(s["domain"] == "akro.ai" for s in result.sources)
+
+
+def test_citations_hard_cap_three() -> None:
+    """
+    Same-domain passers are capped at three numbered citations.
+    """
+    facts = ["Singapore", "palm oil", "agribusiness", "sustainability"]
+    pages = [
+        MissionCandidate(
+            url=f"https://www.goldenagri.com.sg/page-{i}",
+            title=f"Page {i}",
+            text=_agri_body(),
+        )
+        for i in range(4)
+    ]
+    result = verify_mission_candidates(
+        "Golden Agri-Resources",
+        pages,
+        jd_facts=facts,
+    )
+    assert result.status == "pass"
+    assert len(result.sources) == 3
+    assert [s["index"] for s in result.sources] == [1, 2, 3]
+
+
+def test_build_mission_citation_sources_empty_without_winner_url() -> None:
+    """
+    Citation builder returns empty when the winner has no URL.
+    """
+    from src.generation.company_mission import build_mission_citation_sources
+
+    assert build_mission_citation_sources({"url": ""}, []) == []

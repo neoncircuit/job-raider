@@ -39,6 +39,17 @@ export function formatDurationMs(ms: number): string {
 }
 
 /**
+ * Format a token count for UI metrics (cover letter usage, etc.).
+ *
+ * @param count - Token count.
+ * @returns Locale-formatted count such as ``1,234``, or ``—`` when invalid.
+ */
+export function formatTokenCount(count: number): string {
+  if (!Number.isFinite(count) || count < 0) return "—";
+  return new Intl.NumberFormat("en-US").format(Math.round(count));
+}
+
+/**
  * Format an ISO datetime using Settings → Appearance date/time prefs.
  *
  * @param isoString - ISO timestamp from the API.

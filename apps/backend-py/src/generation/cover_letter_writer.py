@@ -87,7 +87,11 @@ _COVER_LETTER_RULES = (
     "is similar to, comparable to, transferable to, or preparation for "
     "job duties that are not on the resume. Restate resume facts "
     "without claiming they satisfy unsupported duties\n"
-    "17. Return ONLY the letter body as plain text, no JSON"
+    "17. Prefer 3-5 short paragraphs: (1) concrete resume hook naming "
+    "the company and role, (2-3) one grounded evidence paragraph each, "
+    "(final) brief CTA that restates facts already used. Do not pad "
+    "with soft-sell filler\n"
+    "18. Return ONLY the letter body as plain text, no JSON"
 )
 
 _COVER_LETTER_SYSTEM = (
@@ -156,7 +160,10 @@ _CLASSIC_COVER_LETTER_RULES = (
     "is similar to, comparable to, transferable to, or preparation for "
     "job duties that are not on the resume. Restate resume facts "
     "without claiming they satisfy unsupported duties\n"
-    "16. Return ONLY the letter body as plain text, no JSON"
+    "16. Keep the traditional structure tight: salutation, role line, "
+    "two grounded evidence paragraphs, short closing, Sincerely + name. "
+    "Do not pad with soft-sell filler\n"
+    "17. Return ONLY the letter body as plain text, no JSON"
 )
 
 _CLASSIC_COVER_LETTER_SYSTEM = (
@@ -174,6 +181,7 @@ _SHARED_GROUNDING_MARKERS = (
     "Do not invent a relative percentage",
     "Do not analogize across domains",
     "only to job requirements that also appear on the",
+    "Do not pad with soft-sell filler",
 )
 
 _DOMAIN_MISMATCH_RULES = (
@@ -245,6 +253,29 @@ class GeneratedCoverLetter:
     highlighted_experiences: List[Dict[str, str]]
     word_count: int
     model_used: str
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    tokens_used: Optional[int] = None
+
+
+def _tokens_from_llm_response(
+    response: Any,
+) -> tuple[Optional[int], Optional[int], Optional[int]]:
+    """
+    Extract prompt, completion, and total token counts from an LLM response.
+
+    Args:
+        response: ``LLMResponse`` or similar object with token fields.
+
+    Returns:
+        Tuple of ``(prompt_tokens, completion_tokens, tokens_used)``.
+    """
+    prompt_tokens = getattr(response, "prompt_tokens", None)
+    completion_tokens = getattr(response, "completion_tokens", None)
+    tokens_used = getattr(response, "tokens_used", None)
+    if tokens_used is None and prompt_tokens is not None and completion_tokens is not None:
+        tokens_used = int(prompt_tokens) + int(completion_tokens)
+    return prompt_tokens, completion_tokens, tokens_used
 
 
 class CoverLetterWriter:
@@ -358,12 +389,16 @@ class CoverLetterWriter:
             )
 
             highlighted = self._extract_highlighted_experiences(content, selection)
+            prompt_tokens, completion_tokens, tokens_used = _tokens_from_llm_response(
+                response
+            )
 
             self.logger.info(
-                "Cover letter generated: %d words, model=%s style=%s",
+                "Cover letter generated: %d words, model=%s style=%s tokens=%s",
                 word_count,
                 model_used,
                 style,
+                tokens_used,
             )
 
             return GeneratedCoverLetter(
@@ -371,6 +406,9 @@ class CoverLetterWriter:
                 highlighted_experiences=highlighted,
                 word_count=word_count,
                 model_used=model_used,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                tokens_used=tokens_used,
             )
 
         except Exception as e:
@@ -488,20 +526,27 @@ class CoverLetterWriter:
                 response.model
                 or self.llm_router.routes[TaskType.COVER_LETTER_WRITING].primary_model
             )
+            prompt_tokens, completion_tokens, tokens_used = _tokens_from_llm_response(
+                response
+            )
             self.logger.info(
                 "Why-interest block generated: %d words, model=%s unit=%s "
-                "range=%s-%s",
+                "range=%s-%s tokens=%s",
                 word_count,
                 model_used,
                 unit,
                 min_n,
                 max_n if max_n is not None else "open",
+                tokens_used,
             )
             return GeneratedCoverLetter(
                 content=content,
                 highlighted_experiences=[],
                 word_count=word_count,
                 model_used=model_used,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                tokens_used=tokens_used,
             )
         except Exception as e:
             self.logger.error("Why-interest writing failed: %s", str(e))
@@ -627,7 +672,11 @@ class CoverLetterWriter:
                 role=MessageType.USER,
                 content=(
                     f"Rewrite the following cover letter for the job application. "
-                    f"{style_note}\n\n"
+                    f"{style_note}"
+                    "Apply the EDITOR CRITIQUE by deleting unsupported claims "
+                    "and restating resume-grounded facts only. Do not invent "
+                    "new JD relevance, technologies, metrics, or soft-sell "
+                    "filler to 'fix' gaps.\n\n"
                     f"TARGET JOB:\n{job_context}\n\n"
                     f"SELECTION STRATEGY:\n{selection_context}\n\n"
                     f"CANDIDATE PROFILE:\n{profile_context}\n\n"
@@ -663,12 +712,16 @@ class CoverLetterWriter:
             )
 
             highlighted = self._extract_highlighted_experiences(content, selection)
+            prompt_tokens, completion_tokens, tokens_used = _tokens_from_llm_response(
+                response
+            )
 
             self.logger.info(
-                "Cover letter rewritten: %d words, model=%s style=%s",
+                "Cover letter rewritten: %d words, model=%s style=%s tokens=%s",
                 word_count,
                 model_used,
                 style,
+                tokens_used,
             )
 
             return GeneratedCoverLetter(
@@ -676,6 +729,9 @@ class CoverLetterWriter:
                 highlighted_experiences=highlighted,
                 word_count=word_count,
                 model_used=model_used,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                tokens_used=tokens_used,
             )
 
         except Exception as e:

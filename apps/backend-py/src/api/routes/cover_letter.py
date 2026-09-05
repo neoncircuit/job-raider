@@ -20,6 +20,9 @@ from fastapi.responses import FileResponse
 
 from ...extractors.jd_document import extract_jd_document, is_supported_jd_filename
 from ...extractors.paste_job import build_job_listing_from_paste
+from ...generation.cover_letter_analysis_formatter import (
+    CoverLetterAnalysisFormatter,
+)
 from ...generation.cover_letter_formatter import (
     CoverLetterExportOptions,
     CoverLetterFormatter,
@@ -40,6 +43,7 @@ from ...models.user_profile import UserProfile
 from ...scoring.matcher import JobMatcher
 from ...utils.logger import Components, get_logger
 from ..models.requests import (
+    CoverLetterAnalysisExportRequest,
     CoverLetterExplainRequest,
     CoverLetterExportRequest,
     CoverLetterValidateRequest,
@@ -841,4 +845,49 @@ async def export_cover_letter(request: CoverLetterExportRequest):
         path=file_path,
         media_type=media_type,
         filename=Path(file_path).name,
+    )
+
+
+@router.post("/export-analysis")
+async def export_cover_letter_analysis(request: CoverLetterAnalysisExportRequest):
+    """
+    Export a structured cover-letter analysis run as JSON or PDF.
+
+    JSON is the primary format for diffing model runs. PDF is a secondary
+    human-readable report using the same reportlab stack as letter export.
+
+    Args:
+        request: Export format plus the client-assembled analysis payload.
+
+    Returns:
+        FileResponse streaming the exported analysis file.
+    """
+    analysis = dict(request.analysis or {})
+    if not analysis.get("schema_version"):
+        analysis["schema_version"] = 1
+    if not analysis.get("exported_at"):
+        analysis["exported_at"] = datetime.now().isoformat(timespec="seconds")
+
+    job = analysis.get("job") if isinstance(analysis.get("job"), dict) else {}
+    safe_company = str(job.get("company") or "company").replace(" ", "_")[:40]
+    safe_title = str(job.get("title") or "role").replace(" ", "_")[:40]
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"cover_letter_analysis_{safe_company}_{safe_title}_{timestamp}"
+
+    formatter = CoverLetterAnalysisFormatter()
+    result = formatter.export(
+        payload=analysis,
+        filename=filename,
+        export_format=request.format,
+    )
+    if not result.success or not result.path:
+        raise HTTPException(
+            status_code=500,
+            detail="; ".join(result.errors) or "Analysis export failed",
+        )
+
+    return FileResponse(
+        path=result.path,
+        media_type=result.media_type,
+        filename=result.download_name,
     )

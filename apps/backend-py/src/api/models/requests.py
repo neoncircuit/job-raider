@@ -456,3 +456,31 @@ class CoverLetterExportRequest(BaseModel):
         if normalized not in {"docx", "pdf"}:
             raise ValueError("format must be 'docx' or 'pdf'")
         return normalized
+
+
+class CoverLetterAnalysisExportRequest(BaseModel):
+    """
+    Request to export a full cover-letter analysis run (JSON or PDF).
+
+    The client assembles the structured payload from the generate + assess
+    UI state so model runs are easy to diff. ``format`` selects JSON
+    (primary) or a human-readable PDF (secondary).
+    """
+
+    format: str = Field(
+        default="json",
+        description="Export format: json (primary) or pdf (human-readable)",
+    )
+    analysis: Dict[str, Any] = Field(
+        ...,
+        description="Structured analysis payload built by the Cover Letter UI",
+    )
+
+    @field_validator("format")
+    @classmethod
+    def validate_analysis_format(cls, v: str) -> str:
+        """Normalize and validate analysis export format."""
+        normalized = v.lower().strip()
+        if normalized not in {"json", "pdf"}:
+            raise ValueError("format must be 'json' or 'pdf'")
+        return normalized

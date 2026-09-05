@@ -15,6 +15,10 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Set
+from urllib.parse import urlparse
+
+# Max numbered citations shown next to a generated cover letter.
+MAX_MISSION_CITATION_SOURCES = 3
 
 # Shared stopwords — keep mission scoring focused on entity/industry tokens.
 _STOPWORDS: frozenset[str] = frozenset(
@@ -179,6 +183,7 @@ class MissionVerifyResult:
         collision_hits: Negative collision phrases found (wrong-entity signal).
         excerpt: Short source excerpt used for paraphrase (pass only).
         score_details: Per-candidate scores for debugging / spike reports.
+        sources: User-facing citation list (winner + same-domain secondaries).
     """
 
     status: str
@@ -192,6 +197,7 @@ class MissionVerifyResult:
     collision_hits: List[str] = field(default_factory=list)
     excerpt: str = ""
     score_details: List[Dict[str, Any]] = field(default_factory=list)
+    sources: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -522,6 +528,140 @@ def _pick_excerpt(text: str, anchor_facts: Sequence[str], max_chars: int = 600) 
     return cleaned[:max_chars]
 
 
+def registrable_domain(url: str) -> str:
+    """
+    Return a normalized registrable-domain key for same-site citation filtering.
+
+    Strips scheme, credentials, port, and a leading ``www.``. Uses a lightweight
+    public-suffix heuristic (last two labels, or three for known multi-part
+    TLDs such as ``com.sg`` / ``co.uk``) so ``careers.example.com`` and
+    ``www.example.com`` share a key while ``akro.ai`` and ``akro-mils.com``
+    do not.
+
+    Args:
+        url: Absolute or host-bearing URL string.
+
+    Returns:
+        Lowercase domain key, or empty string when unparseable.
+    """
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    parsed = urlparse(raw if "://" in raw else f"https://{raw}")
+    host = (parsed.hostname or "").lower().strip(".")
+    if host.startswith("www."):
+        host = host[4:]
+    if not host or "." not in host:
+        return host
+    parts = host.split(".")
+    multi = {
+        "com.sg",
+        "com.au",
+        "co.uk",
+        "org.uk",
+        "co.jp",
+        "com.br",
+        "co.nz",
+        "com.hk",
+        "com.my",
+    }
+    if len(parts) >= 3 and ".".join(parts[-2:]) in multi:
+        return ".".join(parts[-3:])
+    return ".".join(parts[-2:])
+
+
+def _normalize_citation_url(url: str) -> str:
+    """
+    Normalize a URL for citation deduplication.
+
+    Args:
+        url: Source URL.
+
+    Returns:
+        Lowercase URL without trailing slash (except bare origin).
+    """
+    cleaned = (url or "").strip()
+    if not cleaned:
+        return ""
+    parsed = urlparse(cleaned if "://" in cleaned else f"https://{cleaned}")
+    scheme = (parsed.scheme or "https").lower()
+    host = registrable_domain(cleaned)
+    path = (parsed.path or "").rstrip("/") or ""
+    query = f"?{parsed.query}" if parsed.query else ""
+    if not host:
+        return cleaned.lower().rstrip("/")
+    return f"{scheme}://{host}{path}{query}"
+
+
+def build_mission_citation_sources(
+    winner: Dict[str, Any],
+    score_details: Sequence[Dict[str, Any]],
+    *,
+    max_sources: int = MAX_MISSION_CITATION_SOURCES,
+) -> List[Dict[str, Any]]:
+    """
+    Build user-facing citation cards from verify scores.
+
+    ``[1]`` is always the paraphrase winner. Further entries must also clear
+    verify and share the winner's registrable domain (stricter bar). Total
+    length is hard-capped (default 3).
+
+    Args:
+        winner: Winning score dict (must include ``url``).
+        score_details: All candidate scores from verify.
+        max_sources: Inclusive maximum citation count.
+
+    Returns:
+        Numbered source dicts for ``mission_context.sources``.
+    """
+    if max_sources < 1 or not winner.get("url"):
+        return []
+
+    winner_url = str(winner["url"])
+    winner_domain = registrable_domain(winner_url)
+    seen: Set[str] = {_normalize_citation_url(winner_url)}
+
+    def _card(index: int, score: Dict[str, Any]) -> Dict[str, Any]:
+        url = str(score.get("url") or "")
+        title = str(score.get("title") or "").strip()
+        excerpt = str(score.get("excerpt") or "").strip()
+        snippet = excerpt[:180] + ("…" if len(excerpt) > 180 else "") if excerpt else ""
+        return {
+            "index": index,
+            "url": url,
+            "title": title,
+            "domain": registrable_domain(url),
+            "snippet": snippet or None,
+            "kind": "company_mission",
+        }
+
+    sources: List[Dict[str, Any]] = [_card(1, winner)]
+    if max_sources == 1 or not winner_domain:
+        return sources
+
+    secondaries = [
+        score
+        for score in score_details
+        if score.get("passed")
+        and str(score.get("url") or "")
+        and _normalize_citation_url(str(score["url"])) not in seen
+        and registrable_domain(str(score["url"])) == winner_domain
+    ]
+    secondaries.sort(
+        key=lambda item: float(item.get("fact_match_ratio") or 0.0),
+        reverse=True,
+    )
+    for score in secondaries:
+        if len(sources) >= max_sources:
+            break
+        norm = _normalize_citation_url(str(score["url"]))
+        if norm in seen:
+            continue
+        seen.add(norm)
+        sources.append(_card(len(sources) + 1, score))
+    return sources
+
+
 def verify_mission_candidates(
     company: str,
     candidates: Sequence[MissionCandidate],
@@ -535,8 +675,10 @@ def verify_mission_candidates(
     """
     Verify fetched candidates against JD facts; return pass or skip.
 
-    Prefer the first candidate that clears name + fact thresholds without
-    collision blocks. On failure, always return a legible ``skip_reason``.
+    Score every candidate, then pick the first that clears name + fact
+    thresholds without collision as the paraphrase winner. On pass, also
+    build a capped citation list (winner + same-domain secondaries).
+    On failure, always return a legible ``skip_reason``.
 
     Args:
         company: Company name.
@@ -573,6 +715,7 @@ def verify_mission_candidates(
     score_details: List[Dict[str, Any]] = []
     best_near_miss: Optional[Dict[str, Any]] = None
     collision_any: List[str] = []
+    winner: Optional[Dict[str, Any]] = None
 
     for candidate in candidates:
         score = score_candidate(
@@ -586,23 +729,27 @@ def verify_mission_candidates(
         score_details.append(score)
         if score["collision_hits"]:
             collision_any.extend(score["collision_hits"])
-        if score["passed"]:
-            return MissionVerifyResult(
-                status="pass",
-                company=company,
-                source_url=score["url"],
-                source_title=score["title"] or None,
-                matched_facts=list(score["matched_facts"]),
-                missing_facts=list(score["missing_facts"]),
-                fact_match_ratio=float(score["fact_match_ratio"]),
-                collision_hits=list(score["collision_hits"]),
-                excerpt=str(score["excerpt"] or ""),
-                score_details=score_details,
-            )
+        if score["passed"] and winner is None:
+            winner = score
         if best_near_miss is None or float(score["fact_match_ratio"]) > float(
             best_near_miss["fact_match_ratio"]
         ):
             best_near_miss = score
+
+    if winner is not None:
+        return MissionVerifyResult(
+            status="pass",
+            company=company,
+            source_url=str(winner["url"]),
+            source_title=(str(winner["title"]).strip() or None),
+            matched_facts=list(winner["matched_facts"]),
+            missing_facts=list(winner["missing_facts"]),
+            fact_match_ratio=float(winner["fact_match_ratio"]),
+            collision_hits=list(winner["collision_hits"]),
+            excerpt=str(winner["excerpt"] or ""),
+            score_details=score_details,
+            sources=build_mission_citation_sources(winner, score_details),
+        )
 
     unique_collisions = sorted(set(collision_any))
     if unique_collisions and (

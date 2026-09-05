@@ -66,6 +66,7 @@ class MissionResolveResult:
         skip_reason: Legible reason when status is ``skip`` or ``error``.
         source_url: Winning page URL when status is ``pass``.
         source_title: Winning page title when status is ``pass``.
+        sources: Numbered citation cards for the Cover Letter UI.
         paraphrase_method: ``ollama``, ``extractive``, or empty.
         query: Search query used (when search ran).
         elapsed_ms: Wall time for the resolve attempt.
@@ -77,6 +78,7 @@ class MissionResolveResult:
     skip_reason: str = ""
     source_url: Optional[str] = None
     source_title: Optional[str] = None
+    sources: List[Dict[str, Any]] = field(default_factory=list)
     paraphrase_method: str = ""
     query: str = ""
     elapsed_ms: float = 0.0
@@ -99,6 +101,8 @@ class MissionResolveResult:
             payload["source_url"] = self.source_url
         if self.source_title:
             payload["source_title"] = self.source_title
+        if self.sources:
+            payload["sources"] = list(self.sources)
         if self.skip_reason:
             payload["skip_reason"] = self.skip_reason
         if self.paraphrase_method:
@@ -496,6 +500,7 @@ def resolve_company_mission(
         brief=brief,
         source_url=verify.source_url,
         source_title=verify.source_title,
+        sources=list(verify.sources),
         paraphrase_method=str(paraphrase.get("method") or ""),
         query=query,
         elapsed_ms=_elapsed(),

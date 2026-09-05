@@ -476,6 +476,10 @@ This script:
 4. Starts all services in detached mode
 5. Displays the assigned ports and access URLs
 
+### Version and releases
+
+The product version is the root `VERSION` file (also returned by `GET /api/version`). Annotated tags `vX.Y.Z` are checkpoints; see [Deployment - Version checkpoints](deployment.md#version-checkpoints-semver--git-tags) for the bump/tag/push ritual and [`CHANGELOG.md`](../CHANGELOG.md) for release notes.
+
 ### Manual Docker Commands
 
 ```bash
@@ -537,11 +541,11 @@ http://localhost:3000
 - **Pipeline** - Discover (default: scrape and score) or advanced full pipeline; optional Use profile targets
 - **Jobs** - Review latest discover shortlist, or live search; optional Use profile targets; apply is explicit
 - **Applications** - Track saved and applied jobs (Simulate Apply for dry-run paths)
-- **Profile** - Manage profile, skills, experience, and Job Targets (keywords, locations, experience, exclude internships). After upload, shows parse time, duration, and model.
+- **Profile** - Manage profile, skills, experience, and Job Targets (keywords, locations, experience, exclude internships). After upload, shows parse time, duration, and model. The skills radar scores categories from CV evidence (proficiency, years, core skills, experience/project mentions), emphasizes top skills within each category, and scales scores to your profile shape so axes are not artificially balanced. Use **Download PDF** to export a structured profile summary (identity, summary, experience, education, skills, certifications). Empty sections are omitted. This is a readable report, not a resume rewrite.
 - **Assessment** - DISC work-style assessment and skill-based technical interview practice
 - **Resume Analysis** - AI-powered resume parsing and gap analysis
 - **LinkedIn Analysis** - Inbound-attraction scoring and recruiter-focused profile recommendations
-- **Cover Letter** - Paste a job description, or upload a PDF/DOCX to fill the JD field, then generate/review and export. Upload extracts text only; you must still click Generate. Proofread scores use severity-weighted grounding: vague wording costs less than fabricated scope or technique mismatches. The UI shows flagged sentences and the grounding deduction breakdown before you send. If a scanned PDF has no text layer, paste the JD text instead. Optional Settings toggle **Company mission grounding** (default off) may attach a verified web mission brief; ambiguous companies skip without inventing mission text. Phase C (always on) scans every pasted JD for submission asks: length-constrained “why this interests you” blocks (any confident lines/sentences/words range near interest/mission cues—not only “3–4 lines”) and explicit include-link asks. When a length ask is detected, Generate **replaces** the full letter with that short answer. Inclusion asks inject profile URLs when present. A banner shows detections while you edit the JD; review output before a live application.
+- **Cover Letter** - Paste a job description, or upload a PDF/DOCX to fill the JD field, then generate/review and export. Upload extracts text only; you must still click Generate. After generate, the result shows model, stage timings (draft / review / rewrite / total), and LLM token consumption (total, with prompt/completion split when available). Two export actions: **Export full analysis** (JSON snapshot for quality control and model compares — job details, fit score/breakdown, letter text, writer settings, timing/tokens, proofread scores, reviewer feedback, timestamp) and **Export cover letter PDF** (letter body only). Fit assess uses standard JobMatcher weights (keyword / skills / experience / location); the breakdown lists only scored categories. Keyword points are overlap between your Job Targets keywords and the JD, not raw JD term density. Proofread scores use severity-weighted grounding: vague wording costs less than fabricated scope or technique mismatches. Fabricated-technology checks ignore honest disclaimers and learn-intent phrasing (for example “rather than Java” or “eager to pick up Java”). The UI shows flagged sentences and the grounding deduction breakdown before you send. If a scanned PDF has no text layer, paste the JD text instead. Optional Settings toggle **Company mission grounding** (default off) may attach a verified web mission brief; ambiguous companies skip without inventing mission text. When mission grounding passes, the result shows numbered **Sources** citations above the letter (winning page first, up to two same-site corroborating pages, max 3). Cross-domain near-misses are not cited. Phase C (always on) scans every pasted JD for submission asks: length-constrained “why this interests you” blocks (any confident lines/sentences/words range near interest/mission cues—not only “3–4 lines”) and explicit include-link asks. When a length ask is detected, Generate **replaces** the full letter with that short answer. Inclusion asks inject profile URLs when present. A banner shows detections while you edit the JD; review output before a live application.
 - **Career Coach** - Agent-backed career guidance (requires an active profile)
 - **Metrics** - Cost tracking and outcome statistics
 - **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits (including optional company-mission grounding for cover letters, default off); optional **color scheme** swatch grid (Raid through Stained glass), **Cinematic atmosphere** (local, off by default), and **Date & time** format/timezone prefs (system, profile location, or manual IANA; applies app-wide via ``formatDate`` / ``formatDatetime``)
@@ -567,7 +571,21 @@ http://localhost:3000
 - **Small (fast / high volume):** job scoring, project and keyword selection, validation, quick Q&A, trust checks, cover-letter review
 - **Large (quality / writing):** JD extraction, resume parsing/writing/analysis, LinkedIn analysis, classification, cover-letter drafting, assessment generation and evaluation
 - Recommended defaults remain `qwen2.5:3b` and `qwen2.5:7b`; any installed model may be saved as your default
+- For local cover-letter drafting on `qwen2.5:7b`, enable **Review & rewrite** on the Cover Letter page. One critique + rewrite pass improves structure without loading a larger GPU model. Avoid hopping to `qwen3.5:9b` on hosts with GPU IRQL / StoreMI instability; compare only lighter tags such as `qwen3.5:4b` one model at a time if you A/B.
 
+**Safe local cover-letter A/B (7b vs 4b):**
+
+```bash
+# From apps/backend-py with .venv active
+# Dry-run: check allow-list + installed tags (no generate)
+python scripts/compare_cover_letter_models.py --dry-run
+
+# When ready (one model at a time; cool-down between models):
+# ollama pull qwen3.5:4b
+python scripts/compare_cover_letter_models.py --models qwen2.5:7b qwen3.5:4b
+```
+
+Do not pull or compare `qwen3.5:9b` on unstable GPU hosts. Measured A/B (2026-08-25, three fixed JDs): `qwen2.5:7b` mean validator score 83.0 beat `qwen3.5:4b` at 77.67. Keep the recommended large/writer default on `qwen2.5:7b`.
 ### Pulling Ollama Models
 
 Models are stored in a persistent Docker volume and pulled on first use. To pre-pull models:

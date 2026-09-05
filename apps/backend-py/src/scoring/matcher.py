@@ -120,7 +120,9 @@ class JobMatcher:
         Returns:
             MatchScore with detailed breakdown
         """
-        breakdown = {category.value: 0 for category in ScoreCategory}
+        # Only categories in the active weight set (standard vs fresh-grad).
+        # Unused modes must not appear as zero rows in assess UI/export.
+        breakdown = {category.value: 0 for category in self.weights}
         matched_keywords = []
         missing_skills = []
 

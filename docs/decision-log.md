@@ -1,5 +1,94 @@
 # Job Raider Decision Log
 
+## 2026-09-02 - Product version checkpoints (semver + tags)
+
+### Context
+
+The API and frontend advertised `0.1.0`, but there were no git tags, no changelog, and the version string was hard-coded. CI already publishes Docker images on `v*` tags, so release hooks existed without a deliberate checkpoint process. A large share of the product (pipeline, RAG, multi-agent, assessments, early cover letter, dashboard) was built before Cursor-assisted work; the first tag must not read as if the project started then.
+
+### Decision
+
+- Root `VERSION` is the single source of truth; FastAPI and `/api/version` read it (Docker copies to `/app/VERSION`).
+- Keep `apps/frontend-ts/package.json` version in sync on each release.
+- Maintain `CHANGELOG.md` (Keep a Changelog). Stay on 0.x: MINOR = feature checkpoint, PATCH = fix-only.
+- Annotated tags `vX.Y.Z` are the checkpoints. First baseline tag: `v0.1.0` on the Phase A–C ship commit, documented as a **retroactive product checkpoint** that includes pre-Cursor foundation plus later commits through that tip. Do not invent `v0.0.x` tags for older history.
+- Next cut after pending WIP lands: `v0.2.0` (separate ask).
+
+### Consequences
+
+- Operators can pin and compare concrete releases without erasing pre-Cursor progress in the changelog narrative.
+- Pushing a `v*` tag can trigger the existing Docker publish job when Hub secrets are configured.
+
+### Flow
+
+```mermaid
+flowchart LR
+  versionFile[VERSION] --> api["/api/version"]
+  versionFile --> changelog[CHANGELOG]
+  changelog --> tag["git tag vX.Y.Z"]
+  tag --> ci[CI_Docker_publish]
+```
+
+## 2026-08-29 - Claim-direction fabricated tech and active fit breakdown
+
+### Context
+
+NCS cover-letter analysis flagged `java` as fabricated when the letter said experience was in Python rather than Java and showed willingness to learn. Fit breakdown also showed education/projects at 0 in standard mode, which looked like parse failure.
+
+### Decision
+
+- Fabricated-technology checks use claim-direction: disclaimer and learn-intent mentions are not claims.
+- `JobMatcher` breakdown returns only categories in the active weight set.
+- Cover-letter assess remains standard mode; fresh-grad routing is a separate follow-up (auto-detect vs toggle).
+
+### Consequences
+
+- Honest gap disclosures no longer inflate proofread penalties.
+- Fit UI/export no longer shows inert zero rows for unused scoring modes.
+
+### Flow
+
+```mermaid
+flowchart LR
+  letter[Letter_text] --> claimed[extract_claimed_technologies]
+  claimed --> flag[flag_fabricated_technologies]
+  weights[Active_weights] --> breakdown[Match_breakdown_keys]
+```
+
+## 2026-08-25 - Cover letter local model A/B (7b vs 4b) and Profile PDF
+
+### Context
+
+Cover-letter quality on local Ollama still matters when the host cannot safely load larger models. An earlier hop to `qwen3.5:9b` coincided with `DRIVER_IRQL_NOT_LESS_OR_EQUAL` (AMD StoreMI / GPU IRQL). The user wants quality gains on `qwen2.5:7b` and a careful compare with `qwen3.5:4b` only.
+
+Separately, Profile needed a readable PDF summary export (not a resume rewrite).
+
+### Decision
+
+- Ship `GET /api/profile/export.pdf` + Profile **Download PDF** (reportlab summary; empty sections omitted).
+- Tighten cover-letter writer/rewrite prompts for small models (paragraph budget; rewrite deletes unsupported claims — does not invent JD relevance).
+- Document **Review & rewrite** as recommended for local `qwen2.5:7b`.
+- Add `scripts/compare_cover_letter_models.py` with a hard allow-list of `qwen2.5:7b` and `qwen3.5:4b`, one-model-at-a-time unload, and cool-down. Reject `qwen3.5:9b`.
+- **Measured winner (2026-08-25 sequential A/B, 3 fixed cases, validator mean):** `qwen2.5:7b` (mean 83.0) beat `qwen3.5:4b` (mean 77.67). Keep recommended default on `qwen2.5:7b`. Do not switch Settings defaults to 4b. Do not load `qwen3.5:9b` on this host for cover letters.
+
+### Consequences
+
+- Users can export a profile PDF without leaving the Profile page.
+- Local drafting quality improves via prompt + optional review pass without loading 9B.
+- Re-run `python scripts/compare_cover_letter_models.py` after prompt changes; report lands under `data/outputs/cover_letter_model_ab.json`.
+
+### Flow
+
+```mermaid
+flowchart LR
+  profilePdf[Profile_Download_PDF] --> summary[Structured_summary_PDF]
+  draft[CL_draft_7b] --> review[Optional_review_rewrite]
+  review --> validate[Deterministic_validator]
+  ab[compare_script] -->|one_model_at_a_time| seven[qwen2.5_7b]
+  ab --> four[qwen3.5_4b]
+  ab -->|forbid| nine[qwen3.5_9b]
+```
+
 ## 2026-08-21 - Cover letter Phase C JD application-instruction adherence
 
 ### Context

@@ -119,6 +119,9 @@ def mock_selector():
         key_achievements=["Reduced API latency by 40%"],
         summary_suggestion="Experienced Python developer",
         raw_response="",
+        prompt_tokens=80,
+        completion_tokens=30,
+        tokens_used=110,
     )
     selector.select.return_value = selection
     return selector, selection
@@ -135,6 +138,9 @@ def mock_writer():
         ],
         word_count=4,
         model_used="qwen2.5:7b",
+        prompt_tokens=100,
+        completion_tokens=40,
+        tokens_used=140,
     )
     rewritten_draft = GeneratedCoverLetter(
         content="Rewritten draft content.",
@@ -143,6 +149,9 @@ def mock_writer():
         ],
         word_count=4,
         model_used="qwen2.5:7b",
+        prompt_tokens=120,
+        completion_tokens=50,
+        tokens_used=170,
     )
     writer.write.return_value = original_draft
     writer.rewrite.return_value = rewritten_draft
@@ -255,6 +264,9 @@ class TestGenerateCoverLetterService:
             critique="Add stronger call to action.",
             rewrite_needed=True,
             model_used="qwen2.5:3b",
+            prompt_tokens=60,
+            completion_tokens=20,
+            tokens_used=80,
         )
         patch_dependencies["reviewer_cls"].return_value = reviewer
 
@@ -278,6 +290,14 @@ class TestGenerateCoverLetterService:
         assert (
             response.validation.details["review"]["rewrite_ms"] == timing["rewrite_ms"]
         )
+        token_usage = response.cover_letter["token_usage"]
+        assert token_usage["selection_tokens"] == 110
+        assert token_usage["generation_tokens"] == 140
+        assert token_usage["review_tokens"] == 80
+        assert token_usage["rewrite_tokens"] == 170
+        assert token_usage["total_tokens"] == 110 + 140 + 80 + 170
+        assert token_usage["prompt_tokens"] == 80 + 100 + 60 + 120
+        assert token_usage["completion_tokens"] == 30 + 40 + 20 + 50
 
     def test_generate_without_review_includes_timing_without_rewrite(
         self, sample_job, sample_profile, patch_dependencies
@@ -293,6 +313,12 @@ class TestGenerateCoverLetterService:
         assert timing["rewrite_ms"] is None
         assert timing["review_ms"] is None
         assert timing["total_ms"] >= timing["generation_ms"]
+        token_usage = response.cover_letter["token_usage"]
+        assert token_usage["selection_tokens"] == 110
+        assert token_usage["generation_tokens"] == 140
+        assert token_usage["review_tokens"] is None
+        assert token_usage["rewrite_tokens"] is None
+        assert token_usage["total_tokens"] == 110 + 140
 
     def test_generate_with_review_failure_continues_with_draft(
         self, sample_job, sample_profile, patch_dependencies, mock_writer

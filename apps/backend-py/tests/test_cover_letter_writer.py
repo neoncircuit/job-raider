@@ -495,6 +495,9 @@ class TestCoverLetterWriter:
         assert write_system == _COVER_LETTER_SYSTEM + "\n\n" + _MISSION_ABSENT_RULES
         assert rewrite_system == _COVER_LETTER_SYSTEM + "\n\n" + _MISSION_ABSENT_RULES
         assert write_system == rewrite_system
+        rewrite_user = rewrite_messages[1].content
+        assert "deleting unsupported claims" in rewrite_user
+        assert "Do not invent new JD relevance" in rewrite_user
 
     def test_classic_system_differs_but_shares_grounding(
         self, mock_llm_router, sample_job, sample_profile, sample_selection

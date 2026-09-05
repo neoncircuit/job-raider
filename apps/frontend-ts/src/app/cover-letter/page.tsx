@@ -30,7 +30,8 @@ import type {
   ScoreExplanation,
 } from "@/lib/api/coverLetter";
 import { profileApi } from "@/lib/api/profile";
-import { formatDurationMs } from "@/lib/utils/format";
+import { buildCoverLetterAnalysisExport } from "@/lib/cover-letter-analysis-export";
+import { formatDurationMs, formatTokenCount } from "@/lib/utils/format";
 import { applicationsApi } from "@/lib/api/applications";
 import type {
   CoverLetterResponse,
@@ -48,6 +49,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
+import { CoverLetterSources } from "@/components/cover-letter-sources";
 import { AiWaitProgress } from "@/components/ai-wait-progress";
 import { ScoreExplanationDisplay } from "@/components/score-explanation";
 import {
@@ -55,6 +57,7 @@ import {
   SETTINGS_DEFAULT_MODEL_VALUE,
 } from "@/components/model-select";
 import { createLogger } from "@/lib/logger";
+import { resolveMissionSourceCitations } from "@/lib/mission-sources";
 
 const logger = createLogger("CoverLetterPage");
 
@@ -230,6 +233,48 @@ export default function CoverLetterPage() {
     onError: (err: Error) => {
       logger.error("Cover letter export failed", err);
       toast.error(err.message || "Failed to export cover letter");
+    },
+  });
+
+  const exportAnalysisMutation = useMutation({
+    mutationFn: async (format: "json" | "pdf") => {
+      if (!result) {
+        throw new Error("Generate a cover letter before exporting analysis");
+      }
+      const analysis = buildCoverLetterAnalysisExport({
+        title: form.title,
+        company: form.company,
+        description: form.description,
+        location: form.location || undefined,
+        style: form.style,
+        deep: form.deep,
+        review: form.review,
+        writerModelLabel:
+          writerModel === SETTINGS_DEFAULT_MODEL_VALUE
+            ? result.cover_letter.model_used || "settings-default"
+            : writerModel,
+        letterText: editedContent || result.cover_letter.content,
+        result,
+        validation,
+        assessment,
+      });
+      const res = await coverLetterApi.exportAnalysis({
+        format,
+        analysis: analysis as unknown as Record<string, unknown>,
+      });
+      const fallback = `cover_letter_analysis_${form.company.replace(/\s+/g, "_")}_${form.title.replace(/\s+/g, "_")}.${format}`;
+      await downloadFile(res, fallback);
+    },
+    onSuccess: (_data, format) => {
+      toast.success(
+        format === "json"
+          ? "Full analysis exported"
+          : "Analysis exported as PDF",
+      );
+    },
+    onError: (err: Error) => {
+      logger.error("Cover letter analysis export failed", err);
+      toast.error(err.message || "Failed to export analysis");
     },
   });
 
@@ -782,7 +827,8 @@ export default function CoverLetterPage() {
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   Ask a reviewer to critique the draft and rewrite it once if
-                  needed.
+                  needed. Recommended for local 7B writers (for example
+                  qwen2.5:7b).
                 </p>
               </div>
               <Switch
@@ -985,7 +1031,8 @@ export default function CoverLetterPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {(result.cover_letter.model_used ||
-                    result.cover_letter.timing) && (
+                    result.cover_letter.timing ||
+                    result.cover_letter.token_usage) && (
                     <p className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
                       {result.cover_letter.model_used ? (
                         <span>
@@ -1027,8 +1074,39 @@ export default function CoverLetterPage() {
                           </span>
                         </>
                       ) : null}
+                      {result.cover_letter.token_usage?.total_tokens != null ? (
+                        <span>
+                          Tokens:{" "}
+                          {formatTokenCount(
+                            result.cover_letter.token_usage.total_tokens,
+                          )}
+                          {result.cover_letter.token_usage.prompt_tokens !=
+                            null &&
+                          result.cover_letter.token_usage.completion_tokens !=
+                            null ? (
+                            <span className="text-muted-foreground/80">
+                              {" "}
+                              (
+                              {formatTokenCount(
+                                result.cover_letter.token_usage.prompt_tokens,
+                              )}{" "}
+                              in /{" "}
+                              {formatTokenCount(
+                                result.cover_letter.token_usage
+                                  .completion_tokens,
+                              )}{" "}
+                              out)
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null}
                     </p>
                   )}
+                  <CoverLetterSources
+                    sources={resolveMissionSourceCitations(
+                      result.mission_context,
+                    )}
+                  />
                   <Textarea
                     value={editedContent}
                     onChange={(e) => {
@@ -1066,22 +1144,28 @@ export default function CoverLetterPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => exportMutation.mutate("docx")}
-                      disabled={exportMutation.isPending}
+                      onClick={() => exportAnalysisMutation.mutate("json")}
+                      disabled={
+                        exportAnalysisMutation.isPending || !result
+                      }
                     >
                       <Download className="mr-1.5 h-3.5 w-3.5" />
-                      Export DOCX
+                      Export full analysis
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => exportMutation.mutate("pdf")}
-                      disabled={exportMutation.isPending}
+                      disabled={exportMutation.isPending || !result}
                     >
                       <Download className="mr-1.5 h-3.5 w-3.5" />
-                      Export PDF
+                      Export cover letter PDF
                     </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Full analysis is a JSON snapshot for quality control and
+                    model compares. Cover letter PDF is the letter only.
+                  </p>
                 </CardContent>
               </Card>
 

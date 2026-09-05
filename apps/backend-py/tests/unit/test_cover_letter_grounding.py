@@ -306,6 +306,61 @@ def test_flag_fabricated_technologies_alias_k8s_allowed():
     assert flag_fabricated_technologies(letter, profile) == []
 
 
+def test_flag_fabricated_technologies_ignores_disclaimer_and_learn_intent():
+    """Honest 'rather than Java' / 'pick up Java' is not a fabricated claim."""
+    from src.generation.cover_letter_grounding import (
+        extract_claimed_technologies,
+        extract_technologies,
+        flag_fabricated_technologies,
+    )
+
+    profile = UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Singapore"),
+        skills=[Skill(name="Python", category=SkillCategory.LANGUAGE)],
+    )
+    letter = (
+        "While my hands-on experience has centered on Python rather than Java, "
+        "I am eager to pick up Java quickly on the job."
+    )
+    assert "java" in extract_technologies(letter)
+    assert "java" not in extract_claimed_technologies(letter)
+    assert "python" in extract_claimed_technologies(letter)
+    assert flag_fabricated_technologies(letter, profile) == []
+
+
+def test_flag_fabricated_technologies_still_flags_false_claim():
+    """A direct proficiency claim for a resume-absent tech is still flagged."""
+    from src.generation.cover_letter_grounding import flag_fabricated_technologies
+
+    profile = UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Singapore"),
+        skills=[Skill(name="Python", category=SkillCategory.LANGUAGE)],
+    )
+    letter = (
+        "I have strong Java experience and shipped Spring services in production."
+    )
+    fabricated = flag_fabricated_technologies(letter, profile)
+    assert "java" in fabricated
+
+
+def test_flag_fabricated_technologies_claim_wins_over_disclaimer():
+    """If the letter both disclaims and later claims a tech, flag the claim."""
+    from src.generation.cover_letter_grounding import flag_fabricated_technologies
+
+    profile = UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Remote"),
+        skills=[Skill(name="Python", category=SkillCategory.LANGUAGE)],
+    )
+    letter = (
+        "I have used Python rather than Java in past roles. "
+        "I also have strong Java experience from side projects."
+    )
+    assert "java" in flag_fabricated_technologies(letter, profile)
+
+
 def test_calc_grounding_penalty_includes_fabricated_tech():
     """Each fabricated technology adds a hard-band penalty."""
     baseline, _ = calc_grounding_penalty([], [])

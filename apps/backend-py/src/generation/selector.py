@@ -9,7 +9,7 @@ Date: 2026-04-20
 """
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
@@ -27,6 +27,9 @@ class SelectionOutput:
     key_achievements: List[str]
     summary_suggestion: str
     raw_response: str
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    tokens_used: Optional[int] = None
 
 
 class ResumeSelector:
@@ -122,12 +125,21 @@ Return a JSON object:
 
             data = json.loads(json_match.group(0))
 
+            prompt_tokens = response.prompt_tokens
+            completion_tokens = response.completion_tokens
+            tokens_used = response.tokens_used
+            if tokens_used is None and prompt_tokens is not None and completion_tokens is not None:
+                tokens_used = prompt_tokens + completion_tokens
+
             return SelectionOutput(
                 selected_projects=data.get("selected_projects", []),
                 keywords_to_emphasize=data.get("keywords_to_emphasize", []),
                 key_achievements=data.get("key_achievements", []),
                 summary_suggestion=data.get("summary_suggestion", ""),
                 raw_response=response.content,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                tokens_used=tokens_used,
             )
 
         except Exception as e:

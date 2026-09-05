@@ -29,11 +29,13 @@ const mockAssess = vi.hoisted(() => vi.fn());
 const mockValidate = vi.hoisted(() => vi.fn());
 const mockParseJd = vi.hoisted(() => vi.fn());
 const mockDownloadFile = vi.hoisted(() => vi.fn());
+const mockExportAnalysis = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api/coverLetter", () => ({
   coverLetterApi: {
     generate: (...args: unknown[]) => mockGenerate(...args),
     export: (...args: unknown[]) => mockExport(...args),
+    exportAnalysis: (...args: unknown[]) => mockExportAnalysis(...args),
     assess: (...args: unknown[]) => mockAssess(...args),
     validate: (...args: unknown[]) => mockValidate(...args),
     parseJd: (...args: unknown[]) => mockParseJd(...args),
@@ -99,6 +101,7 @@ describe("CoverLetterPage", () => {
   beforeEach(() => {
     mockGenerate.mockReset();
     mockExport.mockReset();
+    mockExportAnalysis.mockReset();
     mockAssess.mockReset();
     mockValidate.mockReset();
     mockParseJd.mockReset();
@@ -107,6 +110,9 @@ describe("CoverLetterPage", () => {
     mockGenerate.mockResolvedValue(sampleResponse);
     mockExport.mockResolvedValue(
       new Response(new Blob(["mock"]), { status: 200 }),
+    );
+    mockExportAnalysis.mockResolvedValue(
+      new Response(new Blob(["{}"]), { status: 200 }),
     );
     mockAssess.mockResolvedValue({
       score: 75,
@@ -235,12 +241,115 @@ describe("CoverLetterPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/ready to send/i)).toBeInTheDocument();
     expect(screen.getByText("88/100")).toBeInTheDocument();
+    expect(screen.getByText(/Tokens:/i)).toBeInTheDocument();
+    expect(screen.getByText(/2,200/)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /export docx/i }),
+      screen.getByRole("button", { name: /export full analysis/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /export pdf/i }),
+      screen.getByRole("button", { name: /export cover letter pdf/i }),
     ).toBeInTheDocument();
+  });
+
+  it("hides Sources when mission_context has no citations", async () => {
+    const user = userEvent.setup();
+    mockGenerate.mockResolvedValue({
+      ...sampleResponse,
+      mission_context: { status: "disabled" },
+    });
+    renderWithClient(<CoverLetterPage />);
+
+    await user.type(screen.getByLabelText(/job title/i), "Engineer");
+    await user.type(screen.getByLabelText(/company/i), "Acme");
+    await user.type(
+      getJdTextarea(),
+      "We are seeking an engineer with Python experience for a remote role.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /generate cover letter/i }),
+    );
+    await screen.findByDisplayValue(sampleCoverLetter.content);
+    expect(screen.queryByTestId("cover-letter-sources")).not.toBeInTheDocument();
+  });
+
+  it("shows a single Sources card when one mission citation is present", async () => {
+    const user = userEvent.setup();
+    mockGenerate.mockResolvedValue({
+      ...sampleResponse,
+      mission_context: {
+        status: "pass",
+        brief: "Acme builds tools.",
+        source_url: "https://www.acme.example/about",
+        sources: [
+          {
+            index: 1,
+            url: "https://www.acme.example/about",
+            title: "About Acme",
+            domain: "acme.example",
+            snippet: "Acme builds developer tools.",
+            kind: "company_mission",
+          },
+        ],
+      },
+    });
+    renderWithClient(<CoverLetterPage />);
+
+    await user.type(screen.getByLabelText(/job title/i), "Engineer");
+    await user.type(screen.getByLabelText(/company/i), "Acme");
+    await user.type(
+      getJdTextarea(),
+      "We are seeking an engineer with Python experience for a remote role.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /generate cover letter/i }),
+    );
+    await screen.findByTestId("cover-letter-sources");
+    expect(screen.getByText("Sources")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /about acme/i }),
+    ).toHaveAttribute("href", "https://www.acme.example/about");
+  });
+
+  it("shows a collapsible Sources panel for multiple citations", async () => {
+    const user = userEvent.setup();
+    mockGenerate.mockResolvedValue({
+      ...sampleResponse,
+      mission_context: {
+        status: "pass",
+        sources: [
+          {
+            index: 1,
+            url: "https://www.acme.example/about",
+            title: "About",
+            domain: "acme.example",
+          },
+          {
+            index: 2,
+            url: "https://careers.acme.example/mission",
+            title: "Mission",
+            domain: "acme.example",
+          },
+        ],
+      },
+    });
+    renderWithClient(<CoverLetterPage />);
+
+    await user.type(screen.getByLabelText(/job title/i), "Engineer");
+    await user.type(screen.getByLabelText(/company/i), "Acme");
+    await user.type(
+      getJdTextarea(),
+      "We are seeking an engineer with Python experience for a remote role.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /generate cover letter/i }),
+    );
+    const panel = await screen.findByTestId("cover-letter-sources");
+    expect(panel).toHaveTextContent(/Sources \(2\)/);
+    await user.click(screen.getByText(/Sources \(2\)/i));
+    expect(
+      await screen.findByRole("link", { name: /^about$/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^mission$/i })).toBeInTheDocument();
   });
 
   it("toggles deep validation and sends deep=true", async () => {
@@ -292,18 +401,56 @@ describe("CoverLetterPage", () => {
     );
     await screen.findByDisplayValue(sampleCoverLetter.content);
 
-    await user.click(screen.getByRole("button", { name: /export docx/i }));
+    await user.click(
+      screen.getByRole("button", { name: /export cover letter pdf/i }),
+    );
 
     await waitFor(() => {
       expect(mockExport).toHaveBeenCalledTimes(1);
     });
     expect(mockExport).toHaveBeenCalledWith({
       content: sampleCoverLetter.content,
-      format: "docx",
+      format: "pdf",
       company: "Tech Innovations Inc",
       title: "Senior Software Engineer",
     });
     expect(mockDownloadFile).toHaveBeenCalledTimes(1);
+  });
+
+  it("exports full analysis JSON after generate", async () => {
+    const user = userEvent.setup();
+    renderWithClient(<CoverLetterPage />);
+
+    await user.type(
+      screen.getByLabelText(/job title/i),
+      "Senior Software Engineer",
+    );
+    await user.type(screen.getByLabelText(/company/i), "Tech Innovations Inc");
+    await user.type(
+      getJdTextarea(),
+      "We are seeking a talented Senior Software Engineer with React and TypeScript experience.",
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /generate cover letter/i }),
+    );
+    await screen.findByDisplayValue(sampleCoverLetter.content);
+
+    await user.click(
+      screen.getByRole("button", { name: /export full analysis/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockExportAnalysis).toHaveBeenCalledTimes(1);
+    });
+    const call = mockExportAnalysis.mock.calls[0][0] as {
+      format: string;
+      analysis: { job: { company: string }; settings: { writer_model: string } };
+    };
+    expect(call.format).toBe("json");
+    expect(call.analysis.job.company).toBe("Tech Innovations Inc");
+    expect(call.analysis.settings.writer_model).toBeTruthy();
+    expect(mockDownloadFile).toHaveBeenCalled();
   });
 
   it("copies the generated cover letter to clipboard", async () => {

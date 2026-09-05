@@ -736,7 +736,7 @@ flowchart TD
 | Hard ungrounded | Capability verbs such as deployed / production / shipped without resume support | 10 |
 | Scope inflation | Leadership phrasing beyond IC bullets | 12 |
 | Technique mismatch | Named technique not verified for the referenced project | 10 |
-| Fabricated technology | Named tool/cloud/database absent from resume Technical Skills | 10 |
+| Fabricated technology | Named tool claimed as experience but absent from resume (disclaimer / learn-intent mentions ignored) | 10 |
 
 The grounding bucket is capped at 50 so other content checks remain visible. Issue enums still flag findings for review; only the numeric content score uses severity weights. Implementation lives in `apps/backend-py/src/generation/cover_letter_grounding.py` and `cover_letter_validator.py`.
 

@@ -170,6 +170,22 @@ export const coverLetterApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(req),
     }),
+
+  /**
+   * Export a structured cover-letter analysis run (JSON primary, PDF secondary).
+   *
+   * @param req - Format plus client-assembled analysis payload.
+   * @returns Raw Response for browser download.
+   */
+  exportAnalysis: (req: {
+    format: "json" | "pdf";
+    analysis: Record<string, unknown>;
+  }) =>
+    fetch("/api/proxy/cover-letter/export-analysis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    }),
 };
 
 /**

@@ -311,6 +311,10 @@ export interface CoverLetterReviewDetails {
   review_ms?: number | null;
   /** Rewrite LLM duration in milliseconds, when a rewrite ran. */
   rewrite_ms?: number | null;
+  /** Reviewer LLM tokens, when measured. */
+  review_tokens?: number | null;
+  /** Rewrite LLM tokens, when a rewrite ran. */
+  rewrite_tokens?: number | null;
 }
 
 export interface CoverLetterTiming {
@@ -320,6 +324,18 @@ export interface CoverLetterTiming {
   rewrite_ms?: number | null;
   validation_ms: number;
   total_ms: number;
+}
+
+/** Aggregated LLM token counts for a cover-letter generate request. */
+export interface CoverLetterTokenUsage {
+  selection_tokens?: number | null;
+  generation_tokens?: number | null;
+  review_tokens?: number | null;
+  rewrite_tokens?: number | null;
+  grounding_rewrite_tokens?: number | null;
+  prompt_tokens?: number | null;
+  completion_tokens?: number | null;
+  total_tokens?: number | null;
 }
 
 export interface CoverLetterValidation {
@@ -339,8 +355,12 @@ export interface CoverLetter {
   word_count: number;
   model_used: string;
   highlighted_experiences: HighlightedExperience[];
+  /** Letter style used for generation, when present. */
+  style?: string;
   /** Stage timings for the last generate request, when present. */
   timing?: CoverLetterTiming;
+  /** LLM token consumption for the last generate request, when present. */
+  token_usage?: CoverLetterTokenUsage;
 }
 
 export interface CoverLetterResponse {
@@ -353,6 +373,16 @@ export interface CoverLetterResponse {
     status: string;
     brief?: string;
     source_url?: string;
+    source_title?: string;
+    /** Numbered citation cards (winner + same-domain secondaries, max 3). */
+    sources?: Array<{
+      index: number;
+      url: string;
+      title?: string | null;
+      domain?: string | null;
+      snippet?: string | null;
+      kind?: string | null;
+    }>;
     skip_reason?: string;
     elapsed_ms?: number;
     paraphrase_method?: string;

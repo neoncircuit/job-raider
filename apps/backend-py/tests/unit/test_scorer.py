@@ -104,15 +104,35 @@ class TestJobMatcher:
         matcher = JobMatcher()
         score = matcher.score_job(sample_job_listing, sample_user_profile)
 
-        # Verify all breakdown components are present
-        assert "keyword" in score.breakdown
-        assert "skills" in score.breakdown
-        assert "experience" in score.breakdown
-        assert "location" in score.breakdown
+        # Standard mode: only active weight categories (no inert zeros).
+        assert set(score.breakdown.keys()) == {
+            "keyword",
+            "skills",
+            "experience",
+            "location",
+        }
+        assert "education" not in score.breakdown
+        assert "projects" not in score.breakdown
 
         # Verify total matches sum
         total = sum(score.breakdown.values())
         assert abs(total - score.total_score) <= 5
+
+    def test_fresh_grad_breakdown_omits_keyword(
+        self, sample_user_profile, sample_job_listing
+    ):
+        """Fresh-grad mode returns only FRESH_GRAD_WEIGHTS categories."""
+        matcher = JobMatcher(fresh_grad_mode=True)
+        score = matcher.score_job(sample_job_listing, sample_user_profile)
+
+        assert set(score.breakdown.keys()) == {
+            "projects",
+            "skills",
+            "education",
+            "experience",
+            "location",
+        }
+        assert "keyword" not in score.breakdown
 
     def test_keyword_matching(self, sample_user_profile):
         """Test keyword matching logic."""

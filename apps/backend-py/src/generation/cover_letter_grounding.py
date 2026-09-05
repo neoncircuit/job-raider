@@ -549,6 +549,9 @@ def extract_technologies(text: str) -> Set[str]:
     English is not treated as a technology. Ambiguous short aliases such as
     ``go`` are excluded from free-text matching.
 
+    Presence-based: includes disclaimed and learn-intent mentions. Use
+    ``extract_claimed_technologies`` when claim direction matters.
+
     Args:
         text: Cover-letter body or other free text.
 
@@ -569,6 +572,99 @@ def extract_technologies(text: str) -> Set[str]:
         if pattern.search(lowered):
             found.add(normalize_tech_name(canonical))
     return found
+
+
+# Left-context cues that mean the following technology is disclaimed or
+# framed as a learning goal, not a skill the candidate claims to have.
+_TECH_DISCLAIMER_BEFORE_RE = re.compile(
+    r"(?:^|[\s,;:(])(?:"
+    r"rather\s+than|"
+    r"instead\s+of|"
+    r"other\s+than|"
+    r"aside\s+from|"
+    r"except(?:\s+for)?|"
+    r"without|"
+    r"not(?:\s+(?:with|using|in|proficient\s+in|"
+    r"experienced\s+(?:in|with)|familiar\s+with))?|"
+    r"no(?:\s+(?:prior|hands[- ]on|professional))?"
+    r"(?:\s+experience\s+(?:in|with))?|"
+    r"(?:do|does)\s+not\s+have|"
+    r"don'?t\s+have|"
+    r"haven'?t\s+(?:used|worked\s+with)|"
+    r"have\s+not\s+(?:used|worked\s+with)|"
+    r"never\s+(?:used|worked\s+with|touched)|"
+    r"lacking|"
+    r"lack\s+of|"
+    r"unfamiliar\s+with|"
+    r"new\s+to|"
+    r"limited(?:\s+experience)?\s+(?:with|in)|"
+    r"learn(?:ing|t)?|"
+    r"pick(?:ing)?\s+up|"
+    r"study(?:ing)?|"
+    r"transition(?:ing)?\s+to|"
+    r"switch(?:ing)?\s+to|"
+    r"migrate(?:ing)?\s+to|"
+    r"willing\s+to\s+learn|"
+    r"eager\s+to\s+(?:learn|pick\s+up)"
+    r")\s+$",
+    re.IGNORECASE,
+)
+
+
+def _is_technology_mention_disclaimed(text: str, start: int, end: int) -> bool:
+    """
+    Return whether a technology span is in a disclaimer or learn-intent context.
+
+    Inspects a short left window before ``start`` for phrases such as
+    ``rather than``, ``don't have``, or ``pick up``.
+
+    Args:
+        text: Lowercased letter body (same casing used for the span).
+        start: Inclusive start index of the technology match.
+        end: Exclusive end index of the technology match.
+
+    Returns:
+        True when the mention should not count as a skill claim.
+    """
+    del end  # Span end reserved for future right-context checks.
+    left = text[max(0, start - 96) : start]
+    left = re.sub(r"\s+", " ", left)
+    return bool(_TECH_DISCLAIMER_BEFORE_RE.search(left))
+
+
+def extract_claimed_technologies(text: str) -> Set[str]:
+    """
+    Extract technologies the letter presents as skills the candidate has.
+
+    Same lexicon and token boundaries as ``extract_technologies``, but skips
+    mentions that only appear in disclaimer or learn-intent contexts (for
+    example ``rather than Java`` or ``eager to pick up Java``). If any
+    non-disclaimed mention of a technology remains, that technology is kept.
+
+    Args:
+        text: Cover-letter body or other free text.
+
+    Returns:
+        Set of canonical technology keys claimed (not merely mentioned).
+    """
+    lowered = (text or "").lower()
+    if not lowered.strip():
+        return set()
+
+    claimed: Set[str] = set()
+    for term, canonical in _technology_search_terms():
+        escaped = re.escape(term)
+        pattern = re.compile(
+            rf"(?<![A-Za-z0-9]){escaped}(?![A-Za-z0-9])",
+            re.IGNORECASE,
+        )
+        for match in pattern.finditer(lowered):
+            if not _is_technology_mention_disclaimed(
+                lowered, match.start(), match.end()
+            ):
+                claimed.add(normalize_tech_name(canonical))
+                break
+    return claimed
 
 
 def redact_unsupported_technologies(text: str, profile: UserProfile) -> str:
@@ -611,13 +707,15 @@ def flag_fabricated_technologies(
     profile: UserProfile,
 ) -> List[str]:
     """
-    Flag named technologies in the letter that are absent from the resume.
+    Flag technologies the letter claims that are absent from the resume.
 
     Detection is limited to the curated tech lexicon so ordinary English is
-    not flagged. The allowlist is Technical Skills plus technologies listed
-    on experience and projects (same set as writer keyword filtering).
-    JD-only names such as AWS that never appear on the resume are returned
-    as hard grounding findings.
+    not flagged. Mentions in disclaimer or learn-intent contexts (for
+    example ``rather than Java`` or ``pick up Java``) are ignored. The
+    allowlist is Technical Skills plus technologies listed on experience
+    and projects (same set as writer keyword filtering). JD-only names such
+    as AWS that never appear on the resume are returned as hard grounding
+    findings when claimed.
 
     Args:
         letter_text: Generated cover-letter body.
@@ -626,7 +724,7 @@ def flag_fabricated_technologies(
     Returns:
         Sorted list of fabricated canonical technology names.
     """
-    claimed = extract_technologies(letter_text)
+    claimed = extract_claimed_technologies(letter_text)
     allowed = collect_resume_supported_names(profile)
     fabricated = sorted(tech for tech in claimed if tech not in allowed)
     return fabricated

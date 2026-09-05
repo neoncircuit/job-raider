@@ -186,6 +186,15 @@ export const sampleCoverLetter: CoverLetter = {
     validation_ms: 12.0,
     total_ms: 13972.7,
   },
+  token_usage: {
+    selection_tokens: 220,
+    generation_tokens: 980,
+    review_tokens: 140,
+    rewrite_tokens: 860,
+    prompt_tokens: 1600,
+    completion_tokens: 600,
+    total_tokens: 2200,
+  },
 };
 
 /**
