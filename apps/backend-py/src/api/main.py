@@ -27,6 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from ..utils.app_version import get_app_version
 from ..utils.logger import Components, get_logger
 from ..utils.sentry import init_sentry
 from .auth import verify_api_key
@@ -45,6 +46,8 @@ from .routes import (
 from .websocket.progress import manager
 
 logger = get_logger(Components.SCRAPERS)
+
+APP_VERSION = get_app_version()
 
 
 # Store active pipeline runs
@@ -180,7 +183,7 @@ def _parse_cors_origins() -> List[str]:
 app = FastAPI(
     title="Job Raider API",
     description="Automated Job Application Pipeline",
-    version="0.1.0",
+    version=APP_VERSION,
     lifespan=lifespan,
 )
 
@@ -381,7 +384,7 @@ async def health_resources():
 async def version():
     """API version information."""
     return {
-        "version": "0.1.0",
+        "version": APP_VERSION,
         "name": "Job Raider API",
     }
 

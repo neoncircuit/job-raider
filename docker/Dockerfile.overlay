@@ -16,5 +16,6 @@ WORKDIR /app/backend-py
 COPY --chown=jobraider:jobraider apps/backend-py/config/ ./config/
 COPY --chown=jobraider:jobraider apps/backend-py/src/ ./src/
 COPY --chown=jobraider:jobraider apps/backend-py/main.py .
+COPY --chown=jobraider:jobraider VERSION /app/VERSION
 
 USER jobraider

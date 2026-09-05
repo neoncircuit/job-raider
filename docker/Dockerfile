@@ -78,6 +78,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 COPY --chown=jobraider:jobraider apps/backend-py/config/ ./config/
 COPY --chown=jobraider:jobraider apps/backend-py/src/ ./src/
 COPY --chown=jobraider:jobraider apps/backend-py/main.py .
+COPY --chown=jobraider:jobraider VERSION /app/VERSION
 
 # Switch to jobraider user for runtime
 USER jobraider

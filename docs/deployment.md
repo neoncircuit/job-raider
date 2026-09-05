@@ -221,6 +221,39 @@ docker compose up -d --no-build --force-recreate backend
 
 This path is temporary ops glue ([`docker/Dockerfile.overlay`](../docker/Dockerfile.overlay)). Prefer a full rebuild from [`docker/Dockerfile`](../docker/Dockerfile) once Docker Hub credentials work again.
 
+### Version checkpoints (semver + git tags)
+
+Product version is a single line in the repo-root [`VERSION`](../VERSION) file. The FastAPI app and `/api/version` read that file (Docker images copy it to `/app/VERSION`). Keep [`apps/frontend-ts/package.json`](../apps/frontend-ts/package.json) `"version"` equal to `VERSION` on every release. Record user-facing changes in [`CHANGELOG.md`](../CHANGELOG.md). The `0.1.0` section documents pre-Cursor foundation work plus later commits through the first tag tip; do not invent earlier tags for that history.
+
+While on **0.x**: MINOR = feature checkpoint, PATCH = fix-only. Do not auto-bump on every commit.
+
+Release ritual (from a clean `main` with CI green):
+
+```bash
+# 1. Move Unreleased notes into a new CHANGELOG section; set VERSION and
+#    apps/frontend-ts/package.json to the same X.Y.Z
+# 2. Commit the bump
+git add VERSION CHANGELOG.md apps/frontend-ts/package.json
+git commit -m "$(cat <<'EOF'
+chore: release vX.Y.Z
+
+EOF
+)"
+
+# 3. Annotated tag (CI may publish Docker images on v* tags)
+git tag -a vX.Y.Z -m "vX.Y.Z"
+
+# 4. Push commit and tag when ready to publish
+git push origin main
+git push origin vX.Y.Z
+```
+
+Verify the running API after deploy:
+
+```bash
+curl -s http://localhost:8000/api/version
+```
+
 ---
 
 ## Security Considerations

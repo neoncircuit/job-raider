@@ -80,6 +80,7 @@ pnpm-lock.yaml
 .claude/commands/
 .claude/PRPs/
 .claude/worktrees/
+.claude/agents/
 
 # Local cron schedule (hardcoded to a specific machine; keep your local copy)
 crontab.job_raider

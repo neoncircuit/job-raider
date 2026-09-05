@@ -30,6 +30,7 @@ Job Raider combines an async Python backend, a local-first LLM strategy, and a m
 - **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
 - **[Conventions](conventions.md)** - Documentation style and local CI quality gate
 - **[Decision Log](decision-log.md)** - Recorded design decisions and consequences
+- **[Changelog](../CHANGELOG.md)** - Version checkpoints and release notes (root `VERSION`)
 
 ## Quick Links
 
