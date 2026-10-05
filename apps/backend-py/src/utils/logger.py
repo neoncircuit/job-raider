@@ -16,6 +16,8 @@ from typing import Any, Dict, Optional
 
 import yaml
 
+from .log_buffer import RingBufferHandler
+
 
 # Component names for structured logging
 class Components:
@@ -102,8 +104,10 @@ def setup_basic_logging(
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-    # Clear existing handlers
-    root_logger.handlers.clear()
+    # Clear existing handlers, but keep the in-memory buffer behind the Logs page
+    root_logger.handlers = [
+        h for h in root_logger.handlers if isinstance(h, RingBufferHandler)
+    ]
 
     # Create formatter
     formatter = logging.Formatter(

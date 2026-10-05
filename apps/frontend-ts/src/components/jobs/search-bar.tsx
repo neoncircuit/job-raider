@@ -23,6 +23,7 @@ export interface SearchValues {
   keywords: string;
   location: string;
   remoteOnly: boolean;
+  freshGrad: boolean;
   limit: number;
 }
 
@@ -58,6 +59,7 @@ export function SearchBar({
       keywords: restoredKeywords,
       location: initialRequest?.locations?.[0] ?? "Singapore",
       remoteOnly: initialRequest?.remote_only ?? false,
+      freshGrad: initialRequest?.fresh_grad_mode ?? false,
       limit: initialRequest?.limit ?? 50,
     },
   });
@@ -91,6 +93,7 @@ export function SearchBar({
   const noSources = selectedSources.length === 0;
 
   const remoteOnly = useWatch({ control, name: "remoteOnly" });
+  const freshGrad = useWatch({ control, name: "freshGrad" });
 
   /**
    * Toggle profile-target prefill for this search form.
@@ -129,6 +132,7 @@ export function SearchBar({
       sources: selectedSources,
       limit: values.limit,
       remote_only: values.remoteOnly,
+      fresh_grad_mode: values.freshGrad,
     };
 
     logger.info(`Submitting search request: ${JSON.stringify(request)}`);
@@ -196,6 +200,20 @@ export function SearchBar({
           />
           <Label htmlFor="remote" className="cursor-pointer">
             Remote only
+          </Label>
+        </div>
+        <div className="flex items-center gap-2 pb-0.5">
+          <Switch
+            id="fresh-grad"
+            checked={freshGrad}
+            onCheckedChange={(v) => setValue("freshGrad", v)}
+          />
+          <Label
+            htmlFor="fresh-grad"
+            className="cursor-pointer"
+            title="Boost junior and graduate roles when scoring"
+          >
+            Fresh graduate
           </Label>
         </div>
         <Button type="submit" variant={noSources ? "outline" : "default"}>

@@ -99,7 +99,9 @@ class PipelineStages:
         self.scraper_manager = ScraperManager()
         self.job_filter = JobFilter()
         self.quick_filter = QuickFilter()
-        self.job_matcher = JobMatcher()
+        self.job_matcher = JobMatcher(
+            fresh_grad_mode=self.context.config.get("fresh_grad_mode", False)
+        )
         self.scam_detector = JobScamDetector(
             threshold=self.context.config.get("scam_threshold", 0.7)
         )
@@ -114,6 +116,9 @@ class PipelineStages:
         self.auto_submitter = AutoSubmitter(
             dry_run=self.context.config.get("dry_run", True),
             delay_between_submissions=self.context.config.get("submission_delay", 2.0),
+            max_submissions_per_hour=self.context.config.get(
+                "max_submissions_per_hour", 30
+            ),
         )
 
         # Initialize RAG components (lazy, graceful degradation)

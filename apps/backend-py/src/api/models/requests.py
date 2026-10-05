@@ -9,9 +9,25 @@ Date: 2026-04-21
 
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ...utils.text_normalizer import normalize_user_prose
+
+# Must match ``PipelineStage`` order in ``pipeline/orchestrator.py``.
+PIPELINE_STAGE_ORDER = (
+    "scrape",
+    "deduplicate",
+    "filter_scams",
+    "filter_by_profile",
+    "score_and_rank",
+    "rag_rank",
+    "detect_auto_submit",
+    "linkedin_auth",
+    "present_selection",
+    "generate_resumes",
+    "submit_applications",
+)
+DISCOVER_LAST_STAGE = "rag_rank"
 
 # Accepted by pipeline/search request models. Careers@Gov is a delayed
 # dump adapter (opt-in via CAREERSATGOV_ENABLED).
@@ -94,15 +110,29 @@ class PipelineStartRequest(BaseModel):
     max_jobs: int = Field(
         default=20, ge=1, le=100, description="Maximum jobs to present"
     )
+    fresh_grad_mode: bool = Field(
+        default=False,
+        description="Score with fresh graduate weights (projects/education over experience)",
+    )
+
+    # Submission pacing (full mode only)
+    submission_delay: float = Field(
+        default=2.0,
+        ge=0.5,
+        le=60.0,
+        description="Seconds between submissions",
+    )
+    max_submissions_per_hour: int = Field(
+        default=30,
+        ge=1,
+        le=100,
+        description="Maximum submissions per hour",
+    )
 
     # Stage control
-    start_from: Optional[str] = Field(
-        default=None,
-        description="Resume from this stage",
-    )
     stop_at: Optional[str] = Field(
         default=None,
-        description="Stop at this stage",
+        description="Stop after this stage (discover mode allows up to rag_rank)",
     )
 
     # Profile (optional - will use existing if not provided)
@@ -126,26 +156,45 @@ class PipelineStartRequest(BaseModel):
             raise ValueError(f"Invalid mode: {v}. Must be one of {allowed}")
         return v
 
-    @field_validator("start_from", "stop_at")
+    @field_validator("stop_at")
     @classmethod
-    def validate_stages(cls, v: Optional[str]) -> Optional[str]:
-        """Validate stage names."""
-        valid_stages = {
-            "scrape",
-            "deduplicate",
-            "filter_scams",
-            "filter_by_profile",
-            "score_and_rank",
-            "rag_rank",
-            "detect_auto_submit",
-            "linkedin_auth",
-            "present_selection",
-            "generate_resumes",
-            "submit_applications",
-        }
-        if v is not None and v not in valid_stages:
+    def validate_stop_at(cls, v: Optional[str]) -> Optional[str]:
+        """Validate the stop stage name.
+
+        Args:
+            v: Stage name from the client, or None to run to the mode's end.
+
+        Returns:
+            The same stage name when valid.
+
+        Raises:
+            ValueError: If the stage name is unknown.
+        """
+        if v is not None and v not in PIPELINE_STAGE_ORDER:
             raise ValueError(f"Invalid stage: {v}")
         return v
+
+    @model_validator(mode="after")
+    def validate_stop_at_for_mode(self) -> "PipelineStartRequest":
+        """Reject discover-mode stop stages past ``rag_rank``.
+
+        Returns:
+            The validated request.
+
+        Raises:
+            ValueError: If discover mode asks to stop after an apply stage.
+        """
+        if (
+            self.mode == "discover"
+            and self.stop_at is not None
+            and PIPELINE_STAGE_ORDER.index(self.stop_at)
+            > PIPELINE_STAGE_ORDER.index(DISCOVER_LAST_STAGE)
+        ):
+            raise ValueError(
+                f"Discover mode stops at {DISCOVER_LAST_STAGE} or earlier; "
+                f"got {self.stop_at}"
+            )
+        return self
 
 
 class JobSearchRequest(BaseModel):

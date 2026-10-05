@@ -33,6 +33,27 @@ class TestPipelineOrchestrator:
         assert orchestrator.config == config
         assert orchestrator.user_profile == sample_user_profile
 
+    def test_config_reaches_matcher_and_submitter(
+        self, sample_user_profile, temp_data_dir
+    ):
+        """Fresh-grad mode and submission pacing reach the stage components."""
+        config = PipelineConfig(
+            keywords=["python"],
+            locations=["remote"],
+            fresh_grad_mode=True,
+            submission_delay=5.0,
+            max_submissions_per_hour=7,
+        )
+
+        orchestrator = PipelineOrchestrator(
+            config=config,
+            user_profile=sample_user_profile,
+        )
+
+        assert orchestrator.stages.job_matcher.fresh_grad_mode is True
+        assert orchestrator.stages.auto_submitter.delay == 5.0
+        assert orchestrator.stages.auto_submitter.max_submissions_per_hour == 7
+
     def test_pipeline_dry_run(self, sample_user_profile, temp_data_dir):
         """Test running pipeline in dry-run mode."""
         config = PipelineConfig(

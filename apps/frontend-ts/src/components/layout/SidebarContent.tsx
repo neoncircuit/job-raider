@@ -12,6 +12,7 @@ import {
   Link as LinkIcon,
   Mail,
   Compass,
+  ScrollText,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ConnectionStatus } from "./ConnectionStatus";
@@ -90,6 +91,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "System",
     items: [
       { href: "/metrics", icon: <BarChart3 size={16} />, label: "Metrics" },
+      { href: "/logs", icon: <ScrollText size={16} />, label: "Logs" },
       { href: "/settings", icon: <Settings size={16} />, label: "Settings" },
     ],
   },

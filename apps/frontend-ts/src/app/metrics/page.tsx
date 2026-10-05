@@ -18,6 +18,8 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
 import { EmptyState } from "@/components/layout/EmptyState";
+import { AgentSystemCard } from "@/components/agent-system-card";
+import { ModelCompareCard } from "@/components/model-compare-card";
 import {
   formatCurrency,
   formatPercentage,
@@ -281,6 +283,10 @@ export default function MetricsPage() {
           })()}
         </>
       )}
+
+      <ModelCompareCard />
+
+      <AgentSystemCard />
     </PageContainer>
   );
 }

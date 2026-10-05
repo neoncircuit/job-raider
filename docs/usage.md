@@ -66,6 +66,31 @@ flowchart LR
 
 OCR / vision models are not used in this flow — job listings are text scraped from boards.
 
+### Pipeline page options
+
+The **Advanced options** panel on the Pipeline page gives the same controls as the CLI flags. You do not need a terminal to use them.
+
+```mermaid
+flowchart TD
+  Mode{"Run mode"} -->|Discover| D["Stop stages: Scrape to Semantic Re-rank"]
+  Mode -->|Full| F["Stop stages: all stages"]
+  F --> Pace["Submission delay and hourly cap"]
+  D --> Run["Start run"]
+  Pace --> Run
+  Fresh["Fresh graduate scoring"] --> Run
+```
+
+| UI control | CLI flag | Range | Default | Modes |
+|------------|----------|-------|---------|-------|
+| Fresh graduate scoring | `--fresh-grad` | on or off | off | Discover, Full |
+| Stop after stage | `--stop-at` | stages of the mode | all stages | Discover, Full |
+| Delay between submissions (s) | `--submission-delay` | 0.5 to 60 | 2 | Full |
+| Max submissions per hour | `--max-submissions` | 1 to 100 | 30 | Full |
+
+- In Discover mode, the last stage you can select is Semantic Re-rank. The API rejects a later stop stage.
+- When you change from Full to Discover, a stop stage that Discover does not have is cleared.
+- The **Fresh graduate** switch on the Jobs search bar applies the same scoring to a direct search.
+
 ### Basic Usage
 
 #### Interactive Mode
@@ -102,12 +127,12 @@ python main.py \
   --sources linkedin jsearch \
   --no-dry-run
 
-# Resume from specific stage
+# Stop after scoring
 cd apps/backend-py
 python main.py \
   --resume my_resume.pdf \
   --keywords "SWE" \
-  --start-from score_and_rank
+  --stop-at score_and_rank
 ```
 
 ## Command-Line Options
@@ -138,8 +163,9 @@ python main.py \
 | `--dry-run` | Simulate submissions | true |
 | `--no-dry-run` | Enable actual submissions | - |
 | `--skip-submission` | Skip submission entirely | false |
-| `--start-from STAGE` | Resume from stage | - |
-| `--stop-at STAGE` | Stop at stage | - |
+| `--stop-at STAGE` | Stop after this stage | - |
+
+Resume from a stage is not available. The pipeline does not save the output of each stage, so every run starts at the scrape stage.
 
 #### Scoring Options
 
@@ -227,15 +253,15 @@ python main.py \
   --no-dry-run
 ```
 
-### Example 5: Resume from Specific Stage
+### Example 5: Fresh Graduate Search That Stops After Scoring
 
 ```bash
-# Resume from resume generation (skip scraping)
 cd apps/backend-py
 python main.py \
   --resume ~/resume.pdf \
   --keywords "python" \
-  --start-from generate_resumes
+  --fresh-grad \
+  --stop-at score_and_rank
 ```
 
 ## Pipeline Stages
@@ -409,6 +435,18 @@ The multi-agent system exposes career-coaching endpoints under `/api/agents/*`. 
 
 ### Check Agent System Status
 
+In the app, open **Metrics** and scroll to **Agent system**. The card shows coordinator and message bus health, the task totals, and one row for each agent (state, tasks, success rate, average time, load). It refreshes every 15 seconds. The card is read-only. To shut down the agent system, use the API (see Other Endpoints).
+
+```mermaid
+flowchart LR
+  Card["Metrics: Agent system card"] -->|every 15 s| Status["GET /api/agents/status"]
+  Card -->|every 15 s| Perf["GET /api/agents/performance"]
+  Status --> Coord["Agent coordinator"]
+  Perf --> Coord
+```
+
+To check from a terminal:
+
 ```bash
 # Verify the agent system is initialized and ready
 curl -s http://localhost:8000/api/agents/status | jq .
@@ -547,7 +585,8 @@ http://localhost:3000
 - **LinkedIn Analysis** - Inbound-attraction scoring and recruiter-focused profile recommendations
 - **Cover Letter** - Paste a job description, or upload a PDF/DOCX to fill the JD field, then generate/review and export. Upload extracts text only; you must still click Generate. After generate, the result shows model, stage timings (draft / review / rewrite / total), and LLM token consumption (total, with prompt/completion split when available). Two export actions: **Export full analysis** (JSON snapshot for quality control and model compares — job details, fit score/breakdown, letter text, writer settings, timing/tokens, proofread scores, reviewer feedback, timestamp) and **Export cover letter PDF** (letter body only). Fit assess uses standard JobMatcher weights (keyword / skills / experience / location); the breakdown lists only scored categories. Keyword points are overlap between your Job Targets keywords and the JD, not raw JD term density. Proofread scores use severity-weighted grounding: vague wording costs less than fabricated scope or technique mismatches. Fabricated-technology checks ignore honest disclaimers and learn-intent phrasing (for example “rather than Java” or “eager to pick up Java”). The UI shows flagged sentences and the grounding deduction breakdown before you send. If a scanned PDF has no text layer, paste the JD text instead. Optional Settings toggle **Company mission grounding** (default off) may attach a verified web mission brief; ambiguous companies skip without inventing mission text. When mission grounding passes, the result shows numbered **Sources** citations above the letter (winning page first, up to two same-site corroborating pages, max 3). Cross-domain near-misses are not cited. Phase C (always on) scans every pasted JD for submission asks: length-constrained “why this interests you” blocks (any confident lines/sentences/words range near interest/mission cues—not only “3–4 lines”) and explicit include-link asks. When a length ask is detected, Generate **replaces** the full letter with that short answer. Inclusion asks inject profile URLs when present. A banner shows detections while you edit the JD; review output before a live application.
 - **Career Coach** - Agent-backed career guidance (requires an active profile)
-- **Metrics** - Cost tracking and outcome statistics
+- **Metrics** - Cost tracking, outcome statistics, cover-letter model comparison, and agent system status
+- **Logs** - Recent API log records with level, component, and text filters (secrets removed)
 - **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits (including optional company-mission grounding for cover letters, default off); optional **color scheme** swatch grid (Raid through Stained glass), **Cinematic atmosphere** (local, off by default), and **Date & time** format/timezone prefs (system, profile location, or manual IANA; applies app-wide via ``formatDate`` / ``formatDatetime``)
 
 **DISC Work Style Assessment:**
@@ -573,22 +612,98 @@ http://localhost:3000
 - Recommended defaults remain `qwen2.5:3b` and `qwen2.5:7b`; any installed model may be saved as your default
 - For local cover-letter drafting on `qwen2.5:7b`, enable **Review & rewrite** on the Cover Letter page. One critique + rewrite pass improves structure without loading a larger GPU model. Avoid hopping to `qwen3.5:9b` on hosts with GPU IRQL / StoreMI instability; compare only lighter tags such as `qwen3.5:4b` one model at a time if you A/B.
 
-**Safe local cover-letter A/B (7b vs 4b):**
+### Logs page
+
+The **Logs** page (sidebar, between Metrics and Settings) shows the recent API log records. The API keeps the last 2000 records at INFO level or higher in memory. The API removes secrets from each record before it keeps it: values of environment variables with KEY, TOKEN, SECRET, PASSWORD, or DSN in the name, and known API key patterns. The buffer clears when the API restarts. Use `docker compose logs` for older records.
+
+```mermaid
+flowchart LR
+    A[API loggers] --> B[Ring buffer handler]
+    B -->|Remove secrets| C[(Last 2000 records)]
+    D[Logs page] -->|GET /api/logs<br/>level, component, q| C
+    C --> D
+```
+
+| Control | Function |
+|---|---|
+| Level | Show records at this level or higher (INFO, WARNING, ERROR, CRITICAL). |
+| Component | Show records from one logger name prefix. |
+| Search | Show records that contain the text. |
+| Auto-refresh | Read new records every 3 seconds. |
+| Copy | Copy the records on screen to the clipboard. |
+
+### Model comparison (cover letters)
+
+The **Model comparison** card on the Metrics page runs the safe cover-letter A/B of `qwen2.5:7b` and `qwen3.5:4b` on three fixed job fixtures. The API loads one model at a time, unloads it, and waits 20 seconds before the next model. The API logs each run to MLflow (experiment `cover_letter_model_compare`) and saves the report to `apps/backend-py/data/outputs/cover_letter_model_ab.json`.
+
+```mermaid
+flowchart TD
+    A[Run compare button] --> B[Confirm GPU warning]
+    B --> C{Allow-list and installed?}
+    C -->|No| D[Error toast: 400]
+    C -->|Another run active| E[Error toast: 409]
+    C -->|Yes| F[For each model]
+    F --> G[Generate each fixture letter]
+    G --> H[Score with validator]
+    H --> I[Unload model and cool down]
+    I --> F
+    F -->|Done| J[Save JSON report]
+    J --> K[Log run to MLflow]
+    K --> L[Card shows winner and MLflow link]
+```
+
+Rules:
+
+- The API accepts only the allow-list models. It refuses `qwen3.5:9b` and larger models.
+- Both models must be installed. Pull a missing model on Settings, Local models.
+- Only one compare runs at a time.
+- Do not run other heavy GPU work during a compare.
+
+The card shows the winner, the mean validator score, the number of valid cases, the mean generation time, and a link to the MLflow run.
+
+**Command-line compare (optional):**
+
+The same compare also runs from the command line. It writes the same report and logs to MLflow.
+
+Dry-run (checks the allow-list and installed tags, no generation):
 
 ```bash
-# From apps/backend-py with .venv active
-# Dry-run: check allow-list + installed tags (no generate)
 python scripts/compare_cover_letter_models.py --dry-run
+```
 
-# When ready (one model at a time; cool-down between models):
-# ollama pull qwen3.5:4b
+Full compare from `apps/backend-py` with `.venv` active:
+
+```bash
 python scripts/compare_cover_letter_models.py --models qwen2.5:7b qwen3.5:4b
 ```
 
-Do not pull or compare `qwen3.5:9b` on unstable GPU hosts. Measured A/B (2026-08-25, three fixed JDs): `qwen2.5:7b` mean validator score 83.0 beat `qwen3.5:4b` at 77.67. Keep the recommended large/writer default on `qwen2.5:7b`.
+Compare without MLflow logging:
+
+```bash
+python scripts/compare_cover_letter_models.py --no-mlflow
+```
+
+Measured A/B (2026-08-25, three fixed JDs): `qwen2.5:7b` mean validator score 83.0 beat `qwen3.5:4b` at 77.67. Keep the recommended large/writer default on `qwen2.5:7b`.
+
 ### Pulling Ollama Models
 
-Models are stored in a persistent Docker volume and pulled on first use. To pre-pull models:
+Use **Settings > Local models** in the app. The card lists the installed models, pulls a model with a progress bar, and deletes a model after you confirm. The backend calls the Ollama HTTP API. The app does not use `docker exec` or the Docker socket.
+
+```mermaid
+flowchart LR
+  Card["Settings: Local models"] --> API["/api/settings/ollama/*"]
+  API --> Guards{"Guards"}
+  Guards -->|pass| Ollama["Ollama HTTP API"]
+  Guards -->|9B or more| Refuse400["Refuse pull"]
+  Guards -->|pull running| Refuse409["Refuse second pull"]
+  Guards -->|model in use| RefuseDelete["Refuse delete"]
+```
+
+- Only one pull runs at a time.
+- The backend refuses a model of 9B parameters or more (for example `qwen3.5:9b`, `gemma3:12b`, `mixtral:8x7b`). This host is unstable under large models.
+- You cannot delete a model that model routing or RAG embedding uses. These models show **In use**. Change routing first.
+
+To pull from a terminal instead:
 
 ```bash
 # Pull models into the Ollama container

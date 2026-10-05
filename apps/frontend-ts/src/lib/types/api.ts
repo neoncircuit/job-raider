@@ -82,6 +82,14 @@ export interface PipelineStartRequest {
   min_score: number;
   scam_threshold: number;
   max_jobs: number;
+  /** Score with fresh-graduate weights (junior roles boosted). */
+  fresh_grad_mode?: boolean;
+  /** Seconds between submissions (0.5 to 60). Full mode only. */
+  submission_delay?: number;
+  /** Hourly submission cap (1 to 100). Full mode only. */
+  max_submissions_per_hour?: number;
+  /** Last stage to run. Discover mode allows up to `rag_rank`. */
+  stop_at?: string | null;
 }
 
 export interface PipelineStatusResponse {
@@ -704,6 +712,94 @@ export interface AvailableModelsResponse {
   [provider: string]: string[] | { small: string; large: string } | undefined;
 }
 
+/** One installed model from ``GET /api/settings/ollama/models``. */
+export interface OllamaInstalledModel {
+  name: string;
+  size: number;
+  modified_at?: string | null;
+  parameter_size?: string | null;
+  /** True when routing or RAG embedding uses it (delete is refused). */
+  in_use: boolean;
+}
+
+/** Response of ``GET /api/settings/ollama/models``. */
+export interface OllamaModelList {
+  host: string;
+  reachable: boolean;
+  error?: string;
+  models: OllamaInstalledModel[];
+  in_use: string[];
+}
+
+/** Minimum level filter accepted by ``GET /api/logs``. */
+export type LogLevel = "INFO" | "WARNING" | "ERROR" | "CRITICAL";
+
+/** One redacted record from the API log buffer. */
+export interface LogRecord {
+  seq: number;
+  timestamp: string;
+  level: LogLevel | "DEBUG";
+  logger: string;
+  message: string;
+}
+
+/** Response of ``GET /api/logs``. */
+export interface LogsResponse {
+  records: LogRecord[];
+  latest_seq: number;
+  capacity: number;
+  loggers: string[];
+}
+
+/** One fixture result in a cover-letter model compare. */
+export interface CompareCaseResult {
+  case_id: string;
+  score: number;
+  is_valid: boolean;
+  elapsed_ms: number;
+  word_count: number;
+  preview: string;
+}
+
+/** Per-model results in a cover-letter model compare. */
+export interface CompareModelReport {
+  model: string;
+  mean_score: number | null;
+  cases: CompareCaseResult[];
+}
+
+/** Saved cover-letter model compare report. */
+export interface CompareReport {
+  generated_at: string;
+  winner: string | null;
+  reports: CompareModelReport[];
+  mlflow?: { run_id: string; experiment_id: string; ui_url: string } | null;
+}
+
+/** Response of ``GET /api/evaluation/cover-letter-compare/status``. */
+export interface CompareState {
+  status: "idle" | "running" | "completed" | "failed";
+  models?: string[];
+  current_model?: string | null;
+  current_case?: string | null;
+  done?: number;
+  total?: number | null;
+  error?: string | null;
+  report?: CompareReport;
+}
+
+/** Response of ``GET /api/settings/ollama/pull/status``. */
+export interface OllamaPullState {
+  status: "idle" | "pulling" | "success" | "error";
+  model?: string;
+  message?: string;
+  completed?: number;
+  total?: number;
+  started_at?: string;
+  finished_at?: string | null;
+  error?: string | null;
+}
+
 // ── Resume Analysis ───────────────────────────────────────────────────────────
 
 export interface SkillAssessment {
@@ -982,6 +1078,40 @@ export interface TaskRecord<T = Record<string, unknown>> {
   error?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Per-agent status from ``GET /api/agents/status``. */
+export interface AgentStatusEntry {
+  agent_id: string;
+  state: string;
+  capabilities: { task_types: string[] };
+  performance: {
+    tasks_completed: number;
+    tasks_failed: number;
+    average_execution_time: number;
+    success_rate: number;
+    last_execution_time: string | null;
+    utilization: number;
+  };
+}
+
+/** Agent system status from ``GET /api/agents/status``. */
+export interface AgentSystemStatus {
+  coordinator_running: boolean;
+  communication_healthy: boolean;
+  registered_agents: number;
+  active_pipelines: number;
+  completed_pipelines: number;
+  agent_status: Record<string, AgentStatusEntry>;
+}
+
+/** Aggregated metrics from ``GET /api/agents/performance``. */
+export interface AgentPerformanceSummary {
+  total_tasks_completed: number;
+  total_tasks_failed: number;
+  average_success_rate: number;
+  average_execution_time: number;
+  agent_utilization: Record<string, number>;
 }
 
 // ── Career Coach ──────────────────────────────────────────────────────────────

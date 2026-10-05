@@ -244,6 +244,7 @@ def create_pipeline_config(args) -> PipelineConfig:
         skip_submission=args.skip_submission,
         min_score=args.min_score,
         scam_threshold=args.scam_threshold,
+        fresh_grad_mode=getattr(args, "fresh_grad", False),
         max_jobs_to_present=args.max_jobs,
         data_dir=args.data_dir,
         results_dir=args.results_dir,
@@ -293,11 +294,6 @@ def run_pipeline(args) -> int:
 
         # Run pipeline
         result = orchestrator.run(
-            start_from=(
-                PipelineStage(args.start_from)
-                if args.start_from
-                else PipelineStage.SCRAPE
-            ),
             stop_at=PipelineStage(args.stop_at) if args.stop_at else None,
         )
 
@@ -551,11 +547,11 @@ Examples:
   # Full pipeline with submission
   python main.py pipeline --resume my_resume.pdf --keywords "fintech AI" --locations "remote" --no-dry-run
 
-  # Resume from specific stage
-  python main.py pipeline --resume my_resume.pdf --keywords "SWE" --start-from score_and_rank
+  # Stop after scoring
+  python main.py pipeline --resume my_resume.pdf --keywords "SWE" --stop-at score_and_rank
 
-  # Run only specific stages
-  python main.py pipeline --resume my_resume.pdf --keywords "python" --start-from generate_resumes --stop-at submit_applications
+  # Fresh graduate scoring
+  python main.py pipeline --resume my_resume.pdf --keywords "python" --locations "singapore" --fresh-grad
         """,
     )
 
@@ -639,12 +635,6 @@ Examples:
         "--skip-submission", action="store_true", help="Skip submission stage entirely"
     )
     pipeline_parser.add_argument(
-        "--start-from",
-        type=str,
-        choices=[s.value for s in PipelineStage],
-        help="Resume pipeline from this stage",
-    )
-    pipeline_parser.add_argument(
         "--stop-at",
         type=str,
         choices=[s.value for s in PipelineStage],
@@ -661,6 +651,11 @@ Examples:
     )
     pipeline_parser.add_argument(
         "--max-jobs", type=int, default=20, help="Maximum jobs to present"
+    )
+    pipeline_parser.add_argument(
+        "--fresh-grad",
+        action="store_true",
+        help="Score with fresh graduate weights (projects/education over experience)",
     )
     pipeline_parser.add_argument(
         "--submission-delay",
@@ -781,12 +776,6 @@ Examples:
         help="Skip submission stage entirely",
     )
     parser.add_argument(
-        "--start-from",
-        type=str,
-        choices=[s.value for s in PipelineStage],
-        help="Resume pipeline from this stage",
-    )
-    parser.add_argument(
         "--stop-at",
         type=str,
         choices=[s.value for s in PipelineStage],
@@ -811,6 +800,11 @@ Examples:
         type=int,
         default=20,
         help="Maximum jobs to present for selection (default: 20)",
+    )
+    parser.add_argument(
+        "--fresh-grad",
+        action="store_true",
+        help="Score with fresh graduate weights (projects/education over experience)",
     )
 
     # Submission options

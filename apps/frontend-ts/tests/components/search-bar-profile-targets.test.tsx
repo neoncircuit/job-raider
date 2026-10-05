@@ -69,3 +69,34 @@ describe("SearchBar use profile targets", () => {
     expect(screen.getByLabelText("Location")).toHaveValue("Singapore");
   });
 });
+
+describe("SearchBar fresh graduate option", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sends fresh_grad_mode false by default", async () => {
+    const user = userEvent.setup();
+    const { onSearch } = renderBar();
+
+    await user.type(screen.getByLabelText("Keywords"), "Python");
+    await user.click(screen.getByRole("button", { name: /Search/i }));
+
+    expect(onSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ fresh_grad_mode: false }),
+    );
+  });
+
+  it("sends fresh_grad_mode true when the switch is on", async () => {
+    const user = userEvent.setup();
+    const { onSearch } = renderBar();
+
+    await user.type(screen.getByLabelText("Keywords"), "Python");
+    await user.click(screen.getByRole("switch", { name: /Fresh graduate/i }));
+    await user.click(screen.getByRole("button", { name: /Search/i }));
+
+    expect(onSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ fresh_grad_mode: true }),
+    );
+  });
+});

@@ -28,6 +28,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..utils.app_version import get_app_version
+from ..utils.log_buffer import install_log_buffer
 from ..utils.logger import Components, get_logger
 from ..utils.sentry import init_sentry
 from .auth import verify_api_key
@@ -37,7 +38,9 @@ from .routes import (
     applications,
     assessment,
     cover_letter,
+    evaluation,
     jobs,
+    logs,
     metrics,
     pipeline,
     profile,
@@ -59,6 +62,7 @@ async def lifespan(app: FastAPI):
     """
     Lifespan context manager for startup and shutdown events.
     """
+    install_log_buffer()
     logger.info("Job Raider API starting up...")
     init_sentry()
 
@@ -325,6 +329,10 @@ app.include_router(
 )
 app.include_router(
     assessment.router, prefix="/api/assessment", tags=["Assessment"], dependencies=_auth
+)
+app.include_router(logs.router, prefix="/api/logs", tags=["Logs"], dependencies=_auth)
+app.include_router(
+    evaluation.router, prefix="/api/evaluation", tags=["Evaluation"], dependencies=_auth
 )
 # The agents router declares its own prefix ("/api/agents") on the APIRouter
 # itself (see routes/agents.py), so it is registered here WITHOUT a prefix to

@@ -87,6 +87,11 @@ const schema = z.object({
   mode: z.enum(["discover", "full"]),
   dryRun: z.boolean(),
   skipSubmission: z.boolean(),
+  freshGrad: z.boolean(),
+  /** Empty string means "run every stage of the selected mode". */
+  stopAt: z.string(),
+  submissionDelay: z.number().min(0.5).max(60),
+  maxPerHour: z.number().int().min(1).max(100),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -113,6 +118,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
     handleSubmit,
     control,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -125,6 +131,10 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
       mode: "discover",
       dryRun: true,
       skipSubmission: true,
+      freshGrad: false,
+      stopAt: "",
+      submissionDelay: 2,
+      maxPerHour: 30,
     },
   });
 
@@ -150,6 +160,12 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
         mode: v.mode,
         dry_run: v.mode === "discover" ? true : v.dryRun,
         skip_submission: v.mode === "discover" ? true : v.skipSubmission,
+        fresh_grad_mode: v.freshGrad,
+        stop_at: v.stopAt || null,
+        ...(v.mode === "full" && {
+          submission_delay: v.submissionDelay,
+          max_submissions_per_hour: v.maxPerHour,
+        }),
       }),
     onSuccess: (data) => onStarted(data.run_id),
     onError: (error) =>
@@ -164,6 +180,24 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
   const dryRun = useWatch({ control, name: "dryRun" });
   const mode = useWatch({ control, name: "mode" });
   const skipSubmission = useWatch({ control, name: "skipSubmission" });
+  const freshGrad = useWatch({ control, name: "freshGrad" });
+  const stopStages =
+    mode === "full" ? PIPELINE_STAGES : DISCOVER_PIPELINE_STAGES;
+
+  /**
+   * Switch run mode and clear a stop stage the new mode does not allow.
+   *
+   * @param next - The run mode to select.
+   */
+  const selectMode = (next: FormValues["mode"]) => {
+    setValue("mode", next);
+    if (
+      next === "discover" &&
+      !DISCOVER_PIPELINE_STAGES.some((s) => s.key === getValues("stopAt"))
+    ) {
+      setValue("stopAt", "");
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit((v) => start.mutate(v))} className="space-y-5">
@@ -181,7 +215,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
               type="radio"
               className="mt-1"
               checked={mode === "discover"}
-              onChange={() => setValue("mode", "discover")}
+              onChange={() => selectMode("discover")}
             />
             <span>
               <span className="text-sm font-medium text-foreground">
@@ -197,7 +231,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
               type="radio"
               className="mt-1"
               checked={mode === "full"}
-              onChange={() => setValue("mode", "full")}
+              onChange={() => selectMode("full")}
             />
             <span>
               <span className="text-sm font-medium text-foreground">
@@ -320,6 +354,72 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
             </div>
           </>
         )}
+      </div>
+
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <Label className="text-sm font-medium">Advanced options</Label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="fresh_grad"
+              checked={freshGrad}
+              onCheckedChange={(v) => setValue("freshGrad", v)}
+            />
+            <Label htmlFor="fresh_grad">Fresh graduate scoring</Label>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="stop_at">Stop after stage</Label>
+            <select
+              id="stop_at"
+              {...register("stopAt")}
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
+            >
+              <option value="">Run all stages</option>
+              {stopStages.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {mode === "full" && (
+            <>
+              <div className="space-y-1">
+                <Label htmlFor="submission_delay">
+                  Delay between submissions (s)
+                </Label>
+                <Input
+                  id="submission_delay"
+                  type="number"
+                  step="0.5"
+                  min={0.5}
+                  max={60}
+                  {...register("submissionDelay", { valueAsNumber: true })}
+                />
+                {errors.submissionDelay && (
+                  <p className="text-xs text-destructive">
+                    Use a value from 0.5 to 60.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="max_per_hour">Max submissions per hour</Label>
+                <Input
+                  id="max_per_hour"
+                  type="number"
+                  min={1}
+                  max={100}
+                  {...register("maxPerHour", { valueAsNumber: true })}
+                />
+                {errors.maxPerHour && (
+                  <p className="text-xs text-destructive">
+                    Use a whole number from 1 to 100.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {mode === "full" && !dryRun && (

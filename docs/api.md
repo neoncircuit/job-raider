@@ -51,10 +51,15 @@ result = orchestrator.run()
 | `min_score` | `int` | `60` | Minimum relevance score (0-100) |
 | `scam_threshold` | `float` | `0.7` | Scam detection threshold (0-1) |
 | `max_jobs_to_present` | `int` | `20` | Max jobs to present for selection |
+| `fresh_grad_mode` | `bool` | `False` | Use fresh graduate scoring weights |
+| `submission_delay` | `float` | `2.0` | Seconds between submissions |
+| `max_submissions_per_hour` | `int` | `30` | Hourly submission cap |
+
+`POST /api/pipeline/start` accepts `fresh_grad_mode`, `submission_delay` (0.5 to 60), `max_submissions_per_hour` (1 to 100) and `stop_at` (a stage name). In discover mode, `stop_at` must be `rag_rank` or an earlier stage. The API does not accept `start_from`.
 
 **Methods:**
 
-- `run(start_from, stop_at)` - Run the pipeline
+- `run(start_from, stop_at)` - Run the pipeline. `start_from` is for tests only; stage outputs are not saved, so a real resume is not possible.
 - `register_before_hook(stage, hook)` - Register pre-stage callback
 - `register_after_hook(stage, hook)` - Register post-stage callback
 
@@ -1145,6 +1150,74 @@ Public lightweight CPU / RAM / GPU snapshot for the sidebar meter (about every 5
   "gpu": null
 }
 ```
+
+#### Local Ollama model management
+
+| Method and path | Function |
+|---|---|
+| `GET /api/settings/ollama/models` | List installed models with size, parameter size, and `in_use`. Returns `reachable: false` when Ollama is down. |
+| `POST /api/settings/ollama/pull` | Body `{"model": "qwen2.5:3b"}`. Starts a background pull (202). Refuses models of 9B parameters or more (400) and a second pull (409). |
+| `GET /api/settings/ollama/pull/status` | Pull progress: `status` (idle, pulling, success, error), `completed`, `total`. |
+| `DELETE /api/settings/ollama/models/{name}` | Delete a model. Refuses models used by routing or RAG embedding (409) and models that are not installed (404). |
+
+### Logs API
+
+#### GET /api/logs
+
+Read recent API log records from the in-memory buffer (last 2000 records, INFO or higher). The API removes secrets before it keeps a record.
+
+**Query Parameters:**
+- `level` (default: INFO) - Minimum level: INFO, WARNING, ERROR, CRITICAL
+- `component` (optional) - Logger name prefix
+- `q` (optional) - Case-insensitive text search
+- `after` (optional) - Return only records with `seq` greater than this value
+- `limit` (default: 500, max 2000) - Newest records to return
+
+**Response:**
+```json
+{
+  "records": [
+    {
+      "seq": 41,
+      "timestamp": "2026-10-05T12:00:00",
+      "level": "INFO",
+      "logger": "job_raider.pipeline",
+      "message": "Pipeline started"
+    }
+  ],
+  "latest_seq": 41,
+  "capacity": 2000,
+  "loggers": ["job_raider.pipeline"]
+}
+```
+
+### Evaluation API
+
+Run the safe cover-letter model compare (`qwen2.5:7b` and `qwen3.5:4b` only, one model at a time). Each run is logged to MLflow experiment `cover_letter_model_compare`.
+
+```mermaid
+sequenceDiagram
+    participant UI as Metrics page
+    participant API as Evaluation API
+    participant O as Ollama
+    participant M as MLflow
+    UI->>API: POST /cover-letter-compare
+    API->>O: GET /api/tags (installed check)
+    API-->>UI: 202 running
+    loop Each model
+        API->>O: Generate fixture letters
+        API->>O: Unload model, then cool down
+    end
+    API->>M: Log params, metrics, report artifact
+    UI->>API: GET /cover-letter-compare/status
+    API-->>UI: completed, report, MLflow link
+```
+
+| Method and path | Function |
+|---|---|
+| `POST /api/evaluation/cover-letter-compare` | Body `{"models": ["qwen2.5:7b", "qwen3.5:4b"], "cool_down_s": 20}` (both optional). Returns 202. Refuses non-allow-list models (400), models that are not installed (400), and a second run (409). |
+| `GET /api/evaluation/cover-letter-compare/status` | Progress: `status` (idle, running, completed, failed), `current_model`, `current_case`, `done`, `total`, and `report` when completed. |
+| `GET /api/evaluation/cover-letter-compare/latest` | Last saved report (from the app or the CLI), or `{"report": null}`. |
 
 ### Settings Model Reference
 

@@ -7,11 +7,13 @@ Author: Job Raider
 Date: 2026-04-24
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
+from ...api import ollama_admin
 from ...api.ollama_models import (
     RECOMMENDED_OLLAMA_LARGE,
     RECOMMENDED_OLLAMA_SMALL,
@@ -316,3 +318,109 @@ async def get_default_routing() -> Dict[str, Dict[str, str]]:
     """
     loader = get_config_loader()
     return loader.get_default_routing_from_config()
+
+
+# ── Local Ollama model management ─────────────────────────────────────────────
+
+
+class OllamaPullRequest(BaseModel):
+    """Request body for pulling an Ollama model."""
+
+    model: str = Field(description="Model tag, for example qwen2.5:3b")
+
+
+def _embedding_model() -> str:
+    """Read the RAG embedding model tag.
+
+    Returns:
+        Embedding model tag from ``config/rag_config.yaml``, or the default.
+    """
+    try:
+        from ...rag.config import RAGConfig
+
+        return RAGConfig.from_yaml("config/rag_config.yaml").embedding.model
+    except Exception:  # noqa: BLE001 - missing config uses the default
+        return "nomic-embed-text"
+
+
+def _ollama_context() -> Tuple[str, Set[str]]:
+    """Resolve the Ollama host and the models that must stay installed.
+
+    Returns:
+        Tuple of effective host string and in-use model tags.
+    """
+    settings = get_storage().load_settings()
+    host = resolve_effective_ollama_host(settings.api_config.ollama_host)
+    return host, ollama_admin.models_in_use(settings, _embedding_model())
+
+
+@router.get("/ollama/models", response_model=Dict[str, Any])
+async def list_ollama_models() -> Dict[str, Any]:
+    """
+    List installed Ollama models with size and in-use flags.
+
+    Returns:
+        Dict with ``host``, ``reachable``, ``models``, and ``in_use``.
+    """
+    host, used = _ollama_context()
+    return await run_in_threadpool(ollama_admin.list_models, host, used)
+
+
+@router.post("/ollama/pull", status_code=202, response_model=Dict[str, Any])
+async def pull_ollama_model(
+    body: OllamaPullRequest, background_tasks: BackgroundTasks
+) -> Dict[str, Any]:
+    """
+    Start pulling an Ollama model in the background.
+
+    Only one pull runs at a time. Models of 9B parameters or more are refused.
+
+    Args:
+        body: Model tag to pull.
+        background_tasks: FastAPI background task runner.
+
+    Returns:
+        The pull state after the pull starts.
+    """
+    host, _used = _ollama_context()
+    try:
+        name = ollama_admin.validate_model_name(body.model)
+        ollama_admin.check_pull_allowed(name)
+        state = ollama_admin.begin_pull(name)
+    except ollama_admin.OllamaAdminError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    background_tasks.add_task(ollama_admin.run_pull, host, name)
+    logger.info("Ollama pull started: %s", name)
+    return state
+
+
+@router.get("/ollama/pull/status", response_model=Dict[str, Any])
+async def ollama_pull_status() -> Dict[str, Any]:
+    """
+    Get the progress of the current or last Ollama pull.
+
+    Returns:
+        Pull state with ``status``, ``model``, ``completed``, and ``total``.
+    """
+    return ollama_admin.get_pull_state()
+
+
+@router.delete("/ollama/models/{name:path}", response_model=Dict[str, Any])
+async def delete_ollama_model(name: str) -> Dict[str, Any]:
+    """
+    Delete an installed Ollama model that routing and RAG do not use.
+
+    Args:
+        name: Model tag to delete.
+
+    Returns:
+        Dict with ``deleted`` model tag.
+    """
+    try:
+        tag = ollama_admin.validate_model_name(name)
+        host, used = _ollama_context()
+        await run_in_threadpool(ollama_admin.delete_model, host, tag, used)
+    except ollama_admin.OllamaAdminError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    logger.info("Ollama model deleted: %s", tag)
+    return {"deleted": tag}

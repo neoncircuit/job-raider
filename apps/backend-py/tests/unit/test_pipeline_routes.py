@@ -166,3 +166,91 @@ class TestStartPipeline:
         )
 
         assert resp.status_code == 422
+
+
+class TestPipelineOptions:
+    """Tests for fresh-grad, submission pacing, and stop-stage options."""
+
+    def _start(self, client, **extra):
+        """POST a start request and return the stored run record."""
+        from src.api.routes.pipeline import pipeline_runs
+
+        resp = client.post(
+            "/api/pipeline/start",
+            json={"keywords": ["python"], "locations": ["Singapore"], **extra},
+        )
+        assert resp.status_code == 200, resp.text
+        return pipeline_runs[resp.json()["run_id"]]
+
+    def test_options_reach_pipeline_config(self, client):
+        """Fresh-grad and pacing values are passed to PipelineConfig."""
+        run = self._start(
+            client,
+            mode="full",
+            fresh_grad_mode=True,
+            submission_delay=5,
+            max_submissions_per_hour=10,
+        )
+
+        config = run["config"]
+        assert config.fresh_grad_mode is True
+        assert config.submission_delay == 5
+        assert config.max_submissions_per_hour == 10
+
+    def test_defaults_keep_standard_scoring(self, client):
+        """Without options, scoring stays standard and pacing uses defaults."""
+        config = self._start(client)["config"]
+
+        assert config.fresh_grad_mode is False
+        assert config.submission_delay == 2.0
+        assert config.max_submissions_per_hour == 30
+
+    def test_discover_defaults_to_rag_rank(self, client):
+        """Discover mode without stop_at stops after rag_rank."""
+        assert self._start(client, mode="discover")["stop_at"] == "rag_rank"
+
+    def test_explicit_stop_at_is_stored(self, client):
+        """A chosen stop stage is honoured."""
+        run = self._start(client, mode="discover", stop_at="score_and_rank")
+        assert run["stop_at"] == "score_and_rank"
+
+    def test_full_mode_without_stop_runs_all_stages(self, client):
+        """Full mode without stop_at runs to the end."""
+        assert self._start(client, mode="full")["stop_at"] is None
+
+    @pytest.mark.parametrize(
+        "extra",
+        [
+            {"mode": "discover", "stop_at": "generate_resumes"},
+            {"stop_at": "not_a_stage"},
+            {"submission_delay": 0.1},
+            {"max_submissions_per_hour": 0},
+        ],
+    )
+    def test_invalid_options_return_422(self, client, extra):
+        """Out-of-range pacing and invalid stop stages fail validation."""
+        resp = client.post(
+            "/api/pipeline/start",
+            json={"keywords": ["python"], "locations": ["Singapore"], **extra},
+        )
+        assert resp.status_code == 422
+
+
+def test_resolve_stop_at():
+    """Stop-stage resolution follows mode defaults and explicit choices."""
+    from src.api.routes.pipeline import resolve_stop_at
+    from src.pipeline.orchestrator import PipelineStage
+
+    assert resolve_stop_at("discover", None) == PipelineStage.RAG_RANK
+    assert resolve_stop_at("full", None) is None
+    assert resolve_stop_at("full", "generate_resumes") == (
+        PipelineStage.GENERATE_RESUMES
+    )
+
+
+def test_stage_order_matches_orchestrator():
+    """The request model stage list mirrors the orchestrator enum."""
+    from src.api.models.requests import PIPELINE_STAGE_ORDER
+    from src.pipeline.orchestrator import PipelineStage
+
+    assert list(PIPELINE_STAGE_ORDER) == [s.value for s in PipelineStage]

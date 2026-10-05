@@ -1,5 +1,7 @@
 import { request } from "./client";
 import type {
+  AgentPerformanceSummary,
+  AgentSystemStatus,
   CareerAnalysisRequest,
   CareerAnalysisResult,
   CareerGoalsRequest,
@@ -97,6 +99,26 @@ export const agentsApi = {
         signal,
       },
     ),
+
+  /**
+   * Read the agent system status (coordinator, bus, and each agent).
+   *
+   * @param signal Optional abort signal.
+   * @returns Envelope containing the system status.
+   */
+  getStatus: (signal?: AbortSignal) =>
+    request<{ data: AgentSystemStatus }>("GET", "/agents/status", { signal }),
+
+  /**
+   * Read aggregated task metrics across all agents.
+   *
+   * @param signal Optional abort signal.
+   * @returns Envelope containing the performance summary.
+   */
+  getPerformance: (signal?: AbortSignal) =>
+    request<{ data: AgentPerformanceSummary }>("GET", "/agents/performance", {
+      signal,
+    }),
 };
 
 /** Convenience alias for the common Career Coach submission response. */

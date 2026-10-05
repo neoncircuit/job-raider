@@ -1021,7 +1021,8 @@ Rate limit reached: 35 submissions in last hour
 
 3. **Spread submissions:**
    ```bash
-   # Run multiple times with --start-from
+   # Increase the delay and lower the hourly cap
+   --submission-delay 10 --max-submissions 10
    ```
 
 ## Performance Issues
@@ -1045,9 +1046,9 @@ Rate limit reached: 35 submissions in last hour
    --max-jobs 10  # Instead of 20
    ```
 
-3. **Skip stages:**
+3. **Stop early:**
    ```bash
-   --start-from score_and_rank  # Skip scraping
+   --stop-at score_and_rank  # Skip generation and submission
    ```
 
 4. **Enable caching:**

@@ -72,6 +72,7 @@ class PipelineConfig:
     # Scoring thresholds
     min_score: int = 60
     scam_threshold: float = 0.7
+    fresh_grad_mode: bool = False
 
     # Selection
     max_jobs_to_present: int = 20
@@ -208,7 +209,9 @@ class PipelineOrchestrator:
             config={
                 "dry_run": config.dry_run,
                 "scam_threshold": config.scam_threshold,
+                "fresh_grad_mode": config.fresh_grad_mode,
                 "submission_delay": config.submission_delay,
+                "max_submissions_per_hour": config.max_submissions_per_hour,
             },
         )
 
@@ -660,6 +663,7 @@ class PipelineOrchestrator:
                 "sources": self.config.sources,
                 "dry_run": self.config.dry_run,
                 "min_score": self.config.min_score,
+                "fresh_grad_mode": self.config.fresh_grad_mode,
             },
             "stages": {},
         }

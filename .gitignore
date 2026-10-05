@@ -27,6 +27,9 @@ data/
 # Logs
 logs/
 *.log
+# The Logs page route and its tests are source, not log output
+!apps/frontend-ts/src/app/logs/
+!apps/frontend-ts/tests/app/logs/
 
 # Coverage
 .coverage

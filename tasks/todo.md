@@ -4885,3 +4885,178 @@ Real-JD + banner gate (2026-08-21, before live applications):
 - [x] Deployment/usage release ritual; `package.json` remains `0.1.0` in sync.
 - [x] Annotated local tag `v0.1.0` on baseline commit `5732673` (push tag when ready to publish).
 - [x] Cut `v0.2.0` after pending WIP lands (separate ask).
+
+## Future considerations
+
+### Jobs desk inspired by SupCareer (parked)
+
+Preferred direction when Jobs UX is next opened. Not the next mandatory sprint.
+Roadmap: `C:/Users/James/.cursor/plans/jobs_desk_future_073ad2df.plan.md`
+
+**Grounding rule:** Prefer structured JD skill extractor output. Use description heuristics only when structured skills are empty, and always treat them as inferred. Never present heuristic skills with the same confidence as extractor-backed skills.
+
+**Pause gate:** Pure UI/layout (Phase A shell, pane chrome, nav clustering that only moves links) may proceed alone. Any work that changes cover-letter generate, JobMatcher/fit scoring, or skill extractor / JD skill claims requires a deliberate pause and re-approve before Phase B or C starts (or before merge if exploration already began).
+
+```mermaid
+flowchart LR
+  filters[Filters_and_status] --> list[Job_list]
+  list --> detail[JD_detail_pane]
+  detail --> actions[Apply_Generate_Fit]
+  detail --> skills[Required_vs_Nice_skills]
+```
+
+#### When Jobs UX is next opened
+
+- [ ] **Phase A (UI-only):** Jobs master–detail shell + open-in-pane. No claim/fit/skill changes. May start without the pause gate.
+- [ ] **Pause checkpoint:** Before Phase B or C, stop for review if the work touches generate wiring, JobMatcher/fit, or skill extractor / claim presentation.
+- [ ] **Phase B:** Prefill Cover Letter / resume generate from the selected listing. Pause if any generator or matcher change goes beyond prefill handoff.
+- [ ] **Phase C:** Required / nice-to-have skill chips; inferred flag on heuristic fallback. Pause before extractor or fit-facing skill claims. Tests must cover the inferred path.
+- [ ] **Phase D:** Saved / Applied / Not applied + seniority chips. Reuse Applications state; pause if scoring changes.
+- [ ] **Phase E (UI-only):** Cluster analysis tools under secondary nav so primary stays Profile → Jobs → Applications → generate tools.
+
+Each phase is its own small PR with tests. Do not start Phase A until Jobs UX work is explicitly opened.
+
+**On first implementation:** Add a short decision-log entry: Jobs desk follows SupCareer-style master–detail and on-job actions; keep Job Raider grounding and local-first identity; inferred skills never share confidence with extractor skills.
+
+**Existing hooks:** `apps/frontend-ts/src/app/jobs/page.tsx`; Applications tracker; Cover Letter paths + assess / explain fit APIs; `apps/backend-py/src/extractors/paste_job.py` and listing models.
+
+**Out of scope to copy:** Purple consumer SaaS theming, Headshot, Premium upsell, Community chrome; shallow match CTAs that replace Pipeline / Metrics / grounding depth; three-pane layout on every page; heuristic JD skills shown as structured extraction facts.
+
+**Related parked item (separate):** Fresh-grad assess routing (auto-detect via `career_stage` vs explicit UI/API toggle for `fresh_grad_mode`).
+
+### Scam detector refinement — evolving outreach patterns (parked)
+
+Not the next mandatory sprint. Keep as a living backlog because scam tactics change faster than static rules.
+
+**Source cue (2026-09):** Field report of polished HR-impersonation after a real company apply: offer without interview, WhatsApp as easy contact, SMS follow-up on email. Company and copy looked legit; behaviour did not match real HR. Suspected job-portal CV harvest (email + phone + target role). Singapore retrenchment context raises seeker urgency.
+
+**Gap vs current detector:** Listing `JobScamDetector` and cover-letter `_scan_scam_flags` already cover messaging apps, personal email, no-interview / immediate-hire, and weak grammar or fake company. They miss (1) offer / contract language without a hiring process, (2) legit company + AI-clean copy, (3) multi-channel chase after apply (email → WhatsApp → SMS), (4) portal data-exposure product questions.
+
+#### When scam detection is next opened
+
+- [ ] **Listing / assess flags (cheap):** Add patterns for offer-before-interview, contract / onboarding without assessment, and HR contact via WhatsApp/Telegram paired with urgency or “we received your application.” Keep results as flags to review, not a hard “employer is fake” verdict. Extend tests so new patterns do not regress.
+- [ ] **Separate surface (later):** Optional screening or tips for inbound recruiter email/SMS (offer without interview, SMS chase, lookalike domains). Not a JD-only change.
+- [ ] **Product / privacy note (later):** Document that portals can expose CV contact data; seeker guidance when saving or applying. Out of scope for regex scoring alone.
+- [ ] **Review cadence:** Revisit indicator set when new field reports land; prefer small PRs and evaluation notebook updates over a big rewrite.
+
+**Existing hooks:** `apps/backend-py/src/scoring/scam_detector.py`; cover-letter `_scan_scam_flags` in `apps/backend-py/src/api/routes/cover_letter.py`; pipeline `filter_scams`; `notebooks/scam_detector_evaluation.ipynb`.
+
+**Do not start** until scam-detection work is explicitly opened. Prefer additive indicators and clearer seeker-facing copy over lowering the bar with noisy false positives.
+
+#### Employer and recruiter verification (later)
+
+- [ ] **Deterministic checks first:** Recruiter email domain vs official company domain, lookalike-domain detection (for example `companyx-careers.com`), domain age via WHOIS, and role present on the official careers page. Small Python checks; same answer every run.
+- [ ] **Agent research layer (optional, on request only):** Evaluate DeerFlow (ByteDance, v2.0 rewrite released February 2026, built on LangGraph and LangChain) or a similar agent harness when it matures. Use cases: verify a specific employer or recruiter contact with cited sources, and periodic research on new scam tactics to propose indicators for human review.
+
+**Agent layer rules:** Never run inside `filter_scams` or cover-letter assess (volume, latency, cost, and non-deterministic output). Findings show as sourced flags to review, never an automatic scam verdict. New indicators need human review before they enter `scam_detector.py`. Re-assess DeerFlow maturity, sandbox security (bash access), and local-model performance before any spike. Borrowing ideas (Markdown skills, isolated research sub-agents) without the framework is also an option.
+
+## Crawler replay prototype (2026-10-05)
+
+Goal: Show how a listing page is read. An animated "parasite" sends tentacles across the page words. Each grab shows one extraction decision: kept (field filled), discarded (boilerplate), or flagged (scam indicator).
+
+Scope: Frontend-only prototype on its own route (`/lab/crawler`). It replays a hand-written sample trace. It is not connected to the scrapers yet. No nav link, no backend change.
+
+```mermaid
+flowchart LR
+  trace[Sample_trace_specs] --> resolve[Resolve_phrases_to_word_ranges]
+  resolve --> replay[Replay_engine]
+  replay --> tentacles[Canvas_tentacles_FABRIK]
+  replay --> words[Word_states_kept_discarded_flagged]
+  replay --> fields[Extracted_fields_and_decision_log]
+```
+
+### Plan
+
+- [x] `src/lib/crawler-trace.ts`: trace types, sample listing + trace, phrase-to-word resolver, word-state and extracted-field helpers, FABRIK solver, easing.
+- [x] `src/components/crawler-replay.tsx`: word spans + canvas overlay, replay engine (reach, crawl, decide, retract), controls (play/pause, restart, skip, speed), decision log, reduced-motion fallback.
+- [x] `src/app/lab/crawler/page.tsx`: page shell with clear "sample trace, not live scraper" label.
+- [x] Tests: helper unit tests (resolver, states, fields, FABRIK lengths and reach) and component tests (skip, restart, reduced motion).
+- [x] Verify: Vitest, type-check, lint, Prettier; view the page in the browser.
+
+Honesty rule: every tentacle grab maps to one trace event. The animation never shows a decision that the trace does not contain.
+
+### Review
+
+- Result: `/lab/crawler` replays 15 decisions on a fictional Singapore listing. Kept words turn green and fill fields, boilerplate is struck through, the WhatsApp HR line is flagged red under "Scam flags". Checked in light and dark themes.
+- Checks: `tsc --noEmit`, ESLint, and Prettier clean on new files; Vitest 33 files / 173 tests pass (12 new).
+- Tentacle shape: FABRIK alone folded slack into sharp V shapes. Fixed by blending each frame's start pose toward a gentle arc before solving, and drawing quadratic curves through segment midpoints.
+- Environment: host `node_modules` is incomplete (no `.bin`, broken `vitest`). Checks ran in a throwaway `node:20-bookworm` container with named volumes `jr-fe-nm` (node_modules) and `jr-fe-next` (.next). The Next dev server in that container did not pick up file edits through the Windows bind mount; restart the container after edits.
+- Next steps (not started): emit real trace events from the scrapers (field, matched text, decision, reason) over the existing progress WebSocket; Playwright screenshot + `bounding_box()` mode; "How this listing was read" tab in the parked Jobs desk detail pane.
+
+## Button coverage for terminal-only operations (2026-10-05)
+
+Goal: Make each intended user operation available from the containerised app. Container lifecycle (`docker-run.sh`, `make docker-*`, `setup.sh`), developer checks (tests, lint, format), and one-off research scripts stay in the terminal. The app must not get the Docker socket.
+
+```mermaid
+flowchart LR
+  ui[Next_js_buttons] --> api[FastAPI_routes]
+  api --> pipeline[Pipeline_orchestrator]
+  api --> ollama[Host_Ollama_HTTP_API]
+  api --> compare[Model_compare_job]
+  compare --> mlflow[MLflow]
+  api --> ring[In_memory_log_buffer]
+```
+
+### Findings from the audit
+
+- `PipelineStartRequest` accepts `start_from` and `stop_at`, but `start_pipeline` does not pass them on. The API ignores both.
+- `start_from` cannot resume anywhere (CLI included). Stage outputs are not persisted; a run that starts at a later stage receives an empty list. Only the final shortlist is saved.
+- `docs/usage.md` documents `--fresh-grad`, but `main.py` and `PipelineConfig` do not implement it. Pipeline scoring always uses `JobMatcher()` standard mode. Job search accepts `fresh_grad_mode`, but no UI sends it.
+- Submission delay and hourly cap exist in `PipelineConfig` and the CLI, but not in the API.
+- Agent `/status` and `/performance` endpoints exist; no page shows them.
+- Ollama runs on the host (`host.docker.internal:11434`). The backend can use the Ollama HTTP API (`/api/tags`, `/api/pull`, `/api/delete`) without `docker exec`.
+- `scripts/compare_cover_letter_models.py` writes a JSON report only. It does not log to MLflow. `src/metrics/mlflow_tracker.py` exists for reuse.
+- The API process logs to the console only (`docker logs`). No file handler is set for the API.
+
+### Phase 1: Pipeline options (one PR)
+
+- [x] API: add `fresh_grad_mode`, `submission_delay` (0.5 to 60 s), and `max_submissions_per_hour` (1 to 100) to `PipelineStartRequest`; pass them and `stop_at` to the orchestrator. Discover mode caps `stop_at` at `rag_rank`.
+- [x] Orchestrator: add `fresh_grad_mode` to `PipelineConfig`; stages build `JobMatcher(fresh_grad_mode=...)`. No change to scoring logic (existing mode only). Also wired `max_submissions_per_hour` into `AutoSubmitter` (it was never passed before).
+- [x] `start_from` (decision 2026-10-05: remove): drop it from the API request, CLI flags, and docs. Park real stage resume (persist stage outputs) as a future item.
+- [x] UI: "Advanced options" section on Pipeline: fresh-grad switch, "Stop after stage" select (filtered by mode), submission delay and hourly cap (full mode only).
+- [x] UI: fresh-grad switch on Jobs search (API already supports it).
+- [x] CLI parity: add `--fresh-grad` to `main.py` so the docs are true.
+- [x] Tests: request validation, config pass-through, stop-at honoured, form payload.
+
+**Phase 1 review (2026-10-05):** Backend 912 passed (1 deselected: `test_app_version` needs the repo-root `VERSION` file, which the test container does not mount), Black clean. Frontend tsc, ESLint, Vitest 180 passed. Prettier flags only 8 files that had uncommitted edits before this work. Browser check on the dev server: discover lists 6 stop stages, full lists all stages plus pacing fields, and a full-only stop stage clears on switch to discover. Docs: `usage.md` (Pipeline page options section with diagram), `api.md`, `troubleshooting.md`.
+
+**Future item: real stage resume.** Persist each stage output (per run id) so a run can restart at a later stage. Needed before `start_from` returns to the API, CLI, or UI. `PipelineOrchestrator.run(start_from=...)` stays for tests only.
+
+### Phase 2: Agent status panel (one PR)
+
+- [x] Metrics page: read-only "Agent system" card from `/agents/status` and `/agents/performance` (registered agents, state, task counts, timing).
+- [x] No shutdown button (`/agents/shutdown` stays API-only).
+- [x] Tests: card renders data, empty, and error states.
+
+**Phase 2 review (2026-10-05):** `AgentSystemCard` (own queries, 15 s refresh, so an agent error does not hide the rest of Metrics). Tests cover data, empty, error, and "no buttons". Browser check against the live backend: coordinator OK, bus OK, `career_coach` ready. Docs: `usage.md` Check Agent System Status (diagram).
+
+### Phase 3: Ollama model management (one PR)
+
+- [x] Backend: `GET /api/settings/ollama/models` (name, size, modified), `POST /api/settings/ollama/pull` (background task; streams Ollama pull progress into in-memory state), `GET /api/settings/ollama/pull/status`, `DELETE /api/settings/ollama/models/{name}`.
+- [x] Guards: one pull at a time; block large models because this host is unstable under large models; refuse delete of a model that current routing uses. Implemented as a parsed size limit (9B or more, `8x7b` multiplies out) instead of a fixed tag list, so `27b` and mixture tags are also blocked. Delete guard also covers Ollama fallbacks and the RAG embedding model.
+- [x] UI: "Local models" card on Settings: installed list, pull input with progress bar, delete with confirm dialog.
+- [x] Tests: backend with mocked Ollama HTTP; UI pull progress and guard messages.
+
+**Phase 3 review (2026-10-05):** New `src/api/ollama_admin.py` plus four routes in `routes/settings.py`. Backend 949 passed, Black clean. Frontend `OllamaModelsCard` with 6 tests. Backend overlaid (`Dockerfile.overlay`) and checked live: 17 installed models listed, `nomic-embed-text:latest`, `qwen2.5:3b`, `qwen3.5:4b` marked In use; a `gemma3:12b` pull is refused with the guard message in a toast. A real pull and delete were not run against the host (would download or remove real models); both are covered by mocked tests. Docs: `usage.md` Pulling Ollama Models (diagram).
+
+### Phase 4: Read-only log viewer (one PR)
+
+- [x] Backend: ring-buffer logging handler (last 2000 records) attached at API start; `GET /api/logs?level=&component=&limit=`. Redact secret-like values (API keys, tokens) before return. Redaction runs when a record is stored, so raw secrets never sit in memory.
+- [x] UI: `/logs` page under System nav: level and component filters, text search, auto-refresh toggle, copy button.
+- [x] Tests: buffer cap, filters, redaction; page filter behaviour.
+
+**Phase 4 review (2026-10-05):** New `src/utils/log_buffer.py` (`RingBufferHandler`, redaction, `install_log_buffer`) and `GET /api/logs`. Root cause found: app INFO records were lost in the API process (root had no handler), and the orchestrator `setup_basic_logging` cleared root handlers; it now keeps the buffer handler. Redaction keeps `max_tokens` and token counts. Backend 19 tests, frontend 6 tests. Live check: 34 startup records shown, WARNING filter and component list work. Docs: `usage.md` Logs page, `api.md` Logs API (diagrams).
+
+### Phase 5: Cover-letter model comparison from the UI (one PR)
+
+- [x] Move compare core (allow-list, fixtures, run, score, winner) from the script into `src/evaluation/cover_letter_compare.py`. The script becomes a thin CLI over it (adds `--no-mlflow`).
+- [x] Log each compare run to MLflow: params (models, cool-down), metrics (mean score per model, per-case score and latency), JSON report artifact.
+- [x] API: `POST /api/evaluation/cover-letter-compare` (background; one at a time; same allow-list and cool-down), `GET .../status`, `GET .../latest`.
+- [x] UI: "Model comparison" card on Metrics: run button with GPU warning, progress (model and case), result table, winner, link to the MLflow run.
+- [x] Tests: core with fake writer, MLflow logging with mocked tracker, API single-run lock, UI states.
+
+**Phase 5 review (2026-10-05):** Core in `src/evaluation/cover_letter_compare.py`; script is a thin CLI (old imports still work). Routes in `src/api/routes/evaluation.py`; report saved to the bind-mounted `data/outputs/cover_letter_model_ab.json`; MLflow failures do not fail the compare. Backend 14 new tests, frontend 6 tests. Full suites: backend 982 passed (only the known container `/VERSION` test fails), frontend 202 passed, tsc, ESLint, Prettier clean. Live check: card renders, `qwen3.5:9b` refused with 400, confirm dialog opens and Cancel does not start a run. A real GPU compare was not started from the agent session.
+
+### Order and checks
+
+Phases 1 and 2 first (small), then 3, 4, 5. Each phase: backend pytest, Black, frontend Vitest, type-check, ESLint, Prettier (run in containers), and a browser check. Update `docs/usage.md` per phase (STE, mermaid diagram) and remove the terminal-only instructions that the UI replaces.

@@ -15,6 +15,8 @@ export interface JobSearchRequest {
   sources?: string[];
   limit?: number;
   remote_only?: boolean;
+  /** Score with fresh-graduate weights (junior roles boosted). */
+  fresh_grad_mode?: boolean;
 }
 
 export interface SemanticSearchRequest {

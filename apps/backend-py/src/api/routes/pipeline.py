@@ -37,10 +37,29 @@ logger = get_logger(Components.SCRAPERS)
 pipeline_runs: Dict[str, Dict[str, Any]] = {}
 
 
+def resolve_stop_at(mode: str, stop_at: Optional[str]) -> Optional[PipelineStage]:
+    """
+    Resolve the last stage to run for a pipeline request.
+
+    Args:
+        mode: ``discover`` or ``full``.
+        stop_at: Optional stage name chosen by the user.
+
+    Returns:
+        The stage to stop after, or None to run every stage (full mode).
+    """
+    if stop_at:
+        return PipelineStage(stop_at)
+    if mode == "discover":
+        return PipelineStage.RAG_RANK
+    return None
+
+
 async def run_pipeline_async(
     run_id: str,
     config: PipelineConfig,
     profile: UserProfile,
+    stop_at: Optional[PipelineStage] = None,
 ):
     """
     Run pipeline in background with WebSocket updates.
@@ -49,6 +68,7 @@ async def run_pipeline_async(
         run_id: Unique pipeline run identifier
         config: Pipeline configuration
         profile: User profile
+        stop_at: Last stage to run, or None for every stage
     """
     try:
         # Update status
@@ -71,11 +91,6 @@ async def run_pipeline_async(
             user_profile=profile,
         )
 
-        stop_at: Optional[PipelineStage] = None
-        if getattr(config, "mode", "discover") == "discover":
-            stop_at = PipelineStage.RAG_RANK
-
-        # Run pipeline (discover stops after score/RAG)
         result = orchestrator.run(stop_at=stop_at)
 
         # Prefer RAG-ranked shortlist when present; else heuristic scores.
@@ -186,8 +201,12 @@ async def start_pipeline(
         mode=request.mode,
         min_score=request.min_score,
         scam_threshold=request.scam_threshold,
+        fresh_grad_mode=request.fresh_grad_mode,
         max_jobs_to_present=request.max_jobs,
+        submission_delay=request.submission_delay,
+        max_submissions_per_hour=request.max_submissions_per_hour,
     )
+    stop_at = resolve_stop_at(request.mode, request.stop_at)
 
     # Initialize run state early so status endpoints work even if profile
     # resolution fails.
@@ -195,6 +214,7 @@ async def start_pipeline(
         "run_id": run_id,
         "status": "pending",
         "config": config,
+        "stop_at": stop_at.value if stop_at else None,
         "created_at": datetime.now(),
     }
 
@@ -229,7 +249,7 @@ async def start_pipeline(
         )
 
     # Start pipeline in background
-    background_tasks.add_task(run_pipeline_async, run_id, config, profile)
+    background_tasks.add_task(run_pipeline_async, run_id, config, profile, stop_at)
 
     logger.info(f"Started pipeline {run_id}")
 
