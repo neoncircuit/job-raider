@@ -3297,4 +3297,20 @@
 - When saying “verified on real output,” state what was verified (that letter + shared paths) and what remains general coverage (other phrasings, other stacks).
 - Do not treat a single-job export replay as a substitute for broader grounding regressions.
 
+## Task tracking structure (2026-10-18)
+
+### Do not reuse "Phase" numbers; keep todo.md active-only
+
+**Lesson:** `tasks/todo.md` grew to 5,062 lines. It had two "Phase 54" sections, no Phase 50, Phase 40 before Phase 39, and local "Phase 1" to "Phase 5" or "Phase A" to "Phase E" labels inside named items. About 30 open boxes were already done in other sections. The user could not see what was open.
+
+**Why:**
+- A global counter breaks when items are planned in parallel or split later.
+- Local "Phase N" labels inside an item look the same as global phase numbers.
+- Done work left in the active file hides the few items that are still open.
+
+**How to apply:**
+- Keep `tasks/todo.md` to **Now**, **Next**, and **Backlog** only. Move each finished item to the end of `tasks/archive/todo-done.md`.
+- Name and date each work item: `### Pipeline elapsed timer (2026-10-18)`. Do not number work items.
+- Use "Step 1", "Step 2" inside an item. Do not use the word "Phase" for new work.
+- When work ships, tick its boxes in the same change. Do not leave the boxes for a later sweep.
 
