@@ -40,7 +40,11 @@ from ..scrapers.storage import JobListingStorage
 from ..submission.applied_guard import AppliedGuard
 from ..submission.applied_tracker import AppliedJobsTracker
 from ..submission.detector import ApplyMethod, AutoSubmitDetector, SubmissionInfo
-from ..submission.submitter import ApplicationTracker, AutoSubmitter
+from ..submission.submitter import (
+    ApplicationTracker,
+    AutoSubmitter,
+    SubmissionStatus,
+)
 from ..utils.logger import Components, get_logger
 
 
@@ -859,12 +863,22 @@ class PipelineStages:
                 f"Resume generation complete: {len(generated)}/{len(selected_listings)} successful"
             )
 
+            # No selected jobs is not an error; every selected job failing is.
+            success = not selected_listings or len(generated) > 0
             return StageResult(
                 stage_name=stage_name,
-                success=len(generated) > 0,
+                success=success,
                 data=generated,
                 metadata=metadata,
                 timestamp=start_time,
+                error_message=(
+                    None
+                    if success
+                    else (
+                        "No resume was generated for the "
+                        f"{len(selected_listings)} selected jobs"
+                    )
+                ),
             )
 
         except Exception as e:
@@ -917,41 +931,58 @@ class PipelineStages:
 
             # Batch submit
             results = self.auto_submitter.submit_batch(submissions_to_make)
+            dry_run = self.auto_submitter.dry_run
 
-            # Track applications
+            # Track real applications only. Results cover auto-submit jobs
+            # only, so pair each result with its resume by job_id, not by
+            # position in the list.
             tracker = ApplicationTracker(str(self.context.results_dir / "applications"))
+            resumes_by_job_id = {
+                resume_data["job"].job_id: resume_data
+                for resume_data in generated_resumes
+            }
 
-            for i, result in enumerate(results):
-                job = result.job
-                resume_data = generated_resumes[i] if i < len(generated_resumes) else {}
-                resume_path = resume_data.get("pdf_path")
-                cover_letter_path = resume_data.get("cover_letter_path")
-
-                if result.success:
-                    app_id = tracker.track_application(
-                        job=job,
-                        submission_id=result.submission_id,
-                        generated_resume_path=resume_path,
-                        cover_letter_path=cover_letter_path,
+            for result in results:
+                if not result.success:
+                    continue
+                if dry_run:
+                    self.logger.info(
+                        "[DRY RUN] Not recorded as applied: "
+                        f"{result.job.title} at {result.job.company}"
                     )
-                    self.logger.info(f"Application tracked: {app_id}")
+                    continue
 
-            # Calculate statistics
-            successful = sum(1 for r in results if r.success)
-            failed = sum(1 for r in results if r.status.value == "failed")
-            skipped = len(generated_resumes) - len(results)
+                resume_data = resumes_by_job_id.get(result.job.job_id, {})
+                app_id = tracker.track_application(
+                    job=result.job,
+                    submission_id=result.submission_id,
+                    generated_resume_path=resume_data.get("pdf_path"),
+                    cover_letter_path=resume_data.get("cover_letter_path"),
+                )
+                self.logger.info(f"Application tracked: {app_id}")
+
+            # Calculate statistics. Only real submissions count as applied.
+            succeeded = sum(1 for r in results if r.success)
+            failed = sum(1 for r in results if r.status == SubmissionStatus.FAILED)
+            manual = len(generated_resumes) - len(submissions_to_make)
+            applied = 0 if dry_run else succeeded
+            simulated = succeeded if dry_run else 0
 
             metadata = {
-                "total_applications": len(generated_resumes),
+                "total_applications": applied,
+                "dry_run": dry_run,
+                "resumes_generated": len(generated_resumes),
                 "auto_submitted": len(results),
-                "successful": successful,
+                "successful": applied,
+                "simulated": simulated,
                 "failed": failed,
-                "manual_required": skipped,
+                "manual_required": manual,
                 "submission_stats": self.auto_submitter.get_submission_stats(),
             }
 
             self.logger.info(
-                f"Submission complete: {successful} successful, {failed} failed, {skipped} manual"
+                f"Submission complete: {applied} applied, {simulated} simulated, "
+                f"{failed} failed, {manual} manual"
             )
 
             return StageResult(

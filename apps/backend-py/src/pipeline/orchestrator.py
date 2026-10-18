@@ -16,11 +16,11 @@ import asyncio
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from ..llm.router import LLMRouter
+from ..models.pipeline_stage import STAGE_ORDER, PipelineStage
 from ..models.user_profile import UserProfile
 from ..scrapers.storage import JobListingStorage
 from ..utils.logger import Components, get_logger, setup_logging
@@ -38,20 +38,13 @@ except ImportError:
     CareerCoachAgent = None  # type: ignore[assignment,misc]
 
 
-class PipelineStage(str, Enum):
-    """Pipeline stage identifiers."""
-
-    SCRAPE = "scrape"
-    DEDUPLICATE = "deduplicate"
-    FILTER_SCAMS = "filter_scams"
-    FILTER_PROFILE = "filter_by_profile"
-    SCORE_RANK = "score_and_rank"
-    RAG_RANK = "rag_rank"
-    DETECT_AUTO_SUBMIT = "detect_auto_submit"
-    LINKEDIN_AUTH = "linkedin_auth"
-    PRESENT_SELECT = "present_selection"
-    GENERATE_RESUMES = "generate_resumes"
-    SUBMIT = "submit_applications"
+__all__ = [
+    "PipelineConfig",
+    "PipelineOrchestrator",
+    "PipelineResult",
+    "PipelineStage",
+    "STAGE_ORDER",
+]
 
 
 @dataclass
@@ -304,33 +297,7 @@ class PipelineOrchestrator:
         self.logger.info("JOB RAIDER MULTI-AGENT PIPELINE STARTED")
         self.logger.info("=" * 60)
 
-        # Define stage sequence
-        stage_sequence = [
-            PipelineStage.SCRAPE,
-            PipelineStage.DEDUPLICATE,
-            PipelineStage.FILTER_SCAMS,
-            PipelineStage.FILTER_PROFILE,
-            PipelineStage.SCORE_RANK,
-            PipelineStage.RAG_RANK,
-            PipelineStage.DETECT_AUTO_SUBMIT,
-            PipelineStage.LINKEDIN_AUTH,
-            PipelineStage.PRESENT_SELECT,
-            PipelineStage.GENERATE_RESUMES,
-            PipelineStage.SUBMIT,
-        ]
-
-        # Filter to stages we want to run
-        start_idx = stage_sequence.index(start_from)
-        if stop_at:
-            end_idx = stage_sequence.index(stop_at) + 1
-            stages_to_run = stage_sequence[start_idx:end_idx]
-        else:
-            stages_to_run = stage_sequence[start_idx:]
-
-        # Skip submission if configured
-        if self.config.skip_submission and PipelineStage.SUBMIT in stages_to_run:
-            self.logger.info("Skipping submission stage (skip_submission=True)")
-            stages_to_run.remove(PipelineStage.SUBMIT)
+        stages_to_run = self._stages_to_run(start_from, stop_at)
 
         # Execute stages with agents
         stage_results: Dict[str, StageResult] = {}
@@ -476,33 +443,7 @@ class PipelineOrchestrator:
         self.logger.info("JOB RAIDER PIPELINE STARTED")
         self.logger.info("=" * 60)
 
-        # Define stage sequence
-        stage_sequence = [
-            PipelineStage.SCRAPE,
-            PipelineStage.DEDUPLICATE,
-            PipelineStage.FILTER_SCAMS,
-            PipelineStage.FILTER_PROFILE,
-            PipelineStage.SCORE_RANK,
-            PipelineStage.RAG_RANK,
-            PipelineStage.DETECT_AUTO_SUBMIT,
-            PipelineStage.LINKEDIN_AUTH,
-            PipelineStage.PRESENT_SELECT,
-            PipelineStage.GENERATE_RESUMES,
-            PipelineStage.SUBMIT,
-        ]
-
-        # Filter to stages we want to run
-        start_idx = stage_sequence.index(start_from)
-        if stop_at:
-            end_idx = stage_sequence.index(stop_at) + 1
-            stages_to_run = stage_sequence[start_idx:end_idx]
-        else:
-            stages_to_run = stage_sequence[start_idx:]
-
-        # Skip submission if configured
-        if self.config.skip_submission and PipelineStage.SUBMIT in stages_to_run:
-            self.logger.info("Skipping submission stage (skip_submission=True)")
-            stages_to_run.remove(PipelineStage.SUBMIT)
+        stages_to_run = self._stages_to_run(start_from, stop_at)
 
         # Execute stages
         stage_results: Dict[str, StageResult] = {}
@@ -558,89 +499,134 @@ class PipelineOrchestrator:
             end_time=end_time,
         )
 
+    def _stages_to_run(
+        self,
+        start_from: PipelineStage,
+        stop_at: Optional[PipelineStage],
+    ) -> List[PipelineStage]:
+        """
+        Select the stages for one run from ``STAGE_ORDER``.
+
+        Args:
+            start_from: First stage to run.
+            stop_at: Last stage to run, or ``None`` to run to the end.
+
+        Returns:
+            Stages to run, in order. The submit stage is left out when
+            ``skip_submission`` is set.
+        """
+        start_idx = STAGE_ORDER.index(start_from)
+        end_idx = STAGE_ORDER.index(stop_at) + 1 if stop_at else len(STAGE_ORDER)
+        stages_to_run = list(STAGE_ORDER[start_idx:end_idx])
+
+        if self.config.skip_submission and PipelineStage.SUBMIT in stages_to_run:
+            self.logger.info("Skipping submission stage (skip_submission=True)")
+            stages_to_run.remove(PipelineStage.SUBMIT)
+
+        return stages_to_run
+
+    def _stage_handlers(
+        self,
+        previous_results: Dict[str, StageResult],
+    ) -> Dict[PipelineStage, Callable[[], StageResult]]:
+        """
+        Map every pipeline stage to a call that runs it.
+
+        Each handler reads its input from the results of earlier stages. A
+        test checks that every ``PipelineStage`` has a handler.
+
+        Args:
+            previous_results: Results of the stages that already ran, keyed
+                by stage value.
+
+        Returns:
+            Handler for each stage.
+        """
+
+        def data_of(stage: PipelineStage) -> Any:
+            """
+            Read the output of an earlier stage.
+
+            Args:
+                stage: Earlier stage.
+
+            Returns:
+                The stage data, or an empty list when the stage did not run.
+            """
+            result = previous_results.get(stage.value)
+            return result.data if result else []
+
+        def ranked_listings() -> Any:
+            """
+            Read the ranked listings for detection and selection.
+
+            Returns:
+                RAG-ranked listings when RAG produced data, otherwise the
+                heuristic scores.
+            """
+            rag_result = previous_results.get(PipelineStage.RAG_RANK.value)
+            if rag_result and rag_result.success and rag_result.data:
+                return rag_result.data
+            return data_of(PipelineStage.SCORE_RANK)
+
+        stages = self.stages
+        return {
+            PipelineStage.SCRAPE: lambda: stages.stage_scrape(
+                keywords=self.config.keywords,
+                locations=self.config.locations,
+                sources=self.config.sources,
+            ),
+            PipelineStage.DEDUPLICATE: lambda: stages.stage_deduplicate(
+                data_of(PipelineStage.SCRAPE)
+            ),
+            PipelineStage.FILTER_SCAMS: lambda: stages.stage_filter_scams(
+                data_of(PipelineStage.DEDUPLICATE)
+            ),
+            PipelineStage.FILTER_PROFILE: lambda: stages.stage_filter_by_profile(
+                data_of(PipelineStage.FILTER_SCAMS)
+            ),
+            PipelineStage.SCORE_RANK: lambda: stages.stage_score_and_rank(
+                data_of(PipelineStage.FILTER_PROFILE), self.config.min_score
+            ),
+            PipelineStage.RAG_RANK: lambda: stages.stage_rag_rank(
+                data_of(PipelineStage.SCORE_RANK)
+            ),
+            PipelineStage.DETECT_AUTO_SUBMIT: lambda: stages.stage_detect_auto_submit(
+                ranked_listings()
+            ),
+            PipelineStage.LINKEDIN_AUTH: lambda: stages.stage_linkedin_auth(
+                data_of(PipelineStage.DETECT_AUTO_SUBMIT)
+            ),
+            PipelineStage.PRESENT_SELECT: lambda: stages.stage_present_selection(
+                ranked_listings(),
+                data_of(PipelineStage.DETECT_AUTO_SUBMIT),
+                self.config.max_jobs_to_present,
+            ),
+            PipelineStage.GENERATE_RESUMES: lambda: stages.stage_generate_resumes(
+                data_of(PipelineStage.PRESENT_SELECT)
+            ),
+            PipelineStage.SUBMIT: lambda: stages.stage_submit_applications(
+                data_of(PipelineStage.GENERATE_RESUMES)
+            ),
+        }
+
     def _execute_stage(
         self,
         stage: PipelineStage,
         previous_results: Dict[str, StageResult],
     ) -> StageResult:
-        """Execute a single pipeline stage."""
+        """
+        Execute a single pipeline stage.
+
+        Args:
+            stage: Stage to run.
+            previous_results: Results of the stages that already ran.
+
+        Returns:
+            The stage result.
+        """
         self.logger.info(f"\n--- Executing stage: {stage.value} ---")
-
-        if stage == PipelineStage.SCRAPE:
-            return self.stages.stage_scrape(
-                keywords=self.config.keywords,
-                locations=self.config.locations,
-                sources=self.config.sources,
-            )
-
-        elif stage == PipelineStage.DEDUPLICATE:
-            scrape_result = previous_results.get("scrape")
-            listings = scrape_result.data if scrape_result else []
-            return self.stages.stage_deduplicate(listings)
-
-        elif stage == PipelineStage.FILTER_SCAMS:
-            dedupe_result = previous_results.get("deduplicate")
-            listings = dedupe_result.data if dedupe_result else []
-            return self.stages.stage_filter_scams(listings)
-
-        elif stage == PipelineStage.FILTER_PROFILE:
-            scam_result = previous_results.get("filter_scams")
-            listings = scam_result.data if scam_result else []
-            return self.stages.stage_filter_by_profile(listings)
-
-        elif stage == PipelineStage.SCORE_RANK:
-            profile_result = previous_results.get("filter_by_profile")
-            listings = profile_result.data if profile_result else []
-            return self.stages.stage_score_and_rank(listings, self.config.min_score)
-
-        elif stage == PipelineStage.RAG_RANK:
-            score_result = previous_results.get("score_and_rank")
-            scored_listings = score_result.data if score_result else []
-            return self.stages.stage_rag_rank(scored_listings)
-
-        elif stage == PipelineStage.DETECT_AUTO_SUBMIT:
-            # Try RAG results first, fall back to heuristic results
-            rag_result = previous_results.get("rag_rank")
-            if rag_result and rag_result.success and rag_result.data:
-                ranked_listings = rag_result.data
-            else:
-                score_result = previous_results.get("score_and_rank")
-                ranked_listings = score_result.data if score_result else []
-            return self.stages.stage_detect_auto_submit(ranked_listings)
-
-        elif stage == PipelineStage.PRESENT_SELECT:
-            # Try RAG results first, fall back to heuristic results
-            rag_result = previous_results.get("rag_rank")
-            if rag_result and rag_result.success and rag_result.data:
-                scored_listings = rag_result.data
-            else:
-                score_result = previous_results.get("score_and_rank")
-                scored_listings = score_result.data if score_result else []
-            submit_result = previous_results.get("detect_auto_submit")
-            submission_info = submit_result.data if submit_result else []
-            return self.stages.stage_present_selection(
-                scored_listings, submission_info, self.config.max_jobs_to_present
-            )
-
-        elif stage == PipelineStage.GENERATE_RESUMES:
-            select_result = previous_results.get("present_selection")
-            selected = select_result.data if select_result else []
-            return self.stages.stage_generate_resumes(selected)
-
-        elif stage == PipelineStage.SUBMIT:
-            resume_result = previous_results.get("generate_resumes")
-            resumes = resume_result.data if resume_result else []
-            return self.stages.stage_submit_applications(resumes)
-
-        else:
-            return StageResult(
-                stage_name=stage.value,
-                success=False,
-                data=None,
-                metadata={},
-                timestamp=datetime.now(),
-                error_message=f"Unknown stage: {stage.value}",
-            )
+        return self._stage_handlers(previous_results)[stage]()
 
     def _save_pipeline_results(
         self,

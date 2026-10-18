@@ -78,17 +78,18 @@ Steps 1.2 parts A and B must land together. When the run reaches the submit stag
 
 Part A: stage registry
 
-- [ ] Define one ordered stage list with one handler per stage. Use it in both runners in `src/pipeline/orchestrator.py` (lines 307 and 480). Derive `PIPELINE_STAGE_ORDER` in `src/api/models/requests.py` from it.
-- [ ] Replace the `if`/`elif` dispatch in `_execute_stage` with a lookup. Add the missing `LINKEDIN_AUTH` handler (`stages.stage_linkedin_auth`).
-- [ ] Make `stage_linkedin_auth` check only that credentials exist. It must not open a browser or log in during a dry run.
-- [ ] Tests: every `PipelineStage` has a handler; the request stage order equals the registry order; a full-mode dry run with mocked scrapers and LLM returns `success=True` and runs `generate_resumes`. Change `tests/integration/test_pipeline.py:73-80` to assert `success`, not `result is not None`.
+- [x] Define one ordered stage list with one handler per stage. New `src/models/pipeline_stage.py` holds `PipelineStage` and `STAGE_ORDER` (the enum order). Both runners in `src/pipeline/orchestrator.py` use `_stages_to_run()`. `PIPELINE_STAGE_ORDER` and `DISCOVER_LAST_STAGE` in `src/api/models/requests.py` derive from it.
+- [x] Replace the `if`/`elif` dispatch in `_execute_stage` with a lookup (`_stage_handlers()`). Add the missing `LINKEDIN_AUTH` handler (`stages.stage_linkedin_auth`).
+- [x] Make `stage_linkedin_auth` check only that credentials exist. No code change was needed: it already reads only `LINKEDIN_EMAIL` and `LINKEDIN_PASSWORD`. A test now fails if it starts Playwright.
+- [x] Tests (`tests/unit/test_pipeline_orchestrator.py`): every `PipelineStage` has a handler; the request stage order equals `STAGE_ORDER`; a full-mode dry run runs all 11 stages in order and passes each stage's output to the next. `tests/integration/test_pipeline.py` now asserts `success` and the completed stages. A mutation check (handler removed) makes the tests fail.
 
 Part B: submit stage
 
-- [ ] Match submission results to generated resumes by `job_id`, not by list index (`stages.py:924-926`).
-- [ ] Do not save dry-run results as applied records (`stages.py:930`).
-- [ ] Count `jobs_applied` from real submissions only (`stages.py:945`).
-- [ ] Tests for each of the three items above.
+- [x] Match submission results to generated resumes by `job_id`, not by list index.
+- [x] Do not save dry-run results as applied records. They are counted as `simulated`.
+- [x] Count `jobs_applied` (`total_applications`) from real submissions only. Before, it equaled the number of generated resumes, so the Dashboard and Pipeline history showed every generated resume as "applied".
+- [x] Tests for each of the three items above (`tests/unit/test_pipeline_stages.py`).
+- [x] Found during the work and fixed: `stage_generate_resumes` failed when no job was selected ("0/0 successful", no error message), so a full run with an empty shortlist ended as failed. An empty selection is now a success. When every selected job fails, the stage fails with a message.
 
 ##### Step 1.3: Fix six runtime bugs that mypy found (effort: S)
 

@@ -191,3 +191,182 @@ class TestStageGenerateResumes:
             filename=str(sample_job_listing.job_id),
             formats=["pdf", "docx"],
         )
+
+
+class TestStageGenerateResumesOutcome:
+    """stage_generate_resumes reports success and failure honestly."""
+
+    def test_no_selected_jobs_is_a_success(self, stages: PipelineStages):
+        """An empty selection is not an error, so a full run can finish."""
+        result = stages.stage_generate_resumes([])
+
+        assert result.success
+        assert result.error_message is None
+        assert result.metadata["generated_count"] == 0
+
+    def test_all_selected_jobs_failing_is_a_failure_with_a_message(
+        self, stages: PipelineStages, sample_job_listing
+    ):
+        """When every selected job fails, the stage fails and says why."""
+        stages.resume_selector.select = MagicMock(side_effect=RuntimeError("down"))
+
+        result = stages.stage_generate_resumes([sample_job_listing])
+
+        assert not result.success
+        assert result.error_message == (
+            "No resume was generated for the 1 selected jobs"
+        )
+
+
+def _submission_info(job, can_auto_submit: bool):
+    """Build submission info for one job.
+
+    Args:
+        job: Job listing.
+        can_auto_submit: Whether the job supports auto-submit.
+
+    Returns:
+        A ``SubmissionInfo`` for the job.
+    """
+    from src.submission.detector import ApplyMethod, SubmissionInfo
+
+    method = ApplyMethod.EASY_APPLY if can_auto_submit else ApplyMethod.MANUAL
+    return SubmissionInfo(job=job, can_auto_submit=can_auto_submit, apply_method=method)
+
+
+def _manual_and_auto_jobs(sample_job_listing):
+    """Build two jobs: A needs a manual application, B supports auto-submit.
+
+    Args:
+        sample_job_listing: Job listing fixture used as a template.
+
+    Returns:
+        Tuple of (job A, job B, generated resume data for A then B).
+    """
+    job_a = sample_job_listing.model_copy(update={"job_id": "job-a", "title": "A"})
+    job_b = sample_job_listing.model_copy(update={"job_id": "job-b", "title": "B"})
+    generated = [
+        {"job": job_a, "pdf_path": "a.pdf", "cover_letter_path": "a_cl.pdf"},
+        {"job": job_b, "pdf_path": "b.pdf", "cover_letter_path": "b_cl.pdf"},
+    ]
+    return job_a, job_b, generated
+
+
+class TestStageSubmitApplications:
+    """stage_submit_applications records only real submissions, by job_id."""
+
+    def test_dry_run_records_nothing_and_counts_zero_applied(
+        self, stages: PipelineStages, sample_job_listing, monkeypatch
+    ):
+        """A simulated submission is not saved as an applied record."""
+        job_a, job_b, generated = _manual_and_auto_jobs(sample_job_listing)
+        stages.context.submission_info = [
+            _submission_info(job_a, False),
+            _submission_info(job_b, True),
+        ]
+        tracker_cls = MagicMock()
+        monkeypatch.setattr("src.pipeline.stages.ApplicationTracker", tracker_cls)
+
+        result = stages.stage_submit_applications(generated)
+
+        assert result.success, result.error_message
+        assert stages.auto_submitter.dry_run is True
+        tracker_cls.return_value.track_application.assert_not_called()
+        assert result.metadata["total_applications"] == 0
+        assert result.metadata["simulated"] == 1
+        assert result.metadata["manual_required"] == 1
+        assert result.metadata["resumes_generated"] == 2
+
+    def test_real_run_tracks_each_result_with_its_own_resume(
+        self, stages: PipelineStages, sample_job_listing, monkeypatch
+    ):
+        """Results are paired with resumes by job_id, not by list position."""
+        from datetime import datetime
+
+        from src.submission.submitter import SubmissionResult, SubmissionStatus
+
+        job_a, job_b, generated = _manual_and_auto_jobs(sample_job_listing)
+        stages.context.submission_info = [
+            _submission_info(job_a, False),
+            _submission_info(job_b, True),
+        ]
+        stages.auto_submitter.dry_run = False
+        stages.auto_submitter.submit_batch = MagicMock(
+            return_value=[
+                SubmissionResult(
+                    job=job_b,
+                    status=SubmissionStatus.SUBMITTED,
+                    success=True,
+                    timestamp=datetime.now(),
+                    submission_id="sub-b",
+                )
+            ]
+        )
+        tracker_cls = MagicMock()
+        monkeypatch.setattr("src.pipeline.stages.ApplicationTracker", tracker_cls)
+
+        result = stages.stage_submit_applications(generated)
+
+        assert result.success, result.error_message
+        submitted = stages.auto_submitter.submit_batch.call_args.args[0]
+        assert [info.job.job_id for info in submitted] == ["job-b"]
+        tracker_cls.return_value.track_application.assert_called_once_with(
+            job=job_b,
+            submission_id="sub-b",
+            generated_resume_path="b.pdf",
+            cover_letter_path="b_cl.pdf",
+        )
+        assert result.metadata["total_applications"] == 1
+        assert result.metadata["successful"] == 1
+        assert result.metadata["manual_required"] == 1
+
+    def test_only_manual_jobs_count_zero_applied(
+        self, stages: PipelineStages, sample_job_listing
+    ):
+        """Generated resumes alone never count as applications."""
+        job_a, _job_b, generated = _manual_and_auto_jobs(sample_job_listing)
+        stages.context.submission_info = [_submission_info(job_a, False)]
+
+        result = stages.stage_submit_applications(generated[:1])
+
+        assert result.success, result.error_message
+        assert result.metadata["total_applications"] == 0
+        assert result.metadata["manual_required"] == 1
+
+
+class TestStageLinkedInAuth:
+    """stage_linkedin_auth checks credentials and never opens a browser."""
+
+    def test_reports_credentials_without_launching_a_browser(
+        self, stages: PipelineStages, sample_job_listing, monkeypatch
+    ):
+        """With credentials set, the stage only reports them."""
+        import playwright.sync_api
+
+        def no_browser(*_args, **_kwargs):
+            """Fail the test if the stage starts Playwright."""
+            raise AssertionError("stage_linkedin_auth must not start a browser")
+
+        monkeypatch.setattr(playwright.sync_api, "sync_playwright", no_browser)
+        monkeypatch.setenv("LINKEDIN_EMAIL", "user@example.com")
+        monkeypatch.setenv("LINKEDIN_PASSWORD", "placeholder")
+        infos = [_submission_info(sample_job_listing, True)]
+
+        result = stages.stage_linkedin_auth(infos)
+
+        assert result.success
+        assert result.data == infos
+        assert result.metadata["linkedin_credentials_available"] is True
+        assert result.metadata["easy_apply_jobs_count"] == 1
+
+    def test_missing_credentials_do_not_fail_the_run(
+        self, stages: PipelineStages, monkeypatch
+    ):
+        """Without credentials the stage still succeeds."""
+        monkeypatch.delenv("LINKEDIN_EMAIL", raising=False)
+        monkeypatch.delenv("LINKEDIN_PASSWORD", raising=False)
+
+        result = stages.stage_linkedin_auth([])
+
+        assert result.success
+        assert result.metadata["linkedin_credentials_available"] is False

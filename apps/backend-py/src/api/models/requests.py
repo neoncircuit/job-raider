@@ -11,23 +11,14 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from ...models.pipeline_stage import DISCOVER_LAST_STAGE as _DISCOVER_LAST_STAGE
+from ...models.pipeline_stage import STAGE_ORDER
 from ...utils.text_normalizer import normalize_user_prose
 
-# Must match ``PipelineStage`` order in ``pipeline/orchestrator.py``.
-PIPELINE_STAGE_ORDER = (
-    "scrape",
-    "deduplicate",
-    "filter_scams",
-    "filter_by_profile",
-    "score_and_rank",
-    "rag_rank",
-    "detect_auto_submit",
-    "linkedin_auth",
-    "present_selection",
-    "generate_resumes",
-    "submit_applications",
-)
-DISCOVER_LAST_STAGE = "rag_rank"
+# Stage values in execution order, from the single stage list in
+# ``models/pipeline_stage.py``.
+PIPELINE_STAGE_ORDER = tuple(stage.value for stage in STAGE_ORDER)
+DISCOVER_LAST_STAGE = _DISCOVER_LAST_STAGE.value
 
 # Accepted by pipeline/search request models. Careers@Gov is a delayed
 # dump adapter (opt-in via CAREERSATGOV_ENABLED).

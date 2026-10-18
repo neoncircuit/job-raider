@@ -55,13 +55,20 @@ class TestPipelineOrchestrator:
         assert orchestrator.stages.auto_submitter.max_submissions_per_hour == 7
 
     def test_pipeline_dry_run(self, sample_user_profile, temp_data_dir):
-        """Test running pipeline in dry-run mode."""
+        """A dry run from profile filtering reaches resume generation.
+
+        Before 2026-10-18 this run stopped at ``linkedin_auth`` with
+        "Unknown stage". The test only checked ``result is not None``, so the
+        failure went unnoticed. It now checks that every stage succeeded.
+        """
         config = PipelineConfig(
             keywords=["python"],
             locations=["remote"],
             sources=["linkedin"],
             dry_run=True,
             skip_submission=True,  # Skip actual submission
+            data_dir=str(temp_data_dir),
+            results_dir=str(temp_data_dir / "results"),
         )
 
         orchestrator = PipelineOrchestrator(
@@ -75,7 +82,18 @@ class TestPipelineOrchestrator:
             stop_at=PipelineStage.GENERATE_RESUMES,
         )
 
-        assert result is not None
+        assert result.success, {
+            name: r.error_message for name, r in result.stage_results.items()
+        }
+        assert result.stages_completed == [
+            "filter_by_profile",
+            "score_and_rank",
+            "rag_rank",
+            "detect_auto_submit",
+            "linkedin_auth",
+            "present_selection",
+            "generate_resumes",
+        ]
         assert isinstance(result.duration_seconds, float)
 
     @pytest.mark.slow
