@@ -15,26 +15,134 @@ flowchart LR
 1. Put each work item under one of three sections: **Now**, **Next**, or **Backlog**.
 2. Give each work item a level-3 heading with a name and a date. Example: `### Pipeline elapsed timer (2026-10-18)`.
 3. Do not give work items numbers. Do not use the word "Phase" for new work.
-4. Number the steps inside a work item: "Step 1", "Step 2", and so on.
+4. Number the steps inside a work item: "Step 1", "Step 2", and so on. If a step needs its own sub-steps, number them "Step 1.1", "Step 1.2", and so on.
 5. When all steps are done, add a "Review" subsection. Then move the work item to the end of [archive/todo-done.md](archive/todo-done.md).
 6. "Phase 1" to "Phase 54" are old labels. They are in the archive only. Do not reuse them.
 
 ## Now
 
-Nothing is in progress.
-
-## Next
-
 ### Review follow-up (2026-10-18)
 
 Source: [review-2026-10-18.md](review-2026-10-18.md), section 6. Each step has its own checklist in that file.
 
-- [ ] Step 0: Push and stabilize.
-- [ ] Step 1: Make the core flow run.
+- [x] Step 0: Push and stabilize.
+  - [x] Add LF rules for `*.ts`, `*.tsx`, `*.js`, `*.jsx`, `*.mjs`, `*.cjs`, and `*.css` to `.gitattributes`. Restore LF in the 16 files that had CRLF on disk.
+  - [x] Run all local checks (2026-10-18). Backend: ruff and Black clean; pytest 983 passed. Frontend (`node:20` container, same as CI): `npm ci`, ESLint (0 warnings), tsc, Prettier, Vitest 202 passed in 38 files, `next build`, and Playwright 41 passed with 1 flaky (Mobile Chrome Dashboard link timed out on a cold dev-server start, then passed on retry). Gitleaks: no leaks in the unpushed commits. mypy is still non-blocking (195 errors); Step 1.4 makes it a gate.
+  - Note: `npm ci` fails with npm 11 (Node 24) because `package-lock.json` lacks the optional `@tailwindcss/oxide-*` platform packages. npm 10 (Node 20, as in CI) accepts it. Regenerate the lock file when CI moves to Node 24.
+  - [x] Push to `origin/main` (approved 2026-10-18). Pushed `dbac242..63e5e0a` from WSL (Git Bash on Windows has no GitHub SSH key). CI run 39094293658 passed all 11 jobs; Docker build skipped by design. Note: the mypy "Type Check" and "Security Scan" jobs cannot fail yet.
+- [ ] Step 1: Make the core flow run. The plan is below. Approved on 2026-10-18.
 - [ ] Step 2: Make local-first true.
 - [ ] Step 3: Make claims measurable.
 - [ ] Step 4: Make it demo-able.
 - [ ] Step 5: Focus and prune.
+
+#### Step 1 plan: Make the core flow run
+
+**Goal:** A full-mode pipeline run goes from scrape to the submit stage in dry run. The CLI starts. CI catches new type errors. The UI shows real progress and does not send POST requests two times.
+
+**Constraints:**
+
+- Do not make auto-submit reachable. Detection and submission stay as they are until the Easy Apply decision in Step 5.
+- Keep dry run as the default in every layer.
+- Each sub-step is one pull request with its own tests. Run all local checks before each push.
+
+```mermaid
+flowchart LR
+    S1[1.1 CLI repair] --> S2[1.2 Stage registry and submit-stage fixes]
+    S2 --> S5[1.5 Pipeline off the event loop]
+    S5 --> S6[1.6 Batch cover letters use the repair loop]
+    S3[1.3 Six runtime bugs] --> S4[1.4 Real mypy gate]
+    S7[1.7 Frontend input and retry fixes]
+```
+
+Steps 1.1, 1.3, and 1.7 do not depend on other sub-steps. Step 1.4 needs 1.3, so that the baseline does not contain the six bugs. Step 1.6 needs 1.5, because the cover-letter service is async and needs a thread without a running event loop.
+
+##### Step 1.1: CLI repair (effort: S)
+
+- [ ] Remove the second `argparse` block in `apps/backend-py/main.py` (the block after the first `parse_args()` at line 701). Define `-i/--interactive`, `--log-level`, and `--log-file` one time on the top-level parser.
+- [ ] Change `profile.target_job` to the fields of `profile.targets` in `run_pipeline` (`main.py:272-281`).
+- [ ] Read the allowed `--sources` values from the scraper registry, not from a hard-coded list (`main.py:600`).
+- [ ] Add `tests/unit/test_cli.py`: `--help` for each command exits 0; the README examples parse; `run_pipeline` puts target keywords and locations on the profile (orchestrator mocked).
+- [ ] Update the README CLI examples to match the real commands.
+
+##### Step 1.2: One stage registry and an honest submit stage (effort: S to M)
+
+Steps 1.2 parts A and B must land together. When the run reaches the submit stage, the bugs in part B start to write wrong data.
+
+Part A: stage registry
+
+- [ ] Define one ordered stage list with one handler per stage. Use it in both runners in `src/pipeline/orchestrator.py` (lines 307 and 480). Derive `PIPELINE_STAGE_ORDER` in `src/api/models/requests.py` from it.
+- [ ] Replace the `if`/`elif` dispatch in `_execute_stage` with a lookup. Add the missing `LINKEDIN_AUTH` handler (`stages.stage_linkedin_auth`).
+- [ ] Make `stage_linkedin_auth` check only that credentials exist. It must not open a browser or log in during a dry run.
+- [ ] Tests: every `PipelineStage` has a handler; the request stage order equals the registry order; a full-mode dry run with mocked scrapers and LLM returns `success=True` and runs `generate_resumes`. Change `tests/integration/test_pipeline.py:73-80` to assert `success`, not `result is not None`.
+
+Part B: submit stage
+
+- [ ] Match submission results to generated resumes by `job_id`, not by list index (`stages.py:924-926`).
+- [ ] Do not save dry-run results as applied records (`stages.py:930`).
+- [ ] Count `jobs_applied` from real submissions only (`stages.py:945`).
+- [ ] Tests for each of the three items above.
+
+##### Step 1.3: Fix six runtime bugs that mypy found (effort: S)
+
+- [ ] `src/classifiers/job_classifier.py:606`: `WorkPace.FAST` to `WorkPace.FAST_PACED`. Test with a JD that contains "fast-paced".
+- [ ] `src/generation/formatter.py:535-563`: set `run.bold` and `run.italic` on the returned run, not as `add_run` arguments. Test that DOCX export of a resume with experience, projects, and education succeeds.
+- [ ] `src/metrics/outcome_tracker.py:992`: `Path.remove()` to `Path.unlink()`. Test hard delete of a custom status.
+- [ ] `src/metrics/mlflow_tracker.py:480`: `experiment.experiment_name` to `experiment.experiment_id`. Test with a mocked `mlflow`.
+- [ ] `src/experiments/ab_testing.py:223`: the module calls `JobMatcher.match_and_score`, which does not exist, and nothing imports the module. Delete the module and its exports (decision 1).
+- [ ] `src/generation/resume_writer.py:285`: `profile.skills[:5].name` to the names of the first five skills. Test the fallback resume path.
+
+##### Step 1.4: Make mypy a real gate (effort: S)
+
+- [ ] Add a `[tool.mypy]` section to `apps/backend-py/pyproject.toml` (Python 3.11, `ignore_missing_imports = true`).
+- [ ] Add `apps/backend-py/scripts/mypy_gate.py`. It runs mypy and compares each error to `mypy-baseline.txt` by file, error code, and message (not by line number). It fails on any new error. The `--update` option writes a new baseline.
+- [ ] Remove `|| true` and `continue-on-error` from the CI `type-check` job and from `make lint`. Run the gate in both.
+- [ ] Done when: a new type error fails CI, and the baseline does not contain the nine mypy errors that Step 1.3 fixes (195 errors on 2026-10-18).
+
+##### Step 1.5: Run the pipeline off the event loop (effort: M)
+
+- [ ] In `src/api/routes/pipeline.py:94`, run `orchestrator.run` with `asyncio.to_thread`. Today the async background task (`run_pipeline_async`, queued at line 252) calls it directly and blocks the event loop.
+- [ ] Use the orchestrator stage hooks (`orchestrator.py:221-247`) to send `stage_started` and `stage_completed` events. Send them to the event loop with `asyncio.run_coroutine_threadsafe`.
+- [ ] Check the cancel flag between stages, so that cancel stops the run.
+- [ ] Set the default `UVICORN_WORKERS` to 1 in `docker/Dockerfile`, because run state is in memory (decision 2).
+- [ ] Frontend: remove the extra `* 100` on progress (`src/app/pipeline/page.tsx:560`, `:634`). Show a failed or cancelled badge and `error_message`, not "Complete".
+- [ ] Tests: the start route returns before the run ends; stage events arrive in order; cancel stops before the next stage; the UI shows the failed state.
+
+##### Step 1.6: Batch cover letters use the repair loop (effort: M)
+
+- [ ] In `src/pipeline/stages.py` (about lines 760-834), call `generate_cover_letter_for_profile` from `src/generation/cover_letter_service.py`, not the writer and validator directly.
+- [ ] Do not save a letter that hard-fails grounding. Record it as "needs review" with the reasons.
+- [ ] Tests: a hard-fail letter is not saved; a passing letter is saved with its validation details.
+
+##### Step 1.7: Frontend input and retry fixes (effort: S)
+
+- [ ] `src/lib/api/client.ts`: retry only `GET` and `HEAD`. Honor `Retry-After` on 429. Set `mutations.retry` to 0 in `src/app/providers.tsx`, so that only one layer retries.
+- [ ] Map the proxy "backend unreachable" 503 to `ConnectionError`, so the "Is the backend running?" message appears.
+- [ ] Move `splitList` (comma-only) from `job-targets-editor.tsx` to `src/lib/utils`. Use it in `src/app/pipeline/page.tsx:153-154` and `src/components/jobs/search-bar.tsx:114`. Change the placeholders to say "comma-separated" (decision 3).
+- [ ] Change the UI `max_jobs` limit from 500 to 100 to match the backend.
+- [ ] Tests: retry by method; "New York, Remote" gives two values.
+
+##### Verification for Step 1
+
+- [ ] Backend: pytest, ruff, Black, and the mypy gate.
+- [ ] Frontend (Node 20): ESLint, tsc, Prettier, Vitest, `next build`, and Playwright.
+- [ ] Manual: start a full-mode dry run from the Pipeline page with Ollama running. Confirm that the stage list moves during the run, and that the run reaches `submit_applications` with zero real submissions.
+
+##### Out of scope for Step 1
+
+- Silent cloud fallback, API binding, and auth (Step 2).
+- Scoring, dedupe, scam regex, and RAG fusion fixes (Step 3, after there is an eval set).
+- Auto-submit reachability and the Easy Apply decision (Step 5).
+
+##### Decisions (2026-10-18)
+
+1. `ab_testing.py`: delete it. Nothing imports it, and it calls a method that does not exist.
+2. Uvicorn workers: change the default to 1. One local user does not need more, and run state is in memory.
+3. Keywords: split on commas only. "python engineer" is one search phrase.
+
+## Next
+
+Nothing is planned after the review follow-up.
 
 ## Backlog
 
