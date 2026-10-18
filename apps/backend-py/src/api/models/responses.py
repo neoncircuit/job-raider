@@ -38,6 +38,8 @@ class PipelineStatusResponse(BaseModel):
     started_at: Optional[datetime] = None
     estimated_completion: Optional[datetime] = None
     error_message: Optional[str] = None
+    stages_planned: List[str] = []
+    stages_completed: List[str] = []
 
 
 class PipelineResultResponse(BaseModel):

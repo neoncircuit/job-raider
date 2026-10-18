@@ -254,3 +254,71 @@ def test_stage_order_matches_orchestrator():
     from src.pipeline.orchestrator import PipelineStage
 
     assert list(PIPELINE_STAGE_ORDER) == [s.value for s in PipelineStage]
+
+
+class TestRunEndpoints:
+    """GET /status and GET /results for a finished run."""
+
+    def _store_completed_run(self) -> str:
+        """Store a completed run with a real PipelineResult.
+
+        Returns:
+            The run ID.
+        """
+        from src.api.routes.pipeline import pipeline_runs
+        from src.pipeline.orchestrator import PipelineResult
+        from src.pipeline.stages import StageResult
+
+        now = datetime.now()
+        result = PipelineResult(
+            success=True,
+            stages_completed=["scrape", "deduplicate"],
+            stage_results={
+                name: StageResult(
+                    stage_name=name,
+                    success=True,
+                    data=[],
+                    metadata={"count": 1},
+                    timestamp=now,
+                )
+                for name in ["scrape", "deduplicate"]
+            },
+            start_time=now,
+            end_time=now,
+        )
+        pipeline_runs["run_done"] = {
+            "run_id": "run_done",
+            "status": "completed",
+            "created_at": now,
+            "result": result,
+            "stages_planned": ["scrape", "deduplicate"],
+            "stages_completed": ["scrape", "deduplicate"],
+            "current_stage": "deduplicate",
+            "stage_progress": 100,
+        }
+        return "run_done"
+
+    def test_results_returns_stage_names_as_strings(self, client):
+        """GET /results works for a completed run (it used to raise)."""
+        run_id = self._store_completed_run()
+
+        resp = client.get(f"/api/pipeline/results/{run_id}")
+
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["stages_completed"] == ["scrape", "deduplicate"]
+        assert data["stage_results"]["scrape"] == {
+            "success": True,
+            "metadata": {"count": 1},
+        }
+
+    def test_status_reports_planned_and_completed_stages(self, client):
+        """GET /status exposes the stage plan and progress for polling."""
+        run_id = self._store_completed_run()
+
+        data = client.get(f"/api/pipeline/status/{run_id}").json()
+
+        assert data["stages_planned"] == ["scrape", "deduplicate"]
+        assert data["stages_completed"] == ["scrape", "deduplicate"]
+        assert data["current_stage"] == "deduplicate"
+        assert data["stage_progress"] == 100

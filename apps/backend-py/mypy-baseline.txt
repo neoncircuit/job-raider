@@ -36,7 +36,6 @@ src/api/websocket/progress.py: [assignment] Incompatible default for parameter "
 src/api/websocket/progress.py: [assignment] Incompatible default for parameter "metadata" (default has type "None", parameter has type "dict[str, Any]")
 src/api/websocket/progress.py: [assignment] Incompatible default for parameter "result" (default has type "None", parameter has type "dict[str, Any]")
 src/api/websocket/progress.py: [assignment] Incompatible default for parameter "source" (default has type "None", parameter has type "str")
-src/api/websocket/progress.py: [assignment] Incompatible default for parameter "stage" (default has type "None", parameter has type "str")
 src/assessment/disc_engine.py: [arg-type] Argument "key" to "max" has incompatible type overloaded function; expected "Callable[[str], SupportsDunderLT[Any] | SupportsDunderGT[Any]]"
 src/assessment/engine.py: [arg-type] Argument "mode" to "AssessmentSession" has incompatible type "str"; expected "AssessmentMode"
 src/assessment/engine.py: [assignment] Incompatible types in assignment (expression has type "src.models.job_listing.Skill", variable has type "src.models.user_profile.Skill")

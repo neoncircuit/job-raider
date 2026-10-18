@@ -9,7 +9,7 @@ Date: 2026-04-21
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 from fastapi import WebSocket
 
@@ -283,8 +283,8 @@ class ConnectionManager:
         self,
         run_id: str,
         error: str,
-        stage: str = None,
-    ):
+        stage: Optional[str] = None,
+    ) -> None:
         """
         Broadcast that the pipeline has failed.
 
@@ -292,6 +292,9 @@ class ConnectionManager:
             run_id: Pipeline run ID
             error: Error message
             stage: Optional stage where failure occurred
+
+        Returns:
+            None.
         """
         await self.send_message(
             run_id,

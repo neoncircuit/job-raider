@@ -6,6 +6,8 @@ export const PIPELINE_STAGES = [
   { key: "score_and_rank", label: "Score & Rank" },
   { key: "rag_rank", label: "Semantic Re-rank" },
   { key: "detect_auto_submit", label: "Detect Auto-Submit" },
+  { key: "linkedin_auth", label: "LinkedIn Check" },
+  { key: "present_selection", label: "Select Jobs" },
   { key: "generate_resumes", label: "Generate Resumes" },
   { key: "submit_applications", label: "Submit Applications" },
 ] as const;

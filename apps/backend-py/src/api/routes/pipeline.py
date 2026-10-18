@@ -7,20 +7,27 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
+import asyncio
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Coroutine, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ...models.user_profile import UserProfile
-from ...pipeline.orchestrator import PipelineConfig, PipelineOrchestrator, PipelineStage
+from ...pipeline.orchestrator import (
+    PipelineConfig,
+    PipelineOrchestrator,
+    PipelineResult,
+    PipelineStage,
+)
 from ...pipeline.shortlist import (
     enrich_shortlist_descriptions,
     enrich_shortlist_payload_descriptions,
     load_latest_shortlist,
     save_latest_shortlist,
 )
+from ...pipeline.stages import StageResult
 from ...submission.applied_guard import AppliedGuard
 from ...utils.logger import Components, get_logger
 from ..models.requests import PipelineStartRequest
@@ -55,6 +62,158 @@ def resolve_stop_at(mode: str, stop_at: Optional[str]) -> Optional[PipelineStage
     return None
 
 
+def _attach_stage_events(
+    orchestrator: PipelineOrchestrator,
+    run_id: str,
+    planned: List[PipelineStage],
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """
+    Publish stage progress for one run while it executes in a worker thread.
+
+    The hooks run in the worker thread. They update the run state that the
+    status endpoint returns, and they schedule WebSocket broadcasts on the
+    event loop with ``asyncio.run_coroutine_threadsafe``.
+
+    Args:
+        orchestrator: Orchestrator that will run the stages.
+        run_id: Pipeline run identifier.
+        planned: Stages that the run will execute, in order.
+        loop: Event loop that owns the WebSocket connections.
+    """
+    run = pipeline_runs[run_id]
+    run["stages_planned"] = [stage.value for stage in planned]
+    run["stages_completed"] = []
+    total = len(planned)
+
+    def publish(coro: Coroutine[Any, Any, Any]) -> None:
+        """
+        Schedule a broadcast on the event loop without waiting for it.
+
+        Args:
+            coro: Broadcast coroutine.
+        """
+        asyncio.run_coroutine_threadsafe(coro, loop)
+
+    def before(stage: PipelineStage) -> None:
+        """
+        Record and announce the stage that is starting.
+
+        Args:
+            stage: Stage that is about to run.
+        """
+        run["current_stage"] = stage.value
+        publish(
+            manager.broadcast_stage_started(
+                run_id,
+                stage.value,
+                {"index": planned.index(stage) + 1, "total": total},
+            )
+        )
+
+    def after(stage: PipelineStage, result: StageResult) -> None:
+        """
+        Record and announce a completed stage and the overall progress.
+
+        Args:
+            stage: Stage that finished.
+            result: Result of the stage.
+        """
+        run["stages_completed"].append(stage.value)
+        progress = int(len(run["stages_completed"]) * 100 / total) if total else 100
+        run["stage_progress"] = progress
+        publish(
+            manager.broadcast_stage_completed(
+                run_id, stage.value, {"success": result.success}
+            )
+        )
+        publish(manager.broadcast_stage_progress(run_id, stage.value, progress))
+
+    for stage in planned:
+        orchestrator.register_before_hook(stage, before)
+        orchestrator.register_after_hook(stage, after)
+
+
+def _execute_pipeline(
+    run_id: str,
+    config: PipelineConfig,
+    profile: UserProfile,
+    stop_at: Optional[PipelineStage],
+    loop: asyncio.AbstractEventLoop,
+) -> Tuple[PipelineResult, Any]:
+    """
+    Run every blocking part of a pipeline run. Call this in a worker thread.
+
+    Building the orchestrator, running the stages, and backfilling shortlist
+    descriptions all block (scrapers, LLM calls, network fetches). Running
+    them here keeps the event loop free for status polls and WebSockets.
+
+    Args:
+        run_id: Pipeline run identifier.
+        config: Pipeline configuration.
+        profile: User profile.
+        stop_at: Last stage to run, or None for every stage.
+        loop: Event loop that owns the WebSocket connections.
+
+    Returns:
+        Tuple of (pipeline result, shortlisted listings).
+    """
+    orchestrator = PipelineOrchestrator(config=config, user_profile=profile)
+    planned = orchestrator.plan_stages(PipelineStage.SCRAPE, stop_at)
+    _attach_stage_events(orchestrator, run_id, planned, loop)
+
+    result = orchestrator.run(
+        stop_at=stop_at,
+        should_stop=lambda: pipeline_runs[run_id].get("status") == "cancelled",
+    )
+
+    # Prefer RAG-ranked shortlist when present; else heuristic scores.
+    shortlist_src = (
+        orchestrator.context.rag_ranked_listings or orchestrator.context.scored_listings
+    )
+    try:
+        filled = enrich_shortlist_descriptions(shortlist_src)
+        if filled:
+            logger.info(
+                "Backfilled descriptions for %d shortlisted job(s)",
+                filled,
+            )
+        save_latest_shortlist(
+            run_id=run_id,
+            mode=getattr(config, "mode", "discover"),
+            keywords=list(config.keywords),
+            locations=list(config.locations),
+            scored_listings=shortlist_src,
+            results_dir=config.results_dir,
+            jobs_scraped=result.jobs_scraped,
+        )
+    except Exception as shortlist_err:
+        logger.warning(
+            "Failed to persist discover shortlist for %s: %s",
+            run_id,
+            shortlist_err,
+        )
+
+    return result, shortlist_src
+
+
+def _failure_message(result: PipelineResult) -> Tuple[str, Optional[str]]:
+    """
+    Describe why a pipeline run did not succeed.
+
+    Args:
+        result: Result of a run with ``success=False``.
+
+    Returns:
+        Tuple of (message, failing stage or None).
+    """
+    for stage_name, stage_result in result.stage_results.items():
+        if not stage_result.success:
+            detail = stage_result.error_message or "no error message"
+            return f"Stage '{stage_name}' failed: {detail}", stage_name
+    return "The pipeline did not complete every planned stage.", None
+
+
 async def run_pipeline_async(
     run_id: str,
     config: PipelineConfig,
@@ -63,6 +222,9 @@ async def run_pipeline_async(
 ):
     """
     Run pipeline in background with WebSocket updates.
+
+    The blocking work runs in a worker thread (``asyncio.to_thread``), so the
+    API, status polls, and WebSockets stay responsive during a run.
 
     Args:
         run_id: Unique pipeline run identifier
@@ -85,58 +247,38 @@ async def run_pipeline_async(
             },
         )
 
-        # Create orchestrator with progress callback
-        orchestrator = PipelineOrchestrator(
-            config=config,
-            user_profile=profile,
+        result, shortlist_src = await asyncio.to_thread(
+            _execute_pipeline,
+            run_id,
+            config,
+            profile,
+            stop_at,
+            asyncio.get_running_loop(),
         )
-
-        result = orchestrator.run(stop_at=stop_at)
-
-        # Prefer RAG-ranked shortlist when present; else heuristic scores.
-        shortlist_src = (
-            orchestrator.context.rag_ranked_listings
-            or orchestrator.context.scored_listings
-        )
-        try:
-            filled = enrich_shortlist_descriptions(shortlist_src)
-            if filled:
-                logger.info(
-                    "Backfilled descriptions for %d shortlisted job(s)",
-                    filled,
-                )
-            save_latest_shortlist(
-                run_id=run_id,
-                mode=getattr(config, "mode", "discover"),
-                keywords=list(config.keywords),
-                locations=list(config.locations),
-                scored_listings=shortlist_src,
-                results_dir=config.results_dir,
-                jobs_scraped=result.jobs_scraped,
-            )
-        except Exception as shortlist_err:
-            logger.warning(
-                "Failed to persist discover shortlist for %s: %s",
-                run_id,
-                shortlist_err,
-            )
 
         pipeline_runs[run_id]["jobs_scraped"] = result.jobs_scraped
         pipeline_runs[run_id]["jobs_scored"] = result.jobs_scored
         pipeline_runs[run_id]["jobs_selected"] = len(shortlist_src or [])
         pipeline_runs[run_id]["applications_submitted"] = result.jobs_applied
+        pipeline_runs[run_id]["result"] = result
+        pipeline_runs[run_id]["completed_at"] = datetime.now()
 
-        # Preserve an explicit user cancel; soft-cancel cannot stop the
-        # orchestrator mid-flight, but the final status must stay cancelled.
+        # A user cancel stops the run at the next stage boundary. Keep the
+        # cancelled status; the cancel endpoint already announced it.
         if pipeline_runs[run_id].get("status") == "cancelled":
-            pipeline_runs[run_id]["result"] = result
-            pipeline_runs[run_id]["completed_at"] = datetime.now()
-            logger.info(f"Pipeline {run_id} finished after cancel request")
+            logger.info(f"Pipeline {run_id} stopped after cancel request")
+            return
+
+        if not result.success:
+            message, failed_stage = _failure_message(result)
+            pipeline_runs[run_id]["status"] = "failed"
+            pipeline_runs[run_id]["error"] = message
+            await manager.broadcast_pipeline_failed(run_id, message, failed_stage)
+            logger.warning(f"Pipeline {run_id} failed: {message}")
             return
 
         pipeline_runs[run_id]["status"] = "completed"
-        pipeline_runs[run_id]["result"] = result
-        pipeline_runs[run_id]["completed_at"] = datetime.now()
+        pipeline_runs[run_id]["stage_progress"] = 100
 
         # Notify completion
         await manager.broadcast_pipeline_complete(
@@ -296,6 +438,8 @@ async def get_pipeline_status(run_id: str):
         applications_submitted=applications_submitted,
         started_at=run.get("started_at"),
         error_message=run.get("error"),
+        stages_planned=run.get("stages_planned", []),
+        stages_completed=run.get("stages_completed", []),
     )
 
 
@@ -330,15 +474,15 @@ async def get_pipeline_results(run_id: str):
         "status": run["status"],
         "success": result.success,
         "duration_seconds": result.duration_seconds,
-        "stages_completed": [s.value for s in result.stages_completed],
+        "stages_completed": list(result.stages_completed),
         "jobs_scraped": result.jobs_scraped,
         "jobs_applied": result.jobs_applied,
         "stage_results": {
-            stage.value: {
+            stage_name: {
                 "success": stage_result.success,
                 "metadata": stage_result.metadata,
             }
-            for stage, stage_result in result.stage_results.items()
+            for stage_name, stage_result in result.stage_results.items()
         },
         "started_at": run.get("started_at"),
         "completed_at": run.get("completed_at"),
@@ -367,8 +511,8 @@ async def cancel_pipeline(run_id: str):
             detail=f"Cannot cancel pipeline in status: {run['status']}",
         )
 
-    # TODO: Implement actual cancellation logic
-    # This would require orchestrator to support cancellation
+    # The orchestrator checks this status before each stage, so the run stops
+    # at the next stage boundary. A stage that is running is not interrupted.
     run["status"] = "cancelled"
 
     await manager.broadcast_pipeline_failed(

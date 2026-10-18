@@ -109,15 +109,17 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Set entrypoint to install Playwright browsers at runtime if needed
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
-# Number of uvicorn workers. Profile state is backed by JSON files on the
-# mounted data volume (data/profiles/), so every worker observes the same
-# active profile. Override with -e UVICORN_WORKERS=<n> if needed.
-ENV UVICORN_WORKERS=2
+# Number of uvicorn workers. Default 1: pipeline run state, WebSocket
+# connections, and the log buffer live in process memory, so a second
+# worker could answer /api/pipeline/status/<id> with 404 for a run it did
+# not start. One worker is enough for one local user, because pipeline
+# runs execute in a worker thread and do not block the event loop.
+ENV UVICORN_WORKERS=1
 
 # Default command - run API server.
 # Shell form so ${UVICORN_WORKERS} expands; `exec` keeps uvicorn as PID 1
 # for proper signal handling.
-CMD ["sh", "-c", "exec python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}"]
+CMD ["sh", "-c", "exec python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-1}"]
 
 # Alternative commands:
 # - Run pipeline once: python main.py --resume data/resume.pdf --keywords "python" --locations "remote"

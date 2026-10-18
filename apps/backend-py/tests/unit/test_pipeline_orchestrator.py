@@ -19,6 +19,21 @@ from src.models.pipeline_stage import STAGE_ORDER, PipelineStage
 from src.pipeline.orchestrator import PipelineConfig, PipelineOrchestrator
 from src.pipeline.stages import StageResult
 
+STAGE_METHOD_NAMES = {
+    PipelineStage.SCRAPE: "stage_scrape",
+    PipelineStage.DEDUPLICATE: "stage_deduplicate",
+    PipelineStage.FILTER_SCAMS: "stage_filter_scams",
+    PipelineStage.FILTER_PROFILE: "stage_filter_by_profile",
+    PipelineStage.SCORE_RANK: "stage_score_and_rank",
+    PipelineStage.RAG_RANK: "stage_rag_rank",
+    PipelineStage.DETECT_AUTO_SUBMIT: "stage_detect_auto_submit",
+    PipelineStage.LINKEDIN_AUTH: "stage_linkedin_auth",
+    PipelineStage.PRESENT_SELECT: "stage_present_selection",
+    PipelineStage.GENERATE_RESUMES: "stage_generate_resumes",
+    PipelineStage.SUBMIT: "stage_submit_applications",
+}
+"""Orchestrator stage methods, by stage."""
+
 
 def make_orchestrator(
     profile: Any, tmp_path: Path, **config: Any
@@ -100,10 +115,8 @@ class TestStageOrder:
         """
         orchestrator = make_orchestrator(sample_user_profile, tmp_path)
 
-        assert orchestrator._stages_to_run(PipelineStage.SCRAPE, None) == list(
-            STAGE_ORDER
-        )
-        assert orchestrator._stages_to_run(
+        assert orchestrator.plan_stages(PipelineStage.SCRAPE, None) == list(STAGE_ORDER)
+        assert orchestrator.plan_stages(
             PipelineStage.DETECT_AUTO_SUBMIT, PipelineStage.PRESENT_SELECT
         ) == [
             PipelineStage.DETECT_AUTO_SUBMIT,
@@ -123,7 +136,7 @@ class TestStageOrder:
         orchestrator = make_orchestrator(
             sample_user_profile, tmp_path, skip_submission=True
         )
-        stages = orchestrator._stages_to_run(PipelineStage.SCRAPE, None)
+        stages = orchestrator.plan_stages(PipelineStage.SCRAPE, None)
         assert stages == list(STAGE_ORDER[:-1])
 
 
@@ -177,20 +190,7 @@ class TestFullRunDispatch:
 
             return fake
 
-        method_names = {
-            PipelineStage.SCRAPE: "stage_scrape",
-            PipelineStage.DEDUPLICATE: "stage_deduplicate",
-            PipelineStage.FILTER_SCAMS: "stage_filter_scams",
-            PipelineStage.FILTER_PROFILE: "stage_filter_by_profile",
-            PipelineStage.SCORE_RANK: "stage_score_and_rank",
-            PipelineStage.RAG_RANK: "stage_rag_rank",
-            PipelineStage.DETECT_AUTO_SUBMIT: "stage_detect_auto_submit",
-            PipelineStage.LINKEDIN_AUTH: "stage_linkedin_auth",
-            PipelineStage.PRESENT_SELECT: "stage_present_selection",
-            PipelineStage.GENERATE_RESUMES: "stage_generate_resumes",
-            PipelineStage.SUBMIT: "stage_submit_applications",
-        }
-        for stage, name in method_names.items():
+        for stage, name in STAGE_METHOD_NAMES.items():
             monkeypatch.setattr(orchestrator.stages, name, recorder(stage))
 
         result = orchestrator.run()
@@ -246,3 +246,55 @@ class TestFullRunDispatch:
             out(PipelineStage.PRESENT_SELECT),
         )
         assert args[PipelineStage.SUBMIT] == (out(PipelineStage.GENERATE_RESUMES),)
+
+
+class TestCooperativeCancel:
+    """run(should_stop=...) stops before the next stage."""
+
+    def test_should_stop_ends_the_run_before_the_next_stage(
+        self, sample_user_profile: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When should_stop turns True, no further stage runs.
+
+        Args:
+            sample_user_profile: Profile fixture.
+            tmp_path: Temporary directory.
+            monkeypatch: Pytest monkeypatch fixture.
+        """
+        orchestrator = make_orchestrator(sample_user_profile, tmp_path, mode="full")
+        ran: List[PipelineStage] = []
+
+        def fake_for(stage: PipelineStage) -> Any:
+            """Build a fake stage method that records its stage.
+
+            Args:
+                stage: Stage that the fake stands in for.
+
+            Returns:
+                Fake stage method.
+            """
+
+            def fake(*_args: Any, **_kwargs: Any) -> StageResult:
+                """Record the stage and succeed.
+
+                Args:
+                    *_args: Ignored stage arguments.
+                    **_kwargs: Ignored stage keyword arguments.
+
+                Returns:
+                    A successful result.
+                """
+                ran.append(stage)
+                return ok(stage, [])
+
+            return fake
+
+        for stage, name in STAGE_METHOD_NAMES.items():
+            monkeypatch.setattr(orchestrator.stages, name, fake_for(stage))
+
+        result = orchestrator.run(should_stop=lambda: len(ran) >= 2)
+
+        assert ran == [PipelineStage.SCRAPE, PipelineStage.DEDUPLICATE]
+        assert result.success is False
+        assert result.metadata["cancelled"] is True
+        assert result.stages_completed == ["scrape", "deduplicate"]

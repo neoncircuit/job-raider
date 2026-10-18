@@ -27,6 +27,14 @@ import {
   DEFAULT_SOURCES,
 } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
+import {
+  RUN_STATE_BADGE,
+  overallProgress,
+  plannedStages,
+  resolveRunState,
+  runError,
+  stageRows,
+} from "@/lib/pipeline-run-state";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/layout/EmptyState";
@@ -469,31 +477,27 @@ function LiveMonitor({ runId }: { runId: string }) {
     }
   }, [messages]);
 
-  const lastProgress = [...messages]
-    .reverse()
-    .find((m) => m.type === "stage_progress");
-  const progressPct =
-    lastProgress?.type === "stage_progress" ? lastProgress.progress : 0;
+  const runState = resolveRunState(status.data?.status, messages);
+  const isComplete = runState !== "running";
+  const badge = RUN_STATE_BADGE[runState];
+  const progressPct = overallProgress(runState, status.data, messages);
+  const errorText = runError(runState, status.data, messages);
 
   const completeMsg = [...messages]
     .reverse()
-    .find(
-      (m) => m.type === "pipeline_complete" || m.type === "pipeline_failed",
-    );
-  const isComplete =
-    Boolean(completeMsg) ||
-    status.data?.status === "completed" ||
-    status.data?.status === "failed" ||
-    status.data?.status === "cancelled";
-
+    .find((m) => m.type === "pipeline_complete");
   const summaryMode =
     completeMsg?.type === "pipeline_complete" &&
     completeMsg.summary &&
     typeof completeMsg.summary.mode === "string"
       ? completeMsg.summary.mode
       : null;
-  const stageList =
-    summaryMode === "full" ? PIPELINE_STAGES : DISCOVER_PIPELINE_STAGES;
+  const rows = stageRows(
+    plannedStages(status.data?.stages_planned, summaryMode),
+    status.data,
+    messages,
+    runState,
+  );
 
   const jobsScraped = status.data?.jobs_scraped ?? 0;
   const jobsScored = status.data?.jobs_scored ?? 0;
@@ -522,17 +526,19 @@ function LiveMonitor({ runId }: { runId: string }) {
               <code className="font-mono text-xs">{runId.slice(0, 12)}…</code>
             </span>
           </div>
-          <Badge
-            className={cn(
-              "text-xs",
-              isComplete
-                ? "bg-green-100 text-green-800"
-                : "bg-info/10 text-info",
-            )}
-          >
-            {isComplete ? "Complete" : wsStatus}
+          <Badge className={cn("text-xs", badge.className)}>
+            {badge.label}
           </Badge>
         </div>
+
+        {errorText && (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            {errorText}
+          </div>
+        )}
 
         <div className="rounded-lg border bg-card p-3 space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -544,7 +550,7 @@ function LiveMonitor({ runId }: { runId: string }) {
           </p>
         </div>
 
-        {isComplete && status.data?.status === "completed" && (
+        {runState === "completed" && (
           <Link
             href="/jobs"
             className={cn(
@@ -557,8 +563,9 @@ function LiveMonitor({ runId }: { runId: string }) {
 
         {/* Progress bar */}
         <Progress
-          value={isComplete ? 100 : progressPct * 100}
+          value={progressPct}
           className="h-2"
+          aria-label="Pipeline progress"
         />
 
         {/* Stage indicators */}
@@ -567,41 +574,34 @@ function LiveMonitor({ runId }: { runId: string }) {
             Stages
           </p>
           <div className="flex flex-col gap-1.5">
-            {stageList.map((s) => {
-              const completed = messages.some(
-                (m) => m.type === "stage_completed" && m.stage === s.key,
-              );
-              const active =
-                messages.some(
-                  (m) => m.type === "stage_started" && m.stage === s.key,
-                ) && !completed;
-              return (
-                <div key={s.key} className="flex items-center gap-2">
-                  <div
-                    className={cn(
-                      "h-2 w-2 rounded-full shrink-0",
-                      completed
-                        ? "bg-success"
-                        : active
-                          ? "bg-info animate-pulse"
-                          : "bg-muted",
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      "text-sm",
-                      completed
-                        ? "text-success font-medium"
-                        : active
-                          ? "text-info font-medium"
-                          : "text-muted-foreground",
-                    )}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-              );
-            })}
+            {rows.map((row) => (
+              <div
+                key={row.key}
+                className="flex items-center gap-2"
+                data-state={row.state}
+              >
+                <div
+                  className={cn(
+                    "h-2 w-2 rounded-full shrink-0",
+                    row.state === "done" && "bg-success",
+                    row.state === "active" && "bg-info animate-pulse",
+                    row.state === "failed" && "bg-destructive",
+                    row.state === "pending" && "bg-muted",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-sm",
+                    row.state === "done" && "text-success font-medium",
+                    row.state === "active" && "text-info font-medium",
+                    row.state === "failed" && "text-destructive font-medium",
+                    row.state === "pending" && "text-muted-foreground",
+                  )}
+                >
+                  {row.label}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -631,7 +631,7 @@ function LiveMonitor({ runId }: { runId: string }) {
                 {"stage" in m && m.stage ? `${m.stage} ` : ""}
                 {"count" in m ? `count=${m.count} ` : ""}
                 {"progress" in m
-                  ? `${((m as { progress: number }).progress * 100).toFixed(0)}% `
+                  ? `${(m as { progress: number }).progress.toFixed(0)}% `
                   : ""}
                 {"error" in m ? (m as { error: string }).error : ""}
               </span>

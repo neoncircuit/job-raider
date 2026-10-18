@@ -112,12 +112,15 @@ Part B: submit stage
 
 ##### Step 1.5: Run the pipeline off the event loop (effort: M)
 
-- [ ] In `src/api/routes/pipeline.py:94`, run `orchestrator.run` with `asyncio.to_thread`. Today the async background task (`run_pipeline_async`, queued at line 252) calls it directly and blocks the event loop.
-- [ ] Use the orchestrator stage hooks (`orchestrator.py:221-247`) to send `stage_started` and `stage_completed` events. Send them to the event loop with `asyncio.run_coroutine_threadsafe`.
-- [ ] Check the cancel flag between stages, so that cancel stops the run.
-- [ ] Set the default `UVICORN_WORKERS` to 1 in `docker/Dockerfile`, because run state is in memory (decision 2).
-- [ ] Frontend: remove the extra `* 100` on progress (`src/app/pipeline/page.tsx:560`, `:634`). Show a failed or cancelled badge and `error_message`, not "Complete".
-- [ ] Tests: the start route returns before the run ends; stage events arrive in order; cancel stops before the next stage; the UI shows the failed state.
+- [x] In `src/api/routes/pipeline.py`, `_execute_pipeline()` runs in a worker thread (`asyncio.to_thread`). It builds the orchestrator, runs the stages, and backfills shortlist descriptions; all of these block.
+- [x] Use the orchestrator stage hooks to send `stage_started`, `stage_completed`, and `stage_progress` (0 to 100) events with `asyncio.run_coroutine_threadsafe`. The hooks also set `current_stage`, `stage_progress`, `stages_planned`, and `stages_completed`, which `GET /status` now returns, so the monitor is correct even when the WebSocket connects late.
+- [x] `PipelineOrchestrator.run(should_stop=...)` checks the cancel status before each stage, so cancel stops the run at the next stage boundary. A running stage is not interrupted.
+- [x] Set the default `UVICORN_WORKERS` to 1 in `docker/Dockerfile`, because run state is in memory (decision 2).
+- [x] Frontend: progress uses the backend 0 to 100 value (no extra `* 100`). The badge shows Running, Complete, Failed, or Cancelled, and a failed run shows its error. Logic is in `src/lib/pipeline-run-state.ts`. Added the missing `linkedin_auth` and `present_selection` stages to `PIPELINE_STAGES`.
+- [x] Tests: `tests/unit/test_pipeline_run_async.py` (worker thread, the loop keeps running during a blocking stage, event order, failed status, cancel), a cancel test in `test_pipeline_orchestrator.py`, `/status` and `/results` tests in `test_pipeline_routes.py`, `src/lib/pipeline-run-state.test.ts`, and `tests/app/pipeline/live-monitor.test.tsx`. A mutation check (pipeline called on the event loop again) fails 3 of the 4 async tests.
+- [x] Found during the work and fixed:
+  - A run with `success=False` was reported as "completed". It is now "failed", with the failing stage's error.
+  - `GET /api/pipeline/results/{run_id}` raised for every completed run: it called `.value` on stage names that are already strings.
 
 ##### Step 1.6: Batch cover letters use the repair loop (effort: M)
 

@@ -104,6 +104,10 @@ export interface PipelineStatusResponse {
   started_at?: string | null;
   estimated_completion?: string | null;
   error_message?: string | null;
+  /** Stage values the run will execute, in order. */
+  stages_planned?: string[];
+  /** Stage values that finished successfully. */
+  stages_completed?: string[];
 }
 
 export interface PipelineRun {

@@ -297,7 +297,7 @@ class PipelineOrchestrator:
         self.logger.info("JOB RAIDER MULTI-AGENT PIPELINE STARTED")
         self.logger.info("=" * 60)
 
-        stages_to_run = self._stages_to_run(start_from, stop_at)
+        stages_to_run = self.plan_stages(start_from, stop_at)
 
         # Execute stages with agents
         stage_results: Dict[str, StageResult] = {}
@@ -427,6 +427,7 @@ class PipelineOrchestrator:
         self,
         start_from: PipelineStage = PipelineStage.SCRAPE,
         stop_at: Optional[PipelineStage] = None,
+        should_stop: Optional[Callable[[], bool]] = None,
     ) -> PipelineResult:
         """
         Run the complete pipeline.
@@ -434,6 +435,10 @@ class PipelineOrchestrator:
         Args:
             start_from: Stage to start from (for resuming)
             stop_at: Optional stage to stop at (for testing)
+            should_stop: Optional check that runs before each stage. When it
+                returns True, the run stops before that stage and the result
+                is marked cancelled. A stage that is already running is not
+                interrupted.
 
         Returns:
             PipelineResult with execution summary
@@ -443,13 +448,21 @@ class PipelineOrchestrator:
         self.logger.info("JOB RAIDER PIPELINE STARTED")
         self.logger.info("=" * 60)
 
-        stages_to_run = self._stages_to_run(start_from, stop_at)
+        stages_to_run = self.plan_stages(start_from, stop_at)
+        if self.config.skip_submission:
+            self.logger.info("Skipping submission stage (skip_submission=True)")
 
         # Execute stages
         stage_results: Dict[str, StageResult] = {}
         stages_completed = []
+        cancelled = False
 
         for stage in stages_to_run:
+            if should_stop is not None and should_stop():
+                cancelled = True
+                self.logger.info(f"Run cancelled before stage '{stage.value}'")
+                break
+
             # Run before hooks
             for hook in self._before_stage_hooks.get(stage, []):
                 try:
@@ -492,17 +505,18 @@ class PipelineOrchestrator:
         self.logger.info("=" * 60)
 
         return PipelineResult(
-            success=len(stages_completed) == len(stages_to_run),
+            success=not cancelled and len(stages_completed) == len(stages_to_run),
             stages_completed=stages_completed,
             stage_results=stage_results,
             start_time=start_time,
             end_time=end_time,
+            metadata={"cancelled": cancelled},
         )
 
-    def _stages_to_run(
+    def plan_stages(
         self,
-        start_from: PipelineStage,
-        stop_at: Optional[PipelineStage],
+        start_from: PipelineStage = PipelineStage.SCRAPE,
+        stop_at: Optional[PipelineStage] = None,
     ) -> List[PipelineStage]:
         """
         Select the stages for one run from ``STAGE_ORDER``.
@@ -520,7 +534,6 @@ class PipelineOrchestrator:
         stages_to_run = list(STAGE_ORDER[start_idx:end_idx])
 
         if self.config.skip_submission and PipelineStage.SUBMIT in stages_to_run:
-            self.logger.info("Skipping submission stage (skip_submission=True)")
             stages_to_run.remove(PipelineStage.SUBMIT)
 
         return stages_to_run
