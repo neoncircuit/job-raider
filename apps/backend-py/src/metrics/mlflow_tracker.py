@@ -10,9 +10,12 @@ Date: 2026-04-21
 
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 from ..utils.logger import Components, get_logger
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # MLflow is optional - only required if using this feature
 try:
@@ -392,7 +395,7 @@ class MLflowTracker:
             baseline = mlflow.get_run(baseline_run_id)
             comparison = mlflow.get_run(comparison_run_id)
 
-            report = {
+            report: Dict[str, Any] = {
                 "baseline": {
                     "run_id": baseline_run_id,
                     "params": baseline.data.params,
@@ -440,10 +443,16 @@ class MLflowTracker:
             if not experiment:
                 return None
 
-            runs = mlflow.search_runs(
-                experiment_ids=[experiment.experiment_id],
-                order_by=[f"metrics.{metric_name} {order}"],
-                max_results=1,
+            # search_runs returns a DataFrame for output_format="pandas";
+            # some mlflow releases type it as list[Run] | DataFrame.
+            runs = cast(
+                "pd.DataFrame",
+                mlflow.search_runs(
+                    experiment_ids=[experiment.experiment_id],
+                    order_by=[f"metrics.{metric_name} {order}"],
+                    max_results=1,
+                    output_format="pandas",
+                ),
             )
 
             if runs.empty:
@@ -476,10 +485,14 @@ class MLflowTracker:
             if not experiment:
                 return []
 
-            runs = mlflow.search_runs(
-                experiment_ids=[experiment.experiment_id],
-                max_results=limit,
-                order_by=["start_time DESC"],
+            runs = cast(
+                "pd.DataFrame",
+                mlflow.search_runs(
+                    experiment_ids=[experiment.experiment_id],
+                    max_results=limit,
+                    order_by=["start_time DESC"],
+                    output_format="pandas",
+                ),
             )
 
             history = []

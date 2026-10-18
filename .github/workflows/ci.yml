@@ -65,10 +65,10 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Check code formatting with Black
-        run: black --check main.py src/ tests/
+        run: black --check main.py scripts/mypy_gate.py src/ tests/
 
       - name: Lint with Ruff
-        run: ruff check main.py src/ tests/
+        run: ruff check main.py scripts/mypy_gate.py src/ tests/
 
   type-check:
     name: Type Check
@@ -89,12 +89,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install mypy types-requests types-PyYAML
+          # Pinned so that the error set only changes when the code changes.
+          # Regenerate mypy-baseline.txt when you change these versions.
+          pip install mypy==2.4.0 types-requests==2.33.0.20261006 types-PyYAML==6.0.12.20260906
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run mypy
-        run: mypy src/ --ignore-missing-imports --no-error-summary || true
-        continue-on-error: true
+      # Fails on any mypy error that is not in mypy-baseline.txt.
+      - name: Run mypy baseline gate
+        run: python scripts/mypy_gate.py
 
   test-backend:
     name: Test Backend

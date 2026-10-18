@@ -103,10 +103,12 @@ Part B: submit stage
 
 ##### Step 1.4: Make mypy a real gate (effort: S)
 
-- [ ] Add a `[tool.mypy]` section to `apps/backend-py/pyproject.toml` (Python 3.11, `ignore_missing_imports = true`).
-- [ ] Add `apps/backend-py/scripts/mypy_gate.py`. It runs mypy and compares each error to `mypy-baseline.txt` by file, error code, and message (not by line number). It fails on any new error. The `--update` option writes a new baseline.
-- [ ] Remove `|| true` and `continue-on-error` from the CI `type-check` job and from `make lint`. Run the gate in both.
-- [ ] Done when: a new type error fails CI, and the baseline does not contain the nine mypy errors that Step 1.3 fixes (195 errors on 2026-10-18).
+- [x] Add a `[tool.mypy]` section to `apps/backend-py/pyproject.toml` (`ignore_missing_imports = true`). `python_version` is not set: the local `.venv` is Python 3.12 with a numpy whose stubs only parse on 3.12, so forcing 3.11 stops mypy.
+- [x] Add `apps/backend-py/scripts/mypy_gate.py`. It compares errors by file, error code, and message (line numbers and "line N" in messages are ignored), counts duplicates, fails on new errors, and fails when mypy crashes. `--update` writes a new baseline. Tests: `tests/unit/test_mypy_gate.py` (12).
+- [x] Remove `|| true` and `continue-on-error` from the CI `type-check` job and from `make lint`. Both run the gate. CI pins `mypy==2.4.0`, `types-requests==2.33.0.20261006`, and `types-PyYAML==6.0.12.20260906` (the versions CI used on 2026-10-18). The local `.venv` uses the same pins.
+- [x] Done: the baseline (`apps/backend-py/mypy-baseline.txt`) was built from the CI Type Check log of run 39143155828 and has 183 errors. It does not contain the nine Step 1.3 errors. A deliberate new error makes the gate exit 1; clean code exits 0.
+- [x] Found during the work and fixed: local and CI differed only in `src/metrics/mlflow_tracker.py`, because `mlflow` is not pinned and newer releases type `search_runs()` as `list[Run] | DataFrame`. Pass `output_format="pandas"` and cast to `DataFrame`; annotate the compare report as `Dict[str, Any]`. Local and CI now give the same 183 errors.
+- [x] Lint `scripts/mypy_gate.py` in CI and `make lint`. Docs: "mypy Baseline Gate" in `docs/testing.md`; README code-style commands; `COMPREHENSIVE_TESTING_STRATEGY.md`.
 
 ##### Step 1.5: Run the pipeline off the event loop (effort: M)
 

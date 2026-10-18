@@ -227,11 +227,44 @@ Tests run automatically on:
 
 ### CI Test Stages
 
-1. **Lint**: ESLint (frontend), Black/Flake8 (backend)
-2. **Type Check**: TypeScript (frontend), mypy (backend)
+1. **Lint**: ESLint (frontend), Black/Ruff (backend)
+2. **Type Check**: TypeScript (frontend), mypy baseline gate (backend)
 3. **Unit Tests**: Vitest (frontend), pytest (backend)
 4. **E2E Tests**: Playwright (frontend)
 5. **Security**: Bandit (backend)
+
+### mypy Baseline Gate
+
+The backend has known mypy errors. The gate lets CI block new type errors while the known errors are fixed over time.
+
+```mermaid
+flowchart LR
+    A[Run mypy on src/] --> B[Normalize each error:<br/>file, code, message]
+    B --> C{In mypy-baseline.txt?}
+    C -->|All errors known| D[Pass]
+    C -->|Any error is new| E[Fail and list the new errors]
+    B --> F{Baseline error gone?}
+    F -->|Yes| G[Print a reminder to run --update]
+```
+
+- The gate compares errors by file, error code, and message. It ignores line numbers, so edits to unrelated lines do not break it.
+- The gate counts errors. A second copy of a known error is a new error.
+- CI pins mypy and the stub packages in `.github/workflows/ci.yml`. The baseline matches CI (Python 3.11).
+- Do not add a new error to the baseline. Fix it.
+
+Check the code against the baseline (from `apps/backend-py`):
+
+```bash
+.venv/bin/python scripts/mypy_gate.py
+```
+
+Write a new baseline after you fix errors, so that the baseline only gets smaller:
+
+```bash
+.venv/bin/python scripts/mypy_gate.py --update
+```
+
+If the gate fails in CI but not on your machine, compare the versions of mypy, the stub packages, and Python. Your local `.venv` must use the same versions as CI.
 
 ### Coverage Requirements
 

@@ -389,10 +389,12 @@ make lint        # Run linting
 
 # Or manually
 cd apps/backend-py
-.venv/bin/python -m black src/ tests/
-.venv/bin/python -m ruff check src/ tests/
-.venv/bin/python -m mypy src/ --ignore-missing-imports --no-error-summary || true
+.venv/bin/python -m black main.py scripts/mypy_gate.py src/ tests/
+.venv/bin/python -m ruff check main.py scripts/mypy_gate.py src/ tests/
+.venv/bin/python scripts/mypy_gate.py
 ```
+
+`scripts/mypy_gate.py` fails on any mypy error that is not in `mypy-baseline.txt`. See [Testing Guide](docs/testing.md#mypy-baseline-gate).
 
 ## Contributing
 

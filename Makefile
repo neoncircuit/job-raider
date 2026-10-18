@@ -26,7 +26,7 @@ help:
 	@echo "Backend:"
 	@echo "  make install          - Install / update Python dependencies"
 	@echo "  make test             - Run backend test suite"
-	@echo "  make lint             - Run ruff + mypy on backend"
+	@echo "  make lint             - Run ruff + the mypy baseline gate on backend"
 	@echo "  make format           - Auto-format backend code"
 	@echo "  make clean            - Remove build artefacts"
 	@echo ""
@@ -64,13 +64,13 @@ test:
 
 lint:
 	@echo "Running Python linting..."
-	@cd apps/backend-py && .venv/bin/python -m ruff check main.py src/ tests/
-	@cd apps/backend-py && .venv/bin/python -m mypy src/ --ignore-missing-imports --no-error-summary || true
+	@cd apps/backend-py && .venv/bin/python -m ruff check main.py scripts/mypy_gate.py src/ tests/
+	@cd apps/backend-py && .venv/bin/python scripts/mypy_gate.py
 
 format:
 	@echo "Formatting Python code..."
-	@cd apps/backend-py && .venv/bin/python -m black main.py src/ tests/
-	@cd apps/backend-py && .venv/bin/python -m ruff check --fix main.py src/ tests/
+	@cd apps/backend-py && .venv/bin/python -m black main.py scripts/mypy_gate.py src/ tests/
+	@cd apps/backend-py && .venv/bin/python -m ruff check --fix main.py scripts/mypy_gate.py src/ tests/
 
 type-check:
 	@echo "Running TypeScript type check..."

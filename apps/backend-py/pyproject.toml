@@ -8,6 +8,13 @@ line-length = 88
 select = ["E", "F", "I", "W"]
 ignore = ["E501"]  # Black handles long-line formatting
 
+# mypy runs through scripts/mypy_gate.py, which fails on errors that are not
+# in mypy-baseline.txt. The baseline matches CI (Python 3.11, mypy pinned in
+# .github/workflows/ci.yml). python_version is not set: installed packages
+# such as numpy can ship stubs that only parse on the running interpreter.
+[tool.mypy]
+ignore_missing_imports = true
+
 # isort is no longer used directly; this section is retained only for backwards
 # compatibility with older local environments that still invoke isort.
 [tool.isort]

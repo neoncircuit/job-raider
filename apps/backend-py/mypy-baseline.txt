@@ -1,0 +1,187 @@
+# mypy baseline: known errors in src/ that the gate allows.
+# One normalized error per line: <file>: [<code>] <message>
+# Regenerate with `python scripts/mypy_gate.py --update` only after
+# fixing errors. Do not add new errors to this file.
+src/agents/career_coach.py: [attr-defined] "Collection[Any]" has no attribute "extend"
+src/agents/career_coach.py: [index] Unsupported target for indexed assignment ("Collection[Any]")
+src/agents/career_coach.py: [var-annotated] Need type annotation for "career_goals"
+src/agents/career_coach.py: [var-annotated] Need type annotation for "gap_analysis"
+src/agents/communication.py: [var-annotated] Need type annotation for "future"
+src/agents/error_handlers.py: [attr-defined] "object" has no attribute "update"
+src/agents/error_handlers.py: [attr-defined] "object" has no attribute "update"
+src/agents/error_handlers.py: [dict-item] Dict entry 2 has incompatible type "str": "dict[str, Any]"; expected "str": "str | float | None"
+src/agents/error_handlers.py: [index] Unsupported target for indexed assignment ("object")
+src/agents/error_handlers.py: [misc] callable? not callable
+src/agents/error_handlers.py: [valid-type] Function "builtins.callable" is not valid as a type
+src/api/profile_storage.py: [union-attr] Item "None" of "Any | None" has no attribute "model_dump"
+src/api/routes/applications.py: [attr-defined] "object" has no attribute "get"
+src/api/routes/applications.py: [index] Unsupported target for indexed assignment ("object")
+src/api/routes/applications.py: [operator] Unsupported operand types for + ("object" and "int")
+src/api/routes/applications.py: [var-annotated] Need type annotation for "usage_counts" (hint: "usage_counts: dict[<type>, <type>] = ...")
+src/api/routes/cover_letter.py: [arg-type] Argument "path" to "FileResponse" has incompatible type "str | None"; expected "str | PathLike[str]"
+src/api/routes/cover_letter.py: [arg-type] Argument 1 to "Path" has incompatible type "str | None"; expected "str | PathLike[str]"
+src/api/routes/cover_letter.py: [union-attr] Item "None" of "Any | dict[Any, Any] | None" has no attribute "get"
+src/api/routes/cover_letter.py: [union-attr] Item "None" of "Any | dict[Any, Any] | None" has no attribute "get"
+src/api/routes/jobs.py: [arg-type] Argument 1 to "append" of "list" has incompatible type "tuple[JobListing, None]"; expected "tuple[JobListing, MatchScore]"
+src/api/routes/jobs.py: [assignment] Incompatible default for parameter "background_tasks" (default has type "None", parameter has type "BackgroundTasks")
+src/api/routes/jobs.py: [assignment] Incompatible default for parameter "job_data" (default has type "None", parameter has type "dict[str, Any]")
+src/api/routes/jobs.py: [assignment] Incompatible default for parameter "job_data" (default has type "None", parameter has type "dict[str, Any]")
+src/api/routes/jobs.py: [assignment] Incompatible default for parameter "job_data" (default has type "None", parameter has type "dict[str, Any]")
+src/api/routes/jobs.py: [misc] List comprehension has incompatible type List[tuple[JobListing, None]]; expected List[tuple[JobListing, MatchScore]]
+src/api/routes/jobs.py: [misc] List comprehension has incompatible type List[tuple[JobListing, None]]; expected List[tuple[JobListing, MatchScore]]
+src/api/routes/pipeline.py: [arg-type] Argument "scored_listings" to "save_latest_shortlist" has incompatible type "list[Any] | list[tuple[JobListing, MatchScore]] | None"; expected "list[tuple[JobListing, MatchScore] | RAGMatchScore] | None"
+src/api/routes/pipeline.py: [arg-type] Argument 1 to "enrich_shortlist_descriptions" has incompatible type "list[Any] | list[tuple[JobListing, MatchScore]] | None"; expected "list[tuple[JobListing, MatchScore] | RAGMatchScore] | None"
+src/api/settings.py: [assignment] Incompatible default for parameter "settings_dir" (default has type "None", parameter has type "Path")
+src/api/websocket/progress.py: [assignment] Incompatible default for parameter "metadata" (default has type "None", parameter has type "dict[str, Any]")
+src/api/websocket/progress.py: [assignment] Incompatible default for parameter "metadata" (default has type "None", parameter has type "dict[str, Any]")
+src/api/websocket/progress.py: [assignment] Incompatible default for parameter "result" (default has type "None", parameter has type "dict[str, Any]")
+src/api/websocket/progress.py: [assignment] Incompatible default for parameter "source" (default has type "None", parameter has type "str")
+src/api/websocket/progress.py: [assignment] Incompatible default for parameter "stage" (default has type "None", parameter has type "str")
+src/assessment/disc_engine.py: [arg-type] Argument "key" to "max" has incompatible type overloaded function; expected "Callable[[str], SupportsDunderLT[Any] | SupportsDunderGT[Any]]"
+src/assessment/engine.py: [arg-type] Argument "mode" to "AssessmentSession" has incompatible type "str"; expected "AssessmentMode"
+src/assessment/engine.py: [assignment] Incompatible types in assignment (expression has type "src.models.job_listing.Skill", variable has type "src.models.user_profile.Skill")
+src/assessment/engine.py: [misc] Generator has incompatible item type "int"; expected "bool"
+src/assessment/storage.py: [misc] Generator has incompatible item type "float | None"; expected "bool"
+src/classifiers/job_classifier.py: [union-attr] Item "None" of "LLMRouter | None" has no attribute "generate"
+src/classifiers/job_classifier.py: [var-annotated] Need type annotation for "errors" (hint: "errors: list[<type>] = ...")
+src/classifiers/job_classifier.py: [var-annotated] Need type annotation for "warnings" (hint: "warnings: list[<type>] = ...")
+src/config/loader.py: [assignment] Incompatible default for parameter "config_dir" (default has type "None", parameter has type "Path")
+src/extractors/jd_extractor.py: [arg-type] Argument "source_url" to "JobListing" has incompatible type "str | None"; expected "HttpUrl | None"
+src/extractors/jd_extractor.py: [arg-type] Argument "source_url" to "JobListing" has incompatible type "str | None"; expected "HttpUrl | None"
+src/extractors/jd_extractor.py: [operator] Unsupported operand types for <= ("int" and "None")
+src/extractors/jd_extractor.py: [union-attr] Item "None" of "LLMRouter | None" has no attribute "generate"
+src/extractors/jd_extractor.py: [var-annotated] Need type annotation for "errors" (hint: "errors: list[<type>] = ...")
+src/extractors/jd_extractor.py: [var-annotated] Need type annotation for "warnings" (hint: "warnings: list[<type>] = ...")
+src/extractors/jd_extractor.py: [var-annotated] Need type annotation for "warnings" (hint: "warnings: list[<type>] = ...")
+src/extractors/resume_parser.py: [arg-type] Argument "github" to "ContactInfo" has incompatible type "str | None"; expected "HttpUrl | None"
+src/extractors/resume_parser.py: [arg-type] Argument "linkedin" to "ContactInfo" has incompatible type "str | None"; expected "HttpUrl | None"
+src/extractors/resume_parser.py: [arg-type] Argument "url" to "Project" has incompatible type "str | None"; expected "HttpUrl | None"
+src/extractors/resume_parser.py: [union-attr] Item "None" of "LLMRouter | None" has no attribute "generate"
+src/generation/company_mission_search.py: [arg-type] Argument 1 to "_unwrap_ddg_redirect" has incompatible type "str | AttributeValueList"; expected "str"
+src/generation/company_mission_search.py: [call-overload] No overload variant of "find" of "Tag" matches argument type "dict[str, str]"
+src/generation/cover_letter_grounding.py: [assignment] Incompatible types in assignment (expression has type "dict[str, str]", variable has type "Project")
+src/generation/cover_letter_grounding.py: [attr-defined] "Project" has no attribute "get"
+src/generation/cover_letter_grounding.py: [attr-defined] "Project" has no attribute "get"
+src/generation/cover_letter_service.py: [arg-type] Argument "inclusion_urls" to "rewrite" of "CoverLetterWriter" has incompatible type "dict[Literal['github', 'portfolio', 'linkedin', 'project_link'], str | None] | None"; expected "dict[str, str | None] | None"
+src/generation/cover_letter_service.py: [arg-type] Argument "inclusion_urls" to "rewrite" of "CoverLetterWriter" has incompatible type "dict[Literal['github', 'portfolio', 'linkedin', 'project_link'], str | None] | None"; expected "dict[str, str | None] | None"
+src/generation/cover_letter_service.py: [arg-type] Argument "inclusion_urls" to "validate" of "CoverLetterValidator" has incompatible type "dict[Literal['github', 'portfolio', 'linkedin', 'project_link'], str | None]"; expected "dict[str, str | None] | None"
+src/generation/cover_letter_service.py: [arg-type] Argument "inclusion_urls" to "validate" of "CoverLetterValidator" has incompatible type "dict[Literal['github', 'portfolio', 'linkedin', 'project_link'], str | None]"; expected "dict[str, str | None] | None"
+src/generation/cover_letter_service.py: [arg-type] Argument "inclusion_urls" to "validate_with_llm" of "CoverLetterValidator" has incompatible type "dict[Literal['github', 'portfolio', 'linkedin', 'project_link'], str | None]"; expected "dict[str, str | None] | None"
+src/generation/cover_letter_service.py: [arg-type] Argument "inclusion_urls" to "validate_with_llm" of "CoverLetterValidator" has incompatible type "dict[Literal['github', 'portfolio', 'linkedin', 'project_link'], str | None]"; expected "dict[str, str | None] | None"
+src/generation/cover_letter_service.py: [arg-type] Argument "inclusion_urls" to "write" of "CoverLetterWriter" has incompatible type "dict[Literal['github', 'portfolio', 'linkedin', 'project_link'], str | None] | None"; expected "dict[str, str | None] | None"
+src/generation/cover_letter_service.py: [arg-type] Argument "inclusion_urls" to "write_why_interest_block" of "CoverLetterWriter" has incompatible type "dict[Literal['github', 'portfolio', 'linkedin', 'project_link'], str | None] | None"; expected "dict[str, str | None] | None"
+src/generation/cover_letter_service.py: [arg-type] Argument "style" to "rewrite" of "CoverLetterWriter" has incompatible type "str"; expected "Literal['modern', 'classic']"
+src/generation/cover_letter_service.py: [arg-type] Argument "style" to "rewrite" of "CoverLetterWriter" has incompatible type "str"; expected "Literal['modern', 'classic']"
+src/generation/cover_letter_service.py: [arg-type] Argument "style" to "write" of "CoverLetterWriter" has incompatible type "str"; expected "Literal['modern', 'classic']"
+src/generation/profile_formatter.py: [union-attr] Item "None" of "str | None" has no attribute "strip"
+src/generation/profile_formatter.py: [union-attr] Item "None" of "str | None" has no attribute "strip"
+src/generation/selector.py: [arg-type] Argument 1 to "append" of "list" has incompatible type "Skill"; expected "str"
+src/generation/selector.py: [assignment] Incompatible types in assignment (expression has type "str", variable has type "Skill")
+src/generation/selector.py: [union-attr] Item "datetime" of "datetime | Any" has no attribute "days"
+src/generation/selector.py: [var-annotated] Need type annotation for "matched_projects" (hint: "matched_projects: list[<type>] = ...")
+src/generation/validator.py: [var-annotated] Need type annotation for "common_issues" (hint: "common_issues: dict[<type>, <type>] = ...")
+src/linkedin/answer_engine.py: [arg-type] Argument "answer_fn" to "RuleMatcher" has incompatible type "Callable[[UserProfile], HttpUrl | None]"; expected "Callable[[UserProfile], str | None]"
+src/linkedin/answer_engine.py: [return-value] Incompatible return value type (got "HttpUrl | None", expected "str | None")
+src/linkedin/form_filler.py: [call-arg] Missing named argument "success" for "FormFillResult"
+src/linkedin/session.py: [union-attr] Item "None" of "BrowserContext | None" has no attribute "add_cookies"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "evaluate"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "get_by_role"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "goto"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "goto"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "goto"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "query_selector"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "query_selector"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "query_selector"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "query_selector"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "query_selector"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "query_selector"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "query_selector"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "query_selector"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "url"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "url"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "wait_for_selector"
+src/linkedin/session.py: [union-attr] Item "None" of "Page | None" has no attribute "wait_for_url"
+src/llm/claude_client.py: [union-attr] Item "BashCodeExecutionToolResultBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/claude_client.py: [union-attr] Item "CodeExecutionToolResultBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/claude_client.py: [union-attr] Item "ContainerUploadBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/claude_client.py: [union-attr] Item "RedactedThinkingBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/claude_client.py: [union-attr] Item "ServerToolUseBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/claude_client.py: [union-attr] Item "TextEditorCodeExecutionToolResultBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/claude_client.py: [union-attr] Item "ThinkingBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/claude_client.py: [union-attr] Item "ToolSearchToolResultBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/claude_client.py: [union-attr] Item "ToolUseBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/claude_client.py: [union-attr] Item "WebFetchToolResultBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/claude_client.py: [union-attr] Item "WebSearchToolResultBlock" of "TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolUseBlock | ServerToolUseBlock | <7 more items>" has no attribute "text"
+src/llm/embedding_client.py: [arg-type] Argument 1 to "int" has incompatible type "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc | None"; expected "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc"
+src/llm/embedding_client.py: [arg-type] Argument 2 to "getenv" has incompatible type "str"; expected "int | None"
+src/llm/embedding_client.py: [operator] Unsupported right operand type for in ("str | None")
+src/llm/embedding_client.py: [union-attr] Item "None" of "str | None" has no attribute "rsplit"
+src/llm/embedding_client.py: [var-annotated] Need type annotation for "host"
+src/llm/gemini_client.py: [arg-type] Argument "content" to "LLMResponse" has incompatible type "str | None"; expected "str"
+src/llm/gemini_client.py: [arg-type] Argument "content" to "LLMResponse" has incompatible type "str | None"; expected "str"
+src/llm/gemini_client.py: [arg-type] Argument "contents" to "generate_content" of "AsyncModels" has incompatible type "list[Content]"; expected "Content | str | Image | File | Part | list[str | Image | File | Part] | list[Content | str | Image | File | Part | list[str | Image | File | Part]] | Content | ContentDict | str | Image | File | FileDict | Part | PartDict | list[str | Image | File | FileDict | Part | PartDict] | list[Content | ContentDict | str | Image | File | FileDict | Part | PartDict | list[str | Image | File | FileDict | Part | PartDict]]"
+src/llm/gemini_client.py: [arg-type] Argument "contents" to "generate_content" of "Models" has incompatible type "list[Content]"; expected "Content | ContentDict | str | Image | File | FileDict | Part | PartDict | list[str | Image | File | FileDict | Part | PartDict] | list[Content | ContentDict | str | Image | File | FileDict | Part | PartDict | list[str | Image | File | FileDict | Part | PartDict]]"
+src/llm/gemini_client.py: [return-value] Incompatible return value type (got "int | None", expected "int")
+src/llm/ollama_client.py: [arg-type] Argument 1 to "int" has incompatible type "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc | None"; expected "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc"
+src/llm/ollama_client.py: [arg-type] Argument 2 to "getenv" has incompatible type "str"; expected "int | None"
+src/llm/ollama_client.py: [assignment] Incompatible types in assignment (expression has type "LLMClientError", variable has type "TimeoutError | None")
+src/llm/ollama_client.py: [assignment] Incompatible types in assignment (expression has type "LLMClientError", variable has type "TimeoutError | None")
+src/llm/ollama_client.py: [index] Unsupported target for indexed assignment ("object")
+src/llm/ollama_client.py: [misc] Exception must be derived from BaseException
+src/llm/ollama_client.py: [misc] Exception must be derived from BaseException
+src/llm/ollama_client.py: [operator] Unsupported right operand type for in ("str | None")
+src/llm/ollama_client.py: [union-attr] Item "None" of "str | None" has no attribute "rsplit"
+src/llm/ollama_client.py: [var-annotated] Need type annotation for "host"
+src/llm/router.py: [assignment] Incompatible types in assignment (expression has type "GeminiClient", variable has type "ClaudeClient")
+src/llm/router.py: [assignment] Incompatible types in assignment (expression has type "OllamaClient", variable has type "ClaudeClient")
+src/llm/router.py: [union-attr] Item "None" of "Any | None" has no attribute "value"
+src/llm/router.py: [union-attr] Item "None" of "Any | None" has no attribute "value"
+src/metrics/outcome_tracker.py: [arg-type] Argument "key" to "sort" of "list" has incompatible type "Callable[[dict[str, object]], object]"; expected "Callable[[dict[str, object]], SupportsDunderLT[Any] | SupportsDunderGT[Any]]"
+src/metrics/outcome_tracker.py: [return-value] Incompatible return value type (got "object", expected "SupportsDunderLT[Any] | SupportsDunderGT[Any]")
+src/models/user_profile.py: [arg-type] Argument "key" to "sorted" has incompatible type "Callable[[Project], datetime | None]"; expected "Callable[[Project], SupportsDunderLT[Any] | SupportsDunderGT[Any]]"
+src/models/user_profile.py: [return-value] Incompatible return value type (got "datetime | None", expected "SupportsDunderLT[Any] | SupportsDunderGT[Any]")
+src/rag/chunker.py: [assignment] Incompatible types in assignment (expression has type "str", variable has type "SkillCategory")
+src/rag/ranker.py: [arg-type] Argument "all_chunks" to "add_jobs_batch" of "ChromaStore" has incompatible type "tuple[Any, ...]"; expected "list[list[TextChunk]]"
+src/rag/ranker.py: [arg-type] Argument "all_embeddings" to "add_jobs_batch" of "ChromaStore" has incompatible type "tuple[Any, ...]"; expected "list[list[list[float]]]"
+src/rag/ranker.py: [attr-defined] "tuple[Any, ...]" has no attribute "append"
+src/rag/ranker.py: [attr-defined] "tuple[Any, ...]" has no attribute "append"
+src/rag/ranker.py: [no-redef] Name "valid_chunks" already defined on line N
+src/rag/ranker.py: [no-redef] Name "valid_embeddings" already defined on line N
+src/rag/vector_store.py: [assignment] Incompatible types in assignment (expression has type "ClientAPI", variable has type "None")
+src/rag/vector_store.py: [attr-defined] "None" has no attribute "get_or_create_collection"
+src/scoring/matcher.py: [attr-defined] "str" has no attribute "value"
+src/scoring/scam_detector.py: [var-annotated] Need type annotation for "reasons" (hint: "reasons: list[<type>] = ...")
+src/scoring/trust_analyzer.py: [union-attr] Item "None" of "Any | None" has no attribute "generate"
+src/scrapers/base.py: [assignment] Incompatible types in assignment (expression has type "float", variable has type "int")
+src/scrapers/base.py: [return] Missing return statement
+src/scrapers/careersatgov_scraper.py: [arg-type] Argument "source_url" to "JobListing" has incompatible type "str"; expected "HttpUrl | None"
+src/scrapers/jobstreet_scraper.py: [arg-type] Argument "params" to "get" of "Session" has incompatible type "dict[str, object]"; expected "SupportsItems[str | bytes | int | float, str | bytes | int | float | Iterable[str | bytes | int | float] | None] | tuple[str | bytes | int | float, str | bytes | int | float | Iterable[str | bytes | int | float] | None] | Iterable[tuple[str | bytes | int | float, str | bytes | int | float | Iterable[str | bytes | int | float] | None]] | str | bytes | None"
+src/scrapers/jobstreet_scraper.py: [arg-type] Argument "source_url" to "JobListing" has incompatible type "str"; expected "HttpUrl | None"
+src/scrapers/jobstreet_scraper.py: [arg-type] Argument "source_url" to "JobListing" has incompatible type "str"; expected "HttpUrl | None"
+src/scrapers/jobstreet_scraper.py: [override] Signature of "_fetch_page" incompatible with supertype "src.scrapers.base.BaseScraper"
+src/scrapers/jsearch_scraper.py: [operator] Unsupported operand types for - ("int" and "None")
+src/scrapers/linkedin_scraper.py: [arg-type] Argument "job_id" to "JobListing" has incompatible type "str | None"; expected "str"
+src/scrapers/linkedin_scraper.py: [arg-type] Argument "source_url" to "JobListing" has incompatible type "str"; expected "HttpUrl | None"
+src/scrapers/linkedin_scraper.py: [assignment] Incompatible types in assignment (expression has type "int", target has type "str")
+src/scrapers/manager.py: [index] Unsupported target for indexed assignment ("Collection[JobSource]")
+src/scrapers/mycareersfuture_scraper.py: [arg-type] Argument "params" to "get" of "Session" has incompatible type "dict[str, object]"; expected "SupportsItems[str | bytes | int | float, str | bytes | int | float | Iterable[str | bytes | int | float] | None] | tuple[str | bytes | int | float, str | bytes | int | float | Iterable[str | bytes | int | float] | None] | Iterable[tuple[str | bytes | int | float, str | bytes | int | float | Iterable[str | bytes | int | float] | None]] | str | bytes | None"
+src/scrapers/mycareersfuture_scraper.py: [arg-type] Argument "source_url" to "JobListing" has incompatible type "str | Any"; expected "HttpUrl | None"
+src/scrapers/mycareersfuture_scraper.py: [override] Signature of "_fetch_page" incompatible with supertype "src.scrapers.base.BaseScraper"
+src/scrapers/storage.py: [call-overload] No overload variant of "dict" matches argument type "object"
+src/scrapers/storage.py: [call-overload] No overload variant of "dict" matches argument type "object"
+src/scrapers/storage.py: [index] Unsupported target for indexed assignment ("object")
+src/scrapers/storage.py: [index] Unsupported target for indexed assignment ("object")
+src/scrapers/storage.py: [index] Value of type "object" is not indexable
+src/scrapers/storage.py: [index] Value of type "object" is not indexable
+src/scrapers/storage.py: [operator] Unsupported operand types for + ("object" and "int")
+src/scrapers/storage.py: [operator] Unsupported operand types for + ("object" and "int")
+src/submission/detector.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "list[str]")
+src/submission/detector.py: [return-value] Incompatible return value type (got "str | AttributeValueList", expected "str | None")
+src/submission/submitter.py: [arg-type] Argument "source" to "JobListing" has incompatible type "str"; expected "JobSource"
+src/submission/submitter.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "LinkedInSession")
+src/submission/submitter.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "LinkedInSession")
+src/submission/submitter.py: [has-type] Cannot determine type of "_linkedin_session"
+src/submission/submitter.py: [var-annotated] Need type annotation for "application_data"
+src/submission/submitter.py: [var-annotated] Need type annotation for "status_counts" (hint: "status_counts: dict[<type>, <type>] = ...")
+src/utils/log_buffer.py: [assignment] Incompatible types in assignment (expression has type "int", target has type "str")
+src/utils/text_normalizer.py: [union-attr] Item "AttributeValueList" of "str | AttributeValueList" has no attribute "strip"

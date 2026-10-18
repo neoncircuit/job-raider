@@ -48,7 +48,10 @@ def test_run_history_queries_by_experiment_id(
     history = tracker.get_run_history(limit=5)
 
     fake_mlflow.search_runs.assert_called_once_with(
-        experiment_ids=["7"], max_results=5, order_by=["start_time DESC"]
+        experiment_ids=["7"],
+        max_results=5,
+        order_by=["start_time DESC"],
+        output_format="pandas",
     )
     assert [run["run_id"] for run in history] == ["run-1"]
     assert history[0]["metrics"] == {"metrics.score": 0.8}

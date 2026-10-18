@@ -3314,3 +3314,18 @@
 - Use "Step 1", "Step 2" inside an item. Do not use the word "Phase" for new work.
 - When work ships, tick its boxes in the same change. Do not leave the boxes for a later sweep.
 
+## Verification from Windows through WSL (2026-10-19)
+
+### Read exit codes from a script file, not from an inline `wsl.exe bash -c` string
+
+**Lesson:** `wsl.exe -d Ubuntu -- bash -c '...; echo "exit=$?"'` run from Git Bash printed `exit=0` even after `sys.exit(3)`. The same commands in a script file (`wsl.exe -d Ubuntu -- bash /mnt/c/.../check.sh`) printed the real code. A gate that failed correctly looked like it passed.
+
+**Why:**
+- The inline command string passes through Git Bash and `wsl.exe` argument handling before the inner bash sees it, so `$?` and `${PIPESTATUS[0]}` are not reliable there.
+- A wrong exit code turns a failed check into a false pass.
+
+**How to apply:**
+- Put verification commands in a script file and run that file with `wsl.exe`. Set `MSYS_NO_PATHCONV=1` so Git Bash does not rewrite `/mnt/...` paths.
+- Prove a gate in both directions: one run that must fail and one that must pass, and check both exit codes.
+- The local backend `.venv` is Python 3.12, but CI and Docker use 3.11. Compare tool output with the CI log before you trust a local-only result.
+

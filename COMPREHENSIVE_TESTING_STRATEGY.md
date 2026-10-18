@@ -29,7 +29,7 @@ GitHub Actions run on every push and pull request to `main` and `develop`:
 
 1. Secret scan (gitleaks)
 2. Python lint (`black`, `ruff`)
-3. Python type check (`mypy`, non-blocking)
+3. Python type check (`mypy` baseline gate: fails on new errors; see `docs/testing.md`)
 4. Backend tests with coverage upload to Codecov
 5. Next.js lint, type check, unit tests, format check, build, and E2E tests
 6. Security scan (bandit, safety, non-blocking)
