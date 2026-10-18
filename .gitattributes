@@ -19,6 +19,10 @@
 *.cjs text eol=lf
 *.css text eol=lf
 
+# Build files: make and Docker fail on CRLF line endings
+Makefile text eol=lf
+Dockerfile* text eol=lf
+
 # Binary files
 *.gguf binary
 *.bin binary

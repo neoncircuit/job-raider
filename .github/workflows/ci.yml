@@ -65,10 +65,10 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Check code formatting with Black
-        run: black --check src/ tests/
+        run: black --check main.py src/ tests/
 
       - name: Lint with Ruff
-        run: ruff check src/ tests/
+        run: ruff check main.py src/ tests/
 
   type-check:
     name: Type Check

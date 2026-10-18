@@ -59,11 +59,18 @@ Steps 1.1, 1.3, and 1.7 do not depend on other sub-steps. Step 1.4 needs 1.3, so
 
 ##### Step 1.1: CLI repair (effort: S)
 
-- [ ] Remove the second `argparse` block in `apps/backend-py/main.py` (the block after the first `parse_args()` at line 701). Define `-i/--interactive`, `--log-level`, and `--log-file` one time on the top-level parser.
-- [ ] Change `profile.target_job` to the fields of `profile.targets` in `run_pipeline` (`main.py:272-281`).
-- [ ] Read the allowed `--sources` values from the scraper registry, not from a hard-coded list (`main.py:600`).
-- [ ] Add `tests/unit/test_cli.py`: `--help` for each command exits 0; the README examples parse; `run_pipeline` puts target keywords and locations on the profile (orchestrator mocked).
-- [ ] Update the README CLI examples to match the real commands.
+- [x] Remove the second `argparse` block in `apps/backend-py/main.py` (the block after the first `parse_args()` at line 701). Move parser construction into `build_parser()`. Define `-i/--interactive` on the top-level parser, and share `--log-level` and `--log-file` with both commands through a parent parser.
+- [x] Change `profile.target_job` to the fields of `profile.targets` in `run_pipeline` (`main.py:272-281`).
+- [x] Read the allowed `--sources` values from the scraper registry, not from a hard-coded list (`main.py:600`). New `available_sources()` in `src/scrapers/manager.py`; `ScraperManager` uses it too.
+- [x] Add `tests/unit/test_cli.py` (36 tests): help for each command, README forms, sources, experience choices, target fields, routing, and the full `analyze` path.
+- [x] Update the README CLI examples to match the real commands. No edit needed: `pipeline` is the default command again, so `main.py --resume ...` in the README and `docs/usage.md` works as written.
+- [x] Found during the work and fixed:
+  - `ResumeParser.parse()` does not exist. `load_user_profile` and `analyze` now call `parse_file()`. `profile.contact_info.name` is now `profile.name`.
+  - `--target-experience` choices (`entry`, `mid`) did not match `ExperienceLevel` values ("Entry Level"). The choices now map to enum member names.
+  - `analyze` always failed: a local `from pathlib import Path` made `Path` unbound at the resume check (ruff F823). Removed the local import; a test now fails if it comes back.
+  - The second `ensure_dependencies()` call inside `main()` is removed. The call before the imports stays. `main()` can now run in tests without `os.execv`.
+  - `main.py` was not linted in CI. It is now ruff- and Black-clean, and CI and `make lint` check it.
+  - Pinned `Makefile` and `Dockerfile*` to LF in `.gitattributes`, because `make` and Docker fail on CRLF.
 
 ##### Step 1.2: One stage registry and an honest submit stage (effort: S to M)
 

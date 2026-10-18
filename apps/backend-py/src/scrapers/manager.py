@@ -12,7 +12,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
 from ..utils.logger import Components, get_logger
@@ -22,6 +22,27 @@ from .jobstreet_scraper import JobStreetScraper, jobstreet_enabled
 from .jsearch_scraper import JSearchScraper
 from .linkedin_scraper import LinkedInScraper
 from .mycareersfuture_scraper import MyCareersFutureScraper, mcf_enabled
+
+
+def available_sources() -> List[JobSource]:
+    """List the job sources that the scraper manager registers.
+
+    LinkedIn and JSearch are always available. MyCareersFuture, JobStreet,
+    and Careers@Gov are available only when their environment kill switch
+    allows them. The CLI and ``ScraperManager`` both use this list, so the
+    sources a user can pick match the scrapers that exist.
+
+    Returns:
+        Available sources in registration order.
+    """
+    sources = [JobSource.LINKEDIN, JobSource.JSEARCH]
+    if mcf_enabled():
+        sources.append(JobSource.MYCAREERSFUTURE)
+    if jobstreet_enabled():
+        sources.append(JobSource.JOBSTREET)
+    if careersatgov_enabled():
+        sources.append(JobSource.CAREERSATGOV)
+    return sources
 
 
 class ScraperManager:
@@ -52,16 +73,16 @@ class ScraperManager:
         self.deduplicate = deduplicate
 
         # Initialize scrapers (MCF / JobStreet / CAG are kill-switched via env)
-        self.scrapers: Dict[JobSource, BaseScraper] = {
-            JobSource.LINKEDIN: LinkedInScraper(),
-            JobSource.JSEARCH: JSearchScraper(),
+        scraper_classes: Dict[JobSource, Type[BaseScraper]] = {
+            JobSource.LINKEDIN: LinkedInScraper,
+            JobSource.JSEARCH: JSearchScraper,
+            JobSource.MYCAREERSFUTURE: MyCareersFutureScraper,
+            JobSource.JOBSTREET: JobStreetScraper,
+            JobSource.CAREERSATGOV: CareersAtGovScraper,
         }
-        if mcf_enabled():
-            self.scrapers[JobSource.MYCAREERSFUTURE] = MyCareersFutureScraper()
-        if jobstreet_enabled():
-            self.scrapers[JobSource.JOBSTREET] = JobStreetScraper()
-        if careersatgov_enabled():
-            self.scrapers[JobSource.CAREERSATGOV] = CareersAtGovScraper()
+        self.scrapers: Dict[JobSource, BaseScraper] = {
+            source: scraper_classes[source]() for source in available_sources()
+        }
 
         self.logger = get_logger(Components.SCRAPERS)
 

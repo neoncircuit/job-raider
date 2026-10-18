@@ -64,13 +64,13 @@ test:
 
 lint:
 	@echo "Running Python linting..."
-	@cd apps/backend-py && .venv/bin/python -m ruff check src/ tests/
+	@cd apps/backend-py && .venv/bin/python -m ruff check main.py src/ tests/
 	@cd apps/backend-py && .venv/bin/python -m mypy src/ --ignore-missing-imports --no-error-summary || true
 
 format:
 	@echo "Formatting Python code..."
-	@cd apps/backend-py && .venv/bin/python -m black src/ tests/
-	@cd apps/backend-py && .venv/bin/python -m ruff check --fix src/ tests/
+	@cd apps/backend-py && .venv/bin/python -m black main.py src/ tests/
+	@cd apps/backend-py && .venv/bin/python -m ruff check --fix main.py src/ tests/
 
 type-check:
 	@echo "Running TypeScript type check..."

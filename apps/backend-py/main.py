@@ -10,6 +10,8 @@ Date: 2026-04-21
 """
 
 import argparse
+import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -97,7 +99,7 @@ def ensure_dependencies():
                 if result.returncode == 0:
                     print("✓ Dependencies installed")
                 else:
-                    print(f"✗ Installation failed:")
+                    print("✗ Installation failed:")
                     print(result.stderr)
                     sys.exit(1)
             else:
@@ -116,7 +118,7 @@ def ensure_dependencies():
                 if result.returncode == 0:
                     print("✓ Core dependencies installed")
                 else:
-                    print(f"✗ Installation failed:")
+                    print("✗ Installation failed:")
                     print(result.stderr)
                     sys.exit(1)
         except Exception as e:
@@ -125,13 +127,9 @@ def ensure_dependencies():
     else:
         print("✓ All dependencies satisfied")
 
-    # Install Playwright browsers if needed
-    try:
-        from playwright.sync_api import sync_playwright
-
-        # Just check if we can import, browsers will be downloaded on first use
-        pass
-    except ImportError:
+    # Install Playwright browsers if needed. Only check that the package is
+    # importable; browsers are downloaded on first use.
+    if importlib.util.find_spec("playwright") is None:
         print("⚠ Playwright not installed, installing browsers...")
         try:
             subprocess.run(
@@ -176,29 +174,38 @@ def ensure_dependencies():
     # This ensures we're running from within the venv
     venv_python = venv_dir / "bin" / "python3"
     if sys.executable != str(venv_python):
-        print(f"Switching to virtual environment...")
+        print("Switching to virtual environment...")
         print()
         os.execv(str(venv_python), [str(venv_python)] + sys.argv)
 
     return True
 
 
-# Ensure dependencies before importing anything else
+# Ensure dependencies before importing anything else. The project imports
+# below must stay after this call, so they carry ``noqa: E402``.
 # When running as main, check deps before imports to auto-create venv
 if __name__ == "__main__":
     ensure_dependencies()
 
-from src.extractors.resume_parser import ResumeParser
-from src.generation.resume_analyzer import ResumeAnalyzer
-from src.llm.router import LLMRouter
-from src.models.job_listing import JobListing
-from src.models.user_profile import UserProfile
-from src.pipeline.orchestrator import (
+from src.extractors.resume_parser import ResumeParser  # noqa: E402
+from src.generation.resume_analyzer import ResumeAnalyzer  # noqa: E402
+from src.llm.router import LLMRouter  # noqa: E402
+from src.models.job_listing import ExperienceLevel  # noqa: E402
+from src.models.user_profile import UserProfile  # noqa: E402
+from src.pipeline.orchestrator import (  # noqa: E402
     PipelineConfig,
     PipelineOrchestrator,
     PipelineStage,
 )
-from src.utils.logger import Components, get_logger, setup_logging
+from src.scrapers.manager import available_sources  # noqa: E402
+from src.utils.logger import Components, get_logger, setup_logging  # noqa: E402
+
+# CLI names for --target-experience, mapped to ExperienceLevel by member name.
+EXPERIENCE_CHOICES = [
+    level.name.lower()
+    for level in ExperienceLevel
+    if level is not ExperienceLevel.NOT_SPECIFIED
+]
 
 
 def load_user_profile(resume_path: str) -> UserProfile:
@@ -216,9 +223,9 @@ def load_user_profile(resume_path: str) -> UserProfile:
     logger.info(f"Parsing resume from: {resume_path}")
 
     parser = ResumeParser()
-    profile = parser.parse(resume_path)
+    profile = parser.parse_file(resume_path)
 
-    logger.info(f"Loaded profile for: {profile.contact_info.name}")
+    logger.info(f"Loaded profile for: {profile.name}")
     logger.info(f"Skills: {len(profile.skills)} categories")
     logger.info(f"Projects: {len(profile.projects)}")
     logger.info(f"Experience: {profile.years_of_experience:.1f} years")
@@ -273,14 +280,12 @@ def run_pipeline(args) -> int:
 
         # Update profile if targets provided
         if args.target_keywords:
-            profile.target_job.keywords.extend(args.target_keywords)
+            profile.targets.keywords.extend(args.target_keywords)
         if args.target_locations:
-            profile.target_job.locations.extend(args.target_locations)
+            profile.targets.locations.extend(args.target_locations)
         if args.target_experience:
-            from src.models.user_profile import ExperienceLevel
-
-            profile.target_job.experience_levels = [
-                ExperienceLevel(exp) for exp in args.target_experience
+            profile.targets.experience_levels = [
+                ExperienceLevel[exp.upper()] for exp in args.target_experience
             ]
 
         # Create pipeline config
@@ -353,10 +358,11 @@ def interactive_mode() -> int:
         keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
 
         locations_input = input("Enter locations (comma-separated): ").strip()
-        locations = [l.strip() for l in locations_input.split(",") if l.strip()]
+        locations = [loc.strip() for loc in locations_input.split(",") if loc.strip()]
 
+        source_names = ",".join(source.value for source in available_sources())
         sources_input = input(
-            "Enter sources to search (linkedin,jsearch or blank for all): "
+            f"Enter sources to search ({source_names} or blank for all): "
         ).strip()
         sources = (
             [s.strip().lower() for s in sources_input.split(",") if s.strip()]
@@ -420,15 +426,15 @@ def run_analyze_command(args) -> int:
     logger = get_logger(Components.GENERATION)
 
     try:
-        # Parse resume
-        logger.info(f"Parsing resume from: {args.resume}")
-        parser = ResumeParser()
-        profile = parser.parse(args.resume)
-
-        # Verify resume exists
+        # Verify resume exists before parsing it
         if not Path(args.resume).exists():
             logger.error(f"Resume not found: {args.resume}")
             return 1
+
+        # Parse resume
+        logger.info(f"Parsing resume from: {args.resume}")
+        parser = ResumeParser()
+        profile = parser.parse_file(args.resume)
 
         # Create analyzer
         llm_router = LLMRouter()
@@ -502,9 +508,6 @@ def run_analyze_command(args) -> int:
 
         # Save to file if requested
         if args.output:
-            import json
-            from pathlib import Path
-
             output_path = Path(args.output)
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -520,44 +523,187 @@ def run_analyze_command(args) -> int:
         return 1
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
     """
-    Main entry point.
+    Build the command-line parser.
+
+    The parser has two commands, ``pipeline`` and ``analyze``, plus the
+    top-level ``-i/--interactive`` flag. Logging options are shared by every
+    command through a parent parser, so each option is defined one time.
 
     Returns:
-        Exit code
+        Configured argument parser.
     """
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument(
+        "--log-level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level (default: INFO)",
+    )
+    common.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Log file path (default: stdout only)",
+    )
+
     parser = argparse.ArgumentParser(
         description="Job Raider - Automated Job Application Pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="Run in interactive mode",
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # Pipeline command (default behavior)
+    # Pipeline command
     pipeline_parser = subparsers.add_parser(
         "pipeline",
+        parents=[common],
         help="Run the job application pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Basic search with dry run
-  python main.py pipeline --resume my_resume.pdf --keywords "python engineer" --locations "new york remote"
-
-  # Full pipeline with submission
-  python main.py pipeline --resume my_resume.pdf --keywords "fintech AI" --locations "remote" --no-dry-run
+  # Basic search with dry run (dry run is the default)
+  python main.py pipeline --resume my_resume.pdf --keywords "python engineer" --locations "New York" "Remote"
 
   # Stop after scoring
-  python main.py pipeline --resume my_resume.pdf --keywords "SWE" --stop-at score_and_rank
+  python main.py pipeline --resume my_resume.pdf --keywords "software engineer" --locations "Singapore" --stop-at score_and_rank
 
   # Fresh graduate scoring
-  python main.py pipeline --resume my_resume.pdf --keywords "python" --locations "singapore" --fresh-grad
+  python main.py pipeline --resume my_resume.pdf --keywords "python" --locations "Singapore" --fresh-grad
+
+Each value after --keywords or --locations is one search term. Quote a
+term that contains spaces.
         """,
+    )
+    pipeline_parser.add_argument(
+        "--resume",
+        type=str,
+        required=True,
+        help="Path to resume file (PDF or DOCX)",
+    )
+    pipeline_parser.add_argument(
+        "--keywords",
+        type=str,
+        nargs="+",
+        required=True,
+        help="Job keywords to search for",
+    )
+    pipeline_parser.add_argument(
+        "--locations",
+        type=str,
+        nargs="+",
+        required=True,
+        help="Job locations to search in",
+    )
+    pipeline_parser.add_argument(
+        "--sources",
+        type=str,
+        nargs="+",
+        choices=[source.value for source in available_sources()],
+        help="Job sources to search (default: all available sources)",
+    )
+    pipeline_parser.add_argument(
+        "--target-keywords",
+        type=str,
+        nargs="+",
+        help="Additional target keywords for profile",
+    )
+    pipeline_parser.add_argument(
+        "--target-locations",
+        type=str,
+        nargs="+",
+        help="Additional target locations for profile",
+    )
+    pipeline_parser.add_argument(
+        "--target-experience",
+        type=str,
+        nargs="+",
+        choices=EXPERIENCE_CHOICES,
+        help="Target experience levels",
+    )
+    pipeline_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=True,
+        help="Run in dry-run mode (no actual submissions; default)",
+    )
+    pipeline_parser.add_argument(
+        "--no-dry-run",
+        action="store_false",
+        dest="dry_run",
+        help="Disable dry-run mode (actual submissions will be made)",
+    )
+    pipeline_parser.add_argument(
+        "--skip-submission",
+        action="store_true",
+        help="Skip submission stage entirely",
+    )
+    pipeline_parser.add_argument(
+        "--stop-at",
+        type=str,
+        choices=[s.value for s in PipelineStage],
+        help="Stop pipeline at this stage",
+    )
+    pipeline_parser.add_argument(
+        "--min-score",
+        type=int,
+        default=60,
+        help="Minimum relevance score (0-100, default: 60)",
+    )
+    pipeline_parser.add_argument(
+        "--scam-threshold",
+        type=float,
+        default=0.7,
+        help="Scam detection threshold (0-1, default: 0.7)",
+    )
+    pipeline_parser.add_argument(
+        "--max-jobs",
+        type=int,
+        default=20,
+        help="Maximum jobs to present for selection (default: 20)",
+    )
+    pipeline_parser.add_argument(
+        "--fresh-grad",
+        action="store_true",
+        help="Score with fresh graduate weights (projects/education over experience)",
+    )
+    pipeline_parser.add_argument(
+        "--submission-delay",
+        type=float,
+        default=2.0,
+        help="Delay between submissions in seconds (default: 2.0)",
+    )
+    pipeline_parser.add_argument(
+        "--max-submissions",
+        type=int,
+        default=30,
+        help="Maximum submissions per hour (default: 30)",
+    )
+    pipeline_parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="data",
+        help="Directory for data storage (default: data)",
+    )
+    pipeline_parser.add_argument(
+        "--results-dir",
+        type=str,
+        default="data/results",
+        help="Directory for results (default: data/results)",
     )
 
     # Analyze command
     analyze_parser = subparsers.add_parser(
         "analyze",
+        parents=[common],
         help="Analyze a resume and provide insights",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -572,116 +718,6 @@ Examples:
   python main.py analyze --resume my_resume.pdf --output analysis.json
         """,
     )
-
-    # Interactive mode
-    parser.add_argument(
-        "-i",
-        "--interactive",
-        action="store_true",
-        help="Run in interactive mode",
-    )
-
-    # Pipeline arguments
-    pipeline_parser.add_argument(
-        "--resume",
-        type=str,
-        help="Path to resume file (PDF or DOCX)",
-    )
-    pipeline_parser.add_argument(
-        "--keywords", type=str, nargs="+", help="Job keywords to search for"
-    )
-    pipeline_parser.add_argument(
-        "--locations", type=str, nargs="+", help="Job locations to search in"
-    )
-    pipeline_parser.add_argument(
-        "--sources",
-        type=str,
-        nargs="+",
-        choices=["linkedin", "jsearch"],
-        help="Job sources to search (default: all)",
-    )
-    pipeline_parser.add_argument(
-        "--target-keywords",
-        type=str,
-        nargs="+",
-        help="Additional target keywords for profile",
-    )
-    pipeline_parser.add_argument(
-        "--target-locations",
-        type=str,
-        nargs="+",
-        help="Additional target locations for profile",
-    )
-    pipeline_parser.add_argument(
-        "--target-experience",
-        type=str,
-        nargs="+",
-        choices=["entry", "mid", "senior", "lead", "executive"],
-        help="Target experience levels",
-    )
-    pipeline_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        default=True,
-        help="Run in dry-run mode (no actual submissions)",
-    )
-    pipeline_parser.add_argument(
-        "--no-dry-run",
-        action="store_false",
-        dest="dry_run",
-        help="Disable dry-run mode",
-    )
-    pipeline_parser.add_argument(
-        "--skip-submission", action="store_true", help="Skip submission stage entirely"
-    )
-    pipeline_parser.add_argument(
-        "--stop-at",
-        type=str,
-        choices=[s.value for s in PipelineStage],
-        help="Stop pipeline at this stage",
-    )
-    pipeline_parser.add_argument(
-        "--min-score", type=int, default=60, help="Minimum relevance score (0-100)"
-    )
-    pipeline_parser.add_argument(
-        "--scam-threshold",
-        type=float,
-        default=0.7,
-        help="Scam detection threshold (0-1)",
-    )
-    pipeline_parser.add_argument(
-        "--max-jobs", type=int, default=20, help="Maximum jobs to present"
-    )
-    pipeline_parser.add_argument(
-        "--fresh-grad",
-        action="store_true",
-        help="Score with fresh graduate weights (projects/education over experience)",
-    )
-    pipeline_parser.add_argument(
-        "--submission-delay",
-        type=float,
-        default=2.0,
-        help="Delay between submissions (seconds)",
-    )
-    pipeline_parser.add_argument(
-        "--max-submissions", type=int, default=30, help="Maximum submissions per hour"
-    )
-    pipeline_parser.add_argument(
-        "--data-dir", type=str, default="data", help="Directory for data storage"
-    )
-    pipeline_parser.add_argument(
-        "--results-dir", type=str, default="data/results", help="Directory for results"
-    )
-    pipeline_parser.add_argument(
-        "--log-level",
-        type=str,
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level",
-    )
-    pipeline_parser.add_argument("--log-file", type=str, help="Log file path")
-
-    # Analyze arguments
     analyze_parser.add_argument(
         "--resume", type=str, required=True, help="Path to resume file (PDF or DOCX)"
     )
@@ -689,173 +725,45 @@ Examples:
         "--job", type=str, help="Path to job description file (optional)"
     )
     analyze_parser.add_argument("--output", type=str, help="Save analysis to JSON file")
-    analyze_parser.add_argument(
-        "--log-level",
-        type=str,
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level",
-    )
 
-    # Parse arguments
-    args = parser.parse_args()
+    return parser
 
-    # Mode
-    parser.add_argument(
-        "-i",
-        "--interactive",
-        action="store_true",
-        help="Run in interactive mode",
-    )
 
-    # Required for non-interactive
-    parser.add_argument(
-        "--resume",
-        type=str,
-        help="Path to resume file (PDF or DOCX)",
-    )
+def with_default_command(argv: List[str]) -> List[str]:
+    """
+    Insert the default ``pipeline`` command when no command is given.
 
-    # Search parameters
-    parser.add_argument(
-        "--keywords",
-        type=str,
-        nargs="+",
-        help="Job keywords to search for",
-    )
-    parser.add_argument(
-        "--locations",
-        type=str,
-        nargs="+",
-        help="Job locations to search in",
-    )
-    parser.add_argument(
-        "--sources",
-        type=str,
-        nargs="+",
-        choices=["linkedin", "jsearch"],
-        help="Job sources to search (default: all)",
-    )
+    ``pipeline`` is the default command, so ``main.py --resume r.pdf ...``
+    works the same as ``main.py pipeline --resume r.pdf ...``. Help and
+    interactive mode keep their top-level meaning.
 
-    # Profile overrides
-    parser.add_argument(
-        "--target-keywords",
-        type=str,
-        nargs="+",
-        help="Additional target keywords for profile",
-    )
-    parser.add_argument(
-        "--target-locations",
-        type=str,
-        nargs="+",
-        help="Additional target locations for profile",
-    )
-    parser.add_argument(
-        "--target-experience",
-        type=str,
-        nargs="+",
-        choices=["entry", "mid", "senior", "lead", "executive"],
-        help="Target experience levels",
-    )
+    Args:
+        argv: Command-line arguments without the program name.
 
-    # Pipeline options
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        default=True,
-        help="Run in dry-run mode (no actual submissions)",
-    )
-    parser.add_argument(
-        "--no-dry-run",
-        action="store_false",
-        dest="dry_run",
-        help="Disable dry-run mode (actual submissions will be made)",
-    )
-    parser.add_argument(
-        "--skip-submission",
-        action="store_true",
-        help="Skip submission stage entirely",
-    )
-    parser.add_argument(
-        "--stop-at",
-        type=str,
-        choices=[s.value for s in PipelineStage],
-        help="Stop pipeline at this stage",
-    )
+    Returns:
+        Arguments with ``pipeline`` first when the first argument is a
+        pipeline option.
+    """
+    top_level = {"-h", "--help", "-i", "--interactive"}
+    if argv and argv[0].startswith("-") and argv[0] not in top_level:
+        return ["pipeline", *argv]
+    return argv
 
-    # Scoring options
-    parser.add_argument(
-        "--min-score",
-        type=int,
-        default=60,
-        help="Minimum relevance score (0-100, default: 60)",
-    )
-    parser.add_argument(
-        "--scam-threshold",
-        type=float,
-        default=0.7,
-        help="Scam detection threshold (0-1, default: 0.7)",
-    )
-    parser.add_argument(
-        "--max-jobs",
-        type=int,
-        default=20,
-        help="Maximum jobs to present for selection (default: 20)",
-    )
-    parser.add_argument(
-        "--fresh-grad",
-        action="store_true",
-        help="Score with fresh graduate weights (projects/education over experience)",
-    )
 
-    # Submission options
-    parser.add_argument(
-        "--submission-delay",
-        type=float,
-        default=2.0,
-        help="Delay between submissions in seconds (default: 2.0)",
-    )
-    parser.add_argument(
-        "--max-submissions",
-        type=int,
-        default=30,
-        help="Maximum submissions per hour (default: 30)",
-    )
+def main(argv: Optional[List[str]] = None) -> int:
+    """
+    Main entry point.
 
-    # Storage options
-    parser.add_argument(
-        "--data-dir",
-        type=str,
-        default="data",
-        help="Directory for data storage (default: data)",
-    )
-    parser.add_argument(
-        "--results-dir",
-        type=str,
-        default="data/results",
-        help="Directory for results (default: data/results)",
-    )
+    Args:
+        argv: Command-line arguments without the program name. ``None``
+            reads ``sys.argv``.
 
-    # Logging options
-    parser.add_argument(
-        "--log-level",
-        type=str,
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level (default: INFO)",
-    )
-    parser.add_argument(
-        "--log-file",
-        type=str,
-        default=None,
-        help="Log file path (default: stdout only)",
-    )
-
-    # Parse arguments
-    args = parser.parse_args()
-
-    # Self-healing: Ensure dependencies are installed before running
-    # This provides a pnpm-dev-like experience where missing deps are auto-installed
-    ensure_dependencies()
+    Returns:
+        Exit code
+    """
+    parser = build_parser()
+    raw_argv = sys.argv[1:] if argv is None else argv
+    args = parser.parse_args(with_default_command(raw_argv))
 
     # Setup logging
     log_level = getattr(args, "log_level", "INFO")
@@ -870,24 +778,14 @@ Examples:
     if args.command == "analyze":
         return run_analyze_command(args)
 
-    # Default to pipeline command
-    if args.command == "pipeline" or args.command is None:
-        # Validate pipeline arguments
-        if not args.resume:
-            parser.error("--resume is required for pipeline command")
-
-        if not args.keywords:
-            parser.error("--keywords is required for pipeline command")
-
-    if not args.locations:
-        parser.error("--locations is required unless using --interactive mode")
+    if args.command != "pipeline":
+        parser.error("choose a command (pipeline or analyze), or use --interactive")
 
     # Verify resume exists
     if not Path(args.resume).exists():
         logger.error(f"Resume not found: {args.resume}")
         return 1
 
-    # Run pipeline
     return run_pipeline(args)
 
 
