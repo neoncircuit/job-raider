@@ -477,7 +477,7 @@ class MLflowTracker:
                 return []
 
             runs = mlflow.search_runs(
-                experiment_ids=[experiment.experiment_name],
+                experiment_ids=[experiment.experiment_id],
                 max_results=limit,
                 order_by=["start_time DESC"],
             )

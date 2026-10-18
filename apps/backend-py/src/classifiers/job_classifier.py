@@ -603,7 +603,7 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
             word in desc_lower
             for word in ["fast-paced", "fast paced", "startup environment", "rapidly"]
         ):
-            return WorkPace.FAST
+            return WorkPace.FAST_PACED
         elif any(
             word in desc_lower
             for word in ["high pressure", "demanding", "deadline-driven"]

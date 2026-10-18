@@ -93,12 +93,13 @@ Part B: submit stage
 
 ##### Step 1.3: Fix six runtime bugs that mypy found (effort: S)
 
-- [ ] `src/classifiers/job_classifier.py:606`: `WorkPace.FAST` to `WorkPace.FAST_PACED`. Test with a JD that contains "fast-paced".
-- [ ] `src/generation/formatter.py:535-563`: set `run.bold` and `run.italic` on the returned run, not as `add_run` arguments. Test that DOCX export of a resume with experience, projects, and education succeeds.
-- [ ] `src/metrics/outcome_tracker.py:992`: `Path.remove()` to `Path.unlink()`. Test hard delete of a custom status.
-- [ ] `src/metrics/mlflow_tracker.py:480`: `experiment.experiment_name` to `experiment.experiment_id`. Test with a mocked `mlflow`.
-- [ ] `src/experiments/ab_testing.py:223`: the module calls `JobMatcher.match_and_score`, which does not exist, and nothing imports the module. Delete the module and its exports (decision 1).
-- [ ] `src/generation/resume_writer.py:285`: `profile.skills[:5].name` to the names of the first five skills. Test the fallback resume path.
+- [x] `src/classifiers/job_classifier.py:606`: `WorkPace.FAST` to `WorkPace.FAST_PACED`. Rule-based classification of any JD with "fast-paced", "rapidly", or "startup environment" returned `success=False`. Tests: `tests/unit/test_job_classifier.py`.
+- [x] `src/generation/formatter.py:535-563`: set `run.bold` and `run.italic` on the returned run, not as `add_run` arguments. DOCX resumes were silently missing; PDF still worked. Test: `tests/unit/test_resume_formatter_docx.py`.
+- [x] `src/metrics/outcome_tracker.py:992`: `Path.remove()` to `Path.unlink()`. The status left the cache but its file stayed, so it came back after a restart. Tests: `tests/unit/test_outcome_tracker_custom_status.py`.
+- [x] `src/metrics/mlflow_tracker.py:480`: `experiment.experiment_name` to `experiment.experiment_id` in `get_run_history`; run history was always empty. (`get_best_run` was already correct.) Test: `tests/unit/test_mlflow_run_history.py`.
+- [x] `src/experiments/ab_testing.py`: deleted the `src/experiments/` package (decision 1). Nothing imported it. Removed its line from the README source tree.
+- [x] `src/generation/resume_writer.py:285`: the template fallback, which runs when the LLM fails, now joins the names of the first five skills. Test: `tests/unit/test_resume_writer_fallback.py`.
+- [x] Mutation check: with the five source fixes stashed, the bug tests fail with the original errors.
 
 ##### Step 1.4: Make mypy a real gate (effort: S)
 

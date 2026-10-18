@@ -532,9 +532,9 @@ class ResumeFormatter:
             elif section == "experience":
                 for exp in resume.experience:
                     p = doc.add_paragraph()
-                    p.add_run(exp.get("title", "Unknown"), bold=True)
+                    p.add_run(exp.get("title", "Unknown")).bold = True
                     p.add_run(f" at {exp.get('company', 'Unknown')}")
-                    p.add_run(f"\n{exp.get('dates', '')}", italic=True)
+                    p.add_run(f"\n{exp.get('dates', '')}").italic = True
 
                     for hl in exp.get("highlights", []):
                         doc.add_paragraph(hl, style="List Bullet")
@@ -548,7 +548,7 @@ class ResumeFormatter:
 
                     if project.get("technologies"):
                         p = doc.add_paragraph()
-                        p.add_run("Technologies: ", bold=True)
+                        p.add_run("Technologies: ").bold = True
                         for i, tech in enumerate(project["technologies"]):
                             p.add_run(tech)
                             if i < len(project["technologies"]) - 1:
@@ -560,7 +560,7 @@ class ResumeFormatter:
             elif section == "education":
                 for edu in resume.education:
                     p = doc.add_paragraph()
-                    p.add_run(edu["degree"], bold=True)
+                    p.add_run(edu["degree"]).bold = True
                     if edu.get("school"):
                         p.add_run(f" - {edu['school']}")
                     if edu.get("year"):

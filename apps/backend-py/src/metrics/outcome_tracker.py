@@ -989,7 +989,7 @@ class OutcomeTracker:
             del self._custom_statuses[status_id]
             filepath = self.custom_statuses_dir / f"{status_id}.json"
             if filepath.exists():
-                filepath.remove()
+                filepath.unlink()
             self.logger.info(f"Hard deleted custom status: {status_id}")
         else:
             # Soft delete

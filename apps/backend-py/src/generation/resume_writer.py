@@ -282,7 +282,7 @@ Return a JSON object with the rewritten resume sections:
         # Generate summary
         summary = selection.summary_suggestion or (
             f"{profile.name} - {profile.current_position.title if profile.current_position else 'Professional'} "
-            f"with expertise in {', '.join(profile.skills[:5].name if profile.skills else [])}"
+            f"with expertise in {', '.join(skill.name for skill in profile.skills[:5])}"
         )
 
         # Generate skills list

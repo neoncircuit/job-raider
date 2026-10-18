@@ -178,7 +178,6 @@ job-raider/                      # Project root (monorepo)
 │   │   ├── config/              # YAML config loader
 │   │   ├── database/            # Database models and connection helpers
 │   │   ├── extractors/          # Resume and JD parsing (pypdf)
-│   │   ├── experiments/         # A/B testing framework
 │   │   ├── generation/          # Resume generation (selector, writer, formatter) + analyzers
 │   │   ├── health/              # System health checks (including MLflow)
 │   │   ├── linkedin/            # LinkedIn Easy Apply automation
