@@ -10,6 +10,15 @@
 *.txt text eol=lf
 *.json text eol=lf
 
+# Frontend sources: Prettier enforces "endOfLine": "lf" (apps/frontend-ts/.prettierrc.json)
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.css text eol=lf
+
 # Binary files
 *.gguf binary
 *.bin binary
