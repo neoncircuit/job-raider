@@ -156,9 +156,116 @@ Part B: submit stage
 2. Uvicorn workers: change the default to 1. One local user does not need more, and run state is in memory.
 3. Keywords: split on commas only. "python engineer" is one search phrase.
 
+#### Step 2 plan: Make local-first true
+
+**Goal:** Resume text and API keys stay on the machine by default. Cloud LLM use is opt-in, logged, and visible in the UI. Auth is on unless the user sets an explicit bypass. The API is not reachable from other devices on the network by default.
+
+**Constraints:**
+
+- Do not make auto-submit reachable (Step 5).
+- Keep dry run as the default in every layer.
+- Each sub-step is one commit (or PR) with its own tests. Run all local checks before each push.
+- Do not change eval scoring, scam rules, or RAG fusion (Step 3).
+- Line numbers below were re-checked on 2026-10-19 after Steps 1.1 to 1.7.
+
+```mermaid
+flowchart LR
+    S21[2.1 Cloud none default] --> S22[2.2 One LLM factory]
+    S22 --> S25[2.5 Cover letter off the loop]
+    S23[2.3 Bind and auth] --> S24[2.4 Keys and client logging]
+    S24 --> S26[2.6 Host Origin and URL guards]
+```
+
+Steps 2.1 and 2.3 can start in parallel. Step 2.2 needs 2.1 so that factory-built routers inherit `CloudProvider.NONE`. Step 2.5 is independent of 2.3 and 2.4. Step 2.6 can follow 2.4.
+
+##### Step 2.1: No silent cloud fallback (effort: S) — S1
+
+- [ ] Add `CloudProvider.NONE` in `src/api/settings.py`. Make it the default for `APIConfig.cloud_fallback_provider` (today the default is `CloudProvider.ANTHROPIC` at about line 71).
+- [ ] In `src/llm/router.py`, stop treating Anthropic as the default fallback on the built-in routes (about lines 81 to 201). When the primary provider fails and fallback is `none` or unset, log the failure and raise (or return a clear error). Do not call a cloud client.
+- [ ] On every successful `generate` call, log and return which provider and model ran (primary or fallback). Extend the response / metadata the API already exposes so the UI can show a badge when a cloud model was used.
+- [ ] Settings UI: cloud fallback control includes "None (local only)". Document that a cloud key alone does not send data until the user picks a cloud fallback.
+- [ ] Tests: with `CloudProvider.NONE`, a forced Ollama failure does not call Anthropic or Gemini. With Anthropic selected, a forced Ollama failure does call Anthropic and the response marks `provider=anthropic`. Mutation: put Anthropic back as the default; the NONE test must fail.
+- [ ] Done when: a run with no cloud fallback never leaves the machine, and the Cover Letter / Pipeline UIs can show when a cloud model was used.
+
+##### Step 2.2: One LLM factory everywhere (effort: S) — S2
+
+Bare `LLMRouter()` call sites re-checked on 2026-10-19:
+
+| Location | Notes |
+|----------|-------|
+| `src/pipeline/stages.py` (~114) | Pipeline stages |
+| `src/pipeline/orchestrator.py` (~182) | `llm_router or LLMRouter()` |
+| `src/api/routes/profile.py` (~141, ~345, ~778) | Three sites |
+| `src/api/main.py` (~78) | Agent system init |
+| `src/evaluation/cover_letter_compare.py` (~325) | Compare writer |
+
+Already correct: `cover_letter_service.py`, `cover_letter.py` routes, and `jobs.py` use `create_router(prefer_local=True)`.
+
+- [ ] Replace every bare `LLMRouter()` above with `create_router(...)` (or inject a router from the caller). Keep one public factory in `src/llm/router.py`.
+- [ ] Test that fails if a production module constructs `LLMRouter(` directly (AST or import-graph scan of `src/`, excluding tests and the factory itself).
+- [ ] Done when: Settings (host, models, fallback) apply to pipeline, profile, agents, and compare the same way they apply to Cover Letter.
+
+##### Step 2.3: Bind to localhost and require auth (effort: S) — S3, S4
+
+Current state (2026-10-19):
+
+- `scripts/dev.sh` (~84): `uvicorn ... --host 0.0.0.0`.
+- `docker/Dockerfile` CMD: `--host 0.0.0.0`.
+- `docker-compose.yml`: publishes backend `8000` and frontend `3000` on the host.
+- `src/api/auth.py` (~51-58): skips auth when `ENVIRONMENT=development` and `API_KEY` is empty.
+
+- [ ] Bind the local API to `127.0.0.1` in `scripts/dev.sh`. Keep container-internal `0.0.0.0` only if Compose needs it inside the network; do not publish the backend port to other LAN devices by default (see Questions).
+- [ ] `setup.sh`: generate a random `API_KEY` and write it to both backend `.env` and frontend `.env.local` (never commit those files). Stop writing the public placeholder `your_api_key_here`.
+- [ ] Auth bypass only when `AUTH_DISABLED=1` is set explicitly. Remove the "empty API_KEY in development" bypass from `src/api/auth.py`.
+- [ ] Tests: empty `API_KEY` without `AUTH_DISABLED` returns 401. `AUTH_DISABLED=1` allows requests. Document the flag in `.env.example` and `docs/usage.md`.
+- [ ] Done when: a fresh setup has a real key, and another device on the LAN cannot call the API without a deliberate publish/bind choice.
+
+##### Step 2.4: Do not return or log secrets (effort: S) — S5
+
+- [ ] `GET /api/settings/` returns `has_anthropic_key` / `has_gemini_key` (booleans), not the key strings (`src/api/routes/settings.py`). PUT still accepts keys to save them.
+- [ ] Frontend Settings form uses the flags to show "Key saved" vs empty, and only sends a key field when the user edits it.
+- [ ] `src/lib/api/client.ts` (~149-153): do not log request or response bodies outside development (or never log bodies that may contain keys). Keep method and path.
+- [ ] Tests: settings GET fixture has no `sk-` / key material; client log spy does not receive the PUT body.
+- [ ] Done when: DevTools Network still needs HTTPS locally for transport safety, but the JSON settings payload and the console no longer print secrets.
+
+##### Step 2.5: Cover letter routes off the event loop (effort: S) — follow-up from Step 1.6
+
+- [ ] `generate_cover_letter_for_profile` in `src/generation/cover_letter_service.py` awaits `asyncio.to_thread(generate_cover_letter_sync, ...)` (today it calls the sync body on the event loop at ~561).
+- [ ] Same pattern for any other async route that still awaits the sync service directly (`cover_letter.py`, `jobs.py` cover-letter path) if they bypass the helper.
+- [ ] Tests: while a generate is in flight, a health or status request still completes (same style as `test_pipeline_run_async.py`).
+- [ ] Done when: a long cover-letter generate does not stall WebSockets or other API requests on the single worker.
+
+##### Step 2.6: Host, Origin, ollama_host, and profile_url guards (effort: S to M) — S6, S7, S8
+
+- [ ] Allowlist or validate `ollama_host` on Settings save (`src/api/settings.py` / routes): host:port only; block unexpected schemes and remote IPs unless the user opts in (see Questions).
+- [ ] Add `TrustedHostMiddleware` in `src/api/main.py` with hosts for local and Compose use.
+- [ ] Next.js proxy (`apps/frontend-ts/src/app/api/proxy/[...path]/route.ts`): reject requests whose `Origin` / `Referer` are not the app origin (CSRF for cookie-less header auth still matters for browsers that attach cookies to the frontend origin).
+- [ ] Validate `profile_url` before Playwright `page.goto` in `src/linkedin/session.py` (`fetch_profile_text` ~376, `navigate_to_url` ~372): allow only `https://` LinkedIn profile URLs; reject `file://`, bare IPs, and non-LinkedIn hosts.
+- [ ] Tests for each guard (reject bad host, bad Origin, bad profile URL).
+- [ ] Done when: a changed Settings host, a cross-site POST, and a `file://` profile URL are all refused with clear errors.
+
+##### Out of scope for Step 2
+
+- LinkedIn automation / User Agreement / cookie storage hardening (review S9; Step 5).
+- Scoring, dedupe, scam regex, RAG fusion (Step 3).
+- Demo polish (Step 4).
+- Easy Apply / auto-submit reachability (Step 5).
+- Changing the default Compose publish of the frontend port (ask first; see Questions).
+
+##### Questions before you start
+
+Answer these before implementation. Recommendations are listed first.
+
+1. **Default cloud fallback:** set `CloudProvider.NONE` as the default (recommended). Keep Anthropic as default only if you accept silent cloud use when Ollama fails and a key is present.
+2. **Auth bypass:** remove the `ENVIRONMENT=development` + empty `API_KEY` bypass entirely; use only `AUTH_DISABLED=1` (recommended). Alternative: keep the old bypass for one release with a loud startup warning.
+3. **Backend bind in Docker:** keep `0.0.0.0` inside the container but stop publishing `8000` on the host by default (frontend reaches `backend:8000` on the Compose network) (recommended). Alternative: publish `127.0.0.1:8000:8000` only.
+4. **Frontend publish:** keep publishing `3000` on the host for the local UI (recommended). Alternative: bind frontend to `127.0.0.1` as well.
+5. **ollama_host allowlist:** allow only `localhost`, `127.0.0.1`, `host.docker.internal`, and the Compose service name `ollama` by default (recommended). Alternative: allow any host with a warning in the UI.
+6. **Cloud badge copy:** show a small "Cloud" badge on results when the provider was not Ollama (recommended). Alternative: only log server-side with no UI change.
+
 ## Next
 
-Nothing is planned after the review follow-up.
+Step 2 plan is written. Wait for answers to the Questions above before implementation.
 
 ## Backlog
 
