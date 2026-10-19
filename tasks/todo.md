@@ -31,7 +31,7 @@ Source: [review-2026-10-18.md](review-2026-10-18.md), section 6. Each step has i
   - Note: `npm ci` fails with npm 11 (Node 24) because `package-lock.json` lacks the optional `@tailwindcss/oxide-*` platform packages. npm 10 (Node 20, as in CI) accepts it. Regenerate the lock file when CI moves to Node 24.
   - [x] Push to `origin/main` (approved 2026-10-18). Pushed `dbac242..63e5e0a` from WSL (Git Bash on Windows has no GitHub SSH key). CI run 39094293658 passed all 11 jobs; Docker build skipped by design. Note: the mypy "Type Check" and "Security Scan" jobs cannot fail yet.
 - [ ] Step 1: Make the core flow run. The plan is below. Approved on 2026-10-18. Steps 1.1 to 1.7 are done and pushed (last: `5a8232f`). Only the manual check in "Verification for Step 1" is open.
-- [ ] Step 2: Make local-first true.
+- [ ] Step 2: Make local-first true. The plan is below. Decisions recorded on 2026-10-19.
 - [ ] Step 3: Make claims measurable.
 - [ ] Step 4: Make it demo-able.
 - [ ] Step 5: Focus and prune.
@@ -180,9 +180,9 @@ Steps 2.1 and 2.3 can start in parallel. Step 2.2 needs 2.1 so that factory-buil
 
 ##### Step 2.1: No silent cloud fallback (effort: S) — S1
 
-- [ ] Add `CloudProvider.NONE` in `src/api/settings.py`. Make it the default for `APIConfig.cloud_fallback_provider` (today the default is `CloudProvider.ANTHROPIC` at about line 71).
+- [ ] Add `CloudProvider.NONE` in `src/api/settings.py`. Make it the default for `APIConfig.cloud_fallback_provider` (today the default is `CloudProvider.ANTHROPIC` at about line 71) (decision 1).
 - [ ] In `src/llm/router.py`, stop treating Anthropic as the default fallback on the built-in routes (about lines 81 to 201). When the primary provider fails and fallback is `none` or unset, log the failure and raise (or return a clear error). Do not call a cloud client.
-- [ ] On every successful `generate` call, log and return which provider and model ran (primary or fallback). Extend the response / metadata the API already exposes so the UI can show a badge when a cloud model was used.
+- [ ] On every successful `generate` call, log and return which provider and model ran (primary or fallback). Extend the response / metadata the API already exposes so the UI can show a small "Cloud" badge on results when the provider was not Ollama (decision 6).
 - [ ] Settings UI: cloud fallback control includes "None (local only)". Document that a cloud key alone does not send data until the user picks a cloud fallback.
 - [ ] Tests: with `CloudProvider.NONE`, a forced Ollama failure does not call Anthropic or Gemini. With Anthropic selected, a forced Ollama failure does call Anthropic and the response marks `provider=anthropic`. Mutation: put Anthropic back as the default; the NONE test must fail.
 - [ ] Done when: a run with no cloud fallback never leaves the machine, and the Cover Letter / Pipeline UIs can show when a cloud model was used.
@@ -211,14 +211,18 @@ Current state (2026-10-19):
 
 - `scripts/dev.sh` (~84): `uvicorn ... --host 0.0.0.0`.
 - `docker/Dockerfile` CMD: `--host 0.0.0.0`.
-- `docker-compose.yml`: publishes backend `8000` and frontend `3000` on the host.
+- `docker-compose.yml`: publishes backend `8000` and frontend `3000` on all host interfaces.
+- `scripts/dev.sh` (~90): `npm run dev -- --port 3000`; `next dev` listens on all interfaces.
 - `src/api/auth.py` (~51-58): skips auth when `ENVIRONMENT=development` and `API_KEY` is empty.
 
-- [ ] Bind the local API to `127.0.0.1` in `scripts/dev.sh`. Keep container-internal `0.0.0.0` only if Compose needs it inside the network; do not publish the backend port to other LAN devices by default (see Questions).
+- [ ] Bind the local API to `127.0.0.1` in `scripts/dev.sh`.
+- [ ] Docker: keep `--host 0.0.0.0` inside the backend container, so the frontend container reaches `backend:8000` on the Compose network. Stop publishing `8000` on the host (decision 3). Update `docker-run.sh` and `scripts/find-port.sh` if they still look for a free backend port.
+  - Consequence: in Docker, the browser WebSocket (`ws://localhost:8000`) no longer connects. The Live Monitor still works from status polling (Step 1.5). If live events are needed in Docker later, publish `127.0.0.1:8000` only.
+- [ ] Bind the frontend to `127.0.0.1` (decision 4): run `next dev` with `-H 127.0.0.1` in `scripts/dev.sh`, and publish the frontend as `host_ip: 127.0.0.1` in `docker-compose.yml`. Reason: the Next.js proxy adds `X-API-Key` to every request it forwards, so any device that reaches port 3000 can use the API (for example `GET /api/proxy/profile/export`).
 - [ ] `setup.sh`: generate a random `API_KEY` and write it to both backend `.env` and frontend `.env.local` (never commit those files). Stop writing the public placeholder `your_api_key_here`.
-- [ ] Auth bypass only when `AUTH_DISABLED=1` is set explicitly. Remove the "empty API_KEY in development" bypass from `src/api/auth.py`.
-- [ ] Tests: empty `API_KEY` without `AUTH_DISABLED` returns 401. `AUTH_DISABLED=1` allows requests. Document the flag in `.env.example` and `docs/usage.md`.
-- [ ] Done when: a fresh setup has a real key, and another device on the LAN cannot call the API without a deliberate publish/bind choice.
+- [ ] Auth bypass only when `AUTH_DISABLED=1` is set explicitly. Remove the "empty API_KEY in development" bypass from `src/api/auth.py` (decision 2).
+- [ ] Tests: empty `API_KEY` without `AUTH_DISABLED` returns 401. `AUTH_DISABLED=1` allows requests. A test reads `docker-compose.yml` and fails if a port is published without `host_ip: 127.0.0.1`, or if backend port `8000` is published. Document the flag in `.env.example` and `docs/usage.md`.
+- [ ] Done when: a fresh setup has a real key, and another device on the LAN can reach neither the API nor the frontend proxy.
 
 ##### Step 2.4: Do not return or log secrets (effort: S) — S5
 
@@ -237,9 +241,9 @@ Current state (2026-10-19):
 
 ##### Step 2.6: Host, Origin, ollama_host, and profile_url guards (effort: S to M) — S6, S7, S8
 
-- [ ] Allowlist or validate `ollama_host` on Settings save (`src/api/settings.py` / routes): host:port only; block unexpected schemes and remote IPs unless the user opts in (see Questions).
+- [ ] Validate `ollama_host` on Settings save (`src/api/settings.py` / routes): `http` or `https`, host and port only, and the host must be `localhost`, `127.0.0.1`, `host.docker.internal`, or `ollama` (decision 5).
 - [ ] Add `TrustedHostMiddleware` in `src/api/main.py` with hosts for local and Compose use.
-- [ ] Next.js proxy (`apps/frontend-ts/src/app/api/proxy/[...path]/route.ts`): reject requests whose `Origin` / `Referer` are not the app origin (CSRF for cookie-less header auth still matters for browsers that attach cookies to the frontend origin).
+- [ ] Next.js proxy (`apps/frontend-ts/src/app/api/proxy/[...path]/route.ts`): reject a request when `Sec-Fetch-Site` is `cross-site`, or when `Origin` is present and is not the app origin (cross-site requests from a page the user visits). Also reject a `Host` that is not `localhost` or `127.0.0.1` with the app port (DNS rebinding). Allow requests with no `Origin`; after decision 4 only this machine can reach the proxy.
 - [ ] Validate `profile_url` before Playwright `page.goto` in `src/linkedin/session.py` (`fetch_profile_text` ~376, `navigate_to_url` ~372): allow only `https://` LinkedIn profile URLs; reject `file://`, bare IPs, and non-LinkedIn hosts.
 - [ ] Tests for each guard (reject bad host, bad Origin, bad profile URL).
 - [ ] Done when: a changed Settings host, a cross-site POST, and a `file://` profile URL are all refused with clear errors.
@@ -250,22 +254,19 @@ Current state (2026-10-19):
 - Scoring, dedupe, scam regex, RAG fusion (Step 3).
 - Demo polish (Step 4).
 - Easy Apply / auto-submit reachability (Step 5).
-- Changing the default Compose publish of the frontend port (ask first; see Questions).
 
-##### Questions before you start
+##### Decisions (2026-10-19)
 
-Answer these before implementation. Recommendations are listed first.
-
-1. **Default cloud fallback:** set `CloudProvider.NONE` as the default (recommended). Keep Anthropic as default only if you accept silent cloud use when Ollama fails and a key is present.
-2. **Auth bypass:** remove the `ENVIRONMENT=development` + empty `API_KEY` bypass entirely; use only `AUTH_DISABLED=1` (recommended). Alternative: keep the old bypass for one release with a loud startup warning.
-3. **Backend bind in Docker:** keep `0.0.0.0` inside the container but stop publishing `8000` on the host by default (frontend reaches `backend:8000` on the Compose network) (recommended). Alternative: publish `127.0.0.1:8000:8000` only.
-4. **Frontend publish:** keep publishing `3000` on the host for the local UI (recommended). Alternative: bind frontend to `127.0.0.1` as well.
-5. **ollama_host allowlist:** allow only `localhost`, `127.0.0.1`, `host.docker.internal`, and the Compose service name `ollama` by default (recommended). Alternative: allow any host with a warning in the UI.
-6. **Cloud badge copy:** show a small "Cloud" badge on results when the provider was not Ollama (recommended). Alternative: only log server-side with no UI change.
+1. **Default cloud fallback:** `CloudProvider.NONE`. A cloud model runs only when the user picks a cloud fallback in Settings.
+2. **Auth bypass:** only `AUTH_DISABLED=1`. Remove the `ENVIRONMENT=development` + empty `API_KEY` bypass.
+3. **Backend in Docker:** `0.0.0.0` inside the container; do not publish `8000` on the host. The frontend container uses `backend:8000`.
+4. **Frontend:** bind to `127.0.0.1` in `next dev` and in Compose. This changes the plan's first recommendation (keep publishing `3000` on all interfaces), because the proxy adds the API key to every request it forwards.
+5. **`ollama_host`:** allow only `localhost`, `127.0.0.1`, `host.docker.internal`, and `ollama`.
+6. **Cloud badge:** show a small "Cloud" badge on results when the provider was not Ollama.
 
 ## Next
 
-Step 2 plan is written. Wait for answers to the Questions above before implementation.
+Step 2 decisions are recorded (2026-10-19). Implementation can start with Steps 2.1 and 2.3, which do not depend on each other.
 
 ## Backlog
 
