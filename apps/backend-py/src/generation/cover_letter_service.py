@@ -11,6 +11,7 @@ Author: Job Raider
 Date: 2026-06-29
 """
 
+import asyncio
 import time
 from typing import Any, Dict, Optional
 
@@ -545,8 +546,9 @@ async def generate_cover_letter_for_profile(
     """
     Generate and validate a cover letter for the API routes.
 
-    The routes await this function. The work itself is synchronous; see
-    ``generate_cover_letter_sync`` for the full behavior.
+    Runs ``generate_cover_letter_sync`` in a worker thread so a long
+    generate does not block the asyncio event loop (WebSockets, health,
+    and other requests on the same worker).
 
     Args:
         job_listing: Target job listing (scraped or manually pasted).
@@ -559,7 +561,8 @@ async def generate_cover_letter_for_profile(
     Returns:
         ``CoverLetterResponse`` containing the letter and validation results.
     """
-    return generate_cover_letter_sync(
+    return await asyncio.to_thread(
+        generate_cover_letter_sync,
         job_listing,
         user_profile,
         deep=deep,

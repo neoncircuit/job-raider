@@ -242,10 +242,12 @@ Current state (2026-10-19):
 
 ##### Step 2.5: Cover letter routes off the event loop (effort: S) — follow-up from Step 1.6
 
-- [ ] `generate_cover_letter_for_profile` in `src/generation/cover_letter_service.py` awaits `asyncio.to_thread(generate_cover_letter_sync, ...)` (today it calls the sync body on the event loop at ~561).
-- [ ] Same pattern for any other async route that still awaits the sync service directly (`cover_letter.py`, `jobs.py` cover-letter path) if they bypass the helper.
-- [ ] Tests: while a generate is in flight, a health or status request still completes (same style as `test_pipeline_run_async.py`).
-- [ ] Done when: a long cover-letter generate does not stall WebSockets or other API requests on the single worker.
+- [x] `generate_cover_letter_for_profile` in `src/generation/cover_letter_service.py` awaits `asyncio.to_thread(generate_cover_letter_sync, ...)` (today it calls the sync body on the event loop at ~561).
+- [x] Same pattern for any other async route that still awaits the sync service directly (`cover_letter.py`, `jobs.py` cover-letter path) if they bypass the helper.
+- [x] Tests: while a generate is in flight, a health or status request still completes (same style as `test_pipeline_run_async.py`).
+- [x] Done when: a long cover-letter generate does not stall WebSockets or other API requests on the single worker.
+
+**Review (2026-10-19):** Routes already use the helper. Mutation: sync-on-loop → tick count fails.
 
 ##### Step 2.6: Host, Origin, ollama_host, and profile_url guards (effort: S to M) — S6, S7, S8
 
