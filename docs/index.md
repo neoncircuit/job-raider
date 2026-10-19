@@ -65,7 +65,7 @@ Job Raider uses a cost-optimized two-model approach:
 1. **Small Model (recommended: qwen2.5:3b)** - Selection and scoring
 2. **Large Model (recommended: qwen2.5:7b)** - Resume writing, analysis, and parsing
 
-This reduces API costs by 80% while maintaining quality. Settings can assign any installed Ollama models to these tiers (including models on a shared desktop Ollama service); documented recommendations remain 3b / 7b.
+The small model does the selection step, so the large model gets a short, focused prompt. Both run locally on Ollama, so a run has no per-token API cost. Settings can assign any installed Ollama models to these tiers (including models on a shared desktop Ollama service); documented recommendations remain 3b / 7b.
 
 ### Resume Analysis
 

@@ -1,28 +1,26 @@
 # Job Raider
 
-Automated job application pipeline that aggregates listings from multiple platforms, scores relevance, generates tailored resumes, and automates submissions.
+Local-first job search pipeline. It collects listings from several job boards, filters likely scams, scores each job against your resume, and writes tailored resumes and cover letters with local LLMs. You review and apply yourself; the pipeline does not submit applications.
 
 ## Features
 
-- **Multi-Platform Job Aggregation**: LinkedIn (Playwright) + JSearch API (50+ boards via Google for Jobs)
-- **Smart Filtering**: Keyword matching, scam detection (10 indicators), profile-based filtering
+- **Multi-Platform Job Aggregation**: LinkedIn (Playwright), JSearch API (50+ boards via Google for Jobs), and Singapore sources (MyCareersFuture, JobStreet; Careers@Gov is opt-in)
+- **Smart Filtering**: Keyword matching, rule-based scam detection (10 indicators in 5 groups), profile-based filtering
 - **Relevance Scoring**: 100-point heuristic scoring with configurable thresholds
 - **Semantic Matching**: RAG-powered similarity search using ChromaDB vector store and embeddings
 - **Resume Generation**: Two-model approach (small for selection, large for writing)
 - **Resume Analysis**: AI-powered general and job-specific gap analysis with scoring
 - **LinkedIn Profile Analysis**: Inbound-attraction scoring and recruiter-focused recommendations
-- **AI Cover Letter Generation**: Tailored cover letters from profile and job description
-- **Multi-Agent Career Coaching**: `/api/agents/*` career analysis, gap analysis, roadmaps, and goals
+- **AI Cover Letter Generation**: Tailored cover letters from profile and job description, with deterministic grounding checks; a letter that claims skills or experience that are not in the resume is rewritten one time, then held for review
+- **Career Coach**: `/api/agents/*` career analysis, gap analysis, roadmaps, and goals
 - **DISC Personality Assessment**: Most/least forced-choice assessment with job matching
 - **Technical Assessment Trainer**: Practice engine for coding and technical interviews
 - **Job Trust Analysis**: Scam detection and employer-trust scoring
-- **LinkedIn Easy Apply Automation**: Browser automation for one-click applications
 - **Fresh-Graduate Scoring Mode**: Projects 35%, Skills 30%, Education 20% weighting
 - **Light/Dark Theme Toggle**: UI theme switching via the sidebar
 - **Frontend Testing Infrastructure**: Vitest unit tests + Playwright E2E tests
-- **Auto-Submit Detection**: Identifies "Easy Apply" opportunities
-- **Dry Run Mode**: Test everything without actual submissions
-- **Cost Optimization**: 80% cost reduction using local Ollama models
+- **Dry Run by Default**: The pipeline does not submit applications
+- **Local Models by Default**: Generation runs on Ollama on your machine; a cloud model is used only as a fallback when you set an API key
 - **Application Tracking**: Track applications from submission to offer with custom statuses
 
 ## Architecture
@@ -32,8 +30,8 @@ graph LR
     A[Scrape Jobs] --> B[Deduplicate]
     B --> C[Filter Scams]
     C --> D[Score & Rank]
-    D --> E[Generate Resumes]
-    E --> F[Submit Applications]
+    D --> E[Generate Resumes and Cover Letters]
+    E --> F[Review and Apply Yourself]
 ```
 
 ### Two-Model Approach
@@ -41,7 +39,7 @@ graph LR
 1. **Small Model (qwen2.5:3b)** - Selects relevant projects and keywords
 2. **Large Model (qwen2.5:7b)** - Writes tailored resumes
 
-This reduces API costs by 80% while maintaining quality.
+The small model does the selection step, so the large model gets a short, focused prompt. Both run locally on Ollama, so a pipeline run has no per-token API cost.
 
 ## Tech Stack
 
@@ -70,7 +68,7 @@ Job Raider is a Python-centric backend with a Next.js dashboard. The stack is ch
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/job-raider.git
+git clone https://github.com/neoncircuit/job-raider.git
 cd job-raider
 
 # Run setup
@@ -106,29 +104,34 @@ cd apps/backend-py
   --locations "remote" \
   --dry-run
 
-# Full pipeline with submission
+# Stop after scoring
 cd apps/backend-py
 .venv/bin/python main.py \
   --resume my_resume.pdf \
   --keywords "fintech AI" \
-  --locations "remote" \
-  --no-dry-run
+  --locations "Singapore" \
+  --stop-at score_and_rank
 ```
+
+Each value after `--keywords` or `--locations` is one search term. Quote a term that contains spaces.
 
 ## Pipeline Stages
 
 | Stage | Description | Output |
 |-------|-------------|--------|
-| 1. Scrape | Aggregate from LinkedIn and JSearch API (50+ boards) | Raw listings |
-| 2. Deduplicate | Remove duplicates across sources | Unique listings |
-| 3. Filter Scams | Filter out potential scams | Legitimate listings |
+| 1. Scrape | Collect from LinkedIn, JSearch (50+ boards), and Singapore sources | Raw listings |
+| 2. Deduplicate | Remove duplicate listings (same job ID) | Unique listings |
+| 3. Filter Scams | Filter out likely scams | Remaining listings |
 | 4. Filter by Profile | Match user preferences | Relevant listings |
 | 5. Score & Rank | Heuristic relevance scoring (0-100) | Ranked listings |
-| 6. Semantic Re-Rank | RAG-based similarity scoring with ChromaDB embeddings | Re-ranked listings |
-| 7. Detect Auto-Submit | Identify "Easy Apply" opportunities | Submission info |
-| 8. Present Selection | Show ranked list to user | Selected jobs |
-| 9. Generate Resumes | Create tailored resumes (5 templates, ATS mode) | PDF/DOCX files |
-| 10. Submit | Auto-submit where possible | Application tracking |
+| 6. Semantic Re-Rank | Embedding similarity with ChromaDB | Re-ranked listings |
+| 7. Detect Apply Method | Record how each job is applied to | Apply method per job |
+| 8. LinkedIn Check | Check only whether LinkedIn credentials are set | Status |
+| 9. Present Selection | Take the top-ranked jobs | Selected jobs |
+| 10. Generate Resumes | Tailored resumes (5 templates, ATS mode) and grounded cover letters | PDF/DOCX files |
+| 11. Submit (dry run) | Report what would be submitted; nothing is sent | Run summary |
+
+The default "discover" mode stops after stage 6, so you review the shortlist on the Jobs page.
 
 ## Scoring Heuristic
 
@@ -142,17 +145,17 @@ cd apps/backend-py
 
 ## Scam Detection
 
-10 scam indicators:
-- Payment required
-- Personal email domains
-- Messaging app only contact
-- Unrealistic salary
-- Fake company names
-- Vague descriptions
-- Poor grammar
-- Immediate hire language
-- Suspicious titles
-- Phishing links
+Rule-based scoring with 10 indicators in 5 groups:
+
+| Group | Indicators |
+|-------|------------|
+| Payment | Payment required |
+| Contact | Messaging-app-only contact, personal email domain |
+| Urgency | Immediate hire, no interview |
+| Compensation | Unrealistic salary |
+| Listing quality | Suspicious company name, vague description, poor grammar, suspicious job title |
+
+These are heuristics. Their precision and recall are not measured yet.
 
 ## Project Structure
 
@@ -180,7 +183,7 @@ job-raider/                      # Project root (monorepo)
 │   │   ├── extractors/          # Resume and JD parsing (pypdf)
 │   │   ├── generation/          # Resume generation (selector, writer, formatter) + analyzers
 │   │   ├── health/              # System health checks (including MLflow)
-│   │   ├── linkedin/            # LinkedIn Easy Apply automation
+│   │   ├── linkedin/            # LinkedIn session and profile fetch (Easy Apply code is not used)
 │   │   ├── llm/                 # LLM clients (Claude, Ollama, router)
 │   │   ├── metrics/             # Cost tracking, outcome tracking, MLflow integration
 │   │   ├── models/              # Pydantic V2 data models
@@ -197,7 +200,7 @@ job-raider/                      # Project root (monorepo)
 │   └── requirements.txt         # Python dependencies
 ├── apps/frontend-ts/                 # Next.js + Tailwind dashboard (active frontend)
 │   ├── src/
-│   │   ├── app/                 # Next.js App Router pages (10 pages)
+│   │   ├── app/                 # Next.js App Router pages (13 in the sidebar)
 │   │   ├── components/          # Shared UI components + layout
 │   │   └── lib/                 # API client, types, utilities
 │   ├── tests/                   # Vitest unit + Playwright E2E tests
@@ -281,7 +284,7 @@ RAPIDAPI_KEY=your_rapidapi_key_here
 KAGGLE_USERNAME=your_username
 KAGGLE_KEY=your_key
 
-# Optional: Scraping credentials (for Easy Apply)
+# Optional: LinkedIn login (for LinkedIn profile analysis)
 LINKEDIN_EMAIL=your_email
 LINKEDIN_PASSWORD=your_password
 
@@ -356,7 +359,7 @@ Or use Docker to start all services at once:
 bash docker-run.sh
 ```
 
-The dashboard includes ten pages: Dashboard (overview), Pipeline (run/monitor), Jobs (search/browse), Profile (resume upload), Resume Analysis (AI scoring), LinkedIn Analysis (inbound-attraction recommendations), Assessment (technical trainer + DISC), Applications (tracker), Metrics (costs/outcomes), and Settings (configuration).
+The sidebar has 13 pages: Dashboard (overview), Pipeline (run/monitor), Jobs (search and review), Applications (tracker), Profile (resume upload), Cover Letter, Resume Analysis, LinkedIn Analysis, Career Coach, Assessment (technical trainer and DISC), Metrics, Logs, and Settings.
 
 ### Running Tests
 
@@ -364,17 +367,17 @@ The dashboard includes ten pages: Dashboard (overview), Pipeline (run/monitor), 
 # Backend tests
 cd apps/backend-py
 .venv/bin/python -m pytest tests/
-# Expected: 504 passed
+# Expected: all pass (1,067 tests on 2026-10-19)
 
 # Frontend unit tests
 cd apps/frontend-ts
 npm run test -- --run
-# Expected: 51 passed across 10 test files
+# Expected: all pass (232 tests in 41 files on 2026-10-19)
 
 # Frontend E2E tests
 cd apps/frontend-ts
 npm run test:e2e
-# Expected: 10 passed
+# Expected: all pass (21 tests on desktop and mobile Chrome, 42 runs)
 
 # Or use make from project root
 make test

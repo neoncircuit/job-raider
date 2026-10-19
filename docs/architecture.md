@@ -258,7 +258,7 @@ sequenceDiagram
 ```
 
 **Benefits:**
-- **Cost Reduction:** 80% of calls use free local model
+- **Cost:** Both models run locally on Ollama, so a run has no per-token API cost
 - **Quality:** Large model ensures high-quality writing
 - **Context Control:** Small model extracts signal, reduces hallucination
 - **Validation:** Deterministic checks prevent fabrication
