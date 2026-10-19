@@ -12,19 +12,24 @@ Date: 2026-04-21
 Updated: 2026-06-12 - Added multi-agent support
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
-from ..llm.router import LLMRouter
+from ..llm.router import create_router
 from ..models.pipeline_stage import STAGE_ORDER, PipelineStage
 from ..models.user_profile import UserProfile
 from ..scrapers.storage import JobListingStorage
 from ..utils.logger import Components, get_logger, setup_logging
 from .stages import PipelineContext, PipelineStages, StageResult
+
+if TYPE_CHECKING:
+    from ..llm.router import LLMRouter
 
 # Multi-agent imports
 try:
@@ -179,7 +184,7 @@ class PipelineOrchestrator:
         self.config = config
         self.user_profile = user_profile
         self.logger = get_logger(Components.SCRAPERS)
-        self.llm_router = llm_router or LLMRouter()
+        self.llm_router = llm_router or create_router(prefer_local=True)
 
         # Setup logging
         setup_logging(

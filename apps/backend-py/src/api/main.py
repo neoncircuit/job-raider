@@ -72,10 +72,10 @@ async def lifespan(app: FastAPI):
     # Initialize the multi-agent system. Non-fatal: the API still boots if the
     # agent system cannot start; agent endpoints return 503 until it is ready.
     try:
-        from ..llm.router import LLMRouter
+        from ..llm.router import create_router
         from .routes.agents import initialize_agent_system
 
-        initialize_agent_system(LLMRouter())
+        initialize_agent_system(create_router(prefer_local=True))
         logger.info("Multi-agent system initialized")
     except Exception as e:
         logger.warning(

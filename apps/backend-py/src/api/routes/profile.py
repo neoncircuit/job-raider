@@ -7,13 +7,15 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
 import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -23,7 +25,7 @@ from ...generation.linkedin_analyzer import LinkedInAnalyzer
 from ...generation.profile_formatter import ProfileFormatter
 from ...generation.resume_analyzer import ResumeAnalyzer
 from ...linkedin.session import LinkedInSession, LinkedInSessionConfig
-from ...llm.router import LLMRouter
+from ...llm.router import create_router
 from ...models.job_listing import ExperienceLevel
 from ...models.linkedin_analysis import (
     LinkedInPeopleSearchInput,
@@ -33,6 +35,9 @@ from ...models.linkedin_analysis import (
 )
 from ...models.user_profile import ApprenticeshipContract, UserProfile
 from ...utils.logger import Components, get_logger
+
+if TYPE_CHECKING:
+    from ...llm.router import LLMRouter
 from ...utils.text_normalizer import normalize_linkedin_profile_text
 from ..models.requests import ProfileUpdateRequest
 from ..profile_storage import ProfileStorage
@@ -138,7 +143,7 @@ def _get_linkedin_analyzer() -> LinkedInAnalyzer:
     """
     global _llm_router, _linkedin_analyzer
     if _linkedin_analyzer is None:
-        _llm_router = LLMRouter()
+        _llm_router = create_router(prefer_local=True)
         _linkedin_analyzer = LinkedInAnalyzer(_llm_router)
     return _linkedin_analyzer
 
@@ -342,7 +347,7 @@ async def upload_resume(
 
         # Parse resume
     try:
-        llm_router = LLMRouter()
+        llm_router = create_router(prefer_local=True)
         parser = ResumeParser(llm_router=llm_router)
         profile = parser.parse_file(str(filepath))
         resume_parse = {}
@@ -775,7 +780,7 @@ async def analyze_resume(
             shutil.copyfileobj(file.file, f)
 
         # Parse resume with LLM for full extraction
-        llm_router = LLMRouter()
+        llm_router = create_router(prefer_local=True)
         parser = ResumeParser(llm_router=llm_router)
         profile = parser.parse_file(str(temp_filepath))
 

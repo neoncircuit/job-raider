@@ -317,12 +317,12 @@ def _default_writer() -> Any:
     """Create the production cover-letter writer.
 
     Returns:
-        A ``CoverLetterWriter`` backed by a fresh ``LLMRouter``.
+        A ``CoverLetterWriter`` backed by ``create_router()`` so Settings apply.
     """
     from ..generation.cover_letter_writer import CoverLetterWriter
-    from ..llm.router import LLMRouter
+    from ..llm.router import create_router
 
-    return CoverLetterWriter(LLMRouter())
+    return CoverLetterWriter(create_router(prefer_local=True))
 
 
 def run_compare(

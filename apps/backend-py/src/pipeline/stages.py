@@ -23,7 +23,7 @@ from ..generation.resume_writer import ResumeWriter
 from ..generation.selector import ResumeSelector
 from ..generation.validator import ResumeValidator
 from ..llm.embedding_client import EmbeddingClient
-from ..llm.router import LLMRouter
+from ..llm.router import create_router
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
 from ..models.user_profile import UserProfile
 from ..rag.bm25_retriever import BM25Retriever
@@ -111,7 +111,7 @@ class PipelineStages:
             threshold=self.context.config.get("scam_threshold", 0.7)
         )
         self.submit_detector = AutoSubmitDetector()
-        llm_router = LLMRouter()
+        llm_router = create_router(prefer_local=True)
         self.resume_selector = ResumeSelector(llm_router=llm_router)
         self.resume_writer = ResumeWriter(llm_router=llm_router)
         self.resume_validator = ResumeValidator()
