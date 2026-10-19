@@ -64,4 +64,11 @@ describe("ollama-tiers", () => {
     expect(next.selection?.fallback_model).toBe("gemini-2.5-flash");
     expect(next.resume_writing?.fallback_model).toBe("gemini-2.5-pro");
   });
+
+  it("clears cloud fallbacks when none is selected", () => {
+    const next = applyCloudFallbackProvider(baseSettings().routing, "none");
+    expect(next.selection?.fallback_provider).toBeNull();
+    expect(next.selection?.fallback_model).toBeNull();
+    expect(next.resume_writing?.fallback_provider).toBeNull();
+  });
 });

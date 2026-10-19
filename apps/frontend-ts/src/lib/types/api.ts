@@ -366,6 +366,8 @@ export interface CoverLetter {
   content: string;
   word_count: number;
   model_used: string;
+  /** Provider that wrote the letter (ollama, anthropic, gemini). */
+  provider_used?: string | null;
   highlighted_experiences: HighlightedExperience[];
   /** Letter style used for generation, when present. */
   style?: string;
@@ -674,8 +676,8 @@ export interface ModelRouting {
 export interface ApiConfig {
   anthropic_api_key?: string | null;
   gemini_api_key?: string | null;
-  /** Cloud provider used when local Ollama fails. */
-  cloud_fallback_provider?: "anthropic" | "gemini";
+  /** Cloud provider used when local Ollama fails (``none`` = local only). */
+  cloud_fallback_provider?: "none" | "anthropic" | "gemini";
   ollama_host: string;
 }
 

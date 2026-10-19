@@ -41,6 +41,10 @@ class LLMResponse(BaseModel):
 
     content: str = Field(description="The generated text content")
     model: str = Field(description="The model used for generation")
+    provider: Optional[str] = Field(
+        default=None,
+        description="Provider that produced the response (ollama, anthropic, gemini)",
+    )
     tokens_used: Optional[int] = Field(default=None, description="Total tokens used")
     prompt_tokens: Optional[int] = Field(default=None, description="Tokens in prompt")
     completion_tokens: Optional[int] = Field(

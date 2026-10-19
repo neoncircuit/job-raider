@@ -28,8 +28,12 @@ class Provider(str, Enum):
 
 
 class CloudProvider(str, Enum):
-    """Cloud API providers used as Ollama fallbacks."""
+    """Cloud API providers used as Ollama fallbacks.
 
+    ``NONE`` means local-only: when Ollama fails, do not call a cloud API.
+    """
+
+    NONE = "none"
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"
 
@@ -43,7 +47,7 @@ class ModelRouting(BaseModel):
     )
     primary_model: str = Field(description="Primary model name")
     fallback_provider: Optional[Provider] = Field(
-        default=Provider.ANTHROPIC, description="Fallback provider"
+        default=None, description="Fallback provider (None = local-only)"
     )
     fallback_model: Optional[str] = Field(
         default=None, description="Fallback model name"
@@ -69,8 +73,11 @@ class APIConfig(BaseModel):
         default=None, description="Google Gemini API key"
     )
     cloud_fallback_provider: CloudProvider = Field(
-        default=CloudProvider.ANTHROPIC,
-        description="Cloud provider used when local Ollama fails",
+        default=CloudProvider.NONE,
+        description=(
+            "Cloud provider used when local Ollama fails. "
+            "none = never send prompts to a cloud API"
+        ),
     )
     ollama_host: str = Field(
         default="host.docker.internal:11434",

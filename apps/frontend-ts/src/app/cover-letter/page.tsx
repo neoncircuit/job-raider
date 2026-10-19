@@ -1035,11 +1035,17 @@ export default function CoverLetterPage() {
                     result.cover_letter.token_usage) && (
                     <p className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
                       {result.cover_letter.model_used ? (
-                        <span>
+                        <span className="inline-flex items-center gap-1.5">
                           Model:{" "}
                           <span className="font-mono">
                             {result.cover_letter.model_used}
                           </span>
+                          {result.cover_letter.provider_used &&
+                          result.cover_letter.provider_used !== "ollama" ? (
+                            <span className="rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-warning">
+                              Cloud
+                            </span>
+                          ) : null}
                         </span>
                       ) : null}
                       {result.cover_letter.timing ? (

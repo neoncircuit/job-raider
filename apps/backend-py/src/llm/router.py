@@ -9,9 +9,10 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
+import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ..utils.cache import ResponseCache
 from .base import BaseLLMClient, LLMConfig, LLMResponse, Message
@@ -19,6 +20,8 @@ from .claude_client import ClaudeClient
 from .gemini_client import GeminiClient
 from .gpu_monitor import GPUMonitor
 from .ollama_client import OllamaClient
+
+logger = logging.getLogger(__name__)
 
 
 class TaskType(str, Enum):
@@ -83,8 +86,8 @@ class LLMRouter:
             task_type=TaskType.SELECTION,
             primary_provider="ollama",
             primary_model="qwen2.5:3b",
-            fallback_provider="anthropic",
-            fallback_model="claude-haiku-4-5-20251001",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.SCORING: RouteConfig(
             task_type=TaskType.SCORING,
@@ -97,43 +100,43 @@ class LLMRouter:
             task_type=TaskType.JD_EXTRACTION,
             primary_provider="ollama",
             primary_model="qwen2.5:7b",
-            fallback_provider="anthropic",
-            fallback_model="claude-sonnet-4-6",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.RESUME_WRITING: RouteConfig(
             task_type=TaskType.RESUME_WRITING,
             primary_provider="ollama",
             primary_model="qwen2.5:7b",
-            fallback_provider="anthropic",
-            fallback_model="claude-sonnet-4-6",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.RESUME_PARSING: RouteConfig(
             task_type=TaskType.RESUME_PARSING,
             primary_provider="ollama",
             primary_model="qwen2.5:7b",
-            fallback_provider="anthropic",
-            fallback_model="claude-sonnet-4-6",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.RESUME_ANALYSIS: RouteConfig(
             task_type=TaskType.RESUME_ANALYSIS,
             primary_provider="ollama",
             primary_model="qwen2.5:7b",
-            fallback_provider="anthropic",
-            fallback_model="claude-sonnet-4-6",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.LINKEDIN_ANALYSIS: RouteConfig(
             task_type=TaskType.LINKEDIN_ANALYSIS,
             primary_provider="ollama",
             primary_model="qwen2.5:7b",
-            fallback_provider="anthropic",
-            fallback_model="claude-sonnet-4-6",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.CLASSIFICATION: RouteConfig(
             task_type=TaskType.CLASSIFICATION,
             primary_provider="ollama",
             primary_model="qwen2.5:7b",
-            fallback_provider="anthropic",
-            fallback_model="claude-haiku-4-5-20251001",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.VALIDATION: RouteConfig(
             task_type=TaskType.VALIDATION,
@@ -146,8 +149,8 @@ class LLMRouter:
             task_type=TaskType.GENERAL,
             primary_provider="ollama",
             primary_model="qwen2.5:3b",
-            fallback_provider="anthropic",
-            fallback_model="claude-sonnet-4-6",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.EMBEDDING: RouteConfig(
             task_type=TaskType.EMBEDDING,
@@ -160,22 +163,22 @@ class LLMRouter:
             task_type=TaskType.QUESTION_ANSWERING,
             primary_provider="ollama",
             primary_model="qwen2.5:3b",
-            fallback_provider="anthropic",
-            fallback_model="claude-haiku-4-5-20251001",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.TRUST_ANALYSIS: RouteConfig(
             task_type=TaskType.TRUST_ANALYSIS,
             primary_provider="ollama",
             primary_model="qwen2.5:3b",
-            fallback_provider="anthropic",
-            fallback_model="claude-haiku-4-5-20251001",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.COVER_LETTER_WRITING: RouteConfig(
             task_type=TaskType.COVER_LETTER_WRITING,
             primary_provider="ollama",
             primary_model="qwen2.5:7b",
-            fallback_provider="anthropic",
-            fallback_model="claude-sonnet-4-6",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.COVER_LETTER_REVIEW: RouteConfig(
             task_type=TaskType.COVER_LETTER_REVIEW,
@@ -188,15 +191,15 @@ class LLMRouter:
             task_type=TaskType.ASSESSMENT_GENERATION,
             primary_provider="ollama",
             primary_model="qwen2.5:7b",
-            fallback_provider="anthropic",
-            fallback_model="claude-sonnet-4-6",
+            fallback_provider=None,
+            fallback_model=None,
         ),
         TaskType.ASSESSMENT_EVALUATION: RouteConfig(
             task_type=TaskType.ASSESSMENT_EVALUATION,
             primary_provider="ollama",
             primary_model="qwen2.5:7b",
-            fallback_provider="anthropic",
-            fallback_model="claude-sonnet-4-6",
+            fallback_provider=None,
+            fallback_model=None,
         ),
     }
 
@@ -651,6 +654,7 @@ class LLMRouter:
         try:
             client = self._get_client(provider, primary_model)
             response = client.generate(messages, **kwargs)
+            response = self._stamp_provider(response, provider)
             self._primary_used += 1
             self._total_cost += response.cost or 0.0
             self._try_cache_set(
@@ -664,29 +668,44 @@ class LLMRouter:
             return response
 
         except Exception as e:
-            # Try fallback if configured
-            if route.fallback_provider and route.fallback_model:
+            fallback_provider, fallback_model = self._effective_fallback(route)
+            if fallback_provider and fallback_model:
+                logger.warning(
+                    "Primary %s/%s failed for %s (%s); trying fallback %s/%s",
+                    provider,
+                    primary_model,
+                    task_type.value,
+                    e,
+                    fallback_provider,
+                    fallback_model,
+                )
                 try:
-                    client = self._get_client(
-                        route.fallback_provider, route.fallback_model
-                    )
+                    client = self._get_client(fallback_provider, fallback_model)
                     response = client.generate(messages, **kwargs)
+                    response = self._stamp_provider(response, fallback_provider)
                     self._fallback_used += 1
                     self._total_cost += response.cost or 0.0
                     self._try_cache_set(
                         messages,
                         response,
                         task_type,
-                        route.fallback_provider,
-                        route.fallback_model,
+                        fallback_provider,
+                        fallback_model,
                         kwargs,
                     )
                     return response
                 except Exception as fallback_error:
                     raise Exception(
                         f"Primary failed: {e}. Fallback also failed: {fallback_error}"
-                    )
+                    ) from fallback_error
 
+            logger.error(
+                "Primary %s/%s failed for %s and no fallback is configured: %s",
+                provider,
+                primary_model,
+                task_type.value,
+                e,
+            )
             raise
 
     async def generate_async(
@@ -732,6 +751,7 @@ class LLMRouter:
         try:
             client = self._get_client(provider, primary_model)
             response = await client.generate_async(messages, **kwargs)
+            response = self._stamp_provider(response, provider)
             self._primary_used += 1
             self._total_cost += response.cost or 0.0
             self._try_cache_set(
@@ -745,30 +765,84 @@ class LLMRouter:
             return response
 
         except Exception as e:
-            # Try fallback if configured
-            if route.fallback_provider and route.fallback_model:
+            fallback_provider, fallback_model = self._effective_fallback(route)
+            if fallback_provider and fallback_model:
+                logger.warning(
+                    "Primary %s/%s failed for %s (%s); trying fallback %s/%s",
+                    provider,
+                    primary_model,
+                    task_type.value,
+                    e,
+                    fallback_provider,
+                    fallback_model,
+                )
                 try:
-                    client = self._get_client(
-                        route.fallback_provider, route.fallback_model
-                    )
+                    client = self._get_client(fallback_provider, fallback_model)
                     response = await client.generate_async(messages, **kwargs)
+                    response = self._stamp_provider(response, fallback_provider)
                     self._fallback_used += 1
                     self._total_cost += response.cost or 0.0
                     self._try_cache_set(
                         messages,
                         response,
                         task_type,
-                        route.fallback_provider,
-                        route.fallback_model,
+                        fallback_provider,
+                        fallback_model,
                         kwargs,
                     )
                     return response
                 except Exception as fallback_error:
                     raise Exception(
                         f"Primary failed: {e}. Fallback also failed: {fallback_error}"
-                    )
+                    ) from fallback_error
 
+            logger.error(
+                "Primary %s/%s failed for %s and no fallback is configured: %s",
+                provider,
+                primary_model,
+                task_type.value,
+                e,
+            )
             raise
+
+    @staticmethod
+    def _effective_fallback(route: RouteConfig) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Return the fallback provider and model when a cloud/local fallback is set.
+
+        ``none`` (and empty values) mean local-only: do not call a second provider.
+
+        Args:
+            route: Route configuration for the current task.
+
+        Returns:
+            Tuple of (provider, model), or (None, None) when fallback is disabled.
+        """
+        provider = (route.fallback_provider or "").strip().lower()
+        model = (route.fallback_model or "").strip()
+        if not provider or provider == "none" or not model:
+            return None, None
+        return provider, model
+
+    @staticmethod
+    def _stamp_provider(response: LLMResponse, provider: str) -> LLMResponse:
+        """
+        Attach the provider name to a response and log which model served it.
+
+        Args:
+            response: Fresh model response.
+            provider: Provider that produced the response.
+
+        Returns:
+            Response with ``provider`` set.
+        """
+        stamped = response.model_copy(update={"provider": provider})
+        logger.info(
+            "LLM generate served by provider=%s model=%s",
+            provider,
+            stamped.model,
+        )
+        return stamped
 
     def add_route(self, route: RouteConfig) -> None:
         """

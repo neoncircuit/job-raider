@@ -522,6 +522,7 @@ def generate_cover_letter_sync(
             "content": result.content,
             "word_count": result.word_count,
             "model_used": result.model_used,
+            "provider_used": getattr(result, "provider_used", None),
             "highlighted_experiences": result.highlighted_experiences,
             "style": "short_answer" if short_answer_mode else letter_style,
             "timing": timing,

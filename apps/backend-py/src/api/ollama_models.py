@@ -196,17 +196,19 @@ def list_installed_ollama_models(ollama_host: str, timeout: float = 3.0) -> List
         return []
 
 
-def default_cloud_fallback_model(cloud: CloudProvider, task_type: str) -> str:
+def default_cloud_fallback_model(cloud: CloudProvider, task_type: str) -> Optional[str]:
     """
     Pick a default cloud fallback model for a task tier.
 
     Args:
-        cloud: Selected cloud fallback provider.
+        cloud: Selected cloud fallback provider (``NONE`` returns None).
         task_type: Routing task key.
 
     Returns:
-        Provider-specific model id for small or large tier work.
+        Provider-specific model id for small or large tier work, or None.
     """
+    if cloud == CloudProvider.NONE:
+        return None
     if task_type in OLLAMA_SMALL_TASKS:
         return CLOUD_FALLBACK_SMALL[cloud]
     return CLOUD_FALLBACK_LARGE[cloud]
@@ -219,8 +221,8 @@ def apply_cloud_fallback_provider(
     """
     Retarget cloud fallbacks (Anthropic/Gemini) to the selected provider.
 
-    Local Ollama-to-Ollama fallbacks are left unchanged. Entries with no
-    fallback are skipped.
+    Local Ollama-to-Ollama fallbacks are left unchanged. When ``cloud`` is
+    ``NONE``, existing Anthropic/Gemini fallbacks are cleared.
 
     Args:
         routing: Current per-task routing map.
@@ -229,15 +231,29 @@ def apply_cloud_fallback_provider(
     Returns:
         New routing dict with cloud fallbacks updated.
     """
-    cloud_provider = Provider(cloud.value)
     updated: Dict[str, ModelRouting] = {}
     for task_type, entry in routing.items():
+        if entry.fallback_provider == Provider.OLLAMA:
+            updated[task_type] = entry
+            continue
+        if cloud == CloudProvider.NONE:
+            if (
+                entry.fallback_provider is None
+                or entry.fallback_provider in _CLOUD_FALLBACK_PROVIDERS
+            ):
+                updated[task_type] = entry.model_copy(
+                    update={"fallback_provider": None, "fallback_model": None}
+                )
+            else:
+                updated[task_type] = entry
+            continue
         if (
             entry.fallback_provider is None
             or entry.fallback_provider not in _CLOUD_FALLBACK_PROVIDERS
         ):
             updated[task_type] = entry
             continue
+        cloud_provider = Provider(cloud.value)
         updated[task_type] = entry.model_copy(
             update={
                 "fallback_provider": cloud_provider,
@@ -254,7 +270,7 @@ def apply_ollama_tier_models(
     *,
     small_tasks: Optional[Iterable[str]] = None,
     large_tasks: Optional[Iterable[str]] = None,
-    cloud_fallback: CloudProvider = CloudProvider.ANTHROPIC,
+    cloud_fallback: CloudProvider = CloudProvider.NONE,
 ) -> Dict[str, ModelRouting]:
     """
     Set primary Ollama models for small/large task tiers.
@@ -269,7 +285,8 @@ def apply_ollama_tier_models(
         large_model: Model name for large/quality tasks.
         small_tasks: Optional override of small-tier task keys.
         large_tasks: Optional override of large-tier task keys.
-        cloud_fallback: Cloud provider for newly created fallbacks.
+        cloud_fallback: Cloud provider for newly created fallbacks
+            (``NONE`` means no cloud fallback).
 
     Returns:
         New routing dict with tier models applied.
@@ -277,7 +294,9 @@ def apply_ollama_tier_models(
     small = frozenset(small_tasks) if small_tasks is not None else OLLAMA_SMALL_TASKS
     large = frozenset(large_tasks) if large_tasks is not None else OLLAMA_LARGE_TASKS
     updated: Dict[str, ModelRouting] = dict(routing)
-    cloud_provider = Provider(cloud_fallback.value)
+    cloud_provider = (
+        None if cloud_fallback == CloudProvider.NONE else Provider(cloud_fallback.value)
+    )
 
     for task_type, model in (
         *((t, small_model) for t in small),
@@ -285,12 +304,17 @@ def apply_ollama_tier_models(
     ):
         existing = updated.get(task_type)
         if existing is None:
+            fallback_model = (
+                None
+                if cloud_fallback == CloudProvider.NONE
+                else default_cloud_fallback_model(cloud_fallback, task_type)
+            )
             updated[task_type] = ModelRouting(
                 task_type=task_type,
                 primary_provider=Provider.OLLAMA,
                 primary_model=model,
                 fallback_provider=cloud_provider,
-                fallback_model=default_cloud_fallback_model(cloud_fallback, task_type),
+                fallback_model=fallback_model,
             )
             continue
         if existing.primary_provider != Provider.OLLAMA:

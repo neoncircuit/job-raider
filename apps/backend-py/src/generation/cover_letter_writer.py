@@ -253,6 +253,7 @@ class GeneratedCoverLetter:
     highlighted_experiences: List[Dict[str, str]]
     word_count: int
     model_used: str
+    provider_used: Optional[str] = None
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
     tokens_used: Optional[int] = None
@@ -391,6 +392,7 @@ class CoverLetterWriter:
                 response.model
                 or self.llm_router.routes[TaskType.COVER_LETTER_WRITING].primary_model
             )
+            provider_used = getattr(response, "provider", None)
 
             highlighted = self._extract_highlighted_experiences(content, selection)
             prompt_tokens, completion_tokens, tokens_used = _tokens_from_llm_response(
@@ -398,9 +400,10 @@ class CoverLetterWriter:
             )
 
             self.logger.info(
-                "Cover letter generated: %d words, model=%s style=%s tokens=%s",
+                "Cover letter generated: %d words, model=%s provider=%s style=%s tokens=%s",
                 word_count,
                 model_used,
+                provider_used,
                 style,
                 tokens_used,
             )
@@ -410,6 +413,7 @@ class CoverLetterWriter:
                 highlighted_experiences=highlighted,
                 word_count=word_count,
                 model_used=model_used,
+                provider_used=provider_used,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 tokens_used=tokens_used,

@@ -4,8 +4,12 @@ import type { AppSettings, ModelRouting } from "@/lib/types/api";
 export const RECOMMENDED_OLLAMA_SMALL = "qwen2.5:3b";
 export const RECOMMENDED_OLLAMA_LARGE = "qwen2.5:7b";
 
-/** Cloud providers selectable as Ollama fallbacks. */
-export type CloudFallbackProvider = "anthropic" | "gemini";
+/**
+ * Cloud providers selectable as Ollama fallbacks.
+ *
+ * ``none`` means local-only: never send prompts to a cloud API.
+ */
+export type CloudFallbackProvider = "none" | "anthropic" | "gemini";
 
 const OLLAMA_SMALL_TASKS = [
   "selection",
@@ -29,12 +33,12 @@ const OLLAMA_LARGE_TASKS = [
   "assessment_evaluation",
 ] as const;
 
-const CLOUD_FALLBACK_SMALL: Record<CloudFallbackProvider, string> = {
+const CLOUD_FALLBACK_SMALL: Record<"anthropic" | "gemini", string> = {
   anthropic: "claude-haiku-4-5-20251001",
   gemini: "gemini-2.5-flash",
 };
 
-const CLOUD_FALLBACK_LARGE: Record<CloudFallbackProvider, string> = {
+const CLOUD_FALLBACK_LARGE: Record<"anthropic" | "gemini", string> = {
   anthropic: "claude-sonnet-4-6",
   gemini: "gemini-2.5-pro",
 };
@@ -44,12 +48,12 @@ const CLOUD_PROVIDERS = new Set<string>(["anthropic", "gemini"]);
 /**
  * Default cloud fallback model for a task tier.
  *
- * @param cloud - Selected cloud fallback provider.
+ * @param cloud - Selected cloud fallback provider (not ``none``).
  * @param taskType - Routing task key.
  * @returns Provider-specific model id.
  */
 function defaultCloudFallbackModel(
-  cloud: CloudFallbackProvider,
+  cloud: "anthropic" | "gemini",
   taskType: string,
 ): string {
   if ((OLLAMA_SMALL_TASKS as readonly string[]).includes(taskType)) {
@@ -59,7 +63,25 @@ function defaultCloudFallbackModel(
 }
 
 /**
+ * Normalize a settings value to a cloud fallback choice.
+ *
+ * @param value - Raw settings value.
+ * @returns A known cloud fallback provider.
+ */
+export function normalizeCloudFallbackProvider(
+  value: string | null | undefined,
+): CloudFallbackProvider {
+  if (value === "anthropic" || value === "gemini" || value === "none") {
+    return value;
+  }
+  return "none";
+}
+
+/**
  * Retarget Anthropic/Gemini fallbacks to the selected cloud provider.
+ *
+ * When ``cloud`` is ``none``, existing Anthropic/Gemini fallbacks are cleared.
+ * Local Ollama-to-Ollama fallbacks are left unchanged.
  *
  * @param routing - Per-task routing map.
  * @param cloud - Cloud provider for Ollama failure fallback.
@@ -71,6 +93,25 @@ export function applyCloudFallbackProvider(
 ): Record<string, ModelRouting> {
   const next: Record<string, ModelRouting> = {};
   for (const [task, entry] of Object.entries(routing)) {
+    if (entry.fallback_provider === "ollama") {
+      next[task] = entry;
+      continue;
+    }
+    if (cloud === "none") {
+      if (
+        !entry.fallback_provider ||
+        CLOUD_PROVIDERS.has(entry.fallback_provider)
+      ) {
+        next[task] = {
+          ...entry,
+          fallback_provider: null,
+          fallback_model: null,
+        };
+      } else {
+        next[task] = entry;
+      }
+      continue;
+    }
     if (
       !entry.fallback_provider ||
       !CLOUD_PROVIDERS.has(entry.fallback_provider)
@@ -124,10 +165,9 @@ export function applyOllamaTierModelsLocally(
   smallModel: string,
   largeModel: string,
 ): AppSettings {
-  const cloud: CloudFallbackProvider =
-    settings.api_config.cloud_fallback_provider === "gemini"
-      ? "gemini"
-      : "anthropic";
+  const cloud = normalizeCloudFallbackProvider(
+    settings.api_config.cloud_fallback_provider,
+  );
   const routing: Record<string, ModelRouting> = { ...settings.routing };
 
   const apply = (tasks: readonly string[], model: string) => {
@@ -140,8 +180,9 @@ export function applyOllamaTierModelsLocally(
         task_type: task,
         primary_provider: "ollama",
         primary_model: model,
-        fallback_provider: cloud,
-        fallback_model: defaultCloudFallbackModel(cloud, task),
+        fallback_provider: cloud === "none" ? null : cloud,
+        fallback_model:
+          cloud === "none" ? null : defaultCloudFallbackModel(cloud, task),
       };
     }
   };

@@ -14,6 +14,7 @@ import {
   applyCloudFallbackProvider,
   applyOllamaTierModelsLocally,
   deriveOllamaTierModels,
+  normalizeCloudFallbackProvider,
   type CloudFallbackProvider,
 } from "@/lib/ollama-tiers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,7 +61,7 @@ const schema = z.object({
   api_config: z.object({
     anthropic_api_key: z.string().optional(),
     gemini_api_key: z.string().optional(),
-    cloud_fallback_provider: z.enum(["anthropic", "gemini"]),
+    cloud_fallback_provider: z.enum(["none", "anthropic", "gemini"]),
     ollama_host: z.string().min(1, "Required"),
   }),
   model_params: z.object({
@@ -112,10 +113,9 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
       api_config: {
         anthropic_api_key: initial.api_config.anthropic_api_key ?? "",
         gemini_api_key: initial.api_config.gemini_api_key ?? "",
-        cloud_fallback_provider:
-          initial.api_config.cloud_fallback_provider === "gemini"
-            ? "gemini"
-            : "anthropic",
+        cloud_fallback_provider: normalizeCloudFallbackProvider(
+          initial.api_config.cloud_fallback_provider,
+        ),
         ollama_host: initial.api_config.ollama_host,
       },
       model_params: initial.model_params,
@@ -225,7 +225,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
   /**
    * Switch cloud fallback provider and retarget routing fallbacks.
    *
-   * @param next - Anthropic or Gemini.
+   * @param next - none (local only), Anthropic, or Gemini.
    */
   const setCloudProvider = (next: CloudFallbackProvider) => {
     setValue("api_config.cloud_fallback_provider", next, { shouldDirty: true });
@@ -267,7 +267,11 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 <Select
                   value={cloudProvider}
                   onValueChange={(value) => {
-                    if (value === "anthropic" || value === "gemini") {
+                    if (
+                      value === "none" ||
+                      value === "anthropic" ||
+                      value === "gemini"
+                    ) {
                       setCloudProvider(value);
                     }
                   }}
@@ -279,13 +283,15 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
                   <SelectContent alignItemWithTrigger={false}>
+                    <SelectItem value="none">None (local only)</SelectItem>
                     <SelectItem value="anthropic">Anthropic</SelectItem>
                     <SelectItem value="gemini">Google Gemini</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Used when local Ollama cannot complete a request. Pick the
-                  provider you subscribe to — only one is needed.
+                  Default is local only. A cloud API key alone does not send
+                  data; pick Anthropic or Gemini here to allow fallback when
+                  Ollama fails.
                 </p>
               </div>
               {cloudProvider === "anthropic" ? (
@@ -301,10 +307,11 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   <p className="text-xs text-muted-foreground">
                     Optional. Leave blank to rely on{" "}
                     <span className="font-mono">ANTHROPIC_API_KEY</span> in the
-                    environment, or run Ollama-only.
+                    environment.
                   </p>
                 </div>
-              ) : (
+              ) : null}
+              {cloudProvider === "gemini" ? (
                 <div className="space-y-1">
                   <Label htmlFor="gemini_key">Gemini API Key</Label>
                   <Input
@@ -317,10 +324,10 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                   <p className="text-xs text-muted-foreground">
                     Optional. Leave blank to rely on{" "}
                     <span className="font-mono">GEMINI_API_KEY</span> in the
-                    environment, or run Ollama-only.
+                    environment.
                   </p>
                 </div>
-              )}
+              ) : null}
             </CardContent>
           </Card>
 
