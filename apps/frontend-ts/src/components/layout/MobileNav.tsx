@@ -2,12 +2,22 @@
 
 import { useState } from "react";
 import { Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { SidebarContent } from "./SidebarContent";
 import { BrandLockup } from "./BrandLockup";
 
 /**
  * Mobile top bar with brand lockup and a sheet drawer for navigation.
+ *
+ * The sheet has a screen-reader title so tests and assistive tech can find
+ * the open drawer as ``getByRole("dialog", { name: "Navigation" })``.
+ *
+ * @returns The mobile header with the navigation sheet.
  */
 export function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -28,6 +38,7 @@ export function MobileNav() {
           side="left"
           className="w-[var(--sidebar-width)] border-r border-sidebar-border bg-sidebar p-0"
         >
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
           <SidebarContent onNavItemClick={() => setOpen(false)} />
         </SheetContent>
       </Sheet>

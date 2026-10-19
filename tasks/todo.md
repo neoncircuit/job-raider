@@ -178,8 +178,12 @@ Items here are parked. Move an item to **Next** before you start it.
 | `b5ecfed` | 1 | Metrics |
 | `5a8232f` | 2 | Jobs, Career Coach |
 
-- [ ] Step 1: Find the root cause. Candidates: the mobile navigation sheet is not open or not ready when the test clicks; `next dev` compiles the route on first visit.
-- [ ] Step 2: Fix the test or the navigation, so that the test does not need a retry. Do not only raise the timeout.
+- [x] Step 1: Find the root cause. Candidates: the mobile navigation sheet is not open or not ready when the test clicks; `next dev` compiles the route on first visit.
+- [x] Step 2: Fix the test or the navigation, so that the test does not need a retry. Do not only raise the timeout.
+
+**Root cause:** On mobile, `locator("nav")` also matched the desktop sidebar `nav` that stays in the DOM under `hidden md:flex`. The test clicked the hamburger and then raced that hidden nav before the sheet dialog was ready.
+
+**Review (2026-10-19):** Added a screen-reader `SheetTitle` ("Navigation") on the mobile sheet. The smoke helper opens the sheet, waits for `getByRole("dialog", { name: "Navigation" })`, and clicks the link inside that dialog. Desktop clicks use `aside`. `--repeat-each=10` on Mobile Chrome smoke: 140 passed, 0 flaky. Full Playwright suite: 42 passed.
 
 ### Small follow-ups from completed work (2026-10-18)
 

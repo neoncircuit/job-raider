@@ -7,10 +7,12 @@
  * Viewport handling:
  *  - Desktop renders the sidebar persistently.
  *  - Mobile hides nav behind a hamburger `<Sheet>` (aria-label "Open
- *    navigation"), opened before a link is clicked.
- *  - Nav clicks are scoped to ``nav`` so the brand lockup link cannot collide
- *    with route labels, and use ``force`` on desktop to avoid flaky
- *    actionability checks against sticky sidebar chrome.
+ *    navigation"), opened and waited until the dialog is visible before a
+ *    link is clicked. Clicks are scoped to that dialog so the hidden desktop
+ *    sidebar ``nav`` (still in the DOM under ``hidden md:flex``) cannot win
+ *    the locator race.
+ *  - Desktop nav clicks are scoped to the sidebar ``aside`` and use ``force``
+ *    to avoid flaky actionability checks against sticky sidebar chrome.
  */
 
 import type { Page } from "@playwright/test";
@@ -19,9 +21,10 @@ import { test, expect } from "./support/test";
 /**
  * Navigate to a primary route via whichever nav the current viewport exposes.
  *
- * On mobile, open the hamburger `<Sheet>` first; on desktop the sidebar is
- * persistent. Clicks are scoped to a ``nav`` landmark so brand/header links
- * are never matched.
+ * On mobile, open the hamburger sheet and wait until the Navigation dialog is
+ * visible before clicking a link inside it. On desktop, click inside the
+ * persistent sidebar. This avoids matching the desktop ``nav`` that stays in
+ * the DOM (but hidden) on mobile viewports.
  *
  * @param page - The Playwright page to drive.
  * @param linkName - Accessible name of the nav link to click (e.g. "Jobs").
@@ -30,12 +33,19 @@ import { test, expect } from "./support/test";
 async function navigateTo(page: Page, linkName: string): Promise<void> {
   const isMobile = (page.viewportSize()?.width ?? 0) < 768;
   if (isMobile) {
-    await page.getByLabel("Open navigation").click();
+    const openNav = page.getByLabel("Open navigation");
+    await expect(openNav).toBeVisible();
+    await openNav.click();
+    const dialog = page.getByRole("dialog", { name: "Navigation" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("link", { name: linkName, exact: true }).click();
+    return;
   }
+
   await page
-    .locator("nav")
+    .locator("aside")
     .getByRole("link", { name: linkName, exact: true })
-    .click({ force: !isMobile });
+    .click({ force: true });
 }
 
 test.describe("App load", () => {
@@ -80,6 +90,7 @@ const PRIMARY_ROUTES = [
 test.describe("Primary navigation", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/dashboard");
+    await expect(page.locator("h1")).toContainText("Dashboard");
   });
 
   for (const route of PRIMARY_ROUTES) {
