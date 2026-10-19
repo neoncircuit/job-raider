@@ -84,7 +84,9 @@ export function Providers({ children }: ProvidersProps) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            retry: 1,
+            // lib/api/client.ts already retries transient GET failures.
+            // A second retry layer here would send up to 8 requests.
+            retry: false,
             refetchOnWindowFocus: false,
           },
         },

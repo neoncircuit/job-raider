@@ -27,6 +27,7 @@ import {
   DEFAULT_SOURCES,
 } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils/cn";
+import { splitList } from "@/lib/utils/split-list";
 import {
   RUN_STATE_BADGE,
   overallProgress,
@@ -90,7 +91,8 @@ const schema = z.object({
   keywords: z.string().min(1, "At least one keyword required"),
   locations: z.string(),
   minScore: z.number().int().min(0).max(100),
-  maxJobs: z.number().int().min(1).max(500),
+  // Matches the backend limit (PipelineStartRequest.max_jobs, le=100).
+  maxJobs: z.number().int().min(1).max(100),
   scamThreshold: z.number().min(0).max(1),
   mode: z.enum(["discover", "full"]),
   dryRun: z.boolean(),
@@ -158,8 +160,8 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
   const start = useMutation({
     mutationFn: (v: FormValues) =>
       pipelineApi.start({
-        keywords: v.keywords.split(/[\s,]+/).filter(Boolean),
-        locations: v.locations.split(/[\s,]+/).filter(Boolean),
+        keywords: splitList(v.keywords),
+        locations: splitList(v.locations),
         sources:
           effectiveSources.length > 0 ? effectiveSources : availableSources,
         min_score: v.minScore,
@@ -307,7 +309,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
           <Input
             type="number"
             min={1}
-            max={500}
+            max={100}
             {...register("maxJobs", { valueAsNumber: true })}
           />
         </div>

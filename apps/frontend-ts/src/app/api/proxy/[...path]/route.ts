@@ -47,9 +47,11 @@ async function handler(req: NextRequest, ctx: ProxyRouteContext) {
       duplex: "half",
     });
   } catch (err) {
+    // The client maps this header to ConnectionError ("Is the backend
+    // running?"), so a down backend is not shown as a backend error.
     return NextResponse.json(
       { error: "Backend unreachable", message: String(err) },
-      { status: 503 },
+      { status: 503, headers: { "X-Proxy-Error": "backend-unreachable" } },
     );
   }
 

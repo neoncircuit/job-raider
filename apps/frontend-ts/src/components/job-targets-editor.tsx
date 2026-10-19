@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils/cn";
+import { splitList } from "@/lib/utils/split-list";
 
 const EXPERIENCE_OPTIONS: ExperienceLevel[] = [
   "Entry Level",
@@ -201,17 +202,4 @@ export function JobTargetsEditor({ targetJob }: JobTargetsEditorProps) {
       </CardContent>
     </Card>
   );
-}
-
-/**
- * Split a comma/whitespace-separated string into trimmed non-empty tokens.
- *
- * @param value - Raw input string.
- * @returns Token list.
- */
-function splitList(value: string): string[] {
-  return value
-    .split(/[,]+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
 }

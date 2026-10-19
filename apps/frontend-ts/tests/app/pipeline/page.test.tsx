@@ -91,6 +91,23 @@ describe("PipelinePage start form", () => {
     expect(payload).not.toHaveProperty("max_submissions_per_hour");
   });
 
+  it("keeps multi-word keywords and locations whole", async () => {
+    const user = renderPage();
+    await user.type(
+      screen.getByPlaceholderText(/Python, FastAPI/),
+      "python engineer, machine learning",
+    );
+    const locations = screen.getByPlaceholderText(/Singapore, Remote/);
+    await user.clear(locations);
+    await user.type(locations, "New York, Remote");
+    await user.click(screen.getByRole("button", { name: /Start Discover/i }));
+
+    expect(await startPayload()).toMatchObject({
+      keywords: ["python engineer", "machine learning"],
+      locations: ["New York", "Remote"],
+    });
+  });
+
   it("offers only discover stages in discover mode", () => {
     renderPage();
     const select = screen.getByLabelText("Stop after stage");

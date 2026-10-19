@@ -132,11 +132,11 @@ Part B: submit stage
 
 ##### Step 1.7: Frontend input and retry fixes (effort: S)
 
-- [ ] `src/lib/api/client.ts`: retry only `GET` and `HEAD`. Honor `Retry-After` on 429. Set `mutations.retry` to 0 in `src/app/providers.tsx`, so that only one layer retries.
-- [ ] Map the proxy "backend unreachable" 503 to `ConnectionError`, so the "Is the backend running?" message appears.
-- [ ] Move `splitList` (comma-only) from `job-targets-editor.tsx` to `src/lib/utils`. Use it in `src/app/pipeline/page.tsx:153-154` and `src/components/jobs/search-bar.tsx:114`. Change the placeholders to say "comma-separated" (decision 3).
-- [ ] Change the UI `max_jobs` limit from 500 to 100 to match the backend.
-- [ ] Tests: retry by method; "New York, Remote" gives two values.
+- [x] `src/lib/api/client.ts`: retry only `GET` and `HEAD` (`canRetry`). Honor `Retry-After` on 429, capped at 30 s (`retryDelayMs`). TanStack query retries are off in `src/app/providers.tsx`, so the client is the only retry layer (mutations already defaulted to 0). A caller abort (`AbortError`) is rethrown unchanged and not retried.
+- [x] The proxy sets `X-Proxy-Error: backend-unreachable` on its 503 for a down backend. The client maps exactly that case to `ConnectionError`, so the "Is the backend running?" message appears. A 503 from the backend itself stays an `ApiError`.
+- [x] `splitList` (comma-only) is now `src/lib/utils/split-list.ts`. The Pipeline form, the Jobs search bar, and the profile job targets use it (decision 3). The placeholders already show comma-separated examples, so they did not change.
+- [x] The UI `max_jobs` limit is 100, the same as the backend.
+- [x] Tests: `canRetry`, `retryDelayMs`, and `request` retry behavior in `src/lib/api/client.test.ts` (POST sent once on 503; GET retried; proxy 503 is `ConnectionError`; backend 503 is `ApiError`; abort rethrown); `src/lib/utils/split-list.test.ts`; a Pipeline form test that "New York, Remote" gives two locations.
 
 ##### Verification for Step 1
 

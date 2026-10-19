@@ -165,33 +165,94 @@ function logResponse(status: number, path: string, data?: unknown) {
 
 const PROXY_BASE = "/api/proxy";
 
-// Retry configuration
+// Retry configuration. This client is the only retry layer: TanStack Query
+// retries are off in providers.tsx.
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
+const MAX_RETRY_AFTER_MS = 30_000;
 const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
+/** Methods that are safe to send again, because they do not change state. */
+const RETRYABLE_METHODS = new Set(["GET", "HEAD"]);
+
+/** Header that the Next.js proxy sets when it cannot reach the backend. */
+export const PROXY_ERROR_HEADER = "x-proxy-error";
+/** Value of {@link PROXY_ERROR_HEADER} for an unreachable backend. */
+export const PROXY_UNREACHABLE = "backend-unreachable";
 
 /**
- * Sleep for specified milliseconds
+ * Sleep for specified milliseconds.
+ *
+ * @param ms - Time to wait.
+ * @returns Resolves after the wait.
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
- * Check if a request should be retried based on the error or status code
+ * Decide whether a failed request may be sent again.
+ *
+ * Only GET and HEAD are retried. A POST, PUT, PATCH, or DELETE can start a
+ * pipeline run or an LLM generation, so sending it again could do the work
+ * two times.
+ *
+ * @param method - HTTP method of the request.
+ * @param retries - Number of retries already made.
+ * @param statusCode - HTTP status, or 0 when the fetch itself failed.
+ * @returns True when the method is safe, retries remain, and the failure
+ *   is transient.
  */
-function shouldRetry(statusCode: number, error: Error): boolean {
-  // Retry on retryable status codes
-  if (RETRYABLE_STATUS_CODES.includes(statusCode)) {
-    return true;
+export function canRetry(
+  method: string,
+  retries: number,
+  statusCode: number,
+): boolean {
+  if (!RETRYABLE_METHODS.has(method.toUpperCase()) || retries >= MAX_RETRIES) {
+    return false;
   }
+  return statusCode === 0 || RETRYABLE_STATUS_CODES.includes(statusCode);
+}
 
-  // Retry on connection errors
-  if (error.name === "ConnectionError" || error.message.includes("fetch")) {
-    return true;
+/**
+ * Compute the wait before the next attempt.
+ *
+ * @param retries - Number of retries already made.
+ * @param retryAfter - Value of the `Retry-After` header, if any (seconds or
+ *   an HTTP date).
+ * @param now - Current time in milliseconds, for HTTP-date values.
+ * @returns The `Retry-After` wait, capped at 30 seconds, or an exponential
+ *   backoff (1 s, 2 s, 4 s) when there is no usable header.
+ */
+export function retryDelayMs(
+  retries: number,
+  retryAfter: string | null,
+  now: number = Date.now(),
+): number {
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.min(seconds * 1000, MAX_RETRY_AFTER_MS);
+    }
+    const date = Date.parse(retryAfter);
+    if (!Number.isNaN(date)) {
+      return Math.min(Math.max(0, date - now), MAX_RETRY_AFTER_MS);
+    }
   }
+  return RETRY_DELAY_MS * 2 ** retries;
+}
 
-  return false;
+/**
+ * Check whether a thrown value is a caller abort (AbortController).
+ *
+ * @param err - Thrown value from `fetch`.
+ * @returns True for an `AbortError`.
+ */
+function isAbortError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { name?: unknown }).name === "AbortError"
+  );
 }
 
 interface RequestOptions {
@@ -234,17 +295,19 @@ export async function request<T>(
   }
 
   let res: Response;
-  let fetchError: Error | null = null;
 
   try {
     res = await fetch(url, { method, headers, body: fetchBody, signal });
   } catch (err) {
-    fetchError = err as Error;
+    // A caller abort is not a network failure. Rethrow it unchanged so that
+    // callers can ignore stale requests.
+    if (isAbortError(err)) {
+      throw err;
+    }
     log("ERROR", `API Error: ${method} ${path}`, err);
 
-    // Check if we should retry
-    if (retries < MAX_RETRIES && shouldRetry(0, fetchError)) {
-      const delay = RETRY_DELAY_MS * Math.pow(2, retries); // Exponential backoff
+    if (canRetry(method, retries, 0)) {
+      const delay = retryDelayMs(retries, null);
       log(
         "WARN",
         `Retrying request (${retries + 1}/${MAX_RETRIES}) after ${delay}ms...`,
@@ -289,10 +352,8 @@ export async function request<T>(
       log("ERROR", "🔒 Authentication failed - Check API_KEY configuration");
     }
 
-    // Check if we should retry on server errors
-    const apiError = new ApiError(res.status, detail);
-    if (retries < MAX_RETRIES && shouldRetry(res.status, apiError)) {
-      const delay = RETRY_DELAY_MS * Math.pow(2, retries); // Exponential backoff
+    if (canRetry(method, retries, res.status)) {
+      const delay = retryDelayMs(retries, res.headers.get("retry-after"));
       log(
         "WARN",
         `Retrying request (${retries + 1}/${MAX_RETRIES}) after ${delay}ms...`,
@@ -301,7 +362,16 @@ export async function request<T>(
       return request<T>(method, path, { ...opts, retries: retries + 1 });
     }
 
-    throw apiError;
+    // The proxy answers 503 with this header when the backend is down. Report
+    // it as a connection problem, not as a backend error.
+    if (
+      res.status === 503 &&
+      res.headers.get(PROXY_ERROR_HEADER) === PROXY_UNREACHABLE
+    ) {
+      throw new ConnectionError(detail || "Backend unreachable");
+    }
+
+    throw new ApiError(res.status, detail);
   }
 
   logResponse(res.status, path);

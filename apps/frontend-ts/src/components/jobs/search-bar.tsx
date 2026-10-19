@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { jobsApi } from "@/lib/api/jobs";
+import { splitList } from "@/lib/utils/split-list";
 import type { JobSearchRequest } from "@/lib/api/jobs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,7 +112,7 @@ export function SearchBar({
   };
 
   const handleFormSubmit = handleSubmit((values) => {
-    const keywordsArray = values.keywords.split(/[\s,]+/).filter(Boolean);
+    const keywordsArray = splitList(values.keywords);
     if (keywordsArray.length === 0) {
       toast.error("Please enter at least one keyword");
       return;
