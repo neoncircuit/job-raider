@@ -17,6 +17,43 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
+@pytest.fixture(autouse=True)
+def _bypass_api_auth_except_auth_tests(request):
+    """
+    Skip X-API-Key checks in API tests unless the file is ``test_auth.py``.
+
+    After Step 2.3, an empty ``API_KEY`` returns 401. Tests that call the
+    FastAPI app override the auth dependency so they do not need a real key.
+
+    Args:
+        request: Pytest request for the current test.
+
+    Yields:
+        None.
+    """
+    path = Path(str(request.fspath))
+    if path.name == "test_auth.py":
+        yield
+        return
+
+    from src.api.auth import verify_api_key
+    from src.api.main import app
+
+    async def _allow() -> None:
+        """No-op auth for tests.
+
+        Returns:
+            None.
+        """
+        return None
+
+    app.dependency_overrides[verify_api_key] = _allow
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(verify_api_key, None)
+
+
 @pytest.fixture
 def sample_job_listing():
     """Sample job listing for testing."""

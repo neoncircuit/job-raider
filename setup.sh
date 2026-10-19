@@ -382,18 +382,39 @@ setup_auto_activation() {
     fi
 }
 
+# Write or replace API_KEY=... in an env file without printing the value.
+_set_env_api_key() {
+    local file="$1"
+    local key="$2"
+    if [ ! -f "$file" ]; then
+        printf 'API_KEY=%s\n' "$key" > "$file"
+        return
+    fi
+    if grep -q '^API_KEY=' "$file" 2>/dev/null; then
+        # Portable in-place replace for GNU and BSD sed.
+        if sed --version >/dev/null 2>&1; then
+            sed -i "s|^API_KEY=.*|API_KEY=${key}|" "$file"
+        else
+            sed -i '' "s|^API_KEY=.*|API_KEY=${key}|" "$file"
+        fi
+    else
+        printf '\nAPI_KEY=%s\n' "$key" >> "$file"
+    fi
+}
+
 # Check for required environment variables
 check_env() {
     print_status "Checking environment configuration..."
 
     ENV_FILE="$BACKEND_DIR/.env"
     ENV_EXAMPLE="$BACKEND_DIR/.env.example"
+    FRONTEND_ENV_FILE="$PROJECT_ROOT/apps/frontend-ts/.env.local"
+    FRONTEND_ENV_EXAMPLE="$PROJECT_ROOT/apps/frontend-ts/.env.example"
 
     if [ ! -f "$ENV_FILE" ]; then
         if [ -f "$ENV_EXAMPLE" ]; then
             print_warning "apps/backend-py/.env not found. Creating from .env.example..."
             cp "$ENV_EXAMPLE" "$ENV_FILE"
-            print_warning "Please edit apps/backend-py/.env with your API keys."
         else
             print_warning "apps/backend-py/.env.example not found. Creating empty .env..."
             touch "$ENV_FILE"
@@ -402,21 +423,41 @@ check_env() {
         print_status ".env file exists [OK]"
     fi
 
-    # Frontend environment
-    FRONTEND_ENV_FILE="$PROJECT_ROOT/apps/frontend-ts/.env.local"
-    FRONTEND_ENV_EXAMPLE="$PROJECT_ROOT/apps/frontend-ts/.env.example"
-
     if [ ! -f "$FRONTEND_ENV_FILE" ]; then
         if [ -f "$FRONTEND_ENV_EXAMPLE" ]; then
             print_warning "apps/frontend-ts/.env.local not found. Creating from .env.example..."
             cp "$FRONTEND_ENV_EXAMPLE" "$FRONTEND_ENV_FILE"
-            print_warning "Please edit apps/frontend-ts/.env.local with your API_KEY and BACKEND_API_URL."
         else
             print_warning "apps/frontend-ts/.env.example not found. Creating empty .env.local..."
             touch "$FRONTEND_ENV_FILE"
         fi
     else
         print_status "Frontend .env.local file exists [OK]"
+    fi
+
+    # Ensure both files share a real API_KEY (never the public placeholder).
+    CURRENT_KEY=""
+    if [ -f "$ENV_FILE" ]; then
+        CURRENT_KEY=$(grep -E '^API_KEY=' "$ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- || true)
+    fi
+    if [ -z "$CURRENT_KEY" ] || [ "$CURRENT_KEY" = "your_api_key_here" ]; then
+        GENERATED_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))" 2>/dev/null \
+            || openssl rand -hex 32 2>/dev/null \
+            || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+        _set_env_api_key "$ENV_FILE" "$GENERATED_KEY"
+        _set_env_api_key "$FRONTEND_ENV_FILE" "$GENERATED_KEY"
+        print_status "Generated a shared API_KEY in backend .env and frontend .env.local [OK]"
+        print_warning "Do not commit those files. Add ANTHROPIC_API_KEY / RAPIDAPI_KEY as needed."
+    else
+        # Keep frontend in sync when backend already has a real key.
+        FE_KEY=""
+        if [ -f "$FRONTEND_ENV_FILE" ]; then
+            FE_KEY=$(grep -E '^API_KEY=' "$FRONTEND_ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- || true)
+        fi
+        if [ -z "$FE_KEY" ] || [ "$FE_KEY" = "your_api_key_here" ] || [ "$FE_KEY" != "$CURRENT_KEY" ]; then
+            _set_env_api_key "$FRONTEND_ENV_FILE" "$CURRENT_KEY"
+            print_status "Synced API_KEY into frontend .env.local [OK]"
+        fi
     fi
 }
 

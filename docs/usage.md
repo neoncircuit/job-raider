@@ -26,11 +26,13 @@ ollama pull qwen2.5:7b
 
 # Configure backend credentials
 cp apps/backend-py/.env.example apps/backend-py/.env
-# Edit apps/backend-py/.env — add ANTHROPIC_API_KEY, RAPIDAPI_KEY, API_KEY
+# setup.sh writes a random API_KEY into both env files; they must match
+# Edit apps/backend-py/.env — add ANTHROPIC_API_KEY, RAPIDAPI_KEY if needed
+# Auth is required unless AUTH_DISABLED=1 is set in the backend .env
 
 # Configure frontend
 cp apps/frontend-ts/.env.example apps/frontend-ts/.env.local
-# Edit apps/frontend-ts/.env.local — set BACKEND_API_URL and API_KEY (must match backend)
+# Edit apps/frontend-ts/.env.local — BACKEND_API_URL and the same API_KEY
 ```
 
 ### Running Locally

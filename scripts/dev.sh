@@ -78,16 +78,18 @@ ensure_dirs() {
 # --- Service launchers -------------------------------------------------------
 
 start_api() {
-    echo "Starting backend API (port 8000)..."
+    echo "Starting backend API on 127.0.0.1:8000..."
     cd "$BACKEND_DIR"
     PYTHONPATH=. "$VENV_PYTHON" -m uvicorn src.api.main:app \
-        --host 0.0.0.0 --port 8000 --reload
+        --host 127.0.0.1 --port 8000 --reload
 }
 
 start_frontend() {
-    echo "Starting Next.js dev server (port 3000)..."
+    echo "Starting Next.js dev server on 127.0.0.1:3000..."
     cd "$FRONTEND_DIR"
-    npm run dev -- --port 3000
+    # Bind to loopback only so other LAN devices cannot use the proxy
+    # (the proxy adds X-API-Key to every forwarded request).
+    npm run dev -- --hostname 127.0.0.1 --port 3000
 }
 
 start_both() {

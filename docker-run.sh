@@ -20,20 +20,21 @@ echo -e "${BLUE}  Job Raider - Docker${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Find available ports
-BACKEND_PORT=$(find_port 8000)
+# Backend is not published on the host (local-first). Only the frontend
+# loopback port and shared services need free host ports.
 OLLAMA_PORT=$(find_port 11434)
 FRONTEND_PORT=$(find_port 3000)
 MLFLOW_PORT=$(find_port 5000)
 
 echo -e "${GREEN}Ports allocated:${NC}"
-echo -e "  Frontend:  ${BLUE}http://localhost:$FRONTEND_PORT${NC}"
-echo -e "  Backend:   ${BLUE}http://localhost:$BACKEND_PORT${NC}"
+echo -e "  Frontend:  ${BLUE}http://127.0.0.1:$FRONTEND_PORT${NC}"
+echo -e "  Backend:   ${BLUE}Compose network only (backend:8000)${NC}"
 echo -e "  MLflow:    ${BLUE}http://localhost:$MLFLOW_PORT${NC}"
 echo -e "  Ollama:    ${BLUE}localhost:$OLLAMA_PORT${NC}"
 echo ""
 
-export BACKEND_PORT OLLAMA_PORT FRONTEND_PORT MLFLOW_PORT
+export OLLAMA_PORT FRONTEND_PORT MLFLOW_PORT
+unset BACKEND_PORT
 
 # Stop existing containers
 echo -e "${YELLOW}Stopping existing containers...${NC}"
@@ -48,9 +49,8 @@ echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  All services running${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo -e "  Dashboard:  ${BLUE}http://localhost:$FRONTEND_PORT${NC}"
-echo -e "  API docs:   ${BLUE}http://localhost:$BACKEND_PORT/docs${NC}"
-echo -e "  Health:     ${BLUE}http://localhost:$BACKEND_PORT/api/health${NC}"
+echo -e "  Dashboard:  ${BLUE}http://127.0.0.1:$FRONTEND_PORT${NC}"
+echo -e "  API:        ${BLUE}via frontend proxy (backend not published)${NC}"
 echo -e "  MLflow:     ${BLUE}http://localhost:$MLFLOW_PORT${NC}"
 echo ""
 echo -e "${YELLOW}Logs:${NC}  docker compose logs -f"

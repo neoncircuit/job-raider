@@ -10,11 +10,8 @@ services:
       dockerfile: docker/Dockerfile
     container_name: job-raider-backend
     user: root
-    ports:
-      - target: 8000
-        published: "${BACKEND_PORT:-8000}"
-        protocol: tcp
-        mode: host
+    # Backend port is not published on the host (local-first). The frontend
+    # container reaches it as http://backend:8000 on the Compose network.
     volumes:
       - ./apps/backend-py/data:/app/backend-py/data
     env_file:
@@ -44,11 +41,13 @@ services:
     ports:
       - target: 3000
         published: "${FRONTEND_PORT:-3000}"
+        host_ip: 127.0.0.1
         protocol: tcp
         mode: host
     environment:
       - BACKEND_API_URL=http://backend:8000
-      - NEXT_PUBLIC_WS_URL=ws://backend:8000
+      # Browser cannot reach the unpublished backend port; Live Monitor uses status polling.
+      - NEXT_PUBLIC_WS_URL=
     env_file:
       - apps/frontend-ts/.env.local
     depends_on:
