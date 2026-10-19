@@ -2,6 +2,8 @@
 // The API key and backend URL are server-only env vars — never exposed to the browser.
 import { type NextRequest, NextResponse } from "next/server";
 
+import { forbiddenProxyResponse } from "../guard";
+
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:8000";
 const API_KEY = process.env.API_KEY ?? "";
 
@@ -11,6 +13,11 @@ const API_KEY = process.env.API_KEY ?? "";
 type ProxyRouteContext = { params: Promise<{ path: string[] }> };
 
 async function handler(req: NextRequest, ctx: ProxyRouteContext) {
+  const blocked = forbiddenProxyResponse(req);
+  if (blocked) {
+    return blocked;
+  }
+
   const { path } = await ctx.params;
   const backendPath = "/api/" + path.join("/");
 

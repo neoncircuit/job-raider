@@ -13,10 +13,16 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator
 
 from ..llm.router import TaskType
+
+# Hostnames allowed for Settings ``ollama_host`` (decision 5, Step 2.6).
+ALLOWED_OLLAMA_HOSTNAMES = frozenset(
+    {"localhost", "127.0.0.1", "host.docker.internal", "ollama"}
+)
 
 
 class Provider(str, Enum):
@@ -116,17 +122,42 @@ class APIConfig(BaseModel):
     @field_validator("ollama_host")
     @classmethod
     def validate_ollama_host(cls, v: str) -> str:
-        """Validate Ollama host format.
+        """
+        Validate Ollama host: http(s) only, host and port, allowlisted host.
+
+        Allowed hosts: ``localhost``, ``127.0.0.1``, ``host.docker.internal``,
+        and ``ollama`` (Compose service name).
 
         Args:
-            v: Host string from settings.
+            v: Host string from settings (with or without scheme).
 
         Returns:
-            Host string, or the Docker Desktop default when empty.
+            Stripped host string, or the Docker Desktop default when empty.
+
+        Raises:
+            ValueError: When the host is not allowlisted or has a path/query.
         """
-        if not v:
+        if not v or not str(v).strip():
             return "host.docker.internal:11434"
-        return v
+        raw = str(v).strip()
+        to_parse = raw if "://" in raw else f"http://{raw}"
+        parsed = urlparse(to_parse)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("ollama_host must use http or https")
+        host = (parsed.hostname or "").lower()
+        if host not in ALLOWED_OLLAMA_HOSTNAMES:
+            allowed = ", ".join(sorted(ALLOWED_OLLAMA_HOSTNAMES))
+            raise ValueError(f"ollama_host host must be one of: {allowed}")
+        if (
+            parsed.path not in ("", "/")
+            or parsed.params
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("ollama_host must be host:port only (no path or query)")
+        if parsed.username or parsed.password:
+            raise ValueError("ollama_host must not include credentials")
+        return raw
 
 
 class ModelParameters(BaseModel):

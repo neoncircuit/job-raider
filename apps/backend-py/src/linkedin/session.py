@@ -355,7 +355,7 @@ class LinkedInSession:
 
     def navigate_to_url(self, url: str) -> Page:
         """
-        Navigate to an arbitrary LinkedIn URL.
+        Navigate to an https LinkedIn URL (search, profile, or other paths).
 
         Args:
             url: Fully qualified LinkedIn URL.
@@ -365,11 +365,15 @@ class LinkedInSession:
 
         Raises:
             RuntimeError: If no active session.
+            ValueError: If the URL is not https LinkedIn.
         """
         if not self._page:
             raise RuntimeError("No active session. Call start() first.")
 
-        self._page.goto(url, timeout=self.config.timeout_ms)
+        from .profile_url import validate_linkedin_navigation_url
+
+        safe_url = validate_linkedin_navigation_url(url)
+        self._page.goto(safe_url, timeout=self.config.timeout_ms)
         time.sleep(random.uniform(1, 2))
         return self._page
 
@@ -383,11 +387,18 @@ class LinkedInSession:
         Returns:
             Extracted visible text from the profile page, or an empty string
             if the content cannot be retrieved.
+
+        Raises:
+            ValueError: When ``profile_url`` is not an https LinkedIn ``/in/`` URL.
         """
         if not self._page:
             raise RuntimeError("No active session. Call start() first.")
 
-        page = self.navigate_to_url(profile_url)
+        from .profile_url import validate_linkedin_profile_url
+
+        # Stricter than navigate_to_url: must be an /in/ profile.
+        safe_url = validate_linkedin_profile_url(profile_url)
+        page = self.navigate_to_url(safe_url)
         try:
             page.wait_for_selector(
                 "main.scaffold-layout__main, main, section.artdeco-card",

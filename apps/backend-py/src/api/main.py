@@ -26,6 +26,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from ..utils.app_version import get_app_version
 from ..utils.log_buffer import install_log_buffer
@@ -190,6 +191,27 @@ app = FastAPI(
     version=APP_VERSION,
     lifespan=lifespan,
 )
+
+
+def _allowed_hosts() -> List[str]:
+    """
+    Hostnames accepted by TrustedHostMiddleware.
+
+    Defaults cover local, Compose, and FastAPI TestClient (``testserver``).
+    Override with comma-separated ``ALLOWED_HOSTS``.
+
+    Returns:
+        List of allowed host names (no ports).
+    """
+    raw = os.getenv(
+        "ALLOWED_HOSTS",
+        "localhost,127.0.0.1,testserver,backend",
+    )
+    return [h.strip() for h in raw.split(",") if h.strip()]
+
+
+# TrustedHost first (outermost after reverse add order): reject bad Host headers.
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts())
 
 # Configure CORS
 app.add_middleware(
