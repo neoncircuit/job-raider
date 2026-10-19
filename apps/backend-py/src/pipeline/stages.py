@@ -13,10 +13,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..generation.cover_letter_service import generate_cover_letter_sync
 from ..generation.cover_letter_validator import (
-    CoverLetterValidator,
+    CoverLetterIssue,
+    collect_hard_fail_issues,
 )
-from ..generation.cover_letter_writer import CoverLetterWriter
 from ..generation.formatter import ResumeFormatter
 from ..generation.resume_writer import ResumeWriter
 from ..generation.selector import ResumeSelector
@@ -113,8 +114,6 @@ class PipelineStages:
         llm_router = LLMRouter()
         self.resume_selector = ResumeSelector(llm_router=llm_router)
         self.resume_writer = ResumeWriter(llm_router=llm_router)
-        self.cover_letter_writer = CoverLetterWriter(llm_router=llm_router)
-        self.cover_letter_validator = CoverLetterValidator()
         self.resume_validator = ResumeValidator()
         self.resume_formatter = ResumeFormatter()
         self.auto_submitter = AutoSubmitter(
@@ -773,35 +772,9 @@ class PipelineStages:
                         )
                         continue
 
-                    # Stage 2b: Generate cover letter (large model)
-                    cover_letter = self.cover_letter_writer.write(
-                        job=job,
-                        profile=self.context.user_profile,
-                        selection=selection_output,
-                    )
-
-                    # Stage 3b: Validate cover letter
-                    cl_validation = self.cover_letter_validator.validate(
-                        cover_letter=cover_letter,
-                        job=job,
-                        profile=self.context.user_profile,
-                        selection=selection_output,
-                    )
-
-                    if cl_validation.score < 60:
-                        self.logger.warning(
-                            "Cover letter quality low for %s: score=%d, issues=%s",
-                            job.title,
-                            cl_validation.score,
-                            [i.value for i in cl_validation.issues],
-                        )
-
-                    self.logger.info(
-                        "Cover letter generated for %s: %d words, quality=%d/100",
-                        job.title,
-                        cover_letter.word_count,
-                        cl_validation.score,
-                    )
+                    # Stage 2b: Cover letter through the same service as the
+                    # app: write, validate, and one grounding rewrite.
+                    letter = self._generate_cover_letter(job, selection_output)
 
                     # Stage 4: Format and save
                     resume_dir = self.context.results_dir / "resumes"
@@ -820,22 +793,28 @@ class PipelineStages:
                     pdf_path = formatted.pdf_path
                     docx_path = formatted.docx_path
 
-                    # Save cover letter to disk
-                    cover_letter_dir = self.context.results_dir / "cover_letters"
-                    cover_letter_dir.mkdir(parents=True, exist_ok=True)
-                    cover_letter_path = cover_letter_dir / f"{job.job_id}.txt"
-                    cover_letter_path.write_text(cover_letter.content)
+                    # Save the cover letter only when it has no hard-fail
+                    # grounding issue after the repair rewrite.
+                    cover_letter_path: Optional[str] = None
+                    if letter["status"] == "saved":
+                        cover_letter_dir = self.context.results_dir / "cover_letters"
+                        cover_letter_dir.mkdir(parents=True, exist_ok=True)
+                        letter_file = cover_letter_dir / f"{job.job_id}.txt"
+                        letter_file.write_text(letter["content"], encoding="utf-8")
+                        cover_letter_path = str(letter_file)
 
                     generated.append(
                         {
                             "job": job,
                             "resume": generated_resume,
-                            "cover_letter": cover_letter,
+                            "cover_letter": letter["content"],
                             "pdf_path": str(pdf_path),
                             "docx_path": str(docx_path),
-                            "cover_letter_path": str(cover_letter_path),
+                            "cover_letter_path": cover_letter_path,
                             "validation": validation,
-                            "cover_letter_validation": cl_validation,
+                            "cover_letter_validation": letter["validation"],
+                            "cover_letter_status": letter["status"],
+                            "cover_letter_issues": letter["issues"],
                         }
                     )
 
@@ -857,6 +836,15 @@ class PipelineStages:
                 "validation_failed": len(selected_listings) - len(generated),
                 "avg_validation_score": sum(scores) / len(scores) if scores else 0,
                 "all_valid": all(r["validation"].is_valid for r in generated),
+                "cover_letters_saved": sum(
+                    1 for r in generated if r["cover_letter_status"] == "saved"
+                ),
+                "cover_letters_needs_review": sum(
+                    1 for r in generated if r["cover_letter_status"] == "needs_review"
+                ),
+                "cover_letters_failed": sum(
+                    1 for r in generated if r["cover_letter_status"] == "error"
+                ),
             }
 
             self.logger.info(
@@ -891,6 +879,75 @@ class PipelineStages:
                 timestamp=start_time,
                 error_message=str(e),
             )
+
+    def _generate_cover_letter(
+        self,
+        job: JobListing,
+        selection: Any,
+    ) -> Dict[str, Any]:
+        """
+        Generate one cover letter through the shared cover-letter service.
+
+        The service writes the letter, validates it, and rewrites it one time
+        when validation finds hard-fail grounding issues. A letter that still
+        has hard-fail issues after that rewrite is not saved; it is marked
+        "needs_review" with the issue names.
+
+        Args:
+            job: Target job.
+            selection: Selection output that the resume step already made for
+                this job. The service reuses it instead of selecting again.
+
+        Returns:
+            Dict with ``status`` ("saved", "needs_review", or "error"),
+            ``content``, ``validation`` (the response model, or None), and
+            ``issues`` (hard-fail issue names, or the error text).
+        """
+        try:
+            response = generate_cover_letter_sync(
+                job, self.context.user_profile, selection=selection
+            )
+        except Exception as e:
+            self.logger.error("Cover letter generation failed for %s: %s", job.title, e)
+            return {
+                "status": "error",
+                "content": None,
+                "validation": None,
+                "issues": [str(e)],
+            }
+
+        known = {issue.value for issue in CoverLetterIssue}
+        hard_fails = collect_hard_fail_issues(
+            [
+                CoverLetterIssue(issue)
+                for issue in response.validation.issues
+                if issue in known
+            ]
+        )
+        content = response.cover_letter.get("content")
+        if hard_fails:
+            names = [issue.value for issue in hard_fails]
+            self.logger.warning(
+                "Cover letter for %s needs review, not saved: %s", job.title, names
+            )
+            return {
+                "status": "needs_review",
+                "content": content,
+                "validation": response.validation,
+                "issues": names,
+            }
+
+        self.logger.info(
+            "Cover letter generated for %s: quality=%d/100",
+            job.title,
+            response.validation.score,
+        )
+        return {
+            "status": "saved",
+            "content": content,
+            "validation": response.validation,
+            "issues": [],
+        }
 
     def stage_submit_applications(
         self,

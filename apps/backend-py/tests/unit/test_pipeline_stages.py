@@ -19,8 +19,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.generation.cover_letter_validator import CoverLetterValidationResult
-from src.generation.cover_letter_writer import GeneratedCoverLetter
+from src.api.models.responses import (
+    CoverLetterResponse,
+    CoverLetterValidationResponse,
+)
 from src.generation.formatter import FormattedResume
 from src.generation.resume_writer import GeneratedResume
 from src.generation.selector import SelectionOutput
@@ -103,68 +105,91 @@ class TestStageScoreAndRank:
         assert result.data == [(sample_job_listing, fake_score)]
 
 
+def letter_response(content: str, issues: list) -> CoverLetterResponse:
+    """Build a cover-letter service response.
+
+    Args:
+        content: Letter text.
+        issues: Validation issue values after the repair rewrite.
+
+    Returns:
+        A ``CoverLetterResponse`` like the service returns.
+    """
+    return CoverLetterResponse(
+        success=True,
+        job_id="job",
+        cover_letter={"content": content, "word_count": 250},
+        validation=CoverLetterValidationResponse(
+            is_valid=not issues,
+            score=40 if issues else 80,
+            issues=issues,
+            word_count=250,
+            structure_score=80,
+            content_score=40 if issues else 80,
+            tone_score=80,
+            recommendation="reject" if issues else "approve",
+        ),
+    )
+
+
+@pytest.fixture
+def resume_mocks(stages: PipelineStages) -> SelectionOutput:
+    """Mock the resume selector, writer, validator, and formatter.
+
+    Args:
+        stages: Stages fixture.
+
+    Returns:
+        The selection output that the mocked selector returns.
+    """
+    selection = SelectionOutput(
+        selected_projects=[],
+        keywords_to_emphasize=["python"],
+        key_achievements=[],
+        summary_suggestion="Experienced engineer.",
+        raw_response="{}",
+    )
+    resume = GeneratedResume(
+        summary="Experienced engineer.",
+        skills=["python"],
+        experience=[],
+        projects=[],
+        education=[],
+        raw_response="{}",
+        model_used="mock-model",
+    )
+    validation = ValidationResult(
+        is_valid=True,
+        missing_projects=[],
+        missing_keywords=[],
+        fabricated_content=[],
+        date_inconsistencies=[],
+        overall_score=88,
+        recommendation="approve",
+        issues=[],
+    )
+    formatted = FormattedResume(
+        pdf_path="resumes/job.pdf",
+        docx_path="resumes/job.docx",
+        success=True,
+    )
+    stages.resume_selector.select = MagicMock(return_value=selection)
+    stages.resume_writer.write = MagicMock(return_value=resume)
+    stages.resume_validator.validate = MagicMock(return_value=validation)
+    stages.resume_formatter.format_resume = MagicMock(return_value=formatted)
+    return selection
+
+
 class TestStageGenerateResumes:
     """stage_generate_resumes must call the real selector/writer/validator/
     formatter signatures and read ValidationResult.overall_score."""
 
     def test_generates_and_formats_resume(
-        self, stages: PipelineStages, sample_job_listing
+        self, stages: PipelineStages, sample_job_listing, resume_mocks, monkeypatch
     ):
-        selection = SelectionOutput(
-            selected_projects=[],
-            keywords_to_emphasize=["python"],
-            key_achievements=[],
-            summary_suggestion="Experienced engineer.",
-            raw_response="{}",
-        )
-        resume = GeneratedResume(
-            summary="Experienced engineer.",
-            skills=["python"],
-            experience=[],
-            projects=[],
-            education=[],
-            raw_response="{}",
-            model_used="mock-model",
-        )
-        validation = ValidationResult(
-            is_valid=True,
-            missing_projects=[],
-            missing_keywords=[],
-            fabricated_content=[],
-            date_inconsistencies=[],
-            overall_score=88,
-            recommendation="approve",
-            issues=[],
-        )
-        cover_letter = GeneratedCoverLetter(
-            content="Dear hiring manager...",
-            highlighted_experiences=[],
-            word_count=250,
-            model_used="mock-model",
-        )
-        cl_validation = CoverLetterValidationResult(
-            is_valid=True,
-            score=80,
-            issues=[],
-            word_count=250,
-            structure_score=80,
-            content_score=80,
-            tone_score=80,
-            recommendation="approve",
-            details={},
-        )
-        formatted = FormattedResume(
-            pdf_path="resumes/job.pdf",
-            docx_path="resumes/job.docx",
-            success=True,
-        )
-
-        stages.resume_selector.select = MagicMock(return_value=selection)
-        stages.resume_writer.write = MagicMock(return_value=resume)
-        stages.resume_validator.validate = MagicMock(return_value=validation)
-        stages.cover_letter_writer.write = MagicMock(return_value=cover_letter)
-        stages.cover_letter_validator.validate = MagicMock(return_value=cl_validation)
-        stages.resume_formatter.format_resume = MagicMock(return_value=formatted)
+        service = MagicMock(return_value=letter_response("Dear hiring manager...", []))
+        monkeypatch.setattr("src.pipeline.stages.generate_cover_letter_sync", service)
+        selection = resume_mocks
 
         result = stages.stage_generate_resumes([sample_job_listing])
 
@@ -181,16 +206,94 @@ class TestStageGenerateResumes:
             selection=selection,
         )
         stages.resume_validator.validate.assert_called_once_with(
-            resume=resume,
+            resume=stages.resume_writer.write.return_value,
             job=sample_job_listing,
             profile=stages.context.user_profile,
             selection=selection,
         )
         stages.resume_formatter.format_resume.assert_called_once_with(
-            resume=resume,
+            resume=stages.resume_writer.write.return_value,
             filename=str(sample_job_listing.job_id),
             formats=["pdf", "docx"],
         )
+
+
+class TestBatchCoverLetters:
+    """Batch cover letters use the service repair loop and its hard-fail rule."""
+
+    def test_letter_comes_from_the_service_with_the_resume_selection(
+        self, stages: PipelineStages, sample_job_listing, resume_mocks, monkeypatch
+    ):
+        """The service gets the selection the resume step made, and a clean
+        letter is saved."""
+        service = MagicMock(return_value=letter_response("Dear team, ...", []))
+        monkeypatch.setattr("src.pipeline.stages.generate_cover_letter_sync", service)
+
+        result = stages.stage_generate_resumes([sample_job_listing])
+
+        service.assert_called_once_with(
+            sample_job_listing, stages.context.user_profile, selection=resume_mocks
+        )
+        item = result.data[0]
+        assert item["cover_letter_status"] == "saved"
+        assert Path(item["cover_letter_path"]).read_text(encoding="utf-8") == (
+            "Dear team, ..."
+        )
+        assert result.metadata["cover_letters_saved"] == 1
+
+    def test_hard_fail_letter_is_held_for_review_and_not_saved(
+        self, stages: PipelineStages, sample_job_listing, resume_mocks, monkeypatch
+    ):
+        """A letter that still hard-fails after the rewrite is not written."""
+        service = MagicMock(
+            return_value=letter_response(
+                "I have 10 years of Kubernetes...",
+                ["fabricated_technology", "too_short"],
+            )
+        )
+        monkeypatch.setattr("src.pipeline.stages.generate_cover_letter_sync", service)
+
+        result = stages.stage_generate_resumes([sample_job_listing])
+
+        assert result.success, result.error_message
+        item = result.data[0]
+        assert item["cover_letter_status"] == "needs_review"
+        assert item["cover_letter_issues"] == ["fabricated_technology"]
+        assert item["cover_letter_path"] is None
+        letter_dir = stages.context.results_dir / "cover_letters"
+        assert not (letter_dir / f"{sample_job_listing.job_id}.txt").exists()
+        assert result.metadata["cover_letters_needs_review"] == 1
+        assert result.metadata["cover_letters_saved"] == 0
+
+    def test_soft_issues_alone_do_not_block_saving(
+        self, stages: PipelineStages, sample_job_listing, resume_mocks, monkeypatch
+    ):
+        """Structure or tone findings are not hard fails."""
+        service = MagicMock(
+            return_value=letter_response("Dear team, ...", ["too_short"])
+        )
+        monkeypatch.setattr("src.pipeline.stages.generate_cover_letter_sync", service)
+
+        result = stages.stage_generate_resumes([sample_job_listing])
+
+        assert result.data[0]["cover_letter_status"] == "saved"
+
+    def test_letter_error_keeps_the_resume(
+        self, stages: PipelineStages, sample_job_listing, resume_mocks, monkeypatch
+    ):
+        """If the letter cannot be generated, the resume is still kept."""
+        service = MagicMock(side_effect=RuntimeError("Ollama is not running"))
+        monkeypatch.setattr("src.pipeline.stages.generate_cover_letter_sync", service)
+
+        result = stages.stage_generate_resumes([sample_job_listing])
+
+        assert result.success, result.error_message
+        assert result.metadata["generated_count"] == 1
+        item = result.data[0]
+        assert item["cover_letter_status"] == "error"
+        assert item["cover_letter_issues"] == ["Ollama is not running"]
+        assert item["cover_letter_path"] is None
+        assert result.metadata["cover_letters_failed"] == 1
 
 
 class TestStageGenerateResumesOutcome:

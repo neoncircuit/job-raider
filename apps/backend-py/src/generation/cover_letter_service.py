@@ -33,7 +33,7 @@ from .cover_letter_validator import (
     collect_hard_fail_issues,
 )
 from .cover_letter_writer import CoverLetterWriter
-from .selector import ResumeSelector
+from .selector import ResumeSelector, SelectionOutput
 
 logger = get_logger(Components.GENERATION)
 
@@ -154,19 +154,28 @@ def _adapt_validation_response(
     )
 
 
-async def generate_cover_letter_for_profile(
+def generate_cover_letter_sync(
     job_listing: JobListing,
     user_profile: UserProfile,
     deep: bool = False,
     review: bool = False,
     style: str = "modern",
     writer_model: Optional[str] = None,
+    selection: Optional[SelectionOutput] = None,
 ) -> CoverLetterResponse:
     """
     Generate and validate a tailored cover letter for the given job/profile.
 
     The local model stack is preferred (``prefer_local=True``) so Ollama is
     used as the primary provider, matching the rest of the pipeline.
+
+    When validation finds hard-fail grounding issues, the letter is rewritten
+    one time with a grounding critique and validated again. The returned
+    validation is the result after that repair, so callers must still check
+    it for hard-fail issues.
+
+    This function blocks (LLM calls). The batch pipeline calls it from its
+    worker thread. The API routes use ``generate_cover_letter_for_profile``.
 
     Args:
         job_listing: Target job listing (scraped or manually pasted).
@@ -177,6 +186,9 @@ async def generate_cover_letter_for_profile(
         style: ``modern`` (default) or ``classic`` letter structure.
         writer_model: Optional one-shot override for ``cover_letter_writing``
             (must be allowed for that route's Settings provider).
+        selection: Optional selection output that the caller already made
+            for this job. When it is given, the selector does not run again
+            and its tokens are not counted again.
 
     Returns:
         ``CoverLetterResponse`` containing the letter and validation results.
@@ -236,23 +248,27 @@ async def generate_cover_letter_for_profile(
         "inclusion_urls": inclusion_urls,
     }
 
-    selector = ResumeSelector(llm_router=llm_router)
-    selection_started = time.perf_counter()
-    selection = selector.select(job_listing, user_profile)
-    selection_ms = _elapsed_ms(selection_started)
-
     prompt_token_total = 0
     completion_token_total = 0
     tokens_used_total = 0
-    selection_tokens = _optional_int(getattr(selection, "tokens_used", None))
-    prompt_token_total, completion_token_total, tokens_used_total = _add_token_counts(
-        prompt_token_total,
-        completion_token_total,
-        tokens_used_total,
-        prompt_tokens=getattr(selection, "prompt_tokens", None),
-        completion_tokens=getattr(selection, "completion_tokens", None),
-        tokens_used=selection_tokens,
-    )
+    selection_ms: Optional[float] = None
+    selection_tokens: Optional[int] = None
+    if selection is None:
+        selector = ResumeSelector(llm_router=llm_router)
+        selection_started = time.perf_counter()
+        selection = selector.select(job_listing, user_profile)
+        selection_ms = _elapsed_ms(selection_started)
+        selection_tokens = _optional_int(getattr(selection, "tokens_used", None))
+        prompt_token_total, completion_token_total, tokens_used_total = (
+            _add_token_counts(
+                prompt_token_total,
+                completion_token_total,
+                tokens_used_total,
+                prompt_tokens=getattr(selection, "prompt_tokens", None),
+                completion_tokens=getattr(selection, "completion_tokens", None),
+                tokens_used=selection_tokens,
+            )
+        )
 
     writer = CoverLetterWriter(llm_router=llm_router)
     generation_started = time.perf_counter()
@@ -514,4 +530,39 @@ async def generate_cover_letter_for_profile(
         validation=_adapt_validation_response(validation),
         mission_context=mission_context,
         instructions_context=instructions_context,
+    )
+
+
+async def generate_cover_letter_for_profile(
+    job_listing: JobListing,
+    user_profile: UserProfile,
+    deep: bool = False,
+    review: bool = False,
+    style: str = "modern",
+    writer_model: Optional[str] = None,
+) -> CoverLetterResponse:
+    """
+    Generate and validate a cover letter for the API routes.
+
+    The routes await this function. The work itself is synchronous; see
+    ``generate_cover_letter_sync`` for the full behavior.
+
+    Args:
+        job_listing: Target job listing (scraped or manually pasted).
+        user_profile: Parsed user profile.
+        deep: If True, run LLM-powered validation instead of deterministic checks.
+        review: If True, run a single-pass drafter-reviewer loop.
+        style: ``modern`` (default) or ``classic`` letter structure.
+        writer_model: Optional one-shot override for ``cover_letter_writing``.
+
+    Returns:
+        ``CoverLetterResponse`` containing the letter and validation results.
+    """
+    return generate_cover_letter_sync(
+        job_listing,
+        user_profile,
+        deep=deep,
+        review=review,
+        style=style,
+        writer_model=writer_model,
     )

@@ -124,9 +124,11 @@ Part B: submit stage
 
 ##### Step 1.6: Batch cover letters use the repair loop (effort: M)
 
-- [ ] In `src/pipeline/stages.py` (about lines 760-834), call `generate_cover_letter_for_profile` from `src/generation/cover_letter_service.py`, not the writer and validator directly.
-- [ ] Do not save a letter that hard-fails grounding. Record it as "needs review" with the reasons.
-- [ ] Tests: a hard-fail letter is not saved; a passing letter is saved with its validation details.
+- [x] `stage_generate_resumes` now gets each cover letter from the shared service (`_generate_cover_letter` in `src/pipeline/stages.py`). The service writes, validates, and rewrites one time on hard-fail grounding issues, like the Cover Letter page. The service body moved to `generate_cover_letter_sync()`; `generate_cover_letter_for_profile()` is a thin async wrapper for the routes. A new `selection` argument lets the stage reuse its resume selection, so there is no second selector call per job.
+- [x] A letter that still hard-fails after the rewrite is not saved. It is kept as `cover_letter_status="needs_review"` with `cover_letter_issues`. Stage metadata counts `cover_letters_saved`, `cover_letters_needs_review`, and `cover_letters_failed`. A letter error no longer drops the job's resume.
+- [x] Tests (`tests/unit/test_pipeline_stages.py`, `TestBatchCoverLetters`): the service gets the resume selection; a clean letter is saved; a hard-fail letter is not saved; soft issues alone do not block saving; a letter error keeps the resume. A mutation check (hard-fail rule disabled) fails the hard-fail test.
+- [x] Removed the unused `cover_letter_writer` and `cover_letter_validator` from `PipelineStages`.
+- Follow-up (not in Step 1): the API routes still call the synchronous service from async handlers, so a cover-letter request blocks the event loop while the LLM runs. Use `asyncio.to_thread` in `generate_cover_letter_for_profile`.
 
 ##### Step 1.7: Frontend input and retry fixes (effort: S)
 
