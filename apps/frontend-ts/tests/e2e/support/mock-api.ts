@@ -69,6 +69,8 @@ const mockSettings = {
   api_config: {
     anthropic_api_key: null,
     gemini_api_key: null,
+    has_anthropic_key: false,
+    has_gemini_key: false,
     cloud_fallback_provider: "anthropic",
     ollama_host: "http://localhost:11434",
   },

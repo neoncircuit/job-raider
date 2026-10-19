@@ -21,7 +21,12 @@ from ...api.ollama_models import (
     list_installed_ollama_models,
     resolve_effective_ollama_host,
 )
-from ...api.settings import UserSettings, get_storage
+from ...api.settings import (
+    UserSettings,
+    for_client,
+    get_storage,
+    merge_preserving_api_keys,
+)
 from ...config.loader import get_config_loader
 from ...utils.logger import Components, get_logger
 
@@ -47,11 +52,14 @@ async def get_settings() -> UserSettings:
     """
     Get current user settings.
 
-    Returns the complete user settings configuration including
-    model routing, API configuration, parameters, and cost limits.
+    Returns routing, API configuration (with has_* key flags only),
+    parameters, and cost limits. API key strings are never included.
+
+    Returns:
+        Client-safe user settings.
     """
     storage = get_storage()
-    return storage.load_settings()
+    return for_client(storage.load_settings())
 
 
 @router.put("/", response_model=UserSettings)
@@ -59,18 +67,21 @@ async def update_settings(settings: UserSettings) -> UserSettings:
     """
     Update user settings.
 
-    Saves the provided settings to persistent storage.
+    Saves the provided settings. Null or empty API keys keep the keys
+    already stored. The response redacts key strings.
 
     Args:
-        settings: New settings configuration
+        settings: New settings configuration from the client.
 
     Returns:
-        Updated settings (as saved)
+        Updated settings safe for the client (has_* flags, no key strings).
     """
     storage = get_storage()
-    storage.save_settings(settings)
-    logger.info(f"Settings updated at {settings.updated_at}")
-    return settings
+    current = storage.load_settings()
+    merged = merge_preserving_api_keys(current, settings)
+    storage.save_settings(merged)
+    logger.info(f"Settings updated at {merged.updated_at}")
+    return for_client(merged)
 
 
 @router.post("/reset", response_model=UserSettings)
@@ -81,12 +92,12 @@ async def reset_settings() -> UserSettings:
     Resets all settings to their default values and saves them.
 
     Returns:
-        Default settings
+        Default settings safe for the client.
     """
     storage = get_storage()
     defaults = storage.reset_settings()
     logger.info("Settings reset to defaults")
-    return defaults
+    return for_client(defaults)
 
 
 @router.post("/ollama-defaults", response_model=UserSettings)
@@ -118,7 +129,7 @@ async def apply_ollama_defaults(body: OllamaTierDefaults) -> UserSettings:
         body.small_model,
         body.large_model,
     )
-    return settings
+    return for_client(settings)
 
 
 @router.get("/models", response_model=Dict[str, Any])
@@ -304,8 +315,16 @@ async def get_merged_config() -> Dict[str, Any]:
 
     yaml_config = loader.load_model_config()
     user_settings = storage.load_settings()
-
-    return loader.merge_with_user_settings(yaml_config, user_settings)
+    merged = loader.merge_with_user_settings(yaml_config, user_settings)
+    # Never expose stored API keys through the merged config endpoint.
+    models = merged.get("models") if isinstance(merged, dict) else None
+    if isinstance(models, dict):
+        for provider in ("anthropic", "gemini"):
+            block = models.get(provider)
+            if isinstance(block, dict) and "api_key" in block:
+                block["has_api_key"] = bool(block.get("api_key"))
+                block["api_key"] = None
+    return merged
 
 
 @router.get("/config/default-routing", response_model=Dict[str, Dict[str, str]])

@@ -72,6 +72,14 @@ class APIConfig(BaseModel):
     gemini_api_key: Optional[str] = Field(
         default=None, description="Google Gemini API key"
     )
+    has_anthropic_key: bool = Field(
+        default=False,
+        description="True when an Anthropic key is stored (client-facing only)",
+    )
+    has_gemini_key: bool = Field(
+        default=False,
+        description="True when a Gemini key is stored (client-facing only)",
+    )
     cloud_fallback_provider: CloudProvider = Field(
         default=CloudProvider.NONE,
         description=(
@@ -91,7 +99,14 @@ class APIConfig(BaseModel):
     @field_validator("anthropic_api_key", "gemini_api_key", mode="before")
     @classmethod
     def empty_key_to_none(cls, v: Optional[str]) -> Optional[str]:
-        """Treat blank API keys as unset so env vars can still apply."""
+        """Treat blank API keys as unset so env vars can still apply.
+
+        Args:
+            v: Raw key value from JSON or construction.
+
+        Returns:
+            Stripped key, or None when blank.
+        """
         if v is None:
             return None
         if isinstance(v, str) and not v.strip():
@@ -101,7 +116,14 @@ class APIConfig(BaseModel):
     @field_validator("ollama_host")
     @classmethod
     def validate_ollama_host(cls, v: str) -> str:
-        """Validate Ollama host format."""
+        """Validate Ollama host format.
+
+        Args:
+            v: Host string from settings.
+
+        Returns:
+            Host string, or the Docker Desktop default when empty.
+        """
         if not v:
             return "host.docker.internal:11434"
         return v
@@ -186,8 +208,64 @@ class UserSettings(BaseModel):
     version: str = Field(default="1.0", description="Settings schema version")
 
     def get_routing_for_task(self, task_type: str) -> Optional[ModelRouting]:
-        """Get routing configuration for a specific task type."""
+        """Get routing configuration for a specific task type.
+
+        Args:
+            task_type: Task type key (for example ``cover_letter_writing``).
+
+        Returns:
+            Routing for that task, or None when unset.
+        """
         return self.routing.get(task_type)
+
+
+def for_client(settings: UserSettings) -> UserSettings:
+    """
+    Return a deep copy safe to send to API clients (no key strings).
+
+    Sets ``has_anthropic_key`` / ``has_gemini_key`` from stored keys, then
+    clears the key fields so JSON responses never include secrets.
+
+    Args:
+        settings: Settings loaded from storage (may include key material).
+
+    Returns:
+        Copy with keys cleared and has_* flags set.
+    """
+    public = settings.model_copy(deep=True)
+    public.api_config.has_anthropic_key = bool(settings.api_config.anthropic_api_key)
+    public.api_config.has_gemini_key = bool(settings.api_config.gemini_api_key)
+    public.api_config.anthropic_api_key = None
+    public.api_config.gemini_api_key = None
+    return public
+
+
+def merge_preserving_api_keys(
+    current: UserSettings, incoming: UserSettings
+) -> UserSettings:
+    """
+    Merge incoming settings while keeping stored API keys when omitted.
+
+    Clients that only send ``has_*`` flags (or null keys) must not wipe
+    secrets already on disk.
+
+    Args:
+        current: Settings currently stored.
+        incoming: Settings from the client PUT body.
+
+    Returns:
+        Merged settings ready to save (with keys filled from current when
+        the client did not supply a new key).
+    """
+    merged = incoming.model_copy(deep=True)
+    if not merged.api_config.anthropic_api_key:
+        merged.api_config.anthropic_api_key = current.api_config.anthropic_api_key
+    if not merged.api_config.gemini_api_key:
+        merged.api_config.gemini_api_key = current.api_config.gemini_api_key
+    # has_* are client-facing only; do not persist as source of truth
+    merged.api_config.has_anthropic_key = False
+    merged.api_config.has_gemini_key = False
+    return merged
 
 
 class SettingsStorage:

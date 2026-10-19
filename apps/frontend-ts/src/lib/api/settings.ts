@@ -6,11 +6,39 @@ import type {
   OllamaPullState,
 } from "@/lib/types/api";
 
+/**
+ * Strip blank API key fields so PUT does not send empty strings.
+ *
+ * Only include a key when the user typed a non-empty value. The backend
+ * keeps the stored key when the field is omitted or null.
+ *
+ * @param settings - Full settings payload about to be saved or validated.
+ * @returns A shallow-copied settings object with blank keys removed.
+ */
+export function omitBlankApiKeys(settings: AppSettings): AppSettings {
+  const api = { ...settings.api_config };
+  const anthropic = api.anthropic_api_key?.trim();
+  const gemini = api.gemini_api_key?.trim();
+  if (anthropic) {
+    api.anthropic_api_key = anthropic;
+  } else {
+    delete api.anthropic_api_key;
+  }
+  if (gemini) {
+    api.gemini_api_key = gemini;
+  } else {
+    delete api.gemini_api_key;
+  }
+  return { ...settings, api_config: api };
+}
+
 export const settingsApi = {
   get: () => request<AppSettings>("GET", "/settings/"),
 
   update: (settings: AppSettings) =>
-    request<AppSettings>("PUT", "/settings/", { body: settings }),
+    request<AppSettings>("PUT", "/settings/", {
+      body: omitBlankApiKeys(settings),
+    }),
 
   reset: () => request<AppSettings>("POST", "/settings/reset"),
 
@@ -18,7 +46,7 @@ export const settingsApi = {
     request<{ valid: boolean; errors: string[]; warnings: string[] }>(
       "POST",
       "/settings/validate",
-      { body: settings },
+      { body: omitBlankApiKeys(settings) },
     ),
 
   getModels: () => request<AvailableModelsResponse>("GET", "/settings/models"),

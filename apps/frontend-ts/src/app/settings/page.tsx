@@ -111,8 +111,9 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
     resolver: zodResolver(schema),
     defaultValues: {
       api_config: {
-        anthropic_api_key: initial.api_config.anthropic_api_key ?? "",
-        gemini_api_key: initial.api_config.gemini_api_key ?? "",
+        // Keys are never returned by GET; leave blank unless the user types.
+        anthropic_api_key: "",
+        gemini_api_key: "",
         cloud_fallback_provider: normalizeCloudFallbackProvider(
           initial.api_config.cloud_fallback_provider,
         ),
@@ -297,15 +298,22 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
               {cloudProvider === "anthropic" ? (
                 <div className="space-y-1">
                   <Label htmlFor="anthropic_key">Anthropic API Key</Label>
+                  {initial.api_config.has_anthropic_key ? (
+                    <p className="text-xs text-muted-foreground">Key saved</p>
+                  ) : null}
                   <Input
                     id="anthropic_key"
                     type="password"
-                    placeholder="sk-ant-…"
+                    placeholder={
+                      initial.api_config.has_anthropic_key
+                        ? "Leave blank to keep the saved key"
+                        : "sk-ant-…"
+                    }
                     autoComplete="off"
                     {...register("api_config.anthropic_api_key")}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Optional. Leave blank to rely on{" "}
+                    Optional. Leave blank to keep a saved key or rely on{" "}
                     <span className="font-mono">ANTHROPIC_API_KEY</span> in the
                     environment.
                   </p>
@@ -314,15 +322,22 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
               {cloudProvider === "gemini" ? (
                 <div className="space-y-1">
                   <Label htmlFor="gemini_key">Gemini API Key</Label>
+                  {initial.api_config.has_gemini_key ? (
+                    <p className="text-xs text-muted-foreground">Key saved</p>
+                  ) : null}
                   <Input
                     id="gemini_key"
                     type="password"
-                    placeholder="AIza…"
+                    placeholder={
+                      initial.api_config.has_gemini_key
+                        ? "Leave blank to keep the saved key"
+                        : "AIza…"
+                    }
                     autoComplete="off"
                     {...register("api_config.gemini_api_key")}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Optional. Leave blank to rely on{" "}
+                    Optional. Leave blank to keep a saved key or rely on{" "}
                     <span className="font-mono">GEMINI_API_KEY</span> in the
                     environment.
                   </p>

@@ -674,8 +674,14 @@ export interface ModelRouting {
 }
 
 export interface ApiConfig {
+  /** Present only when the user is saving a new key; never returned by GET. */
   anthropic_api_key?: string | null;
+  /** Present only when the user is saving a new key; never returned by GET. */
   gemini_api_key?: string | null;
+  /** True when an Anthropic key is stored (GET responses). */
+  has_anthropic_key?: boolean;
+  /** True when a Gemini key is stored (GET responses). */
+  has_gemini_key?: boolean;
   /** Cloud provider used when local Ollama fails (``none`` = local only). */
   cloud_fallback_provider?: "none" | "anthropic" | "gemini";
   ollama_host: string;

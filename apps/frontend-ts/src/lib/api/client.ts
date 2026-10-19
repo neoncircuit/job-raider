@@ -145,22 +145,26 @@ export function updateAuthState(isAuthenticated: boolean) {
   }
 }
 
-function logRequest(method: string, path: string, body?: unknown) {
-  log(
-    "INFO",
-    `API Request: ${method} ${path}`,
-    body ? JSON.stringify(body) : "",
-  );
+/**
+ * Log an API request without bodies (bodies may contain API keys).
+ *
+ * @param method - HTTP method.
+ * @param path - Backend path after the proxy prefix.
+ */
+function logRequest(method: string, path: string) {
+  log("INFO", `API Request: ${method} ${path}`);
 }
 
-function logResponse(status: number, path: string, data?: unknown) {
+/**
+ * Log an API response status without bodies (bodies may contain secrets).
+ *
+ * @param status - HTTP status code.
+ * @param path - Backend path after the proxy prefix.
+ */
+function logResponse(status: number, path: string) {
   const statusColor =
     status >= 200 && status < 300 ? "✅" : status >= 400 ? "❌" : "⚠️";
-  log(
-    "INFO",
-    `API Response: ${statusColor} ${status} ${path}`,
-    data ? JSON.stringify(data).substring(0, 200) : "",
-  );
+  log("INFO", `API Response: ${statusColor} ${status} ${path}`);
 }
 
 const PROXY_BASE = "/api/proxy";
@@ -280,8 +284,8 @@ export async function request<T>(
     if (str) url += `?${str}`;
   }
 
-  // Log request
-  logRequest(method, path, body);
+  // Log request (method and path only; never bodies)
+  logRequest(method, path);
 
   const headers: Record<string, string> = {};
   let fetchBody: BodyInit | undefined;
@@ -345,7 +349,7 @@ export async function request<T>(
     } catch {
       // ignore parse errors
     }
-    logResponse(res.status, path, { detail });
+    logResponse(res.status, path);
 
     // Special handling for 401 errors
     if (res.status === 401) {

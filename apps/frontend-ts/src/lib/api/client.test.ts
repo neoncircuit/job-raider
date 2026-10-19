@@ -175,4 +175,19 @@ describe("request retry behavior", () => {
     await expect(request("GET", "/jobs/search")).rejects.toBe(abort);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("does not log request bodies that may contain API keys", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, { ok: true }));
+    const logSpy = vi.mocked(console.log);
+
+    await request("PUT", "/settings/", {
+      body: {
+        api_config: { anthropic_api_key: "sk-ant-secret-should-not-log" },
+      },
+    });
+
+    const logged = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(logged).toContain("PUT /settings/");
+    expect(logged).not.toContain("sk-ant-secret-should-not-log");
+  });
 });

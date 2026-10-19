@@ -232,11 +232,13 @@ Current state (2026-10-19):
 
 ##### Step 2.4: Do not return or log secrets (effort: S) — S5
 
-- [ ] `GET /api/settings/` returns `has_anthropic_key` / `has_gemini_key` (booleans), not the key strings (`src/api/routes/settings.py`). PUT still accepts keys to save them.
-- [ ] Frontend Settings form uses the flags to show "Key saved" vs empty, and only sends a key field when the user edits it.
-- [ ] `src/lib/api/client.ts` (~149-153): do not log request or response bodies outside development (or never log bodies that may contain keys). Keep method and path.
-- [ ] Tests: settings GET fixture has no `sk-` / key material; client log spy does not receive the PUT body.
-- [ ] Done when: DevTools Network still needs HTTPS locally for transport safety, but the JSON settings payload and the console no longer print secrets.
+- [x] `GET /api/settings/` returns `has_anthropic_key` / `has_gemini_key` (booleans), not the key strings (`src/api/routes/settings.py`). PUT still accepts keys to save them.
+- [x] Frontend Settings form uses the flags to show "Key saved" vs empty, and only sends a key field when the user edits it.
+- [x] `src/lib/api/client.ts` (~149-153): do not log request or response bodies outside development (or never log bodies that may contain keys). Keep method and path.
+- [x] Tests: settings GET fixture has no `sk-` / key material; client log spy does not receive the PUT body.
+- [x] Done when: DevTools Network still needs HTTPS locally for transport safety, but the JSON settings payload and the console no longer print secrets.
+
+**Review (2026-10-19):** `for_client` / `merge_preserving_api_keys`; client never logs bodies. Mutation: remove `for_client` from GET → test fails on secret leak.
 
 ##### Step 2.5: Cover letter routes off the event loop (effort: S) — follow-up from Step 1.6
 
