@@ -3329,3 +3329,19 @@
 - Prove a gate in both directions: one run that must fail and one that must pass, and check both exit codes.
 - The local backend `.venv` is Python 3.12, but CI and Docker use 3.11. Compare tool output with the CI log before you trust a local-only result.
 
+
+## Reviewing security changes (2026-10-20)
+
+### Probe guards and auth changes against a running server, not only a model of the request
+
+**Lesson:** Step 2 passed every CI check, but two changes broke the running app. The proxy `Origin` guard compared `Origin` with `req.nextUrl.origin`. Its unit test built each `NextRequest` with a URL equal to its `Host`, so the test passed. A real Next.js server builds that URL from its bind settings, so the guard returned 403 for the app's own POST requests in Docker and on `127.0.0.1`. In the same step, auth stopped skipping an empty `API_KEY`. No native launch path loaded `apps/backend-py/.env`, so `make dev` returned 401 on every call. The old bypass had hidden the missing loader.
+
+**Why:**
+- A unit test that builds its own input repeats the author's assumption about that input. It cannot show where the real framework differs.
+- When a change removes a fallback (an auth bypass, a default value), every input the fallback used to cover becomes required. A missing input then shows only at runtime.
+- E2E tests that mock the API do not exercise the proxy or backend auth.
+
+**How to apply:**
+- For a request guard, start the real server in each supported mode (`next dev` with the script flags, the Docker standalone server) and send requests with `curl`: same-origin, other-origin, and other-port. Check both the 403 and the allowed case.
+- In a guard unit test, include a request whose server URL is different from its `Host` header.
+- When you remove a fallback, list each launch path (`scripts/dev.sh`, Compose, a manual command in the docs) and check that it supplies the now-required input.
