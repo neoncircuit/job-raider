@@ -18,6 +18,36 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 @pytest.fixture(autouse=True)
+def _isolate_settings_storage(tmp_path: Path):
+    """
+    Point settings storage at a per-test temporary directory.
+
+    Without this, ``get_storage()`` defaults to ``data/settings`` under
+    ``apps/backend-py``, so settings API tests rewrite the developer's
+    real ``user_settings.json`` (including saved cloud API keys).
+
+    Tests that patch ``get_storage`` themselves keep working: the patch
+    replaces the function while this fixture only swaps the module
+    singleton.
+
+    Args:
+        tmp_path: Pytest temporary directory for this test.
+
+    Yields:
+        None.
+    """
+    import src.api.settings as settings_mod
+    from src.api.settings import SettingsStorage
+
+    previous = settings_mod._storage
+    settings_mod._storage = SettingsStorage(settings_dir=tmp_path / "settings")
+    try:
+        yield
+    finally:
+        settings_mod._storage = previous
+
+
+@pytest.fixture(autouse=True)
 def _bypass_api_auth_except_auth_tests(request):
     """
     Skip X-API-Key checks in API tests unless the file is ``test_auth.py``.

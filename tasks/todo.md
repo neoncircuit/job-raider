@@ -279,7 +279,8 @@ Should fix (Step 2 gaps):
 
 Smaller items:
 
-- [ ] **R6.** `tests/unit/test_settings_api.py` calls `PUT /api/settings/`, `POST /reset`, and `POST /ollama-defaults` on the real `data/settings/user_settings.json` (since 2026-07-09). Each pytest run resets the developer's settings, and after Step 2.4 that includes saved cloud API keys. Point the settings storage at `tmp_path` for these tests.
+- [x] **R6.** `tests/unit/test_settings_api.py` calls `PUT /api/settings/`, `POST /reset`, and `POST /ollama-defaults` on the real `data/settings/user_settings.json` (since 2026-07-09). Each pytest run resets the developer's settings, and after Step 2.4 that includes saved cloud API keys. Point the settings storage at `tmp_path` for these tests.
+  - **Done (2026-10-21):** Autouse `_isolate_settings_storage` in `tests/conftest.py`. Prove: `test_get_storage_uses_pytest_temporary_directory` (failed before: pointed at `data/settings/user_settings.json`). Mutation: remove fixture → fails. Runtime: `stat -c %y` on real settings file unchanged across settings API tests and a full pytest run (`2026-10-20 22:27:07.458114300 +0800`). Note: `test_records_expire_after_ttl` flaked once in the full suite (passes alone); unrelated to R6.
 - [ ] **R7.** The Settings page cannot remove a saved cloud API key (a blank field keeps the stored key).
 - [ ] **R8.** `ALLOWED_HOSTS` defaults include `testserver`. Set it in test setup instead. The comment above `TrustedHostMiddleware` says it is outermost, but CORS (added later) wraps it.
 - [ ] **R9.** The WebSocket `/api/pipeline/{run_id}/progress` has no auth and no `Origin` check. A page in the browser that knows a `run_id` can read progress events. Check `Origin` on connect.
