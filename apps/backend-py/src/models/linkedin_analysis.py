@@ -57,6 +57,33 @@ class LinkedInProfileInput(BaseModel):
         default_factory=list, description="Target job titles or roles"
     )
 
+    @field_validator("profile_url")
+    @classmethod
+    def validate_profile_url(cls, v: Optional[str]) -> Optional[str]:
+        """
+        Require https LinkedIn ``/in/`` URLs when a profile_url is set.
+
+        Blank or missing values stay allowed; the model validator still
+        requires at least one input field.
+
+        Args:
+            v: Raw profile_url from the request body.
+
+        Returns:
+            Stripped URL, or None when blank.
+
+        Raises:
+            ValueError: When the URL is present but not an allowed LinkedIn profile.
+        """
+        if v is None:
+            return None
+        stripped = v.strip()
+        if not stripped:
+            return None
+        from ..linkedin.profile_url import validate_linkedin_profile_url
+
+        return validate_linkedin_profile_url(stripped)
+
     @model_validator(mode="after")
     def validate_input_present(self) -> "LinkedInProfileInput":
         """Require profile_url, raw_text, or at least one structured field."""
