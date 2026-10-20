@@ -34,10 +34,16 @@ async function navigateTo(page: Page, linkName: string): Promise<void> {
   const isMobile = (page.viewportSize()?.width ?? 0) < 768;
   if (isMobile) {
     const openNav = page.getByLabel("Open navigation");
-    await expect(openNav).toBeVisible();
-    await openNav.click();
     const dialog = page.getByRole("dialog", { name: "Navigation" });
-    await expect(dialog).toBeVisible();
+    await expect(openNav).toBeVisible();
+    // A tap before hydration can be lost. Retry open until the sheet is
+    // visible; do not click again when it is already open (overlay).
+    await expect(async () => {
+      if (!(await dialog.isVisible())) {
+        await openNav.click({ timeout: 2_000 });
+      }
+      await expect(dialog).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
     await dialog.getByRole("link", { name: linkName, exact: true }).click();
     return;
   }
@@ -57,7 +63,12 @@ test.describe("App load", () => {
   });
 
   test("handles an unknown route gracefully", async ({ page }) => {
-    await page.goto("/this-route-does-not-exist");
+    // Dev compile of not-found can exceed the default 15s navigationTimeout on
+    // slow Docker bind mounts; wait for DOM only and allow a longer budget.
+    await page.goto("/this-route-does-not-exist", {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
     const title = await page.title();
     // The root layout title is "Job Raider"; a custom not-found page may say 404.
     expect(title).toMatch(/404|Not Found|Job Raider/i);
@@ -88,8 +99,15 @@ const PRIMARY_ROUTES = [
 ];
 
 test.describe("Primary navigation", () => {
+  // Soft navigation waits on the RSC payload. On a cold Next.js dev server
+  // (especially Docker bind mounts) a first visit can exceed 15 s.
+  test.describe.configure({ timeout: 90_000 });
+
   test.beforeEach(async ({ page }) => {
-    await page.goto("/dashboard");
+    await page.goto("/dashboard", {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
     await expect(page.locator("h1")).toContainText("Dashboard");
   });
 
@@ -99,7 +117,7 @@ test.describe("Primary navigation", () => {
       // Some routes are compiled on demand in dev; give the dev server extra
       // time to bundle and hydrate the page before asserting the route.
       await expect(page).toHaveURL(new RegExp(`\\/${route.path}`), {
-        timeout: 15_000,
+        timeout: 60_000,
       });
       await expect(page.locator("h1")).toContainText(route.heading);
     });

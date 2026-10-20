@@ -3345,3 +3345,19 @@
 - For a request guard, start the real server in each supported mode (`next dev` with the script flags, the Docker standalone server) and send requests with `curl`: same-origin, other-origin, and other-port. Check both the 403 and the allowed case.
 - In a guard unit test, include a request whose server URL is different from its `Host` header.
 - When you remove a fallback, list each launch path (`scripts/dev.sh`, Compose, a manual command in the docs) and check that it supplies the now-required input.
+
+## Playwright on Docker bind mounts (2026-10-21)
+
+### Cold soft-nav and not-found compiles can exceed 15 s on a Windows Docker bind mount
+
+**Lesson:** F1 full Playwright runs failed with sticky `/dashboard` after clicks to Pipeline, Cover Letter, and Profile, and with `page.goto` timeouts on unknown routes. Mobile Chrome smoke alone under Vitest load passed 280/280. A diagnostic showed RSC requests for those routes still in flight after 5 s; the default 15 s `toHaveURL` / `navigationTimeout` budget was too short once the suite had already compiled other pages on a slow filesystem (Next.js logged "Slow filesystem detected").
+
+**Why:**
+- `next dev` compiles routes on first visit. Soft navigation waits on the RSC payload before the URL changes.
+- Docker Desktop bind mounts from Windows are much slower than a native Linux disk (CI).
+- A prior failed run can also leave a broken `.next` cache (SST write failures).
+
+**How to apply:**
+- For smoke navigation and 404 gotos in Playwright, allow up to 60 s and use `waitUntil: "domcontentloaded"` where a full load is not required.
+- When a local Docker Playwright suite fails only on cold soft-nav, clear `.next` and re-run before treating it as a product bug.
+- Keep the mobile `toPass` open-nav retry; that flake is separate from compile time.

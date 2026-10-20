@@ -31,7 +31,7 @@ Source: [review-2026-10-18.md](review-2026-10-18.md), section 6. Each step has i
   - Note: `npm ci` fails with npm 11 (Node 24) because `package-lock.json` lacks the optional `@tailwindcss/oxide-*` platform packages. npm 10 (Node 20, as in CI) accepts it. Regenerate the lock file when CI moves to Node 24.
   - [x] Push to `origin/main` (approved 2026-10-18). Pushed `dbac242..63e5e0a` from WSL (Git Bash on Windows has no GitHub SSH key). CI run 39094293658 passed all 11 jobs; Docker build skipped by design. Note: the mypy "Type Check" and "Security Scan" jobs cannot fail yet.
 - [ ] Step 1: Make the core flow run. The plan is below. Approved on 2026-10-18. Steps 1.1 to 1.7 are done and pushed (last: `5a8232f`). Only the manual check in "Verification for Step 1" is open.
-- [ ] Step 2: Make local-first true. The plan is below. Steps 2.1 to 2.6 are done. The review on 2026-10-20 found two blockers (R1, R2); both are fixed. Pushed `16d7c67..295df21` on 2026-10-20; CI run 39440831220 passed all 11 jobs (Playwright 42 passed, 0 flaky). Review items R3 to R10 are open.
+- [ ] Step 2: Make local-first true. The plan is below. Steps 2.1 to 2.6 are done. The review on 2026-10-20 found two blockers (R1, R2); both are fixed. Pushed `16d7c67..295df21` on 2026-10-20; CI run 39440831220 passed all 11 jobs (Playwright 42 passed, 0 flaky). Review items R3 to R6 and F1 are done locally (not pushed). R7 to R10 stay open.
 - [ ] Step 3: Make claims measurable.
 - [ ] Step 4: Make it demo-able.
 - [ ] Step 5: Focus and prune.
@@ -332,9 +332,11 @@ Items here are parked. Move an item to **Next** before you start it.
 
 **Root cause:** On mobile, `locator("nav")` also matched the desktop sidebar `nav` that stays in the DOM under `hidden md:flex`. The test clicked the hamburger and then raced that hidden nav before the sheet dialog was ready.
 
-- [ ] Step 3 (reopened 2026-10-20): The test flaked again in a local full run (Docker `node:20` from Windows, after the R2 fix; E2E mocks the API, so the fix does not touch this path). Mobile Chrome "opens the Settings page": a `toBeVisible` check in `navigateTo` failed after 7.1 s, then the test passed on retry. The dialog-scoped locator fixed the hidden `nav` race, but a tap on "Open navigation" before hydration can still be lost, so the sheet does not open. Candidate fix: repeat the open click until the dialog is visible (`expect(...).toPass()`), or wait for a hydration signal before the click. Watch the next CI runs.
+- [x] Step 3 (reopened 2026-10-20): The test flaked again in a local full run (Docker `node:20` from Windows, after the R2 fix; E2E mocks the API, so the fix does not touch this path). Mobile Chrome "opens the Settings page": a `toBeVisible` check in `navigateTo` failed after 7.1 s, then the test passed on retry. The dialog-scoped locator fixed the hidden `nav` race, but a tap on "Open navigation" before hydration can still be lost, so the sheet does not open. Candidate fix: repeat the open click until the dialog is visible (`expect(...).toPass()`), or wait for a hydration signal before the click. Watch the next CI runs.
 
 **Review (2026-10-19):** Added a screen-reader `SheetTitle` ("Navigation") on the mobile sheet. The smoke helper opens the sheet, waits for `getByRole("dialog", { name: "Navigation" })`, and clicks the link inside that dialog. Desktop clicks use `aside`. `--repeat-each=10` on Mobile Chrome smoke: 140 passed, 0 flaky. Full Playwright suite: 42 passed.
+
+**Done (2026-10-21):** `navigateTo` retries open until the Navigation dialog is visible (`expect(...).toPass`), and skips a second click when the dialog is already open. Soft-nav and 404 gotos also allow up to 60 s on cold `next dev` (Docker bind mounts). Proof under load (Vitest in a second container): Mobile Chrome smoke `--repeat-each=20 --retries=0` → 280 passed, 0 failed. Full Playwright suite (clean `.next`): 42 passed, 0 failed.
 
 ### Small follow-ups from completed work (2026-10-18)
 

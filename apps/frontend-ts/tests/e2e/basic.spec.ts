@@ -30,8 +30,12 @@ test.describe("Basic E2E Smoke Tests", () => {
   });
 
   test("should handle 404 gracefully", async ({ page }) => {
-    // Navigate to non-existent page
-    const response = await page.goto("/this-page-does-not-exist-12345");
+    // Dev compile of not-found can exceed the default 15s navigationTimeout on
+    // slow Docker bind mounts; wait for DOM only and allow a longer budget.
+    const response = await page.goto("/this-page-does-not-exist-12345", {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
 
     // Should get some response (either 404 page or redirect)
     expect(response).toBeTruthy();
