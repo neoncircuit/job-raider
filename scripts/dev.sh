@@ -80,8 +80,11 @@ ensure_dirs() {
 start_api() {
     echo "Starting backend API on 127.0.0.1:8000..."
     cd "$BACKEND_DIR"
+    # Load apps/backend-py/.env (API_KEY, AUTH_DISABLED, provider keys), as
+    # Compose does with env_file. The app itself does not read .env, and
+    # variables already set in the shell take precedence.
     PYTHONPATH=. "$VENV_PYTHON" -m uvicorn src.api.main:app \
-        --host 127.0.0.1 --port 8000 --reload
+        --host 127.0.0.1 --port 8000 --reload --env-file "$BACKEND_DIR/.env"
 }
 
 start_frontend() {
