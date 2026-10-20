@@ -31,7 +31,7 @@ Source: [review-2026-10-18.md](review-2026-10-18.md), section 6. Each step has i
   - Note: `npm ci` fails with npm 11 (Node 24) because `package-lock.json` lacks the optional `@tailwindcss/oxide-*` platform packages. npm 10 (Node 20, as in CI) accepts it. Regenerate the lock file when CI moves to Node 24.
   - [x] Push to `origin/main` (approved 2026-10-18). Pushed `dbac242..63e5e0a` from WSL (Git Bash on Windows has no GitHub SSH key). CI run 39094293658 passed all 11 jobs; Docker build skipped by design. Note: the mypy "Type Check" and "Security Scan" jobs cannot fail yet.
 - [ ] Step 1: Make the core flow run. The plan is below. Approved on 2026-10-18. Steps 1.1 to 1.7 are done and pushed (last: `5a8232f`). Only the manual check in "Verification for Step 1" is open.
-- [ ] Step 2: Make local-first true. The plan is below. Steps 2.1 to 2.6 are done. The review on 2026-10-20 found two blockers (R1, R2); both are fixed. Not pushed.
+- [ ] Step 2: Make local-first true. The plan is below. Steps 2.1 to 2.6 are done. The review on 2026-10-20 found two blockers (R1, R2); both are fixed. Pushed `16d7c67..295df21` on 2026-10-20; CI run 39440831220 passed all 11 jobs (Playwright 42 passed, 0 flaky). Review items R3 to R10 are open.
 - [ ] Step 3: Make claims measurable.
 - [ ] Step 4: Make it demo-able.
 - [ ] Step 5: Focus and prune.
@@ -262,7 +262,7 @@ Current state (2026-10-19):
 
 ##### Step 2 review (2026-10-20)
 
-Cursor implemented Steps 2.1 to 2.6 in `8e97841`..`0560b48` (not pushed). All CI checks passed: Black, ruff, mypy gate 182/0 new, pytest 1,085 passed, ESLint, tsc, Prettier, Vitest 241 passed in 43 files, and `next build`. Probes against running servers found two blockers that the tests did not cover.
+Cursor implemented Steps 2.1 to 2.6 in `8e97841`..`0560b48` (pushed with the R1 and R2 fixes on 2026-10-20). All CI checks passed: Black, ruff, mypy gate 182/0 new, pytest 1,085 passed, ESLint, tsc, Prettier, Vitest 241 passed in 43 files, and `next build`. Probes against running servers found two blockers that the tests did not cover.
 
 Blockers (fix before push):
 
@@ -303,7 +303,7 @@ Smaller items:
 
 ## Next
 
-Push Step 2 (with the R1 and R2 fixes) after approval. After that, the Step 2 review items R3 to R6.
+Cursor: Step 2 review items R3 to R6 and the reopened Mobile Chrome flake, as described in `tasks/handoff-step2-review.md`.
 
 ## Backlog
 
