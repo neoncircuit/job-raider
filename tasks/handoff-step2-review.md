@@ -169,7 +169,7 @@ Order completed: R6 → R3 → R4 → R5 → F1. Not pushed (await approval).
 | `2823160` | fix(settings): keep stored settings when ollama_host is disallowed |
 | `4fff3c2` | fix(api): reject unsafe LinkedIn profile URLs with 422 |
 | `53bdb7e` | feat(pipeline): show Cloud badge when generate used a cloud provider |
-| (this commit) | fix(test): retry mobile nav open until the sheet is visible |
+| `e844d03` | fix(test): retry mobile nav open until the sheet is visible |
 
 ### R6 — Tests use a temporary settings dir
 
