@@ -31,7 +31,7 @@ Source: [review-2026-10-18.md](review-2026-10-18.md), section 6. Each step has i
   - Note: `npm ci` fails with npm 11 (Node 24) because `package-lock.json` lacks the optional `@tailwindcss/oxide-*` platform packages. npm 10 (Node 20, as in CI) accepts it. Regenerate the lock file when CI moves to Node 24.
   - [x] Push to `origin/main` (approved 2026-10-18). Pushed `dbac242..63e5e0a` from WSL (Git Bash on Windows has no GitHub SSH key). CI run 39094293658 passed all 11 jobs; Docker build skipped by design. Note: the mypy "Type Check" and "Security Scan" jobs cannot fail yet.
 - [ ] Step 1: Make the core flow run. The plan is below. Approved on 2026-10-18. Steps 1.1 to 1.7 are done and pushed (last: `5a8232f`). Only the manual check in "Verification for Step 1" is open.
-- [ ] Step 2: Make local-first true. The plan is below. Steps 2.1 to 2.6 are done (not pushed). The review on 2026-10-20 found two blockers (R1, R2) to fix before push.
+- [ ] Step 2: Make local-first true. The plan is below. Steps 2.1 to 2.6 are done. The review on 2026-10-20 found two blockers (R1, R2); both are fixed. Not pushed.
 - [ ] Step 3: Make claims measurable.
 - [ ] Step 4: Make it demo-able.
 - [ ] Step 5: Focus and prune.
@@ -268,7 +268,8 @@ Blockers (fix before push):
 
 - [x] **R1. `make dev` returns 401 on every API call.** No code path loads `apps/backend-py/.env` for native runs: `scripts/dev.sh` does not source it, uvicorn has no `--env-file`, and `src/` never calls `load_dotenv`. Before Step 2.3, an empty `API_KEY` skipped auth in development, so the gap did not show. Probe: uvicorn started as `dev.sh` does logged `Authentication MISCONFIGURED`, and `GET /api/settings/` returned 401. `AUTH_DISABLED=1` in `.env` is ignored in the same way. Compose is not affected (it uses `env_file`). Fix: pass `--env-file "$BACKEND_DIR/.env"` to uvicorn in `scripts/dev.sh`; every `make dev*` target uses that script.
   - **Done (2026-10-20):** `scripts/dev.sh` passes `--env-file`. `tests/unit/test_dev_launcher.py` runs the real script in a temporary repository layout with a stub `python3` and checks the uvicorn arguments; it failed before the fix (`--env-file` missing). Runtime proof with `--reload`: no key 401, wrong key 401, right key 200. The real `dev.sh api` logged `Loading environment from '.../apps/backend-py/.env'` and no auth error.
-- [ ] **R2. The proxy rejects the app's own POST requests.** `guard.ts` compares `Origin` with `req.nextUrl.origin`. Next.js builds that URL from the server bind settings, not from the browser `Host`. Probes: the Docker standalone server (`HOSTNAME=0.0.0.0`) returned 403 for every same-origin POST; `next dev --hostname 127.0.0.1` returned 403 for `Origin: http://127.0.0.1:3001` and allowed only `localhost`. Same-origin GET requests send no `Origin`, so pages loaded, but saves, pipeline runs, and cover letter generation failed. The unit test built each request with a URL equal to its `Host`, so it could not see this. Fix: check the `Host` first, then require `Origin` to have the same host and port as the `Host` header.
+- [x] **R2. The proxy rejects the app's own POST requests.** `guard.ts` compares `Origin` with `req.nextUrl.origin`. Next.js builds that URL from the server bind settings, not from the browser `Host`. Probes: the Docker standalone server (`HOSTNAME=0.0.0.0`) returned 403 for every same-origin POST; `next dev --hostname 127.0.0.1` returned 403 for `Origin: http://127.0.0.1:3001` and allowed only `localhost`. Same-origin GET requests send no `Origin`, so pages loaded, but saves, pipeline runs, and cover letter generation failed. The unit test built each request with a URL equal to its `Host`, so it could not see this. Fix: check the `Host` first, then require `Origin` to have the same host and port as the `Host` header.
+  - **Done (2026-10-20):** `guard.ts` compares `new URL(origin).host` with the `Host` header. Four new tests in `guard.test.ts`; the two "allows" cases (server URL `0.0.0.0:3000` with `Host: 127.0.0.1:3005`, and server URL `localhost` with `Host: 127.0.0.1`) failed before the fix. Mutation: compare hostnames only, without the port; "rejects an Origin on another local port" failed. Real-server probes after the fix: same-origin POST passed the guard in the Docker standalone server and in `next dev --hostname 127.0.0.1`, on `127.0.0.1`, `localhost`, and published port 3005; `evil.example`, another local port, and a foreign `Host` returned 403.
 
 Should fix (Step 2 gaps):
 
@@ -302,7 +303,7 @@ Smaller items:
 
 ## Next
 
-Fix the Step 2 review blockers R1 and R2, then push Step 2. After that, R3 to R6.
+Push Step 2 (with the R1 and R2 fixes) after approval. After that, the Step 2 review items R3 to R6.
 
 ## Backlog
 
@@ -326,6 +327,8 @@ Items here are parked. Move an item to **Next** before you start it.
 - [x] Step 2: Fix the test or the navigation, so that the test does not need a retry. Do not only raise the timeout.
 
 **Root cause:** On mobile, `locator("nav")` also matched the desktop sidebar `nav` that stays in the DOM under `hidden md:flex`. The test clicked the hamburger and then raced that hidden nav before the sheet dialog was ready.
+
+- [ ] Step 3 (reopened 2026-10-20): The test flaked again in a local full run (Docker `node:20` from Windows, after the R2 fix; E2E mocks the API, so the fix does not touch this path). Mobile Chrome "opens the Settings page": a `toBeVisible` check in `navigateTo` failed after 7.1 s, then the test passed on retry. The dialog-scoped locator fixed the hidden `nav` race, but a tap on "Open navigation" before hydration can still be lost, so the sheet does not open. Candidate fix: repeat the open click until the dialog is visible (`expect(...).toPass()`), or wait for a hydration signal before the click. Watch the next CI runs.
 
 **Review (2026-10-19):** Added a screen-reader `SheetTitle` ("Navigation") on the mobile sheet. The smoke helper opens the sheet, waits for `getByRole("dialog", { name: "Navigation" })`, and clicks the link inside that dialog. Desktop clicks use `aside`. `--repeat-each=10` on Mobile Chrome smoke: 140 passed, 0 flaky. Full Playwright suite: 42 passed.
 

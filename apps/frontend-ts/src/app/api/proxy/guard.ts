@@ -1,11 +1,47 @@
 /**
  * Local-first request guards for the Next.js API proxy (Step 2.6).
  *
- * Reject cross-site fetches, mismatched Origin, and non-loopback Host
- * so DNS rebinding and cross-site POSTs cannot use the key-injecting proxy.
+ * Reject cross-site fetches, non-loopback Host, and an Origin that does not
+ * match the Host, so DNS rebinding and cross-site POSTs cannot use the
+ * key-injecting proxy.
  */
 
 import { type NextRequest, NextResponse } from "next/server";
+
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1"]);
+
+/**
+ * Build the 403 response the proxy returns for a refused request.
+ *
+ * @param message - Reason shown to the caller.
+ * @returns A 403 JSON ``NextResponse``.
+ */
+function forbidden(message: string): NextResponse {
+  return NextResponse.json({ error: "Forbidden", message }, { status: 403 });
+}
+
+/**
+ * Check that an Origin header names the same host and port as the request.
+ *
+ * Compare with the ``Host`` header, not ``req.nextUrl``. Next.js builds
+ * ``nextUrl`` from the server bind settings (for example ``0.0.0.0:3000`` in
+ * the Docker image), not from the address the browser used.
+ *
+ * @param origin - Value of the ``Origin`` header.
+ * @param host - Lowercase value of the ``Host`` header.
+ * @returns True when the origin is http(s) on exactly ``host``.
+ */
+function originMatchesHost(origin: string, host: string): boolean {
+  try {
+    const url = new URL(origin);
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      url.host === host
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Return a 403 response when the proxy request is not allowed.
@@ -18,35 +54,19 @@ import { type NextRequest, NextResponse } from "next/server";
  * @returns A 403 ``NextResponse`` when forbidden, otherwise ``null``.
  */
 export function forbiddenProxyResponse(req: NextRequest): NextResponse | null {
-  const secFetchSite = req.headers.get("sec-fetch-site");
-  if (secFetchSite === "cross-site") {
-    return NextResponse.json(
-      { error: "Forbidden", message: "Cross-site requests are not allowed" },
-      { status: 403 },
-    );
+  if (req.headers.get("sec-fetch-site") === "cross-site") {
+    return forbidden("Cross-site requests are not allowed");
+  }
+
+  const host = (req.headers.get("host") ?? "").toLowerCase();
+  const hostname = host.split(":")[0] ?? "";
+  if (!LOOPBACK_HOSTNAMES.has(hostname)) {
+    return forbidden("Host must be localhost or 127.0.0.1");
   }
 
   const origin = req.headers.get("origin");
-  if (origin) {
-    const appOrigin = req.nextUrl.origin;
-    if (origin !== appOrigin) {
-      return NextResponse.json(
-        { error: "Forbidden", message: "Origin does not match the app" },
-        { status: 403 },
-      );
-    }
-  }
-
-  const hostHeader = req.headers.get("host") ?? "";
-  const hostname = hostHeader.split(":")[0]?.toLowerCase() ?? "";
-  if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-    return NextResponse.json(
-      {
-        error: "Forbidden",
-        message: "Host must be localhost or 127.0.0.1",
-      },
-      { status: 403 },
-    );
+  if (origin && !originMatchesHost(origin, host)) {
+    return forbidden("Origin does not match the app");
   }
 
   return null;

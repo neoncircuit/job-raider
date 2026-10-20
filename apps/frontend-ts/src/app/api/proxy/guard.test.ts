@@ -58,4 +58,44 @@ describe("forbiddenProxyResponse", () => {
     const res = forbiddenProxyResponse(req);
     expect(res?.status).toBe(403);
   });
+
+  // A real Next.js server builds the request URL from its bind settings, not
+  // from the address the browser used. The guard must compare Origin with Host.
+  it("allows same-origin in Docker (server URL 0.0.0.0, port 3005)", () => {
+    const req = proxyRequest(
+      {
+        host: "127.0.0.1:3005",
+        origin: "http://127.0.0.1:3005",
+        "sec-fetch-site": "same-origin",
+      },
+      "http://0.0.0.0:3000/api/proxy/settings/validate",
+    );
+    expect(forbiddenProxyResponse(req)).toBeNull();
+  });
+
+  it("allows same-origin on 127.0.0.1 when the server URL says localhost", () => {
+    const req = proxyRequest(
+      {
+        host: "127.0.0.1:3000",
+        origin: "http://127.0.0.1:3000",
+        "sec-fetch-site": "same-origin",
+      },
+      "http://localhost:3000/api/proxy/settings/validate",
+    );
+    expect(forbiddenProxyResponse(req)).toBeNull();
+  });
+
+  it("rejects an Origin on another local port", () => {
+    const req = proxyRequest({
+      host: "localhost:3000",
+      origin: "http://localhost:5000",
+      "sec-fetch-site": "same-site",
+    });
+    expect(forbiddenProxyResponse(req)?.status).toBe(403);
+  });
+
+  it("rejects an opaque Origin", () => {
+    const req = proxyRequest({ host: "localhost:3000", origin: "null" });
+    expect(forbiddenProxyResponse(req)?.status).toBe(403);
+  });
 });
