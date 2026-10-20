@@ -815,6 +815,7 @@ class PipelineStages:
                             "cover_letter_validation": letter["validation"],
                             "cover_letter_status": letter["status"],
                             "cover_letter_issues": letter["issues"],
+                            "cover_letter_provider_used": letter.get("provider_used"),
                         }
                     )
 
@@ -830,6 +831,27 @@ class PipelineStages:
 
             # Calculate validation statistics
             scores = [r["validation"].overall_score for r in generated]
+
+            def _is_cloud_provider(provider: Any) -> bool:
+                """Return True when a document used a non-Ollama provider.
+
+                Args:
+                    provider: Provider string from an LLM response, or None.
+
+                Returns:
+                    True when provider is set and is not ``ollama``.
+                """
+                return bool(provider) and str(provider).lower() != "ollama"
+
+            cloud_documents = sum(
+                1
+                for r in generated
+                if _is_cloud_provider(getattr(r["resume"], "provider_used", None))
+            ) + sum(
+                1
+                for r in generated
+                if _is_cloud_provider(r.get("cover_letter_provider_used"))
+            )
             metadata = {
                 "attempted_count": len(selected_listings),
                 "generated_count": len(generated),
@@ -845,6 +867,7 @@ class PipelineStages:
                 "cover_letters_failed": sum(
                     1 for r in generated if r["cover_letter_status"] == "error"
                 ),
+                "cloud_documents": cloud_documents,
             }
 
             self.logger.info(
@@ -914,6 +937,7 @@ class PipelineStages:
                 "content": None,
                 "validation": None,
                 "issues": [str(e)],
+                "provider_used": None,
             }
 
         known = {issue.value for issue in CoverLetterIssue}
@@ -925,6 +949,7 @@ class PipelineStages:
             ]
         )
         content = response.cover_letter.get("content")
+        provider_used = response.cover_letter.get("provider_used")
         if hard_fails:
             names = [issue.value for issue in hard_fails]
             self.logger.warning(
@@ -935,6 +960,7 @@ class PipelineStages:
                 "content": content,
                 "validation": response.validation,
                 "issues": names,
+                "provider_used": provider_used,
             }
 
         self.logger.info(
@@ -947,6 +973,7 @@ class PipelineStages:
             "content": content,
             "validation": response.validation,
             "issues": [],
+            "provider_used": provider_used,
         }
 
     def stage_submit_applications(

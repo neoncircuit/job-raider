@@ -277,7 +277,8 @@ Should fix (Step 2 gaps):
   - **Done (2026-10-21):** `load_settings` replaces a bad host with `host.docker.internal:11434`, logs a warning, keeps keys/routing. PUT/validate still reject bad hosts. Prove: `test_load_replaces_bad_ollama_host_and_keeps_other_fields` (before: key was `None`). Mutation: old `load_settings` → fails. Note: other load errors still `print` + defaults (left for a later cleanup).
 - [x] **R4.** A bad LinkedIn `profile_url` is not refused with a clear error. `_fetch_linkedin_profile_text_sync` catches the `ValueError`, logs a warning, and continues with empty text after it opened a LinkedIn session. Validate `profile_url` on the request model (422) before a session starts.
   - **Done (2026-10-21):** `LinkedInProfileInput.profile_url` field_validator calls `validate_linkedin_profile_url`. Prove: `test_rejects_file_http_and_non_linkedin_urls` (before: 500, session reached). Mutation: remove validator → fails. `LinkedInPeopleSearchResult.profile_url` left (output only). Country hosts still refused (ask if that should change).
-- [ ] **R5.** The "Cloud" badge is on the Cover Letter page only. The Step 2.1 "Done when" also names the Pipeline UI.
+- [x] **R5.** The "Cloud" badge is on the Cover Letter page only. The Step 2.1 "Done when" also names the Pipeline UI.
+  - **Done (2026-10-21):** `provider_used` on `GeneratedResume`; generate stage `cloud_documents`; status response + shared `CloudBadge`. Prove: `test_cloud_documents_counts_non_ollama_providers`, Vitest pipeline Cloud badge. Mutation: ignore resume provider in count → fails.
 
 Smaller items:
 

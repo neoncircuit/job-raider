@@ -105,12 +105,15 @@ class TestStageScoreAndRank:
         assert result.data == [(sample_job_listing, fake_score)]
 
 
-def letter_response(content: str, issues: list) -> CoverLetterResponse:
+def letter_response(
+    content: str, issues: list, provider_used: str | None = None
+) -> CoverLetterResponse:
     """Build a cover-letter service response.
 
     Args:
         content: Letter text.
         issues: Validation issue values after the repair rewrite.
+        provider_used: Optional LLM provider stamped on the letter.
 
     Returns:
         A ``CoverLetterResponse`` like the service returns.
@@ -118,7 +121,11 @@ def letter_response(content: str, issues: list) -> CoverLetterResponse:
     return CoverLetterResponse(
         success=True,
         job_id="job",
-        cover_letter={"content": content, "word_count": 250},
+        cover_letter={
+            "content": content,
+            "word_count": 250,
+            "provider_used": provider_used,
+        },
         validation=CoverLetterValidationResponse(
             is_valid=not issues,
             score=40 if issues else 80,
@@ -294,6 +301,57 @@ class TestBatchCoverLetters:
         assert item["cover_letter_issues"] == ["Ollama is not running"]
         assert item["cover_letter_path"] is None
         assert result.metadata["cover_letters_failed"] == 1
+
+    def test_cloud_documents_counts_non_ollama_providers(
+        self, stages: PipelineStages, sample_job_listing, resume_mocks, monkeypatch
+    ):
+        """
+        cloud_documents counts resumes/letters whose provider is not ollama.
+
+        Args:
+            stages: Stages fixture.
+            sample_job_listing: Job fixture.
+            resume_mocks: Selection fixture.
+            monkeypatch: Pytest monkeypatch.
+        """
+        cloud_resume = GeneratedResume(
+            summary="x",
+            skills=["python"],
+            experience=[],
+            projects=[],
+            education=[],
+            raw_response="{}",
+            model_used="claude",
+            provider_used="anthropic",
+        )
+        stages.resume_writer.write = MagicMock(return_value=cloud_resume)
+        service = MagicMock(
+            return_value=letter_response("Dear team...", [], provider_used="ollama")
+        )
+        monkeypatch.setattr("src.pipeline.stages.generate_cover_letter_sync", service)
+
+        result = stages.stage_generate_resumes([sample_job_listing])
+        assert result.metadata["cloud_documents"] == 1
+
+        local_resume = GeneratedResume(
+            summary="x",
+            skills=["python"],
+            experience=[],
+            projects=[],
+            education=[],
+            raw_response="{}",
+            model_used="qwen",
+            provider_used="ollama",
+        )
+        stages.resume_writer.write = MagicMock(return_value=local_resume)
+        service_local = MagicMock(
+            return_value=letter_response("Dear team...", [], provider_used="ollama")
+        )
+        monkeypatch.setattr(
+            "src.pipeline.stages.generate_cover_letter_sync", service_local
+        )
+        result_local = stages.stage_generate_resumes([sample_job_listing])
+        assert result_local.metadata["cloud_documents"] == 0
 
 
 class TestStageGenerateResumesOutcome:

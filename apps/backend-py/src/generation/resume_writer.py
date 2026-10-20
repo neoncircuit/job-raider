@@ -9,7 +9,7 @@ Date: 2026-04-20
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
@@ -30,6 +30,7 @@ class GeneratedResume:
     education: List[Dict[str, Any]]
     raw_response: str
     model_used: str
+    provider_used: Optional[str] = None
 
 
 class ResumeWriter:
@@ -160,6 +161,7 @@ Return a JSON object with the rewritten resume sections:
                 model_used=self.llm_router.routes[
                     TaskType.RESUME_WRITING
                 ].primary_model,
+                provider_used=getattr(response, "provider", None),
             )
 
         except Exception as e:

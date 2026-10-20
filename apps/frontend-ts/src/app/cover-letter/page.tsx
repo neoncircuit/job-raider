@@ -51,6 +51,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
 import { CoverLetterSources } from "@/components/cover-letter-sources";
 import { AiWaitProgress } from "@/components/ai-wait-progress";
+import { CloudBadge } from "@/components/cloud-badge";
 import { ScoreExplanationDisplay } from "@/components/score-explanation";
 import {
   TaskModelSelect,
@@ -1040,12 +1041,12 @@ export default function CoverLetterPage() {
                           <span className="font-mono">
                             {result.cover_letter.model_used}
                           </span>
-                          {result.cover_letter.provider_used &&
-                          result.cover_letter.provider_used !== "ollama" ? (
-                            <span className="rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-warning">
-                              Cloud
-                            </span>
-                          ) : null}
+                          <CloudBadge
+                            show={Boolean(
+                              result.cover_letter.provider_used &&
+                              result.cover_letter.provider_used !== "ollama",
+                            )}
+                          />
                         </span>
                       ) : null}
                       {result.cover_letter.timing ? (

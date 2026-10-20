@@ -12,6 +12,7 @@ import { pipelineApi } from "@/lib/api/pipeline";
 import { jobsApi } from "@/lib/api/jobs";
 import type { WSMessage } from "@/lib/types/websocket";
 import { Badge } from "@/components/ui/badge";
+import { CloudBadge } from "@/components/cloud-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -528,9 +529,12 @@ function LiveMonitor({ runId }: { runId: string }) {
               <code className="font-mono text-xs">{runId.slice(0, 12)}…</code>
             </span>
           </div>
-          <Badge className={cn("text-xs", badge.className)}>
-            {badge.label}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <CloudBadge show={(status.data?.cloud_documents ?? 0) > 0} />
+            <Badge className={cn("text-xs", badge.className)}>
+              {badge.label}
+            </Badge>
+          </div>
         </div>
 
         {errorText && (

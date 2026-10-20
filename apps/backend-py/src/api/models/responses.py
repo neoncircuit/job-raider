@@ -40,6 +40,7 @@ class PipelineStatusResponse(BaseModel):
     error_message: Optional[str] = None
     stages_planned: List[str] = []
     stages_completed: List[str] = []
+    cloud_documents: int = 0
 
 
 class PipelineResultResponse(BaseModel):

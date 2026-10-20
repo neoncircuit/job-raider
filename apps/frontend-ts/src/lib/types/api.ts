@@ -108,6 +108,11 @@ export interface PipelineStatusResponse {
   stages_planned?: string[];
   /** Stage values that finished successfully. */
   stages_completed?: string[];
+  /**
+   * Count of generated resumes and cover letters whose LLM provider was
+   * set and was not ``ollama`` (shown as a Cloud badge on the Pipeline page).
+   */
+  cloud_documents?: number;
 }
 
 export interface PipelineRun {
