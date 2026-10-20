@@ -9,15 +9,18 @@ Date: 2026-04-24
 """
 
 import json
+import logging
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from ..llm.router import TaskType
+
+_logger = logging.getLogger(__name__)
 
 # Hostnames allowed for Settings ``ollama_host`` (decision 5, Step 2.6).
 ALLOWED_OLLAMA_HOSTNAMES = frozenset(
@@ -319,8 +322,13 @@ class SettingsStorage:
         """
         Load settings from file.
 
+        When the only validation failure is a disallowed ``ollama_host``,
+        replace that host with the default and keep every other stored
+        field (including API keys and routing). Other load errors still
+        fall back to defaults.
+
         Returns:
-            UserSettings with loaded values or defaults
+            UserSettings with loaded values or defaults.
         """
         if not self.settings_file.exists():
             return self._get_default_settings()
@@ -328,11 +336,55 @@ class SettingsStorage:
         try:
             with open(self.settings_file, "r") as f:
                 data = json.load(f)
-            return UserSettings(**data)
         except Exception as e:
-            # Log error but return defaults
             print(f"Error loading settings: {e}")
             return self._get_default_settings()
+
+        try:
+            return UserSettings(**data)
+        except ValidationError as exc:
+            if self._is_ollama_host_only_error(exc):
+                bad_host = None
+                if isinstance(data, dict):
+                    api = data.get("api_config")
+                    if isinstance(api, dict):
+                        bad_host = api.get("ollama_host")
+                        api["ollama_host"] = "host.docker.internal:11434"
+                _logger.warning(
+                    "Stored ollama_host %r is not allowed; "
+                    "using host.docker.internal:11434 and keeping other settings",
+                    bad_host,
+                )
+                try:
+                    return UserSettings(**data)
+                except Exception as e:
+                    print(f"Error loading settings: {e}")
+                    return self._get_default_settings()
+            print(f"Error loading settings: {exc}")
+            return self._get_default_settings()
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+            return self._get_default_settings()
+
+    @staticmethod
+    def _is_ollama_host_only_error(exc: ValidationError) -> bool:
+        """
+        Return True when every validation error is on ``api_config.ollama_host``.
+
+        Args:
+            exc: Pydantic validation error from constructing ``UserSettings``.
+
+        Returns:
+            True when the only invalid field is the Ollama host.
+        """
+        errors = exc.errors()
+        if not errors:
+            return False
+        for err in errors:
+            loc = err.get("loc") or ()
+            if tuple(loc) != ("api_config", "ollama_host"):
+                return False
+        return True
 
     def save_settings(self, settings: UserSettings) -> None:
         """
