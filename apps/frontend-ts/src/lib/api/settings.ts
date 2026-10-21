@@ -42,6 +42,18 @@ export const settingsApi = {
 
   reset: () => request<AppSettings>("POST", "/settings/reset"),
 
+  /**
+   * Clear a stored cloud API key (``anthropic`` or ``gemini``).
+   *
+   * @param provider - Which saved key to remove.
+   * @returns Updated settings after the key is cleared.
+   */
+  deleteApiKey: (provider: "anthropic" | "gemini") =>
+    request<AppSettings>(
+      "DELETE",
+      `/settings/api-keys/${encodeURIComponent(provider)}`,
+    ),
+
   validate: (settings: AppSettings) =>
     request<{ valid: boolean; errors: string[]; warnings: string[] }>(
       "POST",

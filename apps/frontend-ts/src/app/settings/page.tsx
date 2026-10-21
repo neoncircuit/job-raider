@@ -193,6 +193,16 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
     onError: () => toast.error("Failed to reset settings."),
   });
 
+  const deleteApiKey = useMutation({
+    mutationFn: (provider: "anthropic" | "gemini") =>
+      settingsApi.deleteApiKey(provider),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["settings"] });
+      toast.success("Saved API key removed.");
+    },
+    onError: () => toast.error("Failed to remove saved API key."),
+  });
+
   const validate = useMutation({
     mutationFn: (values: FormValues) => {
       const withTiers = applyOllamaTierModelsLocally(
@@ -299,7 +309,19 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 <div className="space-y-1">
                   <Label htmlFor="anthropic_key">Anthropic API Key</Label>
                   {initial.api_config.has_anthropic_key ? (
-                    <p className="text-xs text-muted-foreground">Key saved</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">Key saved</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-2 py-0 text-xs"
+                        disabled={deleteApiKey.isPending}
+                        onClick={() => deleteApiKey.mutate("anthropic")}
+                      >
+                        Remove saved key
+                      </Button>
+                    </div>
                   ) : null}
                   <Input
                     id="anthropic_key"
@@ -313,9 +335,10 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                     {...register("api_config.anthropic_api_key")}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Optional. Leave blank to keep a saved key or rely on{" "}
-                    <span className="font-mono">ANTHROPIC_API_KEY</span> in the
-                    environment.
+                    Optional. Leave blank to keep a saved key. A key set in the
+                    environment (
+                    <span className="font-mono">ANTHROPIC_API_KEY</span>) still
+                    applies after the saved key is removed.
                   </p>
                 </div>
               ) : null}
@@ -323,7 +346,19 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                 <div className="space-y-1">
                   <Label htmlFor="gemini_key">Gemini API Key</Label>
                   {initial.api_config.has_gemini_key ? (
-                    <p className="text-xs text-muted-foreground">Key saved</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">Key saved</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-2 py-0 text-xs"
+                        disabled={deleteApiKey.isPending}
+                        onClick={() => deleteApiKey.mutate("gemini")}
+                      >
+                        Remove saved key
+                      </Button>
+                    </div>
                   ) : null}
                   <Input
                     id="gemini_key"
@@ -337,9 +372,10 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
                     {...register("api_config.gemini_api_key")}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Optional. Leave blank to keep a saved key or rely on{" "}
-                    <span className="font-mono">GEMINI_API_KEY</span> in the
-                    environment.
+                    Optional. Leave blank to keep a saved key. A key set in the
+                    environment (
+                    <span className="font-mono">GEMINI_API_KEY</span>) still
+                    applies after the saved key is removed.
                   </p>
                 </div>
               ) : null}

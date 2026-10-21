@@ -84,6 +84,40 @@ async def update_settings(settings: UserSettings) -> UserSettings:
     return for_client(merged)
 
 
+@router.delete("/api-keys/{provider}", response_model=UserSettings)
+async def delete_api_key(provider: str) -> UserSettings:
+    """
+    Clear one stored cloud API key and save settings.
+
+    ``provider`` must be ``anthropic`` or ``gemini``. The other key and all
+    other settings stay unchanged. Environment keys are not affected.
+
+    Args:
+        provider: Which stored key to remove (``anthropic`` or ``gemini``).
+
+    Returns:
+        Updated settings safe for the client (has_* flags, no key strings).
+
+    Raises:
+        HTTPException: 422 when ``provider`` is not anthropic or gemini.
+    """
+    if provider not in ("anthropic", "gemini"):
+        raise HTTPException(
+            status_code=422,
+            detail="provider must be 'anthropic' or 'gemini'",
+        )
+
+    storage = get_storage()
+    settings = storage.load_settings()
+    if provider == "anthropic":
+        settings.api_config.anthropic_api_key = None
+    else:
+        settings.api_config.gemini_api_key = None
+    storage.save_settings(settings)
+    logger.info("Cleared stored %s API key", provider)
+    return for_client(settings)
+
+
 @router.post("/reset", response_model=UserSettings)
 async def reset_settings() -> UserSettings:
     """
