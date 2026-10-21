@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from src.api.main import _allowed_hosts
 from src.api.settings import APIConfig
 from src.linkedin.profile_url import validate_linkedin_profile_url
 
@@ -86,6 +87,25 @@ class TestLinkedInProfileUrl:
 class TestTrustedHostMiddleware:
     """API rejects unexpected Host headers."""
 
+    def test_default_allowed_hosts_exclude_testserver(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        Production defaults omit TestClient's ``testserver`` host.
+
+        Args:
+            monkeypatch: Pytest monkeypatch fixture.
+
+        Returns:
+            None.
+        """
+        monkeypatch.delenv("ALLOWED_HOSTS", raising=False)
+        hosts = _allowed_hosts()
+        assert "testserver" not in hosts
+        assert "localhost" in hosts
+        assert "127.0.0.1" in hosts
+        assert "backend" in hosts
+
     def test_rejects_unknown_host(self, client: TestClient) -> None:
         """
         A forged Host header is refused.
@@ -97,6 +117,26 @@ class TestTrustedHostMiddleware:
             None.
         """
         response = client.get("/api/version", headers={"Host": "evil.example"})
+        assert response.status_code == 400
+
+    def test_cors_preflight_rejects_unknown_host(self, client: TestClient) -> None:
+        """
+        A CORS preflight with a forged Host still hits TrustedHost first.
+
+        Args:
+            client: Shared FastAPI TestClient.
+
+        Returns:
+            None.
+        """
+        response = client.options(
+            "/api/health",
+            headers={
+                "Host": "evil.example",
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
         assert response.status_code == 400
 
     def test_allows_testserver(self, client: TestClient) -> None:

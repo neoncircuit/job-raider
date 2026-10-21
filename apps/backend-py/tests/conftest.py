@@ -11,6 +11,13 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, Mock
 
+# TestClient uses Host ``testserver``. Set before any import of ``src.api.main``
+# so TrustedHostMiddleware is built with that host included.
+os.environ.setdefault(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1,testserver,backend",
+)
+
 import pytest
 
 # Add src to path

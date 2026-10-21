@@ -197,23 +197,23 @@ def _allowed_hosts() -> List[str]:
     """
     Hostnames accepted by TrustedHostMiddleware.
 
-    Defaults cover local, Compose, and FastAPI TestClient (``testserver``).
-    Override with comma-separated ``ALLOWED_HOSTS``.
+    Defaults cover local and Compose (``localhost``, ``127.0.0.1``,
+    ``backend``). FastAPI TestClient's ``testserver`` is not included;
+    tests set ``ALLOWED_HOSTS`` in ``tests/conftest.py``. Override with
+    comma-separated ``ALLOWED_HOSTS``.
 
     Returns:
         List of allowed host names (no ports).
     """
     raw = os.getenv(
         "ALLOWED_HOSTS",
-        "localhost,127.0.0.1,testserver,backend",
+        "localhost,127.0.0.1,backend",
     )
     return [h.strip() for h in raw.split(",") if h.strip()]
 
 
-# TrustedHost first (outermost after reverse add order): reject bad Host headers.
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts())
-
-# Configure CORS
+# Starlette runs the last-added middleware first. Add CORS, then TrustedHost,
+# so the Host check rejects a bad Host before CORS answers a preflight.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_parse_cors_origins(),
@@ -221,6 +221,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts())
 
 
 @app.exception_handler(RequestValidationError)
