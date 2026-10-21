@@ -32,7 +32,7 @@ Source: [review-2026-10-18.md](review-2026-10-18.md), section 6. Each step has i
   - [x] Push to `origin/main` (approved 2026-10-18). Pushed `dbac242..63e5e0a` from WSL (Git Bash on Windows has no GitHub SSH key). CI run 39094293658 passed all 11 jobs; Docker build skipped by design. Note: the mypy "Type Check" and "Security Scan" jobs cannot fail yet.
 - [ ] Step 1: Make the core flow run. The plan is below. Approved on 2026-10-18. Steps 1.1 to 1.7 are done and pushed (last: `5a8232f`). Only the manual check in "Verification for Step 1" is open.
 - [x] Step 2: Make local-first true. Done on 2026-10-21. Steps 2.1 to 2.6 and review items R1 to R11a are pushed (last: `629eb69`; CI run 39630302033 passed all 11 jobs, Playwright 42 passed with 0 flaky). Open question, not blocking: allow LinkedIn country hosts such as `sg.linkedin.com`.
-- [ ] Step 3: Make claims measurable. The plan is below. Wait for answers to its Questions before implementation.
+- [ ] Step 3: Make claims measurable. The plan is below. Decisions recorded on 2026-10-22.
 - [ ] Step 4: Make it demo-able.
 - [ ] Step 5: Focus and prune.
 
@@ -364,7 +364,7 @@ flowchart LR
 
 - [ ] Shared pieces in `src/evaluation/`: a JSONL case loader with a Pydantic schema per suite; metric functions (precision, recall, and F1 per label; NDCG@k; recall@k); run metadata (git SHA and dirty flag, SHA-256 of the dataset, hash of the prompt template, model, temperature, seed).
 - [ ] One command: `python main.py eval <suite>` (suites: `grounding`, `scam`, `dedupe`, `ranking`, `compare`). It writes a JSON report to `data/eval/<suite>/<timestamp>.json` and, when MLflow is reachable, one MLflow run with the metadata as params and tags and the metrics as metrics.
-- [ ] MLflow store: `MLFLOW_TRACKING_URI` when set; otherwise a file store at an absolute path under `apps/backend-py/data/mlruns`, not `./mlruns` relative to the working directory (review R9). Today only 5 of the 16 public `MLflowTracker` methods have a caller (Question 5).
+- [ ] MLflow store: `MLFLOW_TRACKING_URI` when set; otherwise SQLite at an absolute path, `apps/backend-py/data/mlflow.db`, with artifacts in `apps/backend-py/data/mlartifacts` (decision 5), not `./mlruns` relative to the working directory (review R9). Today only 5 of the 16 public `MLflowTracker` methods have a caller (Question 5).
 - [ ] Tests: metric functions against hand-computed values (NDCG with ties and with no relevant item); the metadata has a 40-character SHA; the dataset hash changes when one case changes; a report is written when MLflow is not reachable.
 - [ ] Done when: `python main.py eval grounding` on a tiny set writes a report and an MLflow run with the git SHA and dataset hash.
 
@@ -436,19 +436,21 @@ flowchart LR
 - The sidebar, pruning, and the Easy Apply decision (Step 5).
 - Hard-coded scoring weights and outcome feedback into scoring (M5). Change the weights only if the Step 3.4 eval shows that a change helps.
 
-##### Questions before you start (Step 3)
+##### Decisions (2026-10-22)
 
-1. **Labels.** (a) You label the ranking pairs (about 40 for each profile, 0/1/2) and about 15 real generated cover letters; I write the constructed cases and a short labeling guide. (b) Constructed labels only: faster, but the ranking eval then has no real relevance labels. Recommendation: (a). Human labels make the NDCG number defensible. Constructed grounding cases are valid because the injected error is known.
-2. **Profile in committed fixtures.** A synthetic profile with no personal data in `tests/fixtures/eval/`. Your real profile only in local runs, with outputs in `data/` (gitignored). Recommendation: yes.
-3. **EMSCAD dataset.** You download `fake_job_postings.csv` from Kaggle with your account into `apps/backend-py/data/kaggle/` (an agent must not enter credentials). It is not committed. Check its license on the dataset page first.
-4. **CI gates.** The deterministic suites (grounding, scam, dedupe, heuristic ranking, BM25) fail CI when a metric drops below its thresholds file. Recommendation: yes.
-5. **MLflow store.** A file store under `apps/backend-py/data/mlruns` when `MLFLOW_TRACKING_URI` is not set; the shared MLflow server (`http://localhost:5000` on the host, `http://mlflow:5000` in Compose) when it is set. Recommendation: yes.
+All five recommendations were accepted.
+
+1. **Labels:** the user labels the ranking pairs (about 40 for each profile, 0/1/2) and about 15 real generated cover letters. The agent writes the constructed cases and a short labeling guide.
+2. **Profile in committed fixtures:** a synthetic profile with no personal data in `tests/fixtures/eval/`. The real profile is used only in local runs, with outputs in `data/` (gitignored).
+3. **EMSCAD dataset:** the user downloads `fake_job_postings.csv` from Kaggle with their account into `apps/backend-py/data/kaggle/` and checks the license first. It is not committed.
+4. **CI gates:** the deterministic suites (grounding, scam, dedupe, heuristic ranking, BM25) fail CI when a metric drops below its thresholds file.
+5. **MLflow store:** a local store under `apps/backend-py/data/` when `MLFLOW_TRACKING_URI` is not set; the shared MLflow server (`http://localhost:5000` on the host, `http://mlflow:5000` in Compose) when it is set. Change from the plan: the local store is SQLite (`data/mlflow.db`, artifacts in `data/mlartifacts`), not a file store in `data/mlruns`. The installed MLflow 3.14.0 raises an exception for the file store unless `MLFLOW_ALLOW_FILE_STORE=true` is set, because that backend is in maintenance mode.
 
 Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are deterministic and can go to Cursor. Step 3.4 needs your labels. Steps 3.7 and 3.8 need Ollama on your machine.
 
 ## Next
 
-Answer the Step 3 Questions. Then start Step 3.1 (eval harness and run metadata).
+Step 3.1 (eval harness and run metadata), in progress.
 
 ## Backlog
 
