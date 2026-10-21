@@ -425,10 +425,24 @@ async def pipeline_progress(websocket: WebSocket, run_id: str):
     """
     WebSocket endpoint for real-time pipeline progress updates.
 
+    Browsers always send ``Origin``. When present, it must be on the CORS
+    allow list. A missing ``Origin`` is allowed for local non-browser clients
+    (same rule as the frontend proxy guard).
+
     Args:
         websocket: WebSocket connection
         run_id: Pipeline run ID to monitor
     """
+    origin = websocket.headers.get("origin")
+    if origin is not None and origin not in _parse_cors_origins():
+        logger.warning(
+            "Refusing pipeline WebSocket for run %s: Origin %r not allowed",
+            run_id,
+            origin,
+        )
+        await websocket.close(code=1008)
+        return
+
     await manager.connect(run_id, websocket)
     try:
         while True:

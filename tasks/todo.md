@@ -287,7 +287,8 @@ Smaller items:
 - [ ] **R7.** The Settings page cannot remove a saved cloud API key (a blank field keeps the stored key).
 - [x] **R8.** `ALLOWED_HOSTS` defaults include `testserver`. Set it in test setup instead. The comment above `TrustedHostMiddleware` says it is outermost, but CORS (added later) wraps it.
   - **Done (2026-10-21):** Defaults are `localhost,127.0.0.1,backend`; `tests/conftest.py` sets `ALLOWED_HOSTS` with `testserver` before app import; TrustedHost is added after CORS so it runs first. Prove: `test_default_allowed_hosts_exclude_testserver`, `test_cors_preflight_rejects_unknown_host` (before: assert failed / 200). Mutation: old middleware order → preflight test fails. Runtime: uvicorn on 8766, OPTIONS with `Host: evil.example` → 400; GET health with `Host: 127.0.0.1:8766` → 200.
-- [ ] **R9.** The WebSocket `/api/pipeline/{run_id}/progress` has no auth and no `Origin` check. A page in the browser that knows a `run_id` can read progress events. Check `Origin` on connect.
+- [x] **R9.** The WebSocket `/api/pipeline/{run_id}/progress` has no auth and no `Origin` check. A page in the browser that knows a `run_id` can read progress events. Check `Origin` on connect.
+  - **Done (2026-10-21):** Before `accept()`, refuse an `Origin` not on the CORS allow list with close code 1008; missing `Origin` is allowed. Prove: `test_refuses_evil_origin` / `test_allows_localhost_origin` / `test_allows_missing_origin` (before: evil did not raise). Mutation: remove Origin check → refusal test fails. Runtime: websockets client to uvicorn 8766; evil origin refused, `http://localhost:3000` received `connected`.
 - [x] **R10.** Delete the Cursor scratch files `tasks/_*.sh` and `tasks/_commit_msg.txt` (untracked).
   - **Done (2026-10-21):** Removed the 13 untracked `tasks/_*.sh` / `tasks/_commit_msg.txt` files. No commit of its own (untracked). Tick recorded with the R8 commit.
 
