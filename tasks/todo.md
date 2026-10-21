@@ -289,6 +289,12 @@ Smaller items:
 - [ ] **R9.** The WebSocket `/api/pipeline/{run_id}/progress` has no auth and no `Origin` check. A page in the browser that knows a `run_id` can read progress events. Check `Origin` on connect.
 - [ ] **R10.** Delete the Cursor scratch files `tasks/_*.sh` and `tasks/_commit_msg.txt` (untracked).
 
+**Review of R3 to R6 and F1 (2026-10-21):** The changes are correct. Full gate in WSL: Black, ruff, mypy gate 182 known and 0 new, pytest 1,092 passed (the real settings file's modification time did not change), ESLint, tsc, Prettier, Vitest 249 passed in 45 files, `next build`, Playwright 42 passed, and the Mobile Chrome smoke spec 10 times with no retries: 140 passed. Prettier first failed only on 8 files that had CRLF on disk and no content change (Cursor rewrites them); after the CR bytes were removed, it passed. Gaps:
+
+- [ ] **R5a.** No test covers `cloud_documents` in `GET /api/pipeline/status/{run_id}`. The route reads it with `getattr(..., None) or {}`, so a wrong name would show 0 and no test would fail.
+- [ ] **R5b.** The stage test has a cloud resume with a local cover letter, but no case with a local resume and a cloud cover letter. If the cover letter provider is dropped, the test still passes.
+- F1 also raised E2E timeouts (60 s navigation, 90 s for the navigation tests) for slow local Docker bind mounts. CI passed with 15 s before. See the Backlog item "Test and E2E hardening".
+
 ##### Out of scope for Step 2
 
 - LinkedIn automation / User Agreement / cookie storage hardening (review S9; Step 5).
@@ -337,6 +343,11 @@ Items here are parked. Move an item to **Next** before you start it.
 **Review (2026-10-19):** Added a screen-reader `SheetTitle` ("Navigation") on the mobile sheet. The smoke helper opens the sheet, waits for `getByRole("dialog", { name: "Navigation" })`, and clicks the link inside that dialog. Desktop clicks use `aside`. `--repeat-each=10` on Mobile Chrome smoke: 140 passed, 0 flaky. Full Playwright suite: 42 passed.
 
 **Done (2026-10-21):** `navigateTo` retries open until the Navigation dialog is visible (`expect(...).toPass`), and skips a second click when the dialog is already open. Soft-nav and 404 gotos also allow up to 60 s on cold `next dev` (Docker bind mounts). Proof under load (Vitest in a second container): Mobile Chrome smoke `--repeat-each=20 --retries=0` → 280 passed, 0 failed. Full Playwright suite (clean `.next`): 42 passed, 0 failed.
+
+### Test and E2E hardening (2026-10-21)
+
+- [ ] `tests/unit/agents/test_task_store.py::test_records_expire_after_ttl` flaked once in a full run. `TaskStore` (`src/agents/task_store.py`) measures age with `datetime.now()`, the wall clock, which can jump in WSL2, and the test leaves a 50 ms margin (TTL 1.05 s, sleep 1.1 s). Use `time.monotonic()` for the TTL check.
+- [ ] Run Playwright against a production build (`next build` and `next start`) instead of `next dev`, so tests do not wait for on-demand compiles. Then set the navigation timeouts in `tests/e2e/smoke.spec.ts` and `basic.spec.ts` back to 15 s.
 
 ### Small follow-ups from completed work (2026-10-18)
 
