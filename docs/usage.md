@@ -431,6 +431,40 @@ ls -lt data/results/pipeline_run_*.json | head -1
 cat data/results/pipeline_run_TIMESTAMP.json
 ```
 
+## Offline Evaluation
+
+The `eval` command scores one part of the system on a labeled dataset. Each run writes a JSON report and, when MLflow is available, one MLflow run. The run records the git commit, whether tracked files had changes, and the SHA-256 of the dataset, so each number can be traced to the code and data that produced it.
+
+```mermaid
+flowchart LR
+    D[Labeled dataset<br/>tests/fixtures/eval/suite] --> S[Suite runner]
+    S --> M[Metrics and run metadata]
+    M --> R[JSON report<br/>data/eval/suite]
+    M --> F{MLflow reachable?}
+    F -->|Yes| L[MLflow run]
+    F -->|No| W[Warning; report kept]
+```
+
+Suites available now: `grounding` (the deterministic cover-letter grounding validator). The labeled grounding set is added in Step 3.2 of `tasks/todo.md`; until then, pass `--dataset`.
+
+Run a suite on a dataset folder (from `apps/backend-py`):
+
+```bash
+python main.py eval grounding --dataset path/to/dataset
+```
+
+Write the JSON report only, without an MLflow run:
+
+```bash
+python main.py eval grounding --dataset path/to/dataset --no-mlflow
+```
+
+MLflow store: when `MLFLOW_TRACKING_URI` is set, runs go to that server (for example `http://localhost:5000`). When it is not set, runs go to a local SQLite file, `apps/backend-py/data/mlflow.db`, with artifacts in `apps/backend-py/data/mlartifacts`. Open the local store in the MLflow UI:
+
+```bash
+mlflow ui --backend-store-uri sqlite:///data/mlflow.db
+```
+
 ## Multi-Agent API
 
 The multi-agent system exposes career-coaching endpoints under `/api/agents/*`. These are read/write REST endpoints protected by the standard `X-API-Key` header (omitted below for brevity; required when `API_KEY` is set on the backend).

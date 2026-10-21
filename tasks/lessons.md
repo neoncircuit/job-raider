@@ -3372,3 +3372,16 @@
 **How to apply:**
 - After a mutation, compare the file checksum with the backup, and count the target with `grep -F` (fixed string). Both must change before you read the test result.
 - Prefer an exact string replacement in Python that prints how many occurrences it replaced. Stop if the count is 0.
+
+### Tooling must call `git status` without index locks
+
+**Lesson:** The eval harness ran `git status` with a 10-second timeout to record whether tracked files had changes. On `/mnt/d` under load, `git status` took longer, so the timeout killed it. A plain `git status` refreshes the index while it holds `.git/index.lock`, so the killed process left a stale lock, and the next `git add` failed with "index.lock: File exists".
+
+**Why:**
+- `git status` is not read-only by default. It can write the index to refresh file stat data.
+- A timeout kills the process without cleanup, so the lock stays.
+
+**How to apply:**
+- In tools and tests, run `git --no-optional-locks status` (or set `GIT_OPTIONAL_LOCKS=0`), so `git status` never takes the index lock.
+- Keep fast and slow git reads separate. Do not let a slow `git status` hide a good `git rev-parse HEAD`.
+- Before you remove a `.git/index.lock`, check that it is empty, old, and that no git process runs.

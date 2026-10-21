@@ -7,6 +7,7 @@ replaced with small fakes.
 """
 
 import argparse
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List
@@ -63,7 +64,8 @@ class TestParser:
         assert isinstance(cli.build_parser(), argparse.ArgumentParser)
 
     @pytest.mark.parametrize(
-        "argv", [["--help"], ["pipeline", "--help"], ["analyze", "--help"]]
+        "argv",
+        [["--help"], ["pipeline", "--help"], ["analyze", "--help"], ["eval", "--help"]],
     )
     def test_help_exits_zero(self, argv: List[str]) -> None:
         """Help for the top level and each command exits with code 0.
@@ -540,3 +542,66 @@ class TestAnalyzeCommand:
 
         assert cli.run_analyze_command(args) == 0
         assert '"overall_score": 72.0' in output.read_text(encoding="utf-8")
+
+
+class TestEvalCommand:
+    """``main.py eval <suite>`` runs an offline evaluation suite."""
+
+    def test_unknown_suite_is_rejected(self) -> None:
+        """Only registered suites are accepted."""
+        with pytest.raises(SystemExit) as exc:
+            parse(["eval", "no-such-suite"])
+        assert exc.value.code == 2
+
+    def test_eval_grounding_writes_a_report(
+        self, tmp_path: Path, no_logging_setup: None
+    ) -> None:
+        """The grounding suite runs on a dataset and writes one JSON report.
+
+        Args:
+            tmp_path: Pytest temporary directory.
+            no_logging_setup: Fixture that stops file logging setup.
+        """
+        dataset = tmp_path / "grounding"
+        dataset.mkdir()
+        profile = {
+            "name": "Alex Chen",
+            "contact": {"email": "alex@example.com", "location": "Singapore"},
+            "skills": [{"name": "Python", "category": "programming_language"}],
+        }
+        job = {
+            "title": "Backend Engineer",
+            "company": "Harbor Labs",
+            "job_id": "eval-job-1",
+            "source": "manual",
+        }
+        (dataset / "profiles.json").write_text(
+            json.dumps({"alex": profile}), encoding="utf-8"
+        )
+        case = {
+            "case_id": "clean",
+            "profile_id": "alex",
+            "job": job,
+            "letter": "I write Python at work.",
+            "expected_issues": [],
+        }
+        (dataset / "cases.jsonl").write_text(json.dumps(case) + "\n", encoding="utf-8")
+        out_dir = tmp_path / "out"
+
+        code = cli.main(
+            [
+                "eval",
+                "grounding",
+                "--dataset",
+                str(dataset),
+                "--out",
+                str(out_dir),
+                "--no-mlflow",
+            ]
+        )
+
+        assert code == 0
+        reports = list((out_dir / "grounding").glob("*.json"))
+        assert len(reports) == 1
+        data = json.loads(reports[0].read_text(encoding="utf-8"))
+        assert data["metadata"]["case_count"] == 1

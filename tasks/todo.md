@@ -362,11 +362,13 @@ flowchart LR
 
 ##### Step 3.1: Eval harness and run metadata (effort: S to M) — M2
 
-- [ ] Shared pieces in `src/evaluation/`: a JSONL case loader with a Pydantic schema per suite; metric functions (precision, recall, and F1 per label; NDCG@k; recall@k); run metadata (git SHA and dirty flag, SHA-256 of the dataset, hash of the prompt template, model, temperature, seed).
-- [ ] One command: `python main.py eval <suite>` (suites: `grounding`, `scam`, `dedupe`, `ranking`, `compare`). It writes a JSON report to `data/eval/<suite>/<timestamp>.json` and, when MLflow is reachable, one MLflow run with the metadata as params and tags and the metrics as metrics.
-- [ ] MLflow store: `MLFLOW_TRACKING_URI` when set; otherwise SQLite at an absolute path, `apps/backend-py/data/mlflow.db`, with artifacts in `apps/backend-py/data/mlartifacts` (decision 5), not `./mlruns` relative to the working directory (review R9). Today only 5 of the 16 public `MLflowTracker` methods have a caller (Question 5).
-- [ ] Tests: metric functions against hand-computed values (NDCG with ties and with no relevant item); the metadata has a 40-character SHA; the dataset hash changes when one case changes; a report is written when MLflow is not reachable.
-- [ ] Done when: `python main.py eval grounding` on a tiny set writes a report and an MLflow run with the git SHA and dataset hash.
+- [x] Shared pieces in `src/evaluation/`: a JSONL case loader with a Pydantic schema per suite; metric functions (precision, recall, and F1 per label; NDCG@k; recall@k); run metadata (git SHA and dirty flag, SHA-256 of the dataset, hash of the prompt template, model, temperature, seed).
+- [x] One command: `python main.py eval <suite>` (suites: `grounding`, `scam`, `dedupe`, `ranking`, `compare`). It writes a JSON report to `data/eval/<suite>/<timestamp>.json` and, when MLflow is reachable, one MLflow run with the metadata as params and tags and the metrics as metrics.
+- [x] MLflow store: `MLFLOW_TRACKING_URI` when set; otherwise SQLite at an absolute path, `apps/backend-py/data/mlflow.db`, with artifacts in `apps/backend-py/data/mlartifacts` (decision 5), not `./mlruns` relative to the working directory (review R9). Today only 5 of the 16 public `MLflowTracker` methods have a caller (Question 5).
+- [x] Tests: metric functions against hand-computed values (NDCG with ties and with no relevant item); the metadata has a 40-character SHA; the dataset hash changes when one case changes; a report is written when MLflow is not reachable.
+- [x] Done when: `python main.py eval grounding` on a tiny set writes a report and an MLflow run with the git SHA and dataset hash.
+
+**Review (2026-10-22):** New modules `src/evaluation/metrics.py`, `datasets.py`, `run_metadata.py`, `report.py`, and `suites/` (registry and the `grounding` runner). Only `grounding` is registered; Steps 3.3 to 3.8 add the other suites. No labeled set is committed yet: labels wait for the Step 3.2 labeling guide, and the CLI says so when the default set is missing. Other changes: `ExperimentConfig.artifact_location` in `mlflow_tracker.py` (a new experiment on SQLite otherwise puts artifacts in `./mlruns`); a health check on HTTP tracking servers before logging (MLflow retries a dead server for minutes); the process-wide MLflow URI is restored after logging; `*.jsonl` pinned to LF in `.gitattributes`, and the dataset hash also ignores line endings; an "Offline Evaluation" section in `docs/usage.md`. Git state: `git rev-parse` and `git status` run separately. In the first full gate, `git status` on `/mnt/d` took over 10 s under load, the shared timeout made the SHA "unknown", and the metadata test failed; now a slow or failed `git status` keeps the SHA and records the dirty flag as unknown (test `test_slow_git_status_keeps_the_sha`; mutation: return "unknown" again, and the test fails). The killed `git status` also left a stale `.git/index.lock` that blocked `git add`; it was removed after checking that it was empty, 29 minutes old, and that no git process ran. `git status` now runs as `git --no-optional-locks status`, which never takes the index lock (test `test_git_status_takes_no_index_lock`; mutation: drop the flag, and the test fails). Tests: `tests/unit/test_evaluation_harness.py` (30) and 3 new CLI tests. The full backend gate (1,139 passed) ran before the `--no-optional-locks` change; the harness tests, Black, ruff, and the mypy gate ran after it. Mutations (checksum and fixed-string count checked): no CRLF normalization fails the line-ending test; linear gain fails the NDCG test; no URI restore fails the SQLite-store test. End to end: `python main.py eval grounding --dataset <2-case set>` wrote the report and MLflow run `88f2200f` in `data/mlflow.db` with the git SHA and dataset hash tags and the report artifact. First finding for Step 3.2: the validator also flagged `ungrounded_claims` on both letters (precision 0 for that label), so the labeling guide must say whether a sentence with a fabricated technology or inflated years also counts as an ungrounded claim.
 
 ##### Step 3.2: Grounding golden set, then the M7 fixes (effort: M) — M4, M7
 
@@ -450,7 +452,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Step 3.1 (eval harness and run metadata), in progress.
+Step 3.2 (grounding golden set and labeling guide, then the M7 fixes). Step 3.1 is done locally.
 
 ## Backlog
 

@@ -9,6 +9,8 @@
 *.md text eol=lf
 *.txt text eol=lf
 *.json text eol=lf
+# Eval datasets: the dataset SHA-256 in eval reports must match on every OS
+*.jsonl text eol=lf
 
 # Frontend sources: Prettier enforces "endOfLine": "lf" (apps/frontend-ts/.prettierrc.json)
 *.ts text eol=lf

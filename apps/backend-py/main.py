@@ -187,6 +187,7 @@ def ensure_dependencies():
 if __name__ == "__main__":
     ensure_dependencies()
 
+from src.evaluation.suites import SUITE_NAMES  # noqa: E402
 from src.extractors.resume_parser import ResumeParser  # noqa: E402
 from src.generation.resume_analyzer import ResumeAnalyzer  # noqa: E402
 from src.llm.router import LLMRouter  # noqa: E402
@@ -523,12 +524,50 @@ def run_analyze_command(args) -> int:
         return 1
 
 
+def run_eval_command(args) -> int:
+    """
+    Run an offline evaluation suite, write its report, and log it to MLflow.
+
+    Args:
+        args: Parsed arguments with ``suite``, ``dataset``, ``out``, and
+            ``no_mlflow``.
+
+    Returns:
+        Exit code: 0 on success, 1 when the dataset is missing or invalid.
+    """
+    from src.evaluation.report import log_report_to_mlflow, write_report
+    from src.evaluation.suites import get_suite
+
+    logger = get_logger(Components.SCRAPERS)
+    runner, default_dataset = get_suite(args.suite)
+    dataset = Path(args.dataset) if args.dataset else default_dataset
+    try:
+        report = runner(dataset)
+    except (FileNotFoundError, ValueError) as exc:
+        logger.error(f"Eval suite {args.suite} failed: {exc}")
+        return 1
+
+    path = write_report(report, Path(args.out) if args.out else None)
+    print(f"Eval suite: {report.suite} ({report.metadata.case_count} cases)")
+    print(f"Git SHA: {report.metadata.git_sha} (dirty: {report.metadata.git_dirty})")
+    print(f"Dataset SHA-256: {report.metadata.dataset_sha256}")
+    for key in sorted(report.metrics):
+        value = report.metrics[key]
+        print(f"  {key}: {'n/a' if value is None else round(value, 4)}")
+    print(f"Report: {path}")
+
+    if not args.no_mlflow:
+        run_id = log_report_to_mlflow(report, path)
+        print(f"MLflow run: {run_id}" if run_id else "MLflow run: not logged")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """
     Build the command-line parser.
 
-    The parser has two commands, ``pipeline`` and ``analyze``, plus the
-    top-level ``-i/--interactive`` flag. Logging options are shared by every
+    The parser has three commands, ``pipeline``, ``analyze``, and ``eval``,
+    plus the top-level ``-i/--interactive`` flag. Logging options are shared by every
     command through a parent parser, so each option is defined one time.
 
     Returns:
@@ -726,6 +765,40 @@ Examples:
     )
     analyze_parser.add_argument("--output", type=str, help="Save analysis to JSON file")
 
+    # Eval command
+    eval_parser = subparsers.add_parser(
+        "eval",
+        parents=[common],
+        help="Run an offline evaluation suite on a labeled dataset",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Score the cover-letter grounding validator on the committed labeled set
+  python main.py eval grounding
+
+  # Use another dataset folder and write only the JSON report
+  python main.py eval grounding --dataset path/to/set --no-mlflow
+        """,
+    )
+    eval_parser.add_argument("suite", choices=SUITE_NAMES, help="Suite to run")
+    eval_parser.add_argument(
+        "--dataset",
+        type=str,
+        default=None,
+        help="Dataset folder (default: the suite's set in tests/fixtures/eval)",
+    )
+    eval_parser.add_argument(
+        "--out",
+        type=str,
+        default=None,
+        help="Report folder (default: apps/backend-py/data/eval)",
+    )
+    eval_parser.add_argument(
+        "--no-mlflow",
+        action="store_true",
+        help="Write the JSON report only; do not log an MLflow run",
+    )
+
     return parser
 
 
@@ -778,8 +851,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.command == "analyze":
         return run_analyze_command(args)
 
+    if args.command == "eval":
+        return run_eval_command(args)
+
     if args.command != "pipeline":
-        parser.error("choose a command (pipeline or analyze), or use --interactive")
+        parser.error(
+            "choose a command (pipeline, analyze, or eval), or use --interactive"
+        )
 
     # Verify resume exists
     if not Path(args.resume).exists():

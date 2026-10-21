@@ -36,6 +36,9 @@ class ExperimentConfig:
     experiment_name: str = "job_raider"
     auto_log: bool = True
     disable: bool = False
+    # Artifact root for a new experiment. None lets MLflow choose, which for
+    # a SQLite store is ``./mlruns`` relative to the working directory.
+    artifact_location: Optional[str] = None
 
 
 class MLflowTracker:
@@ -78,7 +81,10 @@ class MLflowTracker:
         # Set or create experiment
         experiment = mlflow.get_experiment_by_name(self.config.experiment_name)
         if experiment is None:
-            mlflow.create_experiment(self.config.experiment_name)
+            mlflow.create_experiment(
+                self.config.experiment_name,
+                artifact_location=self.config.artifact_location,
+            )
             self.logger.info(
                 f"Created MLflow experiment: {self.config.experiment_name}"
             )
@@ -553,6 +559,7 @@ def create_mlflow_tracker(
     tracking_uri: Optional[str] = None,
     experiment_name: str = "job_raider",
     disable: bool = False,
+    artifact_location: Optional[str] = None,
 ) -> Optional[MLflowTracker]:
     """
     Create an MLflow tracker.
@@ -561,6 +568,7 @@ def create_mlflow_tracker(
         tracking_uri: MLflow tracking URI
         experiment_name: Name of the experiment
         disable: Disable tracking
+        artifact_location: Artifact root used when the experiment is created
 
     Returns:
         MLflowTracker or None if MLflow not available
@@ -572,6 +580,7 @@ def create_mlflow_tracker(
         tracking_uri=tracking_uri,
         experiment_name=experiment_name,
         disable=disable,
+        artifact_location=artifact_location,
     )
 
     return MLflowTracker(config)
