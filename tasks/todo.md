@@ -291,8 +291,10 @@ Smaller items:
 
 **Review of R3 to R6 and F1 (2026-10-21):** The changes are correct. Full gate in WSL: Black, ruff, mypy gate 182 known and 0 new, pytest 1,092 passed (the real settings file's modification time did not change), ESLint, tsc, Prettier, Vitest 249 passed in 45 files, `next build`, Playwright 42 passed, and the Mobile Chrome smoke spec 10 times with no retries: 140 passed. Prettier first failed only on 8 files that had CRLF on disk and no content change (Cursor rewrites them); after the CR bytes were removed, it passed. Gaps:
 
-- [ ] **R5a.** No test covers `cloud_documents` in `GET /api/pipeline/status/{run_id}`. The route reads it with `getattr(..., None) or {}`, so a wrong name would show 0 and no test would fail.
-- [ ] **R5b.** The stage test has a cloud resume with a local cover letter, but no case with a local resume and a cloud cover letter. If the cover letter provider is dropped, the test still passes.
+- [x] **R5a.** No test covers `cloud_documents` in `GET /api/pipeline/status/{run_id}`. The route reads it with `getattr(..., None) or {}`, so a wrong name would show 0 and no test would fail.
+  - **Done (2026-10-21):** `TestRunEndpoints` in `test_pipeline_routes.py` stores a real `PipelineResult` whose generate stage (key from `PipelineStage.GENERATE_RESUMES`) has `cloud_documents=2`, and checks that status returns 2; a run without that stage returns 0. Mutation: the route reads `"generate_resume"`; the test fails.
+- [x] **R5b.** The stage test has a cloud resume with a local cover letter, but no case with a local resume and a cloud cover letter. If the cover letter provider is dropped, the test still passes.
+  - **Done (2026-10-21):** `test_cloud_documents_counts_a_cloud_cover_letter` (local resume, `gemini` cover letter, count 1). Mutation: count the cover letter provider as `None`; the new test fails and the old test still passes, which confirms the gap.
 - F1 also raised E2E timeouts (60 s navigation, 90 s for the navigation tests) for slow local Docker bind mounts. CI passed with 15 s before. See the Backlog item "Test and E2E hardening".
 
 ##### Out of scope for Step 2

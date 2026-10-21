@@ -353,6 +353,39 @@ class TestBatchCoverLetters:
         result_local = stages.stage_generate_resumes([sample_job_listing])
         assert result_local.metadata["cloud_documents"] == 0
 
+    def test_cloud_documents_counts_a_cloud_cover_letter(
+        self, stages: PipelineStages, sample_job_listing, resume_mocks, monkeypatch
+    ):
+        """
+        A local resume with a cloud-written cover letter counts as 1.
+
+        Args:
+            stages: Stages fixture.
+            sample_job_listing: Job fixture.
+            resume_mocks: Selection fixture.
+            monkeypatch: Pytest monkeypatch.
+        """
+        local_resume = GeneratedResume(
+            summary="x",
+            skills=["python"],
+            experience=[],
+            projects=[],
+            education=[],
+            raw_response="{}",
+            model_used="qwen",
+            provider_used="ollama",
+        )
+        stages.resume_writer.write = MagicMock(return_value=local_resume)
+        service = MagicMock(
+            return_value=letter_response("Dear team...", [], provider_used="gemini")
+        )
+        monkeypatch.setattr("src.pipeline.stages.generate_cover_letter_sync", service)
+
+        result = stages.stage_generate_resumes([sample_job_listing])
+
+        assert result.metadata["cover_letters_saved"] == 1
+        assert result.metadata["cloud_documents"] == 1
+
 
 class TestStageGenerateResumesOutcome:
     """stage_generate_resumes reports success and failure honestly."""

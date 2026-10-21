@@ -322,3 +322,65 @@ class TestRunEndpoints:
         assert data["stages_completed"] == ["scrape", "deduplicate"]
         assert data["current_stage"] == "deduplicate"
         assert data["stage_progress"] == 100
+
+    def _store_run_with_generate_stage(self, cloud_documents: int) -> str:
+        """Store a completed run whose generate stage reports cloud documents.
+
+        The stage key comes from ``PipelineStage``, the same value the
+        orchestrator uses for ``PipelineResult.stage_results``.
+
+        Args:
+            cloud_documents: Value for the generate stage ``cloud_documents``.
+
+        Returns:
+            The run ID.
+        """
+        from src.api.routes.pipeline import pipeline_runs
+        from src.models.pipeline_stage import PipelineStage
+        from src.pipeline.orchestrator import PipelineResult
+        from src.pipeline.stages import StageResult
+
+        now = datetime.now()
+        generate = PipelineStage.GENERATE_RESUMES.value
+        result = PipelineResult(
+            success=True,
+            stages_completed=[generate],
+            stage_results={
+                generate: StageResult(
+                    stage_name=generate,
+                    success=True,
+                    data=[],
+                    metadata={"generated_count": 2, "cloud_documents": cloud_documents},
+                    timestamp=now,
+                )
+            },
+            start_time=now,
+            end_time=now,
+        )
+        pipeline_runs["run_generate"] = {
+            "run_id": "run_generate",
+            "status": "completed",
+            "created_at": now,
+            "result": result,
+            "stages_planned": [generate],
+            "stages_completed": [generate],
+            "current_stage": generate,
+            "stage_progress": 100,
+        }
+        return "run_generate"
+
+    def test_status_reports_cloud_documents_from_generate_stage(self, client):
+        """GET /status copies ``cloud_documents`` from the generate stage."""
+        run_id = self._store_run_with_generate_stage(cloud_documents=2)
+
+        data = client.get(f"/api/pipeline/status/{run_id}").json()
+
+        assert data["cloud_documents"] == 2
+
+    def test_status_reports_zero_cloud_documents_without_generate_stage(self, client):
+        """A run that did not reach the generate stage reports 0."""
+        run_id = self._store_completed_run()
+
+        data = client.get(f"/api/pipeline/status/{run_id}").json()
+
+        assert data["cloud_documents"] == 0
