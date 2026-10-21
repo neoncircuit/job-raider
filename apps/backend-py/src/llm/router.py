@@ -405,6 +405,9 @@ class LLMRouter:
             )
             from ..api.settings import get_settings_revision, get_storage
 
+            # Read the revision before loading. A save that lands after the
+            # load then leaves a newer revision, so the next call reloads.
+            revision = get_settings_revision()
             settings = get_storage().load_settings()
             if settings.routing:
                 self.reload_routes_from_settings(settings.routing)
@@ -436,7 +439,7 @@ class LLMRouter:
                     else None
                 )
             self._clients.clear()
-            self._settings_revision_applied = get_settings_revision()
+            self._settings_revision_applied = revision
         except Exception:
             pass
 

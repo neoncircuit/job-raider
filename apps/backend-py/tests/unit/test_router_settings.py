@@ -191,6 +191,46 @@ class TestCreateRouterReloadsChangedSettings:
         assert router.routes is original_routes
         assert router.api_key is None
 
+    def test_save_during_reload_is_applied_on_next_refresh(self) -> None:
+        """
+        A save that lands while the router reloads is not missed.
+
+        The wrapped ``load_settings`` returns the older settings and then
+        saves a new key, so the save lands after the load and before the
+        router records the revision it applied.
+
+        Returns:
+            None.
+        """
+        self._save_anthropic_fallback("sk-ant-old")
+        router = create_router()
+        assert router.api_key == "sk-ant-old"
+
+        storage = get_storage()
+        real_load = storage.load_settings
+
+        def load_then_save_new_key() -> Any:
+            """
+            Return the current settings, then save a newer key.
+
+            Returns:
+                The settings as they were before the newer save.
+            """
+            loaded = real_load()
+            newer = real_load()
+            newer.api_config.anthropic_api_key = "sk-ant-new"
+            storage.save_settings(newer)
+            return loaded
+
+        # An unchanged save bumps the revision, so the next refresh reloads.
+        storage.save_settings(real_load())
+        with patch.object(storage, "load_settings", side_effect=load_then_save_new_key):
+            router._refresh_user_settings_if_changed()
+        assert router.api_key == "sk-ant-old"
+
+        router._refresh_user_settings_if_changed()
+        assert router.api_key == "sk-ant-new"
+
     def test_api_key_delete_reaches_long_lived_router(self, client: TestClient) -> None:
         """
         The API DELETE is observed on the long-lived router's next call.
