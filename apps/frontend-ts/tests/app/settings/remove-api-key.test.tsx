@@ -11,11 +11,12 @@ import type { AppSettings } from "@/lib/types/api";
 
 const mockDeleteApiKey = vi.fn();
 const mockGet = vi.fn();
+const mockUpdate = vi.fn();
 
 vi.mock("@/lib/api/settings", () => ({
   settingsApi: {
     get: (...args: unknown[]) => mockGet(...args),
-    update: vi.fn(),
+    update: (...args: unknown[]) => mockUpdate(...args),
     reset: vi.fn(),
     validate: vi.fn(),
     getModels: vi.fn().mockResolvedValue({
@@ -95,14 +96,19 @@ function renderPage() {
 
 describe("Settings remove saved API key", () => {
   beforeEach(() => {
-    mockGet.mockResolvedValue(settingsWithAnthropicKey());
-    mockDeleteApiKey.mockResolvedValue({
+    const withoutKey = {
       ...settingsWithAnthropicKey(),
       api_config: {
         ...settingsWithAnthropicKey().api_config,
         has_anthropic_key: false,
       },
-    });
+      updated_at: "2026-10-21T00:01:00Z",
+    };
+    mockGet
+      .mockResolvedValueOnce(settingsWithAnthropicKey())
+      .mockResolvedValue(withoutKey);
+    mockDeleteApiKey.mockResolvedValue(withoutKey);
+    mockUpdate.mockResolvedValue(withoutKey);
   });
 
   afterEach(() => {
@@ -119,5 +125,50 @@ describe("Settings remove saved API key", () => {
     await waitFor(() => {
       expect(mockDeleteApiKey).toHaveBeenCalledWith("anthropic");
     });
+  });
+
+  it("keeps unsaved edits when key removal refetches newer settings", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const maxCost = await screen.findByLabelText("Max API Cost per Run (USD)");
+    await user.clear(maxCost);
+    await user.type(maxCost, "17");
+    await user.click(screen.getByRole("button", { name: "Remove saved key" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Key saved")).not.toBeInTheDocument();
+    });
+    expect(screen.getByLabelText("Max API Cost per Run (USD)")).toHaveValue(17);
+  });
+
+  it("shows values returned by a successful save", async () => {
+    const user = userEvent.setup();
+    const saved = {
+      ...settingsWithAnthropicKey(),
+      cost_limits: {
+        ...settingsWithAnthropicKey().cost_limits,
+        max_api_cost_per_run: 23,
+      },
+      updated_at: "2026-10-21T00:02:00Z",
+    };
+    mockUpdate.mockResolvedValue(saved);
+    mockGet.mockReset();
+    mockGet
+      .mockResolvedValueOnce(settingsWithAnthropicKey())
+      .mockResolvedValue(saved);
+    renderPage();
+
+    const maxCost = await screen.findByLabelText("Max API Cost per Run (USD)");
+    await user.clear(maxCost);
+    await user.type(maxCost, "19");
+    await user.click(screen.getByRole("button", { name: "Save Settings" }));
+
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByLabelText("Max API Cost per Run (USD)")).toHaveValue(
+        23,
+      ),
+    );
   });
 });

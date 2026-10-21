@@ -87,13 +87,22 @@ type FormValues = z.infer<typeof schema>;
 /**
  * Settings form with API, Ollama model tiers, parameters, and cost limits.
  *
- * Remount via ``key`` when server settings change so local draft state resets
- * without syncing through an effect.
+ * Remount only after an action that replaces the form values (Save or Reset).
+ * Background refetches update server state such as has_* key flags without
+ * discarding fields the user is editing.
  *
  * @param initial - Settings loaded from the API.
+ * @param replaceFormValues - Replace the form with settings returned by an
+ * action that intentionally saves or resets all values.
  * @returns Configured settings form element.
  */
-function SettingsForm({ initial }: { initial: AppSettings }) {
+function SettingsForm({
+  initial,
+  replaceFormValues,
+}: {
+  initial: AppSettings;
+  replaceFormValues: (settings: AppSettings) => void;
+}) {
   const qc = useQueryClient();
   const initialTiers = deriveOllamaTierModels(initial.routing);
   const [routing, setRouting] = useState(initial.routing);
@@ -175,7 +184,8 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
       );
       return settingsApi.update(withTiers);
     },
-    onSuccess: () => {
+    onSuccess: (settings) => {
+      replaceFormValues(settings);
       qc.invalidateQueries({ queryKey: ["settings"] });
       qc.invalidateQueries({ queryKey: ["settings-models"] });
       setModelsDirty(false);
@@ -186,7 +196,8 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
 
   const reset = useMutation({
     mutationFn: settingsApi.reset,
-    onSuccess: () => {
+    onSuccess: (settings) => {
+      replaceFormValues(settings);
       qc.invalidateQueries({ queryKey: ["settings"] });
       toast.success("Settings reset to defaults.");
     },
@@ -196,7 +207,8 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
   const deleteApiKey = useMutation({
     mutationFn: (provider: "anthropic" | "gemini") =>
       settingsApi.deleteApiKey(provider),
-    onSuccess: () => {
+    onSuccess: (settings) => {
+      qc.setQueryData(["settings"], settings);
       qc.invalidateQueries({ queryKey: ["settings"] });
       toast.success("Saved API key removed.");
     },
@@ -786,11 +798,17 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
  * @returns Settings page with API, model, and cost configuration.
  */
 export default function SettingsPage() {
+  const qc = useQueryClient();
+  const [formVersion, setFormVersion] = useState(0);
   const { data, isLoading, isError } = useQuery({
     queryKey: ["settings"],
     queryFn: settingsApi.get,
     staleTime: 60_000,
   });
+  const replaceFormValues = (settings: AppSettings) => {
+    qc.setQueryData(["settings"], settings);
+    setFormVersion((version) => version + 1);
+  };
 
   return (
     <PageContainer variant="wide">
@@ -806,8 +824,9 @@ export default function SettingsPage() {
       {isError && <QueryErrorBanner message="Failed to load settings." />}
       {data && (
         <SettingsForm
-          key={data.updated_at ?? data.version ?? "settings"}
+          key={formVersion}
           initial={data}
+          replaceFormValues={replaceFormValues}
         />
       )}
     </PageContainer>
