@@ -301,6 +301,11 @@ Smaller items:
   - **Done (2026-10-21):** `test_cloud_documents_counts_a_cloud_cover_letter` (local resume, `gemini` cover letter, count 1). Mutation: count the cover letter provider as `None`; the new test fails and the old test still passes, which confirms the gap.
 - F1 also raised E2E timeouts (60 s navigation, 90 s for the navigation tests) for slow local Docker bind mounts. CI passed with 15 s before. See the Backlog item "Test and E2E hardening".
 
+**Review of R7 to R10 (2026-10-21):** The changes are correct. Full gate in WSL: Black, ruff, mypy gate 182 known and 0 new, pytest 1,102 passed (the real settings file's modification time did not change), ESLint, Prettier, Vitest 250 passed in 46 files, `next build`, and Playwright passed. tsc failed once with a stale `.next` left by an earlier dev-server run (`tsconfig.json` includes `.next/types` and `.next/dev/types`); a rerun without `.next` passed. Runtime probes on uvicorn with a temporary env file: a CORS preflight with `Host: evil.example` returned 400 (200 with the real host); `Host: testserver` returned 400; a WebSocket with `Origin: http://evil.example` was refused with HTTP 403 and a warning, and `http://localhost:3000` and a missing `Origin` connected. New items:
+
+- [ ] **R11.** Saved Settings do not reach long-lived routers. `src/api/main.py` builds the agent system router one time at startup (`initialize_agent_system(create_router(...))`), and `src/api/routes/profile.py` caches `_llm_router` in `_get_linkedin_analyzer`. Nothing reloads them when settings change. So a removed API key, new routing, or a switch of the cloud fallback to "None (local only)" does not apply to agents or LinkedIn analysis until the backend restarts. Fix: build these routers per request (as the pipeline and cover letter paths do), or reload them after each settings write.
+- [ ] **R7a.** "Remove saved key" saves the settings, which changes `updated_at`. `SettingsPage` keys `SettingsForm` on `updated_at`, so the form remounts and discards unsaved edits in other fields. Update the query cache from the DELETE response without a remount, or warn when the form has unsaved changes.
+
 ##### Out of scope for Step 2
 
 - LinkedIn automation / User Agreement / cookie storage hardening (review S9; Step 5).
