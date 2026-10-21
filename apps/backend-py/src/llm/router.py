@@ -10,6 +10,7 @@ Date: 2026-04-20
 """
 
 import logging
+import threading
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -226,11 +227,16 @@ class LLMRouter:
             **kwargs: Additional parameters
         """
         self.routes = routes or self.DEFAULT_ROUTES
+        self._constructor_api_key = api_key
+        self._constructor_gemini_api_key = gemini_api_key
         self.api_key = api_key
         self.ollama_host = ollama_host
         self.ollama_port = ollama_port
         self.gpu_monitor = gpu_monitor or GPUMonitor()
         self.gemini_api_key = gemini_api_key
+        self._follows_user_settings = False
+        self._settings_revision_applied = -1
+        self._settings_reload_lock = threading.Lock()
 
         # Client cache
         self._clients: Dict[str, BaseLLMClient] = {}
@@ -397,7 +403,7 @@ class LLMRouter:
                 parse_ollama_host_port,
                 resolve_effective_ollama_host,
             )
-            from ..api.settings import get_storage
+            from ..api.settings import get_settings_revision, get_storage
 
             settings = get_storage().load_settings()
             if settings.routing:
@@ -410,10 +416,13 @@ class LLMRouter:
                 self.ollama_host = host
                 self.ollama_port = port
             if settings.api_config:
-                if settings.api_config.anthropic_api_key:
-                    self.api_key = settings.api_config.anthropic_api_key
-                if settings.api_config.gemini_api_key:
-                    self.gemini_api_key = settings.api_config.gemini_api_key
+                self.api_key = (
+                    settings.api_config.anthropic_api_key or self._constructor_api_key
+                )
+                self.gemini_api_key = (
+                    settings.api_config.gemini_api_key
+                    or self._constructor_gemini_api_key
+                )
             if settings.cost_limits is not None:
                 self._response_cache.enabled = bool(settings.cost_limits.enable_cache)
                 self._response_cache.ttl = int(settings.cost_limits.cache_ttl)
@@ -427,8 +436,30 @@ class LLMRouter:
                     else None
                 )
             self._clients.clear()
+            self._settings_revision_applied = get_settings_revision()
         except Exception:
             pass
+
+    def _refresh_user_settings_if_changed(self) -> None:
+        """
+        Reload Settings once when a factory router observes a newer revision.
+
+        Direct ``LLMRouter(...)`` instances do not follow Settings. The lock
+        prevents worker threads from applying the same revision concurrently.
+
+        Returns:
+            None.
+        """
+        if not self._follows_user_settings:
+            return
+
+        from ..api.settings import get_settings_revision
+
+        if get_settings_revision() == self._settings_revision_applied:
+            return
+        with self._settings_reload_lock:
+            if get_settings_revision() != self._settings_revision_applied:
+                self.apply_user_settings()
 
     def _resolve_cache_params(self, kwargs: Dict[str, Any]) -> tuple[float, int]:
         """
@@ -630,6 +661,7 @@ class LLMRouter:
         Returns:
             LLMResponse with generated content and metadata
         """
+        self._refresh_user_settings_if_changed()
         if task_type not in self.routes:
             raise ValueError(f"Unknown task type: {task_type}")
 
@@ -728,6 +760,7 @@ class LLMRouter:
         Returns:
             LLMResponse with generated content and metadata
         """
+        self._refresh_user_settings_if_changed()
         if task_type not in self.routes:
             raise ValueError(f"Unknown task type: {task_type}")
 
@@ -927,5 +960,6 @@ def create_router(
             )
         router = LLMRouter(routes=routes, api_key=api_key, **kwargs)
 
+    router._follows_user_settings = True
     router.apply_user_settings()
     return router

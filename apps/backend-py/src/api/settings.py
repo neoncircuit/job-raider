@@ -10,6 +10,7 @@ Date: 2026-04-24
 
 import json
 import logging
+import threading
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -21,6 +22,11 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from ..llm.router import TaskType
 
 _logger = logging.getLogger(__name__)
+
+# Per-process revision is sufficient because Job Raider runs one uvicorn worker.
+# It lets long-lived routers detect successful Settings writes.
+_settings_revision = 0
+_settings_revision_lock = threading.Lock()
 
 # Hostnames allowed for Settings ``ollama_host`` (decision 5, Step 2.6).
 ALLOWED_OLLAMA_HOSTNAMES = frozenset(
@@ -396,6 +402,9 @@ class SettingsStorage:
         settings.updated_at = datetime.now()
         with open(self.settings_file, "w") as f:
             json.dump(settings.model_dump(), f, indent=2, default=str)
+        global _settings_revision
+        with _settings_revision_lock:
+            _settings_revision += 1
 
     def reset_settings(self) -> UserSettings:
         """
@@ -444,6 +453,17 @@ class SettingsStorage:
 
 # Global storage instance
 _storage: Optional[SettingsStorage] = None
+
+
+def get_settings_revision() -> int:
+    """
+    Return the process-local revision of successfully saved Settings.
+
+    Returns:
+        Monotonic Settings revision for this process.
+    """
+    with _settings_revision_lock:
+        return _settings_revision
 
 
 def get_storage() -> SettingsStorage:

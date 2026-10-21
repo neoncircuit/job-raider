@@ -1,10 +1,16 @@
 """
-Tests for LLMRouter settings merge and create_router settings load.
+Tests for LLMRouter settings merge and live create_router settings reload.
 """
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
-from src.api.settings import ModelRouting, Provider
+import pytest
+from fastapi.testclient import TestClient
+
+from src.api.ollama_models import apply_cloud_fallback_provider
+from src.api.settings import CloudProvider, ModelRouting, Provider, get_storage
+from src.llm.base import Message
 from src.llm.router import LLMRouter, TaskType, create_router
 
 
@@ -77,3 +83,129 @@ class TestCreateRouterAppliesSettings:
         assert router.gemini_api_key == "gemini-from-settings"
         assert router._response_cache.enabled is True
         assert router._response_cache.ttl == 3600
+
+
+class TestCreateRouterReloadsChangedSettings:
+    """Factory routers follow Settings revisions; direct routers do not."""
+
+    @staticmethod
+    def _save_anthropic_fallback(key: str | None) -> None:
+        """
+        Save an Anthropic fallback and optional stored key for GENERAL.
+
+        Args:
+            key: Stored Anthropic key, or None.
+
+        Returns:
+            None.
+        """
+        storage = get_storage()
+        settings = storage.load_settings()
+        settings.api_config.anthropic_api_key = key
+        settings.api_config.cloud_fallback_provider = CloudProvider.ANTHROPIC
+        settings.routing["general"] = ModelRouting(
+            task_type="general",
+            primary_provider=Provider.OLLAMA,
+            primary_model="qwen2.5:3b",
+            fallback_provider=Provider.ANTHROPIC,
+            fallback_model="claude-haiku-4-5-20251001",
+        )
+        storage.save_settings(settings)
+
+    def test_generate_reloads_removed_key_and_none_fallback(self) -> None:
+        """
+        The next generate sees key removal and disables cloud fallback.
+
+        Returns:
+            None.
+        """
+        self._save_anthropic_fallback("sk-ant-old")
+        router = create_router(api_key="constructor-key")
+        assert router.api_key == "sk-ant-old"
+
+        storage = get_storage()
+        changed = storage.load_settings()
+        changed.api_config.anthropic_api_key = None
+        changed.api_config.cloud_fallback_provider = CloudProvider.NONE
+        changed.routing = apply_cloud_fallback_provider(
+            changed.routing, CloudProvider.NONE
+        )
+        storage.save_settings(changed)
+
+        ollama = MagicMock()
+        ollama.generate.side_effect = RuntimeError("ollama down")
+        anthropic = MagicMock()
+
+        def get_client(provider: str, model: str, config: Any = None) -> Any:
+            return ollama if provider == "ollama" else anthropic
+
+        with patch.object(router, "_get_client", side_effect=get_client):
+            with pytest.raises(RuntimeError, match="ollama down"):
+                router.generate(
+                    [Message(role="user", content="hi")],
+                    task_type=TaskType.GENERAL,
+                )
+
+        anthropic.generate.assert_not_called()
+        assert router.api_key == "constructor-key"
+
+    def test_removed_saved_key_uses_environment_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        Removing a saved key lets ClaudeClient use ANTHROPIC_API_KEY.
+
+        Args:
+            monkeypatch: Pytest environment fixture.
+
+        Returns:
+            None.
+        """
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "env-anthropic-key")
+        self._save_anthropic_fallback("sk-ant-old")
+        router = create_router()
+
+        storage = get_storage()
+        changed = storage.load_settings()
+        changed.api_config.anthropic_api_key = None
+        storage.save_settings(changed)
+
+        router._refresh_user_settings_if_changed()
+        client = router._get_client("anthropic", "claude-haiku-4-5-20251001")
+        assert client.api_key == "env-anthropic-key"
+        assert router.api_key is None
+
+    def test_direct_router_keeps_routes_after_settings_save(self) -> None:
+        """
+        A directly built LLMRouter does not follow saved Settings.
+
+        Returns:
+            None.
+        """
+        route = LLMRouter.DEFAULT_ROUTES[TaskType.GENERAL]
+        router = LLMRouter(routes={TaskType.GENERAL: route})
+        original_routes = router.routes
+
+        self._save_anthropic_fallback("sk-ant-new")
+
+        assert router.routes is original_routes
+        assert router.api_key is None
+
+    def test_api_key_delete_reaches_long_lived_router(self, client: TestClient) -> None:
+        """
+        The API DELETE is observed on the long-lived router's next call.
+
+        Args:
+            client: Shared FastAPI TestClient.
+
+        Returns:
+            None.
+        """
+        self._save_anthropic_fallback("sk-ant-old")
+        router = create_router(api_key="constructor-key")
+
+        response = client.delete("/api/settings/api-keys/anthropic")
+        assert response.status_code == 200
+
+        router._refresh_user_settings_if_changed()
+        assert router.api_key == "constructor-key"
