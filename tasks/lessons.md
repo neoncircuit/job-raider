@@ -3361,3 +3361,14 @@
 - For smoke navigation and 404 gotos in Playwright, allow up to 60 s and use `waitUntil: "domcontentloaded"` where a full load is not required.
 - When a local Docker Playwright suite fails only on cold soft-nav, clear `.next` and re-run before treating it as a product bug.
 - Keep the mobile `toPass` open-nav retry; that flake is separate from compile time.
+
+### Prove that a mutation was applied with a fixed-string check, not the regex that applied it
+
+**Lesson:** In the R11 review, an anchored `sed` pattern (`/^        self\._refresh_user_settings_if_changed()$/d`) matched nothing, and a `grep` with the same pattern reported 0 matches. That looked like proof that the lines were gone, so the passing tests looked like a weak test. The file was unchanged (same checksum, and `grep -F` still found 2 calls). With an exact string replacement, the test failed as expected.
+
+**Why:**
+- A check that uses the same pattern as the edit shares the same mistake. If the pattern matches nothing, the edit and the check agree that nothing is there.
+
+**How to apply:**
+- After a mutation, compare the file checksum with the backup, and count the target with `grep -F` (fixed string). Both must change before you read the test result.
+- Prefer an exact string replacement in Python that prints how many occurrences it replaced. Stop if the count is 0.

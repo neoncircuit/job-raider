@@ -308,6 +308,11 @@ Smaller items:
 - [x] **R7a.** "Remove saved key" saves the settings, which changes `updated_at`. `SettingsPage` keys `SettingsForm` on `updated_at`, so the form remounts and discards unsaved edits in other fields. Update the query cache from the DELETE response without a remount, or warn when the form has unsaved changes.
   - **Done (2026-10-21):** `SettingsForm` is keyed on a local version that changes only after Save or Reset. Key removal and background refetches update server flags without remounting or losing drafts; Save/Reset cache their returned settings before replacing form values. Prove: `keeps unsaved edits when key removal refetches newer settings` and `shows values returned by a successful save` (before: maximum cost reset from 17 to 5). Mutation: restore the `updated_at` key → draft-preservation test fails; restored file → 3 tests pass.
 
+**Review of R11 and R7a (2026-10-21):** The changes are correct. Full gate in WSL: Black, ruff, mypy gate 182 known and 0 new, pytest 1,106 passed (the real settings file's modification time did not change), ESLint, tsc (with `.next` deleted first), Prettier, Vitest 252 passed in 46 files, `next build`, and Playwright 42 passed with 0 retries. Both mutations repeated: with the two `generate` reload calls removed, `test_generate_reloads_removed_key_and_none_fallback` fails (the router takes the Anthropic fallback); with the `updated_at` key restored, the draft test fails. No other code writes the saved Settings from the UI (Ollama tier changes stay in the form until Save), so the local form version is safe. Small items:
+
+- [ ] **R11a.** `apply_user_settings` reads the Settings revision after `load_settings()`. If a save lands between the two, the router records the new revision with the old settings and misses that save until the next one. Read the revision before loading.
+- The API-level R11 test uses a new `create_router()` router and calls `_refresh_user_settings_if_changed()` directly, not the cached LinkedIn or agent router. The cached routers are covered indirectly: the Step 2.2 AST test requires `create_router()` everywhere, and the first R11 test proves that such a router reloads on `generate`.
+
 ##### Out of scope for Step 2
 
 - LinkedIn automation / User Agreement / cookie storage hardening (review S9; Step 5).
