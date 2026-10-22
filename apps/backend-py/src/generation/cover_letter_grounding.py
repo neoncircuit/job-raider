@@ -1398,12 +1398,264 @@ def flag_analogical_claims(
     return findings
 
 
+# Number words that mark a checkable quantity. "one" through "ten" are
+# also year words; the longer list is for the non-claim guard and for
+# number checks that compare "four" with "4".
+_CLAIM_NUMBER_WORDS: frozenset[str] = frozenset(
+    {
+        "zero",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+        "ten",
+        "eleven",
+        "twelve",
+        "thirteen",
+        "fourteen",
+        "fifteen",
+        "sixteen",
+        "seventeen",
+        "eighteen",
+        "nineteen",
+        "twenty",
+        "thirty",
+        "forty",
+        "fifty",
+        "sixty",
+        "seventy",
+        "eighty",
+        "ninety",
+        "hundred",
+        "thousand",
+        "million",
+    }
+)
+
+# Past-tense verbs that state a fact about work the candidate did.
+# "hired me" is removed before this list is applied: that phrase is the
+# plan "if <company> hired me", not a claim that the candidate hired anyone.
+_PAST_CLAIM_VERBS: frozenset[str] = frozenset(
+    {
+        "added",
+        "architected",
+        "automated",
+        "boosted",
+        "built",
+        "completed",
+        "created",
+        "cut",
+        "decreased",
+        "delivered",
+        "deployed",
+        "designed",
+        "developed",
+        "earned",
+        "established",
+        "finished",
+        "fixed",
+        "grew",
+        "headed",
+        "hired",
+        "implemented",
+        "improved",
+        "increased",
+        "introduced",
+        "invented",
+        "joined",
+        "launched",
+        "led",
+        "lowered",
+        "maintained",
+        "managed",
+        "measured",
+        "mentored",
+        "migrated",
+        "operated",
+        "optimized",
+        "oversaw",
+        "owned",
+        "produced",
+        "published",
+        "raised",
+        "ran",
+        "received",
+        "reduced",
+        "refactored",
+        "removed",
+        "rewrote",
+        "rewritten",
+        "saved",
+        "shipped",
+        "spearheaded",
+        "split",
+        "started",
+        "supervised",
+        "took",
+        "trained",
+        "used",
+        "wrote",
+    }
+)
+
+_LEADING_GREETING_RE = re.compile(
+    r"^(?:"
+    r"dear\s+[a-z]+(?:\s+[a-z]+){0,3}\s*,\s*"
+    r"|"
+    r"(?:hello|hi|hey|good\s+(?:day|morning|afternoon|evening))"
+    r"(?:\s+[a-z]+){0,2}\s*[.!?]\s*"
+    r")",
+    re.IGNORECASE,
+)
+
+_PURE_GREETING_RE = re.compile(
+    r"^(?:hello|hi|hey|good\s+(?:day|morning|afternoon|evening)|"
+    r"dear\s+[a-z]+(?:\s+[a-z]+){0,3})\s*[.!?]?$",
+    re.IGNORECASE,
+)
+
+_SIGN_OFF_RE = re.compile(
+    r"^(?:sincerely|best\s+regards|kind\s+regards|warm\s+regards|"
+    r"regards|yours\s+sincerely|yours\s+truly|respectfully)\b",
+    re.IGNORECASE,
+)
+
+_THANKS_RE = re.compile(r"\b(?:thank\s+you|thanks)\b", re.IGNORECASE)
+
+_INTEREST_OR_VALUE_RE = re.compile(
+    r"^(?:"
+    r"i(?:\s+am|'m)\s+(?:excited|interested|eager|happy|glad|pleased|"
+    r"writing|applying|motivated|passionate)\b|"
+    r"i\s+(?:value|enjoy|prefer|appreciate)\b|"
+    r"i\s+care\s+(?:about|more)\b"
+    r")",
+    re.IGNORECASE,
+)
+
+_PLAN_RE = re.compile(
+    r"^(?:"
+    r"i\s+would\b|"
+    r"i'?d\b|"
+    r"if\b.{0,80}?\bhired\s+me\b|"
+    r"in\s+(?:my|a|the)\s+first\s+(?:month|months|week|weeks)\b|"
+    r"(?:an|a)\s+early\s+week\b|"
+    r"i\s+(?:plan|intend|hope)\s+to\b"
+    r")",
+    re.IGNORECASE,
+)
+
+_HIRED_ME_RE = re.compile(r"\bhired\s+me\b", re.IGNORECASE)
+
+
+def _strip_leading_greeting(sentence: str) -> str:
+    """
+    Remove a greeting clause from the start of a sentence.
+
+    A clause such as "Dear Hiring Team," stays on the same sentence as the
+    claim that follows it, because the splitter only breaks on ``.!?``.
+    The clause is removed so its words cannot raise the overlap of that claim.
+
+    Args:
+        sentence: One sentence from the letter, already stripped.
+
+    Returns:
+        The sentence without a leading greeting. Empty when the sentence
+        is only a greeting.
+    """
+    text = sentence.strip()
+    match = _LEADING_GREETING_RE.match(text)
+    if not match:
+        return text
+    return text[match.end() :].strip()
+
+
+def _sentence_has_claim_guard(sentence: str) -> bool:
+    """
+    Return whether a sentence may state a checkable fact.
+
+    A number, a duration, a technology from the lexicon, or a past-tense
+    claim verb blocks the non-claim skip. "hired me" is not a claim verb:
+    it is the plan "if the company hired me".
+
+    Args:
+        sentence: Sentence text after a leading greeting has been removed.
+
+    Returns:
+        True when the sentence must stay in the overlap check.
+    """
+    text = (sentence or "").strip()
+    if not text:
+        return False
+    if re.search(r"\d", text):
+        return True
+    scrubbed = _HIRED_ME_RE.sub(" ", text)
+    tokens = [match.group(0).lower() for match in _WORD_RE.finditer(scrubbed)]
+    if any(
+        token in _CLAIM_NUMBER_WORDS or token in _PAST_CLAIM_VERBS for token in tokens
+    ):
+        return True
+    if _DURATION_CLAIM_RE.search(text):
+        return True
+    return bool(extract_technologies(text))
+
+
+def _call_to_action_phrases() -> Sequence[str]:
+    """
+    Return the validator's call-to-action phrases.
+
+    Imported lazily so this module and the validator do not import each
+    other while either module is still loading.
+
+    Returns:
+        Phrase list from ``CoverLetterValidator.CALL_TO_ACTION_PHRASES``.
+    """
+    from .cover_letter_validator import CoverLetterValidator
+
+    return CoverLetterValidator.CALL_TO_ACTION_PHRASES
+
+
+def _is_skippable_non_claim(sentence: str) -> bool:
+    """
+    Return whether a sentence states no fact about the candidate.
+
+    Skipped types are a greeting, a sign-off, thanks, a call to action,
+    a statement of interest, motivation, values, or working style, and a
+    plan or intention. The claim guard overrides every one of those types.
+
+    Args:
+        sentence: Sentence text after a leading greeting has been removed.
+
+    Returns:
+        True when the overlap check should ignore the sentence.
+    """
+    text = sentence.strip()
+    if not text:
+        return True
+    if _sentence_has_claim_guard(text):
+        return False
+    if _SIGN_OFF_RE.match(text) or _PURE_GREETING_RE.match(text):
+        return True
+    if _THANKS_RE.search(text):
+        return True
+    lowered = text.lower()
+    if any(phrase in lowered for phrase in _call_to_action_phrases()):
+        return True
+    if _INTEREST_OR_VALUE_RE.match(text) or _PLAN_RE.match(text):
+        return True
+    return False
+
+
 def flag_ungrounded_sentences(
     letter_text: str,
     resume_bullets: Sequence[str],
     min_overlap_ratio: float = 0.3,
     jd_terms: Optional[Iterable[str]] = None,
-    closing_min_overlap_ratio: float = 0.4,
+    closing_min_overlap_ratio: float = 0.3,
 ) -> List[str]:
     """
     Flag sentences in a generated cover letter with weak grounding in the resume.
@@ -1413,9 +1665,19 @@ def flag_ungrounded_sentences(
     are likely model-synthesized flourish rather than restated fact, and are
     surfaced for manual review rather than auto-approved.
 
-    Closing-paragraph sentences use a stricter overlap threshold, and sentences
-    that introduce overclaim verbs (for example ``deployed``, ``production``,
-    ``launched``) absent from the grounding corpus are always flagged.
+    A greeting, sign-off, thanks, call to action, statement of interest or
+    values, or plan is skipped when it states no fact. A leading greeting
+    clause is removed first so it cannot hide the claim that follows it.
+    A number, a duration, a lexicon technology, or a past-tense claim verb
+    keeps the sentence in the check.
+
+    The closing paragraph used to require a higher overlap (0.4) than the
+    body (0.3). On the 2026-10-22 grounding set those two thresholds flagged
+    the same sentences, so the default closing threshold is now the body
+    threshold. A caller can still pass a higher ``closing_min_overlap_ratio``.
+    Sentences that introduce overclaim verbs (for example ``deployed``,
+    ``production``, ``launched``) absent from the grounding corpus are
+    always flagged.
 
     Args:
         letter_text: The generated cover letter body.
@@ -1426,8 +1688,10 @@ def flag_ungrounded_sentences(
             body sentences to be considered grounded.
         jd_terms: Optional job-description / requirement phrases that are
             also valid grounding (the letter may address JD needs by name).
-        closing_min_overlap_ratio: Stricter overlap threshold for sentences
-            in the final paragraph.
+        closing_min_overlap_ratio: Overlap threshold for sentences in the
+            final paragraph. The default matches ``min_overlap_ratio``. A
+            stricter closing value is not the default: on the 2026-10-22
+            grounding set it flagged the same sentences as the body threshold.
 
     Returns:
         A list of sentences from the letter that fall below the overlap
@@ -1454,7 +1718,11 @@ def flag_ungrounded_sentences(
         cleaned = sentence.strip()
         if not cleaned:
             continue
-        words = significant_words(cleaned)
+        remainder = _strip_leading_greeting(cleaned)
+        if _is_skippable_non_claim(remainder):
+            continue
+        checked = remainder if remainder else cleaned
+        words = significant_words(checked)
         if not words:
             continue
 
@@ -1468,7 +1736,7 @@ def flag_ungrounded_sentences(
             if word in _OVERCLAIM_TOKENS and word not in ground_words
         ]
         if overclaim or overlap < threshold:
-            flagged.append(cleaned.rstrip("."))
+            flagged.append(checked.rstrip("."))
 
     return flagged
 

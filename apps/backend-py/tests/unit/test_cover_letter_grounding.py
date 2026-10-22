@@ -726,3 +726,48 @@ def test_calc_grounding_penalty_includes_analogical_claims():
     assert breakdown["soft_ungrounded"] == 0
     assert penalty == 12
     assert breakdown["weights"]["analogical_claim"] == 12
+
+
+def test_non_claim_sentences_are_not_flagged() -> None:
+    """Greetings, sign-offs, thanks, interest, values, and plans are not claims."""
+    resume = ["Wrote internal notes for a billing desk"]
+    letter = (
+        "Hello. "
+        "Good day. "
+        "Sincerely, Alex Kim. "
+        "Best regards. "
+        "Thank you for your time. "
+        "I look forward to a conversation about the opening. "
+        "I am excited about the mission of careful editing. "
+        "I value clear notes and a calm review. "
+        "I enjoy pairing with the editor on a draft. "
+        "I would spend the first month learning the review checklist. "
+        "If Northwind hired me, I would ask how the desk files a correction."
+    )
+    flagged = flag_ungrounded_sentences(letter, resume)
+    assert flagged == []
+
+
+def test_plan_with_a_claim_is_still_flagged() -> None:
+    """A plan that states an unsupported fact is still checked."""
+    resume = ["Wrote internal notes for a billing desk"]
+    letter = "I would bring ten years of Kubernetes experience to this desk."
+    flagged = flag_ungrounded_sentences(letter, resume)
+    assert any("kubernetes" in sentence.lower() for sentence in flagged)
+
+
+def test_thanks_does_not_hide_the_following_claim() -> None:
+    """A thanks sentence is skipped, and the next claim sentence is not."""
+    resume = ["Wrote internal notes for a billing desk"]
+    letter = "Thank you. At my last job I cut costs by 90%."
+    flagged = flag_ungrounded_sentences(letter, resume)
+    assert not any(sentence.lower().startswith("thank") for sentence in flagged)
+    assert any("90" in sentence for sentence in flagged)
+
+
+def test_leading_greeting_clause_does_not_hide_a_claim() -> None:
+    """A greeting clause before the claim does not raise the overlap enough to hide it."""
+    resume = ["The dear hiring partner keeps a quiet weekly note"]
+    letter = "Dear Hiring Partner, I invented a private ledger for the vault."
+    flagged = flag_ungrounded_sentences(letter, resume)
+    assert any("invented" in sentence.lower() for sentence in flagged)
