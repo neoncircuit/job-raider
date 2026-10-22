@@ -535,7 +535,32 @@ flowchart LR
 
   No label F1 fell. Recall of `ungrounded_claims` stayed 1.000. The remaining clean false positives are claim sentences with weak overlap, not greetings or sign-offs.
 
-- [ ] **F2. Unsupported numbers (effort: S; M7, part 1).** Add a number check to `ungrounded_claims`: each percentage, multiplier ("3x"), or count in a sentence about the candidate must appear in the profile (bullets, highlights, descriptions), after normalization ("90%", "90 percent", "ninety percent"). This replaces the M7 idea of keeping short tokens in the word overlap; the `len(word) > 3` filter at `cover_letter_grounding.py:414` stays unless the eval shows a need. Tests: "cut costs by 90%" and "3x faster" are flagged for a profile without those numbers, and supported numbers are not.
+- [x] **F2. Unsupported numbers (effort: S; M7, part 1).** Add a number check to `ungrounded_claims`: each percentage, multiplier ("3x"), or count in a sentence about the candidate must appear in the profile (bullets, highlights, descriptions), after normalization ("90%", "90 percent", "ninety percent"). This replaces the M7 idea of keeping short tokens in the word overlap; the `len(word) > 3` filter at `cover_letter_grounding.py:414` stays unless the eval shows a need. Tests: "cut costs by 90%" and "3x faster" are flagged for a profile without those numbers, and supported numbers are not.
+
+  **Done (2026-10-22).** `flag_unsupported_number_sentences` checks a sentence that F1 does not skip. A percent (`90%`, `90 percent`, `ninety percent`), a multiplier (`3x`, `3 times`), or a count with a noun (`four engineers` when the profile says `4`) must appear in the summary, experience descriptions and highlights, project descriptions and highlights, or education text. Durations and calendar years are not checked. A count is checked only when the sentence has a past-tense claim verb. The `len(word) > 3` filter in `significant_words` stays. This eval did not show a need to remove it.
+
+  Tests, before the function existed: 5 failed with `ImportError: cannot import name 'flag_unsupported_number_sentences'`. After the function, `test_cover_letter_grounding.py` and `test_cover_letter_validator.py` passed (61 tests).
+
+  Mutation: `if unsupported:` was replaced with `if False and unsupported:` (1 occurrence). Checksum changed (`e098df84...` to `dc74a862...`). `grep -F` count of the mutated text was 1. `test_unsupported_percent_and_multiplier_are_flagged` failed (`assert '90%' in ''`). The file was restored and matched the backup byte for byte.
+
+  A first eval flagged the plan sentence "one test" in `clean__harbor_tests` and put `clean_false_positive_rate` back to 1.000. `ungrounded_claims` F1 fell from 0.680 to 0.673. That count has no past-tense claim verb, so it is not an achievement figure. The check now ignores such counts. A regression test covers "A good early task on the desk is one note about the change."
+
+  Eval after that correction: `.venv/bin/python main.py eval grounding` from `apps/backend-py`. Git SHA `972bddeb3896f6700ec065d3cb45632f37b06669`, `git_dirty` true. Dataset SHA-256 unchanged `13e5ec3d685a45d93da14e72ac1ea5f58239b94af98f7fb909dda58278b1c2f0`. MLflow run `353119451f9e4acca1abf9dfa60c688a`. Case predictions are identical to the F1 run. No label F1 fell.
+
+  | Label | P before (F1) | P after | R before | R after | F1 before | F1 after | Predicted before | Predicted after |
+  |-------|---------------|---------|----------|---------|-----------|----------|------------------|-----------------|
+  | `fabricated_technology` | 0.500 | 0.500 | 0.875 | 0.875 | 0.636 | 0.636 | 14 | 14 |
+  | `inflated_duration` | 1.000 | 1.000 | 0.800 | 0.800 | 0.889 | 0.889 | 4 | 4 |
+  | `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+  | `fabricated_experience` | 1.000 | 1.000 | 0.125 | 0.125 | 0.222 | 0.222 | 1 | 1 |
+  | `analogical_claim` | 1.000 | 1.000 | 0.667 | 0.667 | 0.800 | 0.800 | 2 | 2 |
+  | `scope_inflation` | 0.667 | 0.667 | 0.500 | 0.500 | 0.571 | 0.571 | 3 | 3 |
+  | `technique_mismatch` | 1.000 | 1.000 | 0.667 | 0.667 | 0.800 | 0.800 | 2 | 2 |
+  | `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
+  | micro | 0.581 | 0.581 | 0.806 | 0.806 | 0.675 | 0.675 | — | — |
+
+  `clean_false_positive_rate` stays 0.966 (28 of 29). `ungrounded_claims` stays predicted on 64 of 65 cases. The unsupported numbers in this set were already flagged by the overlap check.
+
 - [ ] **F3. Technology detection (effort: M; M7, part 2).** (a) The homonyms `swift`, `express`, `spring`, and `spark` (allowlist at `cover_letter_grounding.py:163-209`) count only in a technology context, for example "Spring Boot", "Express.js", "Apache Spark", "Swift for iOS", or "built with Spark". (b) `Go` (in `_AMBIGUOUS_TEXT_ALIASES`, line 363) counts only in a technology context, for example "in Go", "Go services", "written in Go", or "Golang". (c) Negated claims are disclaimers: "I have not run X", "I have never used X" (`_TECH_DISCLAIMER_BEFORE_RE`, line 579). (d) Related technologies (Question 2): SQL is supported when the profile has a SQL database such as PostgreSQL, MySQL, or SQLite. Tests for each part, with normal-English negatives.
 - [ ] **F4. Duration ranges (effort: S).** "3-5 years" compares the top of the range with the cap. Today the code uses the bottom on purpose (comment at `cover_letter_grounding.py:965`, "conservative claim amount"). Reason for the change: the guide counts a range as inflated when its top is longer than the cap, and a reader takes the top as the claim (Question 3). Tests: a range above the cap is flagged; a range within the cap is not.
 - [ ] **F5. Scope inflation (effort: S).** Match `_SCOPE_INFLATION_PHRASES` (`cover_letter_grounding.py:124`) as whole words. Today the substring match (about line 1185) makes "called the" match "led the". Add "managed a team", "managed N engineers", "headed", "oversaw", and "owned the". Make the allowance per claim: the profile must have the same leadership phrase with the same object (for example "led a team of 3"); the verb alone somewhere in the profile is not enough. Tests: "before I called the speedup real" is not flagged; "managed a team of twelve" is flagged; "led fraud research at <another employer>" is flagged when the profile has only "Led a team of 3".

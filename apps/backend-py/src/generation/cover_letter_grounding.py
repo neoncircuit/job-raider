@@ -1574,6 +1574,24 @@ def _strip_leading_greeting(sentence: str) -> str:
     return text[match.end() :].strip()
 
 
+def _has_past_claim_verb(sentence: str) -> bool:
+    """
+    Return whether the sentence uses a past-tense claim verb.
+
+    ``hired me`` is removed first. That phrase is a plan, not a claim that
+    the candidate hired someone.
+
+    Args:
+        sentence: Sentence text.
+
+    Returns:
+        True when a verb from the claim list is present.
+    """
+    scrubbed = _HIRED_ME_RE.sub(" ", sentence or "")
+    tokens = [match.group(0).lower() for match in _WORD_RE.finditer(scrubbed)]
+    return any(token in _PAST_CLAIM_VERBS for token in tokens)
+
+
 def _sentence_has_claim_guard(sentence: str) -> bool:
     """
     Return whether a sentence may state a checkable fact.
@@ -1593,10 +1611,9 @@ def _sentence_has_claim_guard(sentence: str) -> bool:
         return False
     if re.search(r"\d", text):
         return True
-    scrubbed = _HIRED_ME_RE.sub(" ", text)
-    tokens = [match.group(0).lower() for match in _WORD_RE.finditer(scrubbed)]
-    if any(
-        token in _CLAIM_NUMBER_WORDS or token in _PAST_CLAIM_VERBS for token in tokens
+    tokens = [match.group(0).lower() for match in _WORD_RE.finditer(text)]
+    if any(token in _CLAIM_NUMBER_WORDS for token in tokens) or _has_past_claim_verb(
+        text
     ):
         return True
     if _DURATION_CLAIM_RE.search(text):
@@ -1648,6 +1665,267 @@ def _is_skippable_non_claim(sentence: str) -> bool:
     if _INTEREST_OR_VALUE_RE.match(text) or _PLAN_RE.match(text):
         return True
     return False
+
+
+# Word forms of quantities. Keys match ``_CLAIM_NUMBER_WORDS``.
+_CLAIM_NUMBER_VALUES: dict[str, float] = {
+    "zero": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "thirteen": 13,
+    "fourteen": 14,
+    "fifteen": 15,
+    "sixteen": 16,
+    "seventeen": 17,
+    "eighteen": 18,
+    "nineteen": 19,
+    "twenty": 20,
+    "thirty": 30,
+    "forty": 40,
+    "fifty": 50,
+    "sixty": 60,
+    "seventy": 70,
+    "eighty": 80,
+    "ninety": 90,
+    "hundred": 100,
+    "thousand": 1000,
+    "million": 1000000,
+}
+
+_NUMBER_WORD_PATTERN = "|".join(sorted(_CLAIM_NUMBER_VALUES, key=len, reverse=True))
+_NUMBER_TOKEN = rf"(?:\d+(?:\.\d+)?|{_NUMBER_WORD_PATTERN})"
+
+_PERCENT_NUMBER_RE = re.compile(
+    rf"(?<![A-Za-z0-9])(?P<num>{_NUMBER_TOKEN})"
+    rf"(?:\s*%|\s*percent(?:age)?(?:[-\s]*points?)?\b)",
+    re.IGNORECASE,
+)
+_MULTIPLIER_NUMBER_RE = re.compile(
+    rf"(?<![A-Za-z0-9])(?P<num>{_NUMBER_TOKEN})(?:\s*x\b|\s+times\b)",
+    re.IGNORECASE,
+)
+_COUNT_WITH_NOUN_RE = re.compile(
+    rf"(?<![A-Za-z0-9])(?P<num>{_NUMBER_TOKEN})\s+(?P<noun>[A-Za-z][A-Za-z-]*)\b",
+    re.IGNORECASE,
+)
+_BARE_NUMBER_RE = re.compile(
+    rf"(?<![A-Za-z0-9])(?P<num>{_NUMBER_TOKEN})(?![A-Za-z0-9])",
+    re.IGNORECASE,
+)
+_SPAN_DURATION_RE = re.compile(
+    rf"(?<![A-Za-z0-9]){_NUMBER_TOKEN}"
+    rf"(?:\s*(?:[-–—]|to)\s*{_NUMBER_TOKEN})?\s*(?:years?|months?)\b",
+    re.IGNORECASE,
+)
+_CALENDAR_YEAR_RE = re.compile(
+    r"\b(?:in|during|since|from|before|after|until|circa|year)\s+(?:19|20)\d{2}\b",
+    re.IGNORECASE,
+)
+_COUNT_NOUNS_TO_SKIP: frozenset[str] = frozenset(
+    {
+        "month",
+        "months",
+        "percent",
+        "percentage",
+        "point",
+        "points",
+        "time",
+        "times",
+        "year",
+        "years",
+    }
+)
+
+
+def _mask_pattern(text: str, pattern: re.Pattern[str]) -> str:
+    """
+    Replace each match with spaces of the same length.
+
+    Args:
+        text: Source text.
+        pattern: Compiled pattern whose matches should be hidden.
+
+    Returns:
+        Text with those matches blanked out.
+    """
+    return pattern.sub(lambda match: " " * len(match.group(0)), text)
+
+
+def _parse_number_token(token: str) -> Optional[float]:
+    """
+    Convert a digit or number word to a float.
+
+    Args:
+        token: A token such as ``90`` or ``ninety``.
+
+    Returns:
+        The numeric value, or None when the token is not a number.
+        Integral values are returned as whole floats so ``4`` and ``4.0`` match.
+    """
+    lowered = (token or "").strip().lower()
+    if lowered in _CLAIM_NUMBER_VALUES:
+        return float(_CLAIM_NUMBER_VALUES[lowered])
+    try:
+        value = float(lowered)
+    except ValueError:
+        return None
+    if value.is_integer():
+        return float(int(value))
+    return value
+
+
+def _collect_checkable_numbers(
+    text: str, *, counts_need_noun: bool
+) -> tuple[Set[float], Set[float], Set[float]]:
+    """
+    Collect percents, multipliers, and counts from fact text.
+
+    Durations (``five years``, ``3 months``) and calendar years (``in 2021``)
+    are removed before the collection. ``90%``, ``90 percent``, and
+    ``ninety percent`` are the same percent. ``3x`` and ``3 times`` are the
+    same multiplier. ``four`` and ``4`` are the same count.
+
+    Args:
+        text: Profile fact text or one letter sentence.
+        counts_need_noun: When True, a count is kept only when a noun follows
+            it. Profile text uses False so a bare ``4`` can support
+            ``four engineers``.
+
+    Returns:
+        Three sets: percent values, multiplier values, and count values.
+    """
+    working = text or ""
+    for pattern in (_DURATION_CLAIM_RE, _SPAN_DURATION_RE, _CALENDAR_YEAR_RE):
+        working = _mask_pattern(working, pattern)
+
+    percents: Set[float] = set()
+    for match in _PERCENT_NUMBER_RE.finditer(working):
+        value = _parse_number_token(match.group("num"))
+        if value is not None:
+            percents.add(value)
+    working = _mask_pattern(working, _PERCENT_NUMBER_RE)
+
+    multipliers: Set[float] = set()
+    for match in _MULTIPLIER_NUMBER_RE.finditer(working):
+        value = _parse_number_token(match.group("num"))
+        if value is not None:
+            multipliers.add(value)
+    working = _mask_pattern(working, _MULTIPLIER_NUMBER_RE)
+
+    counts: Set[float] = set()
+    if counts_need_noun:
+        for match in _COUNT_WITH_NOUN_RE.finditer(working):
+            noun = match.group("noun").lower()
+            if noun in _COUNT_NOUNS_TO_SKIP:
+                continue
+            value = _parse_number_token(match.group("num"))
+            if value is not None:
+                counts.add(value)
+    else:
+        for match in _BARE_NUMBER_RE.finditer(working):
+            value = _parse_number_token(match.group("num"))
+            if value is not None:
+                counts.add(value)
+    return percents, multipliers, counts
+
+
+def collect_profile_fact_text(profile: UserProfile) -> str:
+    """
+    Join the profile fields that may contain a checkable number.
+
+    The fields are the summary, experience descriptions and highlights,
+    project descriptions and highlights, and education text. Skill names
+    and dates are not included.
+
+    Args:
+        profile: Candidate profile.
+
+    Returns:
+        The joined fact text. Empty when those fields are empty.
+    """
+    parts: List[str] = []
+    if profile.summary:
+        parts.append(profile.summary)
+    for experience in profile.experience or []:
+        if experience.description:
+            parts.append(experience.description)
+        parts.extend(item for item in (experience.highlights or []) if item)
+    for project in profile.projects or []:
+        if project.description:
+            parts.append(project.description)
+        parts.extend(item for item in (project.highlights or []) if item)
+    for education in profile.education or []:
+        for part in (education.degree, education.school, education.description):
+            if part:
+                parts.append(part)
+        parts.extend(item for item in (education.honors or []) if item)
+        parts.extend(item for item in (education.coursework or []) if item)
+    return "\n".join(parts)
+
+
+def flag_unsupported_number_sentences(
+    letter_text: str,
+    profile: UserProfile,
+) -> List[str]:
+    """
+    Flag candidate sentences whose percent, multiplier, or count is not in the profile.
+
+    Only sentences that the ungrounded check does not skip are examined.
+    A percent must match a percent in the profile, a multiplier must match a
+    multiplier, and a count with a noun must match a count. A count is checked
+    only when the sentence has a past-tense claim verb, so a plan such as
+    "a good early task is one test" is not an achievement figure. Durations
+    and calendar years are not checked here.
+
+    Args:
+        letter_text: Cover-letter body.
+        profile: Candidate profile used as the source of the numbers.
+
+    Returns:
+        Sentences that contain at least one unsupported number.
+    """
+    if not letter_text or not letter_text.strip():
+        return []
+    profile_percents, profile_multipliers, profile_counts = _collect_checkable_numbers(
+        collect_profile_fact_text(profile),
+        counts_need_noun=False,
+    )
+    flagged: List[str] = []
+    for sentence in _SENTENCE_SPLIT.split(letter_text.strip()):
+        cleaned = sentence.strip()
+        if not cleaned:
+            continue
+        remainder = _strip_leading_greeting(cleaned)
+        if _is_skippable_non_claim(remainder):
+            continue
+        checked = remainder if remainder else cleaned
+        percents, multipliers, counts = _collect_checkable_numbers(
+            checked,
+            counts_need_noun=True,
+        )
+        # A count with no past-tense claim verb is not an achievement figure.
+        # "A good early task is one test" is a plan. Checking it dropped
+        # ungrounded F1 on the grounding set.
+        if not _has_past_claim_verb(checked):
+            counts = set()
+        unsupported = (
+            any(value not in profile_percents for value in percents)
+            or any(value not in profile_multipliers for value in multipliers)
+            or any(value not in profile_counts for value in counts)
+        )
+        if unsupported:
+            flagged.append(checked.rstrip("."))
+    return flagged
 
 
 def flag_ungrounded_sentences(

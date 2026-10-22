@@ -771,3 +771,102 @@ def test_leading_greeting_clause_does_not_hide_a_claim() -> None:
     letter = "Dear Hiring Partner, I invented a private ledger for the vault."
     flagged = flag_ungrounded_sentences(letter, resume)
     assert any("invented" in sentence.lower() for sentence in flagged)
+
+
+def _billing_profile(highlights: list[str] | None = None) -> UserProfile:
+    """Profile whose narrative mentions a billing desk and no extra metrics."""
+    return UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Remote"),
+        summary="I kept notes for a billing desk and rewrote the nightly job.",
+        experience=[
+            WorkExperience(
+                title="Analyst",
+                company="Northwind Desk",
+                start_date=datetime(2020, 1, 1),
+                end_date=datetime(2022, 1, 1),
+                description="I kept notes for a billing desk and rewrote the nightly job.",
+                highlights=highlights or ["I kept notes for a billing desk."],
+            )
+        ],
+    )
+
+
+def test_unsupported_percent_and_multiplier_are_flagged() -> None:
+    """A percent or multiplier absent from the profile is an ungrounded claim."""
+    from src.generation.cover_letter_grounding import flag_unsupported_number_sentences
+
+    profile = _billing_profile()
+    flagged = flag_unsupported_number_sentences(
+        "I cut costs by 90% for the billing desk. "
+        "I shipped features 3x faster during that same job.",
+        profile,
+    )
+    joined = " ".join(flagged).lower()
+    assert "90%" in joined
+    assert "3x" in joined
+    worded = flag_unsupported_number_sentences(
+        "I cut costs by 90 percent for the billing desk.",
+        profile,
+    )
+    assert any("90 percent" in sentence.lower() for sentence in worded)
+
+
+def test_supported_count_in_other_words_is_not_flagged() -> None:
+    """four engineers is supported when the profile text says 4."""
+    from src.generation.cover_letter_grounding import flag_unsupported_number_sentences
+
+    profile = _billing_profile(["The rotation had 4 people on the desk."])
+    flagged = flag_unsupported_number_sentences(
+        "I joined a rotation of four engineers on the billing desk.",
+        profile,
+    )
+    assert flagged == []
+
+
+def test_percent_words_match_a_percent_sign() -> None:
+    """ninety percent matches a profile value written as 90%."""
+    from src.generation.cover_letter_grounding import flag_unsupported_number_sentences
+
+    profile = _billing_profile(["The desk cut wait time by 90%."])
+    flagged = flag_unsupported_number_sentences(
+        "I cut wait time by ninety percent on that desk.",
+        profile,
+    )
+    assert flagged == []
+
+
+def test_multiplier_words_match_a_suffix() -> None:
+    """3 times matches a profile value written as 3x."""
+    from src.generation.cover_letter_grounding import flag_unsupported_number_sentences
+
+    profile = _billing_profile(["The trial shipped features 3x faster."])
+    flagged = flag_unsupported_number_sentences(
+        "I shipped features 3 times faster in the trial.",
+        profile,
+    )
+    assert flagged == []
+
+
+def test_plan_count_without_a_past_verb_is_not_flagged() -> None:
+    """A plan that says one test is not an unsupported achievement count."""
+    from src.generation.cover_letter_grounding import flag_unsupported_number_sentences
+
+    profile = _billing_profile()
+    flagged = flag_unsupported_number_sentences(
+        "A good early task on the desk is one note about the change.",
+        profile,
+    )
+    assert flagged == []
+
+
+def test_duration_and_calendar_year_are_not_number_checked() -> None:
+    """A duration and a calendar year are outside the unsupported-number check."""
+    from src.generation.cover_letter_grounding import flag_unsupported_number_sentences
+
+    profile = _billing_profile(["I used Python on the billing desk."])
+    flagged = flag_unsupported_number_sentences(
+        "I have five years of Python experience. I joined the lab in 2021.",
+        profile,
+    )
+    assert flagged == []

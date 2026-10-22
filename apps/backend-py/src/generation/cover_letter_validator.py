@@ -27,6 +27,7 @@ from .cover_letter_grounding import (
     flag_inconsistent_percent_claims,
     flag_inflated_duration_claims,
     flag_ungrounded_sentences,
+    flag_unsupported_number_sentences,
 )
 from .cover_letter_instructions import (
     DetectedInstructions,
@@ -295,6 +296,16 @@ class CoverLetterValidator:
             resume_bullets,
             jd_terms=grounding_terms,
         )
+        unsupported_numbers = flag_unsupported_number_sentences(content, profile)
+        seen_ungrounded = {
+            item.strip().rstrip(".!?").lower() for item in ungrounded_sentences
+        }
+        for sentence in unsupported_numbers:
+            key = sentence.strip().rstrip(".!?").lower()
+            if key in seen_ungrounded:
+                continue
+            ungrounded_sentences.append(sentence)
+            seen_ungrounded.add(key)
         claim_overclaims = flag_claim_overclaims(
             content,
             profile,
