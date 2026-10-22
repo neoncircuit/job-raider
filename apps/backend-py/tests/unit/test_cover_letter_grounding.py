@@ -870,3 +870,79 @@ def test_duration_and_calendar_year_are_not_number_checked() -> None:
         profile,
     )
     assert flagged == []
+
+
+def test_ordinary_english_homonyms_are_not_technologies() -> None:
+    """swift, spring, spark, and express in ordinary English are not technologies."""
+    from src.generation.cover_letter_grounding import extract_technologies
+
+    letter = (
+        "I sent a swift reply during the spring semester. "
+        "I want to spark curiosity and express my interest in the work."
+    )
+    found = extract_technologies(letter)
+    assert "swift" not in found
+    assert "spring" not in found
+    assert "spark" not in found
+    assert "express" not in found
+
+
+def test_homonyms_count_in_a_technology_context() -> None:
+    """Product names and nearby technology words still count as technologies."""
+    from src.generation.cover_letter_grounding import extract_technologies
+
+    letter = (
+        "I built the service with Spring Boot and an Express server. "
+        "I wrote the batch jobs with Apache Spark. "
+        "I shipped the mobile client in Swift for iOS."
+    )
+    found = extract_technologies(letter)
+    assert {"spring", "express", "spark", "swift"} <= found
+
+
+def test_go_matches_only_in_a_technology_context() -> None:
+    """Go is a technology in 'written in Go', not in 'go live' or 'go through'."""
+    from src.generation.cover_letter_grounding import extract_technologies
+
+    ordinary = "I am ready to go live, and I will go through the checklist."
+    assert "golang" not in extract_technologies(ordinary)
+    technical = "The worker is written in Go and it exposes Go services."
+    assert "golang" in extract_technologies(technical)
+
+
+def test_negated_technology_claims_are_not_treated_as_skills() -> None:
+    """'have not run', 'have never used', and 'do not have' are disclaimers."""
+    from src.generation.cover_letter_grounding import extract_claimed_technologies
+
+    letter = (
+        "I have not run Kubernetes. "
+        "I have never used Terraform. "
+        "I do not have Azure experience."
+    )
+    claimed = extract_claimed_technologies(letter)
+    assert "kubernetes" not in claimed
+    assert "terraform" not in claimed
+    assert "azure" not in claimed
+    later = extract_claimed_technologies(
+        "I have not run Kubernetes. I have run Kubernetes in production."
+    )
+    assert "kubernetes" in later
+
+
+def test_sql_is_supported_when_the_profile_has_a_sql_database() -> None:
+    """SQL is allowed when the profile lists PostgreSQL, and not otherwise."""
+    from src.generation.cover_letter_grounding import flag_fabricated_technologies
+
+    profile = UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Remote"),
+        skills=[Skill(name="PostgreSQL", category=SkillCategory.TOOL)],
+    )
+    letter = "I wrote SQL for the nightly reports."
+    assert "sql" not in flag_fabricated_technologies(letter, profile)
+    bare = UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Remote"),
+        skills=[Skill(name="Python", category=SkillCategory.PROGRAMMING_LANGUAGE)],
+    )
+    assert "sql" in flag_fabricated_technologies(letter, bare)

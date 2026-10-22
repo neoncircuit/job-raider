@@ -200,3 +200,9 @@ retrieval on Atlas Search" when that fact is true.
 - **2026-10-22, length.** A letter has 150 to 350 words and two to four
   paragraphs. Reason: the diversity rule for this set replaces the earlier
   120-to-300-word note.
+- **2026-10-22, SQL and SQL databases.** A letter that says SQL is supported
+  when the resume lists a SQL database (PostgreSQL, MySQL, SQLite, MariaDB,
+  SQL Server, or Oracle), because those skills are SQL. A letter that names
+  one of those databases still needs that database on the resume. Labels did
+  not change. They already treated SQL this way. Reason: the validator treated
+  SQL as a separate skill from the database that implies it.

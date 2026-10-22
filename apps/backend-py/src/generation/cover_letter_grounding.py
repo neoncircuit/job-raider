@@ -541,13 +541,223 @@ def _technology_search_terms() -> List[tuple[str, str]]:
     return candidates
 
 
+# Ordinary English words that are also product names. They count only in a
+# technology context (a product name, or a neighboring technology word).
+_CONTEXTUAL_HOMONYMS: frozenset[str] = frozenset(
+    {"swift", "express", "spring", "spark"}
+)
+
+# Right-hand words that keep the homonym in ordinary English.
+_HOMONYM_ORDINARY_RIGHT: dict[str, frozenset[str]] = {
+    "swift": frozenset({"reply", "response", "pace", "action"}),
+    "express": frozenset({"my", "our", "interest", "gratitude", "concern"}),
+    "spring": frozenset({"semester", "term", "break", "season", "flowers"}),
+    "spark": frozenset({"curiosity", "interest", "joy", "debate"}),
+}
+
+_HOMONYM_LEFT_TECH_RE = re.compile(
+    r"(?:"
+    r"\bapache\s+|"
+    r"(?:\bbuilt|\bwritten|\bdeveloped|\bimplemented|\bcoded|"
+    r"\bshipped|\bwrote|\bused|\busing)"
+    r"(?:\s+(?:with|in|using))?\s+"
+    r")$",
+    re.IGNORECASE,
+)
+
+_HOMONYM_RIGHT_TECH_RE: dict[str, re.Pattern[str]] = {
+    "spring": re.compile(
+        r"^\s*(?:boot|framework|mvc|cloud|data|security|batch|services?)\b",
+        re.IGNORECASE,
+    ),
+    "express": re.compile(
+        r"^\s*(?:\.js|js|server|servers|framework|middleware)\b",
+        re.IGNORECASE,
+    ),
+    "spark": re.compile(
+        r"^\s*(?:sql|streaming|cluster|jobs?)\b",
+        re.IGNORECASE,
+    ),
+    "swift": re.compile(
+        r"^(?:ui\b|\s*(?:for\s+ios|on\s+ios))\b",
+        re.IGNORECASE,
+    ),
+}
+
+# Product names with no token boundary inside the name (SwiftUI, ExpressJS).
+_COMPOUND_PRODUCT_RES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (
+        re.compile(r"(?<![A-Za-z0-9])swiftui(?![A-Za-z0-9])", re.IGNORECASE),
+        "swift",
+    ),
+    (
+        re.compile(r"(?<![A-Za-z0-9])expressjs(?![A-Za-z0-9])", re.IGNORECASE),
+        "express",
+    ),
+)
+
+# "in Go" / "written in Go" / "using Go". The next word must not be an
+# ordinary "go" phrase such as "go live" or "go through".
+_GO_IN_CONTEXT_RE = re.compile(
+    r"(?:"
+    r"(?:written|built|coded|developed|implemented)\s+in\s+|"
+    r"(?:using|with)\s+|"
+    r"(?<![A-Za-z])in\s+"
+    r")(?P<go>go)(?![A-Za-z0-9])",
+    re.IGNORECASE,
+)
+_GO_NOT_TECH_NEXT_RE = re.compile(
+    r"^\s*(?:live|through|ahead|back|on|out|away|home|for|to)\b",
+    re.IGNORECASE,
+)
+_GO_SERVICE_RE = re.compile(
+    r"(?<![A-Za-z0-9])(?P<go>go)(?=\s+services?(?![A-Za-z0-9]))",
+    re.IGNORECASE,
+)
+
+# A SQL database on the resume supports a letter that says SQL.
+# The reverse is not implied: a letter that says PostgreSQL still needs
+# PostgreSQL (or an alias) on the resume. SQL does not stand in for the
+# database name.
+_SQL_DATABASES: frozenset[str] = frozenset(
+    {
+        "postgresql",
+        "mysql",
+        "sqlite",
+        "mariadb",
+        "sql server",
+        "oracle",
+    }
+)
+
+
+def _homonym_in_tech_context(
+    text: str,
+    start: int,
+    end: int,
+    canonical: str,
+) -> bool:
+    """
+    Return whether a homonym span is a technology mention.
+
+    ``swift``, ``express``, ``spring``, and ``spark`` stay ordinary English
+    unless they are a product name or sit next to a technology word.
+
+    Args:
+        text: Source text. Matching is case-insensitive.
+        start: Inclusive start index of the homonym.
+        end: Exclusive end index of the homonym.
+        canonical: Lexicon key for the matched term.
+
+    Returns:
+        True when the span should count as a technology.
+    """
+    left = text[max(0, start - 64) : start]
+    right = text[end : end + 32]
+    ordinary = _HOMONYM_ORDINARY_RIGHT.get(canonical, frozenset())
+    right_word = re.match(r"^\s*([A-Za-z]+)", right)
+    if right_word is not None and right_word.group(1).lower() in ordinary:
+        return False
+    if _HOMONYM_LEFT_TECH_RE.search(left):
+        return True
+    right_re = _HOMONYM_RIGHT_TECH_RE.get(canonical)
+    if right_re is not None and right_re.search(right):
+        return True
+    if canonical == "swift" and re.search(r"(?:^|\s)in\s+$", left, re.IGNORECASE):
+        return True
+    return False
+
+
+def _iter_contextual_go_spans(text: str) -> list[tuple[int, int]]:
+    """
+    Return spans of bare ``Go`` that sit in a technology context.
+
+    Matches ``in Go``, ``written in Go``, ``using Go``, ``with Go``, and
+    ``Go service`` / ``Go services``. ``go live``, ``go through``, and
+    ``ready to go`` do not match. ``Golang`` is a lexicon term and is not
+    handled here.
+
+    Args:
+        text: Source text. Matching is case-insensitive.
+
+    Returns:
+        ``(start, end)`` pairs for the word ``Go`` only.
+    """
+    spans: list[tuple[int, int]] = []
+    for match in _GO_IN_CONTEXT_RE.finditer(text):
+        end = match.end("go")
+        if _GO_NOT_TECH_NEXT_RE.match(text[end:]):
+            continue
+        spans.append((match.start("go"), end))
+    for match in _GO_SERVICE_RE.finditer(text):
+        spans.append((match.start("go"), match.end("go")))
+    return spans
+
+
+def _iter_technology_matches(text: str) -> list[tuple[int, int, str]]:
+    """
+    Return accepted technology spans in ``text``.
+
+    Homonyms count only in a technology context. Bare ``Go`` counts only in
+    a technology context. Other lexicon terms use token boundaries.
+
+    Args:
+        text: Cover-letter body or other free text.
+
+    Returns:
+        ``(start, end, canonical)`` triples. Indexes refer to ``text``.
+    """
+    if not text or not text.strip():
+        return []
+    matches: list[tuple[int, int, str]] = []
+    for term, canonical in _technology_search_terms():
+        key = normalize_tech_name(canonical)
+        pattern = re.compile(
+            rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])",
+            re.IGNORECASE,
+        )
+        for match in pattern.finditer(text):
+            if canonical in _CONTEXTUAL_HOMONYMS and not _homonym_in_tech_context(
+                text, match.start(), match.end(), canonical
+            ):
+                continue
+            matches.append((match.start(), match.end(), key))
+    for pattern, canonical in _COMPOUND_PRODUCT_RES:
+        for match in pattern.finditer(text):
+            matches.append((match.start(), match.end(), canonical))
+    for start, end in _iter_contextual_go_spans(text):
+        matches.append((start, end, "golang"))
+    return matches
+
+
+def _allow_sql_when_database_present(allowed: Set[str]) -> Set[str]:
+    """
+    Add SQL when the resume lists a SQL database.
+
+    PostgreSQL, MySQL, SQLite, MariaDB, SQL Server, and Oracle are SQL.
+    A letter that names one of those databases still needs that database
+    on the resume.
+
+    Args:
+        allowed: Normalized resume technology names.
+
+    Returns:
+        The same names, plus ``sql`` when a SQL database is present.
+    """
+    if allowed & _SQL_DATABASES:
+        return set(allowed) | {"sql"}
+    return set(allowed)
+
+
 def extract_technologies(text: str) -> Set[str]:
     """
     Extract known technology names from free text via the curated lexicon.
 
     Matches are case-insensitive and respect token boundaries so ordinary
-    English is not treated as a technology. Ambiguous short aliases such as
-    ``go`` are excluded from free-text matching.
+    English is not treated as a technology. The homonyms ``swift``,
+    ``express``, ``spring``, and ``spark`` count only in a technology
+    context. Bare ``Go`` counts only in a technology context (``in Go``,
+    ``written in Go``, ``Go services``). ``Golang`` is a normal lexicon term.
 
     Presence-based: includes disclaimed and learn-intent mentions. Use
     ``extract_claimed_technologies`` when claim direction matters.
@@ -558,20 +768,7 @@ def extract_technologies(text: str) -> Set[str]:
     Returns:
         Set of canonical technology keys found in the text.
     """
-    lowered = (text or "").lower()
-    if not lowered.strip():
-        return set()
-
-    found: Set[str] = set()
-    for term, canonical in _technology_search_terms():
-        escaped = re.escape(term)
-        pattern = re.compile(
-            rf"(?<![A-Za-z0-9]){escaped}(?![A-Za-z0-9])",
-            re.IGNORECASE,
-        )
-        if pattern.search(lowered):
-            found.add(normalize_tech_name(canonical))
-    return found
+    return {canonical for _, _, canonical in _iter_technology_matches(text or "")}
 
 
 # Left-context cues that mean the following technology is disclaimed or
@@ -590,9 +787,9 @@ _TECH_DISCLAIMER_BEFORE_RE = re.compile(
     r"(?:\s+experience\s+(?:in|with))?|"
     r"(?:do|does)\s+not\s+have|"
     r"don'?t\s+have|"
-    r"haven'?t\s+(?:used|worked\s+with)|"
-    r"have\s+not\s+(?:used|worked\s+with)|"
-    r"never\s+(?:used|worked\s+with|touched)|"
+    r"haven'?t\s+(?:used|worked\s+with|run)|"
+    r"have\s+not\s+(?:used|worked\s+with|run)|"
+    r"never\s+(?:used|worked\s+with|touched|run)|"
     r"lacking|"
     r"lack\s+of|"
     r"unfamiliar\s+with|"
@@ -636,9 +833,10 @@ def extract_claimed_technologies(text: str) -> Set[str]:
     """
     Extract technologies the letter presents as skills the candidate has.
 
-    Same lexicon and token boundaries as ``extract_technologies``, but skips
-    mentions that only appear in disclaimer or learn-intent contexts (for
-    example ``rather than Java`` or ``eager to pick up Java``). If any
+    Same lexicon, homonym context, and token boundaries as
+    ``extract_technologies``, but skips mentions that only appear in
+    disclaimer or learn-intent contexts (for example ``rather than Java``,
+    ``I have not run Kubernetes``, or ``eager to pick up Java``). If any
     non-disclaimed mention of a technology remains, that technology is kept.
 
     Args:
@@ -647,23 +845,15 @@ def extract_claimed_technologies(text: str) -> Set[str]:
     Returns:
         Set of canonical technology keys claimed (not merely mentioned).
     """
-    lowered = (text or "").lower()
-    if not lowered.strip():
+    if not text or not text.strip():
         return set()
 
     claimed: Set[str] = set()
-    for term, canonical in _technology_search_terms():
-        escaped = re.escape(term)
-        pattern = re.compile(
-            rf"(?<![A-Za-z0-9]){escaped}(?![A-Za-z0-9])",
-            re.IGNORECASE,
-        )
-        for match in pattern.finditer(lowered):
-            if not _is_technology_mention_disclaimed(
-                lowered, match.start(), match.end()
-            ):
-                claimed.add(normalize_tech_name(canonical))
-                break
+    for start, end, canonical in _iter_technology_matches(text):
+        if canonical in claimed:
+            continue
+        if not _is_technology_mention_disclaimed(text, start, end):
+            claimed.add(canonical)
     return claimed
 
 
@@ -685,16 +875,16 @@ def redact_unsupported_technologies(text: str, profile: UserProfile) -> str:
     if not text or not text.strip():
         return text or ""
     allowed = collect_resume_supported_names(profile)
-    redacted = text
-    for term, canonical in _technology_search_terms():
-        if normalize_tech_name(canonical) in allowed:
+    seen: set[tuple[int, int]] = set()
+    spans: list[tuple[int, int]] = []
+    for start, end, canonical in _iter_technology_matches(text):
+        if canonical in allowed or (start, end) in seen:
             continue
-        escaped = re.escape(term)
-        pattern = re.compile(
-            rf"(?<![A-Za-z0-9]){escaped}(?![A-Za-z0-9])",
-            re.IGNORECASE,
-        )
-        redacted = pattern.sub("", redacted)
+        seen.add((start, end))
+        spans.append((start, end))
+    redacted = text
+    for start, end in sorted(spans, reverse=True):
+        redacted = redacted[:start] + redacted[end:]
     redacted = re.sub(r"[ \t]{2,}", " ", redacted)
     redacted = re.sub(r"\s+,", ",", redacted)
     redacted = re.sub(r",\s*,+", ",", redacted)
@@ -710,12 +900,14 @@ def flag_fabricated_technologies(
     Flag technologies the letter claims that are absent from the resume.
 
     Detection is limited to the curated tech lexicon so ordinary English is
-    not flagged. Mentions in disclaimer or learn-intent contexts (for
-    example ``rather than Java`` or ``pick up Java``) are ignored. The
-    allowlist is Technical Skills plus technologies listed on experience
-    and projects (same set as writer keyword filtering). JD-only names such
-    as AWS that never appear on the resume are returned as hard grounding
-    findings when claimed.
+    not flagged. Homonyms and bare ``Go`` count only in a technology
+    context. Mentions in disclaimer or learn-intent contexts (for example
+    ``rather than Java``, ``I have not run Kubernetes``, or ``pick up
+    Java``) are ignored. The allowlist is Technical Skills plus technologies
+    listed on experience and projects (same set as writer keyword filtering).
+    A SQL database on that allowlist also supports a claim of SQL. The
+    reverse is not implied. JD-only names such as AWS that never appear on
+    the resume are returned as hard grounding findings when claimed.
 
     Args:
         letter_text: Generated cover-letter body.
@@ -725,7 +917,7 @@ def flag_fabricated_technologies(
         Sorted list of fabricated canonical technology names.
     """
     claimed = extract_claimed_technologies(letter_text)
-    allowed = collect_resume_supported_names(profile)
+    allowed = _allow_sql_when_database_present(collect_resume_supported_names(profile))
     fabricated = sorted(tech for tech in claimed if tech not in allowed)
     return fabricated
 
