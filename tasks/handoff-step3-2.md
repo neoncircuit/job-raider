@@ -128,3 +128,125 @@ At the end, add "Cursor results (date)" to this file with:
 - The baseline: the same table and top error groups as in `tasks/todo.md`, with the report path and MLflow run ID.
 - Any definition you changed in the guide, and why.
 - Every check you ran and its result. Say clearly what you did not run.
+
+## Cursor results (2026-10-22)
+
+Completed in order: 2.1 guide, 2.4 dataset test (failed first), 2.2 profiles, 2.3 cases, commit 1, 2.5 baseline, commit 2. Stopped after the baseline. Not pushed. The validator and the CI threshold gate were not changed.
+
+### Commits
+
+| Hash | Subject |
+|------|---------|
+| `8568015` | test(eval): add the labeled grounding dataset |
+| `31df406` | docs(eval): record the grounding validator baseline |
+
+### Profiles
+
+Three fictional profiles in `apps/backend-py/tests/fixtures/eval/grounding/profiles.json`. All emails end with `@example.com`.
+
+| `profile_id` | Name | Shape |
+|--------------|------|-------|
+| `backend` | Mara Chen | About 4 years of Python, FastAPI, and PostgreSQL at Northstar Ledger; project Ledger Bridge. |
+| `ml` | Ilan Okoro | Blue Orchard Labs; Atlas Search (retrieval) and Finch Classifier (fine-tuning); highlight "Led a team of 3 engineers...". |
+| `grad` | Sofia Reyes | Recent graduate; internships at Harbor Finch and Cedar Works Studio; short durations. |
+
+### Cases
+
+65 constructed letters in `cases.jsonl`. Labels were written from the guide before the validator ran. No definition in the guide was changed.
+
+| Group | Count |
+|-------|-------|
+| `clean` | 15 |
+| `fabricated_technology` | 8 |
+| `homonym` | 5 |
+| `inflated_duration` | 6 |
+| `inconsistent_metric` | 5 |
+| `fabricated_experience` | 6 |
+| `analogical_claim` | 4 |
+| `scope_inflation` | 4 |
+| `technique_mismatch` | 4 |
+| `unsupported_number` | 5 |
+| `prompt_injection` | 3 |
+
+29 cases have no expected labels.
+
+### Dataset test
+
+`tests/unit/test_grounding_dataset.py` (`test_grounding_dataset_structure_and_counts`):
+
+- Failed first because `cases.jsonl` did not exist.
+- Passed after the fixtures were written.
+- Mutation: duplicate `clean__grounded_01` in a temporary copy; the unique-ID assertion failed. The committed file was restored and matched byte-for-byte.
+- Re-run before the baseline: 1 passed.
+
+### Baseline
+
+Command from `apps/backend-py`:
+
+```bash
+.venv/bin/python main.py eval grounding
+```
+
+Default MLflow store: `apps/backend-py/data/mlflow.db`. Labels were not changed after this run.
+
+| Field | Value |
+|-------|-------|
+| Git SHA | `85680158e54daad4816bf9c7afb5a6f07c06d087` (`git_dirty`: true; 14 unrelated CRLF-only tracked files, not the dataset) |
+| Dataset SHA-256 | `cc31267e1c69f087a50dc1f94783736feb7a963118b8184807abd51c64bfb554` |
+| MLflow run ID | `9f1346e967794fbfaf4c30160311509e` |
+| Report | `apps/backend-py/data/eval/grounding/20261022T060056297067Z.json` (gitignored) |
+| Case count | 65 |
+
+| Label | Precision | Recall | F1 | Support |
+|-------|-----------|--------|----|---------|
+| `fabricated_technology` | 0.571 | 0.615 | 0.593 | 13 |
+| `inflated_duration` | 1.000 | 0.800 | 0.889 | 5 |
+| `inconsistent_metric` | 1.000 | 0.667 | 0.800 | 3 |
+| `fabricated_experience` | 1.000 | 0.143 | 0.250 | 7 |
+| `analogical_claim` | 1.000 | 0.667 | 0.800 | 3 |
+| `scope_inflation` | 1.000 | 0.250 | 0.400 | 4 |
+| `technique_mismatch` | 0.120 | 1.000 | 0.214 | 3 |
+| `ungrounded_claims` | 0.508 | 1.000 | 0.673 | 33 |
+| micro | 0.474 | 0.761 | 0.584 | — |
+
+`clean_false_positive_rate`: 1.000 (29 of 29 cases with empty `expected_issues` received at least one predicted label).
+
+Five largest error groups from `details.cases` (`missed` and `extra`):
+
+1. `clean` extra `ungrounded_claims`: 15 of 15
+2. `homonym` extra `fabricated_technology`: 5 of 5
+3. `homonym` extra `ungrounded_claims`: 5 of 5
+4. `inconsistent_metric` extra `technique_mismatch`: 5 of 5
+5. `fabricated_experience` missed `fabricated_experience`: 5 of 6
+
+Tied with group 5 at count 5: `clean` extra `technique_mismatch` (5 of 15).
+
+Observed gaps; the validator was not changed:
+
+- Short token `Go` missed as `fabricated_technology` (`fabricated_technology__go`). This matches the known M7 drop at `cover_letter_grounding.py:414` (`len(word) > 3`).
+- Homonyms `express`, `spring`, `swift`, and `spark` flagged as `fabricated_technology` (5 of 5). This matches the known M7 allowlist at `cover_letter_grounding.py:163-209`.
+- `fabricated_experience` recall is 0.143. The code checks selected project names; fake employers, degrees, certifications, and titles were missed.
+- `technique_mismatch` precision is 0.120 (22 false positives).
+- The run logged `Cover letter references project not in profile: Nebula Console`.
+
+### Guide definitions
+
+No label definition was changed after the initial guide (2026-10-22). The guide Changes section is empty.
+
+### Checks
+
+| Check | Result |
+|-------|--------|
+| Black `--check` on `main.py scripts/mypy_gate.py src/ tests/` | Pass; 270 files unchanged |
+| ruff on the same paths | Pass |
+| mypy gate | Pass; 182 known errors, 0 new |
+| pytest `tests/` | 1141 passed, 1 warning (Starlette TestClient deprecation) |
+| Dataset test | 1 passed |
+| `python main.py eval grounding` | Exit 0; MLflow run `9f1346e967794fbfaf4c30160311509e` |
+
+### Not run
+
+- Frontend ESLint, tsc, Prettier, Vitest, `next build`, and Playwright (no frontend change in these commits).
+- M7 validator edits.
+- CI threshold gate.
+- Push. Wait for user approval. Push only from WSL.

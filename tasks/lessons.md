@@ -3385,3 +3385,15 @@
 - In tools and tests, run `git --no-optional-locks status` (or set `GIT_OPTIONAL_LOCKS=0`), so `git status` never takes the index lock.
 - Keep fast and slow git reads separate. Do not let a slow `git status` hide a good `git rev-parse HEAD`.
 - Before you remove a `.git/index.lock`, check that it is empty, old, and that no git process runs.
+
+### Give constructed eval sets a measurable diversity rule, and test it
+
+**Lesson:** The Step 3.2 handoff asked for 60 or more "realistic" cover letters "in different styles". The dataset met every count, but 65 letters had only 78 distinct sentences: each profile had one base letter, one sentence was in every letter, and one unnatural sentence caused 22 false positives for one check. The per-label precision and the clean false-positive rate measured 3 base letters, not 65 letters.
+
+**Why:**
+- A count is easy to meet with copies. "Different styles" cannot be checked, so it was not.
+- Injecting one error into one fixed base letter is a valid minimal-pair test for recall, but false-positive rates then measure the base letter only.
+
+**How to apply:**
+- When you ask for a constructed eval set, give measurable diversity limits and put them in the dataset test: for example, the most cases that one sentence may appear in, a maximum share of sentences that two letters may have in common, and a minimum number of distinct base letters per profile.
+- Read a sample of the cases yourself before you trust a baseline. Count distinct sentences.
