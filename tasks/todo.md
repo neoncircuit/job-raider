@@ -374,13 +374,14 @@ flowchart LR
 
 Labeling rules (2026-10-22, see `tasks/handoff-step3-2.md`): label each check on its own with its definition, so one sentence can have more than one label (for example, a fabricated technology is also an ungrounded claim); write the labels before the validator runs; an unsupported number without from/to endpoints is `ungrounded_claims`, not `inconsistent_metric`; `fabricated_experience` covers projects, employers, titles, degrees, and certifications, which is wider than the code checks today.
 
-- [ ] `tests/fixtures/eval/grounding/cases.jsonl` with at least 60 cases. Each case has a synthetic profile, a job, a letter, and the expected set of issues:
+- [x] `tests/fixtures/eval/grounding/cases.jsonl` with at least 60 cases. Each case has a synthetic profile, a job, a letter, and the expected set of issues:
   - clean letters that match the profile (expected: no issues);
   - one injected error per case: a number that the profile does not support ("90%", "3x"), an employer, a degree, inflated years of experience, or a tech that the profile does not have;
   - normal English with tech homonyms ("express my interest", "spring semester", "a swift reply", "spark curiosity"; expected: no issue);
   - short tokens that matter ("AWS", "GCP", "C#", "Go", "90%");
   - job descriptions with prompt-injection text, where the letter states JD claims as the candidate's own.
   - About 15 real generated letters labeled by hand (Question 1).
+  - **Done (2026-10-22, constructed set):** Labeling guide, 3 fictional profiles, and 65 hand-labeled constructed letters across all required groups; 29 cases have no expected issues. `test_grounding_dataset_structure_and_counts` failed first because `cases.jsonl` did not exist, then passed. Mutation: duplicate `clean__grounded_01` in a temporary copy → duplicate-ID assertion failed; restored file matched byte-for-byte. The optional real generated letters remain for a later user-data run and are not part of this synthetic committed set.
 - [ ] Baseline with the deterministic validator only (`cover_letter_validator.py`, `cover_letter_grounding.py`; no LLM): precision, recall, and F1 per issue type, and the false-positive rate on clean letters.
 - [ ] Fix M7 after the baseline: keep numbers and known short tech names that `cover_letter_grounding.py:414` drops today (`len(word) > 3`); flag the homonyms `swift`, `express`, `spring`, and `spark` (allowlist at `cover_letter_grounding.py:163-209`) only in a tech context. Record the numbers after the fix.
 - [ ] CI gate: a pytest runs the suite and fails if a metric is below `tests/fixtures/eval/grounding/thresholds.json`. Raise a threshold only in a commit that shows the new numbers (Question 4).

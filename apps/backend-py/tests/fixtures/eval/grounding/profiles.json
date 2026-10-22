@@ -1,0 +1,256 @@
+{
+  "backend": {
+    "name": "Mara Chen",
+    "contact": {
+      "email": "mara.chen@example.com",
+      "location": "Northbridge"
+    },
+    "summary": "Backend engineer who builds reliable web services and data APIs.",
+    "skills": [
+      {
+        "name": "Python",
+        "category": "programming_language",
+        "proficiency": "Advanced",
+        "years_of_experience": 4.0
+      },
+      {
+        "name": "FastAPI",
+        "category": "framework",
+        "proficiency": "Advanced",
+        "years_of_experience": 3.0
+      },
+      {
+        "name": "PostgreSQL",
+        "category": "database",
+        "proficiency": "Advanced",
+        "years_of_experience": 4.0
+      },
+      {
+        "name": "Docker",
+        "category": "tool",
+        "proficiency": "Intermediate",
+        "years_of_experience": 2.0
+      }
+    ],
+    "core_skills": ["Python", "FastAPI", "PostgreSQL"],
+    "experience": [
+      {
+        "title": "Backend Engineer",
+        "company": "Northstar Ledger",
+        "location": "Northbridge",
+        "start_date": "2020-01-01T00:00:00",
+        "end_date": "2024-01-01T00:00:00",
+        "current": false,
+        "description": "Built internal financial data services.",
+        "highlights": [
+          "Built Python and FastAPI services for transaction review.",
+          "Improved a PostgreSQL reporting query from 12 seconds to 4 seconds.",
+          "Maintained Docker development environments."
+        ],
+        "technologies": ["Python", "FastAPI", "PostgreSQL", "Docker"]
+      }
+    ],
+    "projects": [
+      {
+        "name": "Ledger Bridge",
+        "description": "A FastAPI service that validates and imports ledger records.",
+        "technologies": ["Python", "FastAPI", "PostgreSQL"],
+        "start_date": "2022-03-01T00:00:00",
+        "end_date": "2023-02-01T00:00:00",
+        "highlights": [
+          "Reduced import errors by 30% with schema validation."
+        ],
+        "role": "Developer"
+      }
+    ],
+    "education": [
+      {
+        "degree": "Bachelor of Science in Information Systems",
+        "school": "Fictional Northbridge College",
+        "end_date": "2019-06-01T00:00:00"
+      }
+    ],
+    "certifications": [],
+    "targets": {
+      "keywords": ["backend engineer", "Python"],
+      "locations": ["Northbridge"],
+      "remote_preference": true
+    }
+  },
+  "ml": {
+    "name": "Ilan Okoro",
+    "contact": {
+      "email": "ilan.okoro@example.com",
+      "location": "Lakeview"
+    },
+    "summary": "Machine learning engineer focused on practical data products and evaluation.",
+    "skills": [
+      {
+        "name": "Python",
+        "category": "programming_language",
+        "proficiency": "Expert",
+        "years_of_experience": 5.0
+      },
+      {
+        "name": "PyTorch",
+        "category": "framework",
+        "proficiency": "Advanced",
+        "years_of_experience": 3.0
+      },
+      {
+        "name": "Machine Learning",
+        "category": "domain",
+        "proficiency": "Advanced",
+        "years_of_experience": 5.0
+      },
+      {
+        "name": "SQL",
+        "category": "database",
+        "proficiency": "Advanced",
+        "years_of_experience": 4.0
+      }
+    ],
+    "core_skills": ["Python", "Machine Learning", "PyTorch"],
+    "experience": [
+      {
+        "title": "Machine Learning Engineer",
+        "company": "Blue Orchard Labs",
+        "location": "Lakeview",
+        "start_date": "2019-01-01T00:00:00",
+        "end_date": "2024-01-01T00:00:00",
+        "current": false,
+        "description": "Developed search and document classification systems.",
+        "highlights": [
+          "Led a team of 3 engineers that delivered a document classifier.",
+          "Raised classifier precision from 70% to 82%, a 12 percentage-point gain.",
+          "Built offline evaluation datasets for model releases."
+        ],
+        "technologies": ["Python", "PyTorch", "SQL"]
+      }
+    ],
+    "projects": [
+      {
+        "name": "Atlas Search",
+        "description": "A document search service using retrieval and reranking.",
+        "technologies": ["Python", "PyTorch"],
+        "start_date": "2021-02-01T00:00:00",
+        "end_date": "2022-02-01T00:00:00",
+        "highlights": [
+          "Implemented retrieval evaluation and neural reranking."
+        ],
+        "role": "Machine Learning Engineer"
+      },
+      {
+        "name": "Finch Classifier",
+        "description": "A support-ticket classifier improved with supervised fine-tuning.",
+        "technologies": ["Python", "PyTorch"],
+        "start_date": "2022-04-01T00:00:00",
+        "end_date": "2023-06-01T00:00:00",
+        "highlights": [
+          "Used fine-tuning to improve classification precision."
+        ],
+        "role": "Technical Lead"
+      }
+    ],
+    "education": [
+      {
+        "degree": "Master of Science in Data Science",
+        "school": "Fictional Lakeview University",
+        "end_date": "2018-06-01T00:00:00"
+      }
+    ],
+    "certifications": [],
+    "targets": {
+      "keywords": ["machine learning engineer", "data scientist"],
+      "locations": ["Lakeview"],
+      "remote_preference": true
+    }
+  },
+  "grad": {
+    "name": "Sofia Reyes",
+    "contact": {
+      "email": "sofia.reyes@example.com",
+      "location": "Pine Harbor"
+    },
+    "summary": "Recent computer science graduate with software engineering internship experience.",
+    "skills": [
+      {
+        "name": "Java",
+        "category": "programming_language",
+        "proficiency": "Intermediate",
+        "years_of_experience": 1.0
+      },
+      {
+        "name": "JavaScript",
+        "category": "programming_language",
+        "proficiency": "Intermediate",
+        "years_of_experience": 1.0
+      },
+      {
+        "name": "React",
+        "category": "framework",
+        "proficiency": "Intermediate",
+        "years_of_experience": 0.5
+      }
+    ],
+    "core_skills": ["Java", "JavaScript", "React"],
+    "experience": [
+      {
+        "title": "Software Engineering Intern",
+        "company": "Harbor Finch",
+        "location": "Pine Harbor",
+        "start_date": "2023-06-01T00:00:00",
+        "end_date": "2023-09-01T00:00:00",
+        "current": false,
+        "description": "Supported an internal scheduling application.",
+        "highlights": [
+          "Added Java validation rules and unit tests."
+        ],
+        "technologies": ["Java"]
+      },
+      {
+        "title": "Web Development Intern",
+        "company": "Cedar Works Studio",
+        "location": "Pine Harbor",
+        "start_date": "2024-01-01T00:00:00",
+        "end_date": "2024-04-01T00:00:00",
+        "current": false,
+        "description": "Built accessible user interface components.",
+        "highlights": [
+          "Built React form components with JavaScript."
+        ],
+        "technologies": ["JavaScript", "React"]
+      }
+    ],
+    "projects": [
+      {
+        "name": "Campus Queue",
+        "description": "A Java application for managing student service queues.",
+        "technologies": ["Java"],
+        "start_date": "2023-01-01T00:00:00",
+        "end_date": "2023-05-01T00:00:00",
+        "highlights": [
+          "Added automated tests for queue rules."
+        ],
+        "role": "Student Developer"
+      }
+    ],
+    "education": [
+      {
+        "degree": "Bachelor of Science in Computer Science",
+        "school": "Fictional Pine Harbor University",
+        "start_date": "2020-08-01T00:00:00",
+        "end_date": "2024-05-01T00:00:00",
+        "honors": ["Dean's List"]
+      }
+    ],
+    "certifications": [],
+    "targets": {
+      "keywords": ["junior software engineer", "backend developer"],
+      "locations": ["Pine Harbor"],
+      "experience_levels": ["Entry Level"],
+      "remote_preference": true,
+      "exclude_internships": true
+    }
+  }
+}
