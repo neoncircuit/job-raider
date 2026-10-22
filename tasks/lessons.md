@@ -3397,3 +3397,5 @@
 **How to apply:**
 - When you ask for a constructed eval set, give measurable diversity limits and put them in the dataset test: for example, the most cases that one sentence may appear in, a maximum share of sentences that two letters may have in common, and a minimum number of distinct base letters per profile.
 - Read a sample of the cases yourself before you trust a baseline. Count distinct sentences.
+- Normalize the slot values before you count (company, job title, names, and phrases copied from the input). The rework met "a long sentence in at most 3 cases" with 0.998 distinct sentences, but with the company and title replaced only 0.646 were distinct, and one sentence frame was in 18 letters.
+- A label that the system predicts for every case carries no information. Check the predicted count per label before you read its precision and recall.
