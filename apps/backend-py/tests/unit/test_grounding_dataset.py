@@ -5,9 +5,10 @@ Structural tests for the committed grounding evaluation dataset.
 from __future__ import annotations
 
 import json
-from collections import Counter
+import re
+from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Sequence, Set, Tuple
 
 from src.evaluation.datasets import load_jsonl
 from src.evaluation.suites.grounding import GroundingCase
@@ -85,9 +86,142 @@ def test_grounding_dataset_structure_and_counts() -> None:
 
     clean_count = sum(not case.expected_issues for case in cases)
     assert clean_count >= 15, f"expected at least 15 clean labels, got {clean_count}"
-    assert all(120 <= len(case.letter.split()) <= 300 for case in cases)
+    assert all(150 <= len(case.letter.split()) <= 350 for case in cases)
     assert all(case.note.strip() for case in cases)
     assert all(
         str(profile.contact.email).endswith("@example.com")
         for profile in profiles.values()
     )
+
+
+_WHITESPACE = re.compile(r"\s+")
+_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+")
+_DIGITS = re.compile(r"\d+")
+
+
+def normalize_long_sentences(text: str) -> List[str]:
+    """
+    Normalize a letter and return sentences of 8 or more words.
+
+    Whitespace is joined. The text is split after ``.``, ``!``, or ``?``
+    when whitespace follows. Each sentence is lowercased, each run of digits
+    becomes ``#``, and the ends are stripped. Shorter sentences are dropped
+    so greetings and sign-offs are not limited.
+
+    Args:
+        text: Cover letter text.
+
+    Returns:
+        Long sentences in order. A sentence can appear more than once.
+    """
+    collapsed = _WHITESPACE.sub(" ", text).strip()
+    long_sentences: List[str] = []
+    for part in _SENTENCE_BREAK.split(collapsed):
+        sentence = _DIGITS.sub("#", part.lower()).strip()
+        if len(sentence.split()) >= 8:
+            long_sentences.append(sentence)
+    return long_sentences
+
+
+def diversity_violations(
+    cases: Sequence[GroundingCase], profile_ids: Sequence[str]
+) -> Tuple[List[str], Dict[str, object]]:
+    """
+    Check diversity limits L1 to L6 for a grounding case list.
+
+    Args:
+        cases: Validated cases in dataset order.
+        profile_ids: Profile IDs that must each appear in at least 12 cases.
+
+    Returns:
+        A list of human-readable violations, and a stats map. The list is
+        empty when every limit holds.
+    """
+    long_by_case: Dict[str, List[str]] = {
+        case.case_id: normalize_long_sentences(case.letter) for case in cases
+    }
+    all_long = [
+        sentence for sentences in long_by_case.values() for sentence in sentences
+    ]
+    cases_per_sentence: Dict[str, Set[str]] = defaultdict(set)
+    for case_id, sentences in long_by_case.items():
+        for sentence in set(sentences):
+            cases_per_sentence[sentence].add(case_id)
+    max_sentence_cases = max(
+        (len(ids) for ids in cases_per_sentence.values()), default=0
+    )
+
+    max_shared = 0
+    case_ids = list(long_by_case)
+    for index, left_id in enumerate(case_ids):
+        left = set(long_by_case[left_id])
+        for right_id in case_ids[index + 1 :]:
+            shared = len(left & set(long_by_case[right_id]))
+            if shared > max_shared:
+                max_shared = shared
+
+    distinct = len(set(all_long))
+    total = len(all_long)
+    ratio = (distinct / total) if total else 0.0
+    companies = [str(case.job["company"]) for case in cases]
+    titles = [str(case.job["title"]) for case in cases]
+    company_counts = Counter(companies)
+    max_company = max(company_counts.values(), default=0)
+    word_counts = [len(case.letter.split()) for case in cases]
+    long_letters = sum(count > 220 for count in word_counts)
+    profile_counts = Counter(case.profile_id for case in cases)
+
+    stats: Dict[str, object] = {
+        "l1_max_cases_for_one_sentence": max_sentence_cases,
+        "l2_max_shared_long_sentences": max_shared,
+        "l3_distinct_long_sentences": distinct,
+        "l3_long_sentences": total,
+        "l3_ratio": round(ratio, 4),
+        "l4_companies": len(set(companies)),
+        "l4_titles": len(set(titles)),
+        "l4_max_cases_per_company": max_company,
+        "l5_min_words": min(word_counts, default=0),
+        "l5_max_words": max(word_counts, default=0),
+        "l5_letters_over_220": long_letters,
+        "l6_cases_per_profile": dict(profile_counts),
+    }
+    violations: List[str] = []
+    if max_sentence_cases > 3:
+        violations.append(
+            f"L1: a long sentence appears in {max_sentence_cases} cases (max 3)"
+        )
+    if max_shared > 2:
+        violations.append(f"L2: two cases share {max_shared} long sentences (max 2)")
+    if total == 0 or ratio < 0.80:
+        violations.append(f"L3: distinct/all long sentences is {ratio:.4f} (min 0.80)")
+    if len(set(companies)) < 20 or len(set(titles)) < 12 or max_company > 5:
+        violations.append(
+            "L4: need >=20 companies, >=12 titles, and <=5 cases per company; "
+            f"got {len(set(companies))} companies, {len(set(titles))} titles, "
+            f"max {max_company}"
+        )
+    if any(count < 150 or count > 350 for count in word_counts) or long_letters < 15:
+        violations.append(
+            "L5: each letter needs 150-350 words and >=15 letters need >220 words; "
+            f"min {stats['l5_min_words']}, max {stats['l5_max_words']}, "
+            f"over 220: {long_letters}"
+        )
+    for profile_id in profile_ids:
+        if profile_counts[profile_id] < 12:
+            violations.append(
+                f"L6: profile {profile_id} is used by {profile_counts[profile_id]} cases (min 12)"
+            )
+    return violations, stats
+
+
+def test_grounding_dataset_diversity() -> None:
+    """
+    Require measurable letter and job diversity (limits L1 to L6).
+
+    Returns:
+        None.
+    """
+    cases = load_jsonl(CASES_PATH, GroundingCase)
+    profiles = _load_profiles()
+    violations, stats = diversity_violations(cases, list(profiles))
+    assert not violations, {"violations": violations, "stats": stats}

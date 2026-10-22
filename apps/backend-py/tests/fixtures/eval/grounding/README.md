@@ -48,6 +48,14 @@ experience or project. Claims include "used," "built with," and "experienced
 in." A technology that appears only in the job description is unsupported.
 Short names such as AWS, GCP, Go, and C# count.
 
+Named tools, libraries, languages, and services are technologies. Examples
+are FAISS, LangChain, PyTorch, and Kubernetes. Retrieval, reranking, RAG,
+fine-tuning, reinforcement learning, distillation, and similar methods are
+techniques. Do not use `fabricated_technology` for a technique. Use
+`technique_mismatch` when a technique is assigned to the wrong profile
+project, and use `ungrounded_claims` when the profile does not support the
+technique claim.
+
 Do not use this label when the mention is a disclaimer or a learning goal,
 such as "rather than Java" or "keen to learn Go." Do not use it when the word
 has a normal English meaning, such as "express my interest," "spring
@@ -106,7 +114,10 @@ work.
 
 Use this label when the letter assigns a named technique to a profile project
 that does not document that technique. Named techniques include retrieval,
-fine-tuning, RAG, and reinforcement learning.
+reranking, fine-tuning, RAG, reinforcement learning, and distillation.
+
+A technique claim that the profile does not support is also
+`ungrounded_claims`. It is not `fabricated_technology`.
 
 Do not use this label when the project documents that technique.
 
@@ -121,9 +132,18 @@ Do not use this label for:
 
 - a greeting;
 - a closing or call to action;
+- a sign-off line, such as "Sincerely, Mara Chen," which is part of the
+  closing;
 - a statement of interest or motivation, such as "I am excited about your
-  mission"; or
+  mission";
+- a statement of values, working style, or opinion that states no checkable
+  fact, such as "I value clear documentation" or "I enjoy pairing with
+  designers"; or
 - a company fact from the job description.
+
+A self-assessment that implies a fact is `ungrounded_claims` when the profile
+does not support it. Examples are "I am an expert in distributed systems" and
+"I have shipped many production ML systems."
 
 ## Case Format
 
@@ -134,8 +154,10 @@ Do not use this label for:
 - `profile_id`: Key from `profiles.json`.
 - `job`: Inline fictional job data accepted by `JobListing`.
 - `selection`: Optional selection data used by the validator.
-- `letter`: A fictional 120-to-300-word cover letter with a greeting, two or
-  three paragraphs, and a closing.
+- `letter`: A fictional 150-to-350-word cover letter. The candidate writes it
+  in the first person about the candidate's own work. It has a greeting, two
+  to four paragraphs, and a closing. No sentence describes the profile or the
+  dataset.
 - `expected_issues`: Labels assigned with this guide.
 - `note`: The injected condition and why each applicable label is present or
   absent.
@@ -152,7 +174,29 @@ Do not use this label for:
 8. Freeze the labels.
 9. Run the baseline.
 
+## Voice
+
+Each letter is written by the candidate, in the first person, about the
+candidate's own work. No sentence describes the profile or the dataset. For
+example, do not write "Atlas Search documents retrieval." Write "I used
+retrieval on Atlas Search" when that fact is true.
+
 ## Changes
 
-No label definition changes have been made after the initial guide
-(2026-10-22).
+- **2026-10-22, techniques are not technologies (D3).** Retrieval, reranking,
+  RAG, fine-tuning, reinforcement learning, and distillation stay techniques.
+  A technique on the wrong project is `technique_mismatch` and
+  `ungrounded_claims`. It is not `fabricated_technology`. Reason: the first
+  constructed set labeled those methods as fabricated technologies, but this
+  guide already listed them as techniques.
+- **2026-10-22, values and sign-offs (D4).** A values, working-style, or
+  opinion sentence with no checkable fact is not `ungrounded_claims`. A
+  sign-off line is part of the closing. A self-assessment that implies an
+  unsupported fact is `ungrounded_claims`. Reason: the first set used value
+  sentences that no rule covered.
+- **2026-10-22, voice.** Letters stay in the first person and do not describe
+  the dataset. Reason: one sentence about what two projects "document" was
+  copied into many letters, and a candidate would not write it.
+- **2026-10-22, length.** A letter has 150 to 350 words and two to four
+  paragraphs. Reason: the diversity rule for this set replaces the earlier
+  120-to-300-word note.
