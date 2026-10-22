@@ -596,7 +596,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Answer the four "Questions before the fixes" under the Step 3.2 fix plan. Then the holdout set (if approved) and the fixes F1 to F3. Baseline 2 is the reference. Step 3.1 is pushed (`2a1f202`); the Step 3.2 dataset work is local only.
+Cursor: validator fixes F1 to F3, as described in `tasks/handoff-step3-2-f1-f3.md`, then a stop for review. The holdout set (23 cases, `a1c818a`) is written and must not be opened until its one run after F7. Baseline 2 is the reference. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 
