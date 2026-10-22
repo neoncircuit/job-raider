@@ -383,7 +383,7 @@ Labeling rules (2026-10-22, see `tasks/handoff-step3-2.md`): label each check on
   - About 15 real generated letters labeled by hand (Question 1).
   - **Done (2026-10-22, constructed set):** Labeling guide, 3 fictional profiles, and 65 hand-labeled constructed letters across all required groups; 29 cases have no expected issues. `test_grounding_dataset_structure_and_counts` failed first because `cases.jsonl` did not exist, then passed. Mutation: duplicate `clean__grounded_01` in a temporary copy → duplicate-ID assertion failed; restored file matched byte-for-byte. The optional real generated letters remain for a later user-data run and are not part of this synthetic committed set.
 - [x] Baseline with the deterministic validator only (`cover_letter_validator.py`, `cover_letter_grounding.py`; no LLM): precision, recall, and F1 per issue type, and the false-positive rate on clean letters.
-  - **Baseline (2026-10-22):** Command `.venv/bin/python main.py eval grounding` from `apps/backend-py`, default MLflow store `apps/backend-py/data/mlflow.db`. Labels were not changed after this run.
+  - **Baseline (2026-10-22), superseded (templated set, 2026-10-22):** Command `.venv/bin/python main.py eval grounding` from `apps/backend-py`, default MLflow store `apps/backend-py/data/mlflow.db`. Labels were not changed after this run. Kept for history. Baseline 2 below replaces it.
 
     | Field | Value |
     |-------|-------|
@@ -426,11 +426,56 @@ Labeling rules (2026-10-22, see `tasks/handoff-step3-2.md`): label each check on
     - The run logged `Cover letter references project not in profile: Nebula Console`.
 
   - **Review of the dataset and baseline (2026-10-22):** The baseline reproduces exactly (same dataset SHA-256, same counts per label). The guide matches the handoff, and every group meets its minimum. Real validator findings, with correct labels: the 4 homonyms (5 of 5 cases); `ungrounded_claims` flags greetings, closings, and sign-offs ("Sincerely, Ilan Okoro") that the guide excludes, and the sentence split joins "Dear Hiring Team," to the first sentence; the technique check gives a sentence that names two projects to the wrong project; `fabricated_experience` checks only selected project names. Correction to the note above: `Go` is not missed because of `len(word) > 3` (that filter is only for the `ungrounded_claims` word overlap). `go` is in `_AMBIGUOUS_TEXT_ALIASES` (`cover_letter_grounding.py:363`), so free-text matching skips it on purpose; detecting Go needs context, like the homonyms. The dataset has problems that make precision and the clean false-positive rate unreliable, so they block the M7 fixes:
-    - [ ] **D1. Templated letters.** 570 sentences, but only 78 are distinct (numbers normalized). One sentence ("I value review, documentation, and direct communication ...") is in all 65 letters. Each profile has one base letter, and 24 cases share the same 7 sentences; 688 of 2,080 case pairs share at least half of their sentences. All jobs are at "Fictional Meridian Group". So the false-positive numbers measure 3 base letters, not 65 letters.
-    - [ ] **D2. An unnatural sentence drives one metric.** "Atlas Search documents retrieval and reranking, while Finch Classifier documents supervised fine-tuning." is in all 24 `ml` cases and causes most of the 22 `technique_mismatch` false positives. No candidate writes this in a letter.
-    - [ ] **D3. Guide gap, technique or technology.** The 3 positive `technique_mismatch` cases are also labeled `fabricated_technology` for RAG, fine-tuning, and reinforcement learning, but the guide lists these as techniques.
-    - [ ] **D4. Guide gap, value statements.** Statements of values or working style that state no checkable fact ("I value review, documentation, ...") are in no rule. They are labeled as not ungrounded, which is reasonable, but the guide must say so.
+    - [x] **D1. Templated letters.** 570 sentences, but only 78 are distinct (numbers normalized). One sentence ("I value review, documentation, and direct communication ...") is in all 65 letters. Each profile has one base letter, and 24 cases share the same 7 sentences; 688 of 2,080 case pairs share at least half of their sentences. All jobs are at "Fictional Meridian Group". So the false-positive numbers measure 3 base letters, not 65 letters. Done in the rewrite: `test_grounding_dataset_diversity` enforces L1 to L6, and the new set passes (see Baseline 2).
+    - [x] **D2. An unnatural sentence drives one metric.** "Atlas Search documents retrieval and reranking, while Finch Classifier documents supervised fine-tuning." is in all 24 `ml` cases and causes most of the 22 `technique_mismatch` false positives. No candidate writes this in a letter. That sentence is not in the new set. Baseline 2 has 0 `technique_mismatch` false positives.
+    - [x] **D3. Guide gap, technique or technology.** The 3 positive `technique_mismatch` cases are also labeled `fabricated_technology` for RAG, fine-tuning, and reinforcement learning, but the guide lists these as techniques. The guide now says a technique is not `fabricated_technology`. The new technique cases are labeled `technique_mismatch` and `ungrounded_claims` only.
+    - [x] **D4. Guide gap, value statements.** Statements of values or working style that state no checkable fact ("I value review, documentation, ...") are in no rule. They are labeled as not ungrounded, which is reasonable, but the guide must say so. The guide now excludes those statements, and a sign-off, from `ungrounded_claims`. A self-assessment that implies an unsupported fact stays in the label.
     - Cause: the handoff asked for "different styles" without a measurable rule, and the dataset test checks counts only (see `tasks/lessons.md`).
+  - **Baseline 2 (2026-10-22):** Same command and default MLflow store. Labels were written from the updated guide before this run and were not changed after it. Diversity on the committed letters: 572 distinct long sentences out of 573 (L3 ratio 0.9983), 22 companies, 16 titles, no company in more than 3 cases, 164 to 253 words, 18 letters over 220 words. Profiles: `backend` 24, `ml` 26, `grad` 15. No profile was added.
+
+    | Field | Value |
+    |-------|-------|
+    | Git SHA | `dfa0649db4866b956842e87975806ab768a2c92a` (`git_dirty`: false) |
+    | Dataset SHA-256 | `13e5ec3d685a45d93da14e72ac1ea5f58239b94af98f7fb909dda58278b1c2f0` |
+    | MLflow run ID | `2d73d7766c004c1a90cd1c9393b78341` |
+    | Report | `apps/backend-py/data/eval/grounding/20261022T080255375930Z.json` (gitignored) |
+    | Case count | 65 |
+
+    | Label | Precision | Recall | F1 | Support |
+    |-------|-----------|--------|----|---------|
+    | `fabricated_technology` | 0.500 | 0.875 | 0.636 | 8 |
+    | `inflated_duration` | 1.000 | 0.800 | 0.889 | 5 |
+    | `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 3 |
+    | `fabricated_experience` | 1.000 | 0.125 | 0.222 | 8 |
+    | `analogical_claim` | 1.000 | 0.667 | 0.800 | 3 |
+    | `scope_inflation` | 0.667 | 0.500 | 0.571 | 4 |
+    | `technique_mismatch` | 1.000 | 0.667 | 0.800 | 3 |
+    | `ungrounded_claims` | 0.508 | 1.000 | 0.673 | 33 |
+    | micro | 0.574 | 0.806 | 0.671 | — |
+
+    `clean_false_positive_rate`: 1.000 (29 of 29 cases with empty `expected_issues` received at least one predicted label). Compared with the templated baseline, micro F1 moved from 0.584 to 0.671 and `technique_mismatch` precision moved from 0.120 to 1.000. The clean false-positive rate stayed 1.000.
+
+    Five largest error groups from `details.cases` (`missed` and `extra`):
+
+    1. `clean` extra `ungrounded_claims`: 15 of 15
+    2. `homonym` extra `fabricated_technology`: 5 of 5
+    3. `homonym` extra `ungrounded_claims`: 5 of 5
+    4. `analogical_claim` extra `ungrounded_claims`: 4 of 4
+    5. `fabricated_experience` missed `fabricated_experience`: 5 of 6
+
+    Review findings, and whether Baseline 2 still shows them. The validator was not changed.
+
+    - Homonyms flagged: yes. All 5 homonym letters have extra `fabricated_technology`.
+    - `Go` missed: yes. `fabricated_technology__go` missed `fabricated_technology`. `ungrounded_claims` was predicted. This matches `go` in `_AMBIGUOUS_TEXT_ALIASES` (`cover_letter_grounding.py:363`), not the `len(word) > 3` filter.
+    - Greetings, closings, and sign-offs flagged as `ungrounded_claims`: the symptom remains. All 15 clean letters have extra `ungrounded_claims`. The report does not name the sentence.
+    - A sentence that names two projects and is given to the wrong project: not shown. `technique_mismatch` has 0 false positives. The old sentence is not in this set, so this run does not exercise that bug.
+    - `fabricated_experience` checks only selected projects: yes. The only true positive is the selected project Nebula Console (the run logged that name). Missed claims: Harbor Mint, Orbit Lantern, the Glassmill degree, the auditor certificate, the director title, and the prompt-injection employer and doctorate (7 false negatives).
+
+    Other gaps, not fixed here:
+
+    - `inflated_duration__three_to_five_fastapi` missed `inflated_duration` and was flagged `fabricated_technology`.
+    - `technique_mismatch__atlas_rl` missed `technique_mismatch`.
+    - `analogical_claim__fastapi_kubernetes` was also flagged `fabricated_technology` even though the letter says the candidate has not run Kubernetes.
 - [ ] Fix M7 after the baseline: keep numbers and known short tech names that `cover_letter_grounding.py:414` drops today (`len(word) > 3`); flag the homonyms `swift`, `express`, `spring`, and `spark` (allowlist at `cover_letter_grounding.py:163-209`) only in a tech context. Record the numbers after the fix.
 - [ ] CI gate: a pytest runs the suite and fails if a metric is below `tests/fixtures/eval/grounding/thresholds.json`. Raise a threshold only in a commit that shows the new numbers (Question 4).
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
