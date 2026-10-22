@@ -503,7 +503,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Cursor: the first part of Step 3.2 (labeling guide, constructed cases, dataset test, baseline), as described in `tasks/handoff-step3-2.md`. Then the user reviews the baseline before the M7 fixes and the CI gate. Step 3.1 is pushed (`2a1f202`; CI run 39713285071 passed).
+Cursor: rework the grounding dataset (D1 to D4) under the measurable diversity limits L1 to L6, then run Baseline 2, as described in `tasks/handoff-step3-2-rework.md`. Then the user reviews Baseline 2 before the M7 fixes and the CI gate. Step 3.1 is pushed (`2a1f202`; CI run 39713285071 passed).
 
 ## Backlog
 
