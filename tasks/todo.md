@@ -518,12 +518,14 @@ flowchart LR
 - [ ] **F7. Technique and analogy (effort: S).** Add "reinforcement learning", "reranking", and "distillation" to `_TECHNIQUE_TERMS` (`cover_letter_grounding.py:137`). When a sentence names two projects, check each technique against the project nearest to it (the bug from the first baseline). Find the cause of the missed analogy onto a JD-only duty (`_ANALOGY_MARKER_RE`, line 381), and fix it only if the cause is general.
 - [ ] **D5. Slot-normalized diversity (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
 
-##### Questions before the fixes (2026-10-22)
+##### Decisions before the fixes (2026-10-22)
 
-1. **Holdout set.** Before the fixes, write about 20 new cases (same guide and limits, including L7 and L8) in `tests/fixtures/eval/grounding_holdout/`, and do not open them while fixing. Run them one time after F7. This shows whether the fixes generalize or only fit the 65 cases. Recommendation: yes; Claude writes the holdout set in this session, and the fixer does not open the folder.
-2. **Related technologies.** Treat SQL as supported when the profile has a SQL database (a small explicit map in the code, and a "Changes" entry in the guide). The current labels already treat SQL this way. Recommendation: yes.
-3. **Duration ranges.** Use the top of a range (F4). Recommendation: yes.
-4. **Who and when.** Cursor does F1 to F3 and stops for review (F1 can hide real claims if its skip rules are too wide), then F4 to F7 and D5. Recommendation: yes.
+All four recommendations were accepted.
+
+1. **Holdout set:** Claude writes about 20 new cases (same guide and limits, including L7 and L8) in `tests/fixtures/eval/grounding_holdout/` before the fixes. The fixer does not open that folder. The holdout runs one time, after F7, to show whether the fixes generalize or only fit the 65 cases.
+2. **Related technologies:** SQL is supported when the profile has a SQL database (a small explicit map in the code, and a "Changes" entry in the guide).
+3. **Duration ranges:** a range is compared by its top (F4).
+4. **Who and when:** Cursor does F1 to F3 and stops for review, then F4 to F7 and D5.
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4

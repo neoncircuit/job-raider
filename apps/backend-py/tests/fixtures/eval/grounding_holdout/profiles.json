@@ -1,0 +1,268 @@
+{
+  "platform": {
+    "name": "Tomas Ferreira",
+    "contact": {
+      "email": "tomas.ferreira@example.com",
+      "location": "Porto Vale"
+    },
+    "summary": "Site reliability engineer who runs Kubernetes platforms and reduces alert noise.",
+    "skills": [
+      {
+        "name": "Python",
+        "category": "programming_language",
+        "proficiency": "Advanced",
+        "years_of_experience": 6.0
+      },
+      {
+        "name": "Bash",
+        "category": "programming_language",
+        "proficiency": "Advanced",
+        "years_of_experience": 5.0
+      },
+      {
+        "name": "Kubernetes",
+        "category": "tool",
+        "proficiency": "Advanced",
+        "years_of_experience": 4.0
+      },
+      {
+        "name": "Terraform",
+        "category": "tool",
+        "proficiency": "Advanced",
+        "years_of_experience": 4.0
+      },
+      {
+        "name": "MySQL",
+        "category": "database",
+        "proficiency": "Intermediate",
+        "years_of_experience": 3.0
+      },
+      {
+        "name": "Prometheus",
+        "category": "tool",
+        "proficiency": "Intermediate",
+        "years_of_experience": 3.0
+      },
+      {
+        "name": "Grafana",
+        "category": "tool",
+        "proficiency": "Intermediate",
+        "years_of_experience": 3.0
+      }
+    ],
+    "core_skills": [
+      "Kubernetes",
+      "Terraform",
+      "Python"
+    ],
+    "experience": [
+      {
+        "title": "Site Reliability Engineer",
+        "company": "Harrow Freight Systems",
+        "location": "Porto Vale",
+        "start_date": "2019-07-01T00:00:00",
+        "end_date": "2024-07-01T00:00:00",
+        "current": false,
+        "description": "Ran Kubernetes clusters and Terraform-managed infrastructure for the freight tracking platform.",
+        "highlights": [
+          "Cut the monthly cloud bill by 18% by right-sizing node pools.",
+          "Reduced deployment rollback time from 40 minutes to 6 minutes.",
+          "Led a rotation of 4 on-call engineers.",
+          "Wrote Python tooling that pages the owning team for each failed health check."
+        ],
+        "technologies": [
+          "Kubernetes",
+          "Terraform",
+          "Python",
+          "Prometheus",
+          "Grafana",
+          "MySQL"
+        ]
+      },
+      {
+        "title": "Junior Operations Engineer",
+        "company": "Quillfield Bank",
+        "location": "Porto Vale",
+        "start_date": "2017-06-01T00:00:00",
+        "end_date": "2019-06-01T00:00:00",
+        "current": false,
+        "description": "Maintained batch jobs and Bash scripts for nightly settlement reports.",
+        "highlights": [
+          "Moved 30 cron jobs into a monitored scheduler."
+        ],
+        "technologies": [
+          "Bash",
+          "Python",
+          "MySQL"
+        ]
+      }
+    ],
+    "projects": [
+      {
+        "name": "Tidewatch",
+        "description": "A real-time alert deduplication service that groups repeated Prometheus alerts.",
+        "technologies": [
+          "Python",
+          "Prometheus"
+        ],
+        "start_date": "2021-02-01T00:00:00",
+        "end_date": "2021-09-01T00:00:00",
+        "highlights": [
+          "Cut duplicate pages by 60%."
+        ],
+        "role": "Developer"
+      }
+    ],
+    "education": [
+      {
+        "degree": "Bachelor of Engineering in Computer Engineering",
+        "school": "Easton Polytechnic",
+        "end_date": "2017-05-01T00:00:00"
+      }
+    ],
+    "certifications": [
+      {
+        "name": "Certified Kubernetes Administrator",
+        "issuer": "Cloud Native Computing Foundation"
+      }
+    ],
+    "targets": {
+      "keywords": [
+        "site reliability engineer"
+      ],
+      "locations": [
+        "Porto Vale"
+      ],
+      "remote_preference": true
+    }
+  },
+  "analytics": {
+    "name": "Amara Oyelaran",
+    "contact": {
+      "email": "amara.oyelaran@example.com",
+      "location": "Westmere"
+    },
+    "summary": "Retail data analyst who builds store reports and simple forecasts.",
+    "skills": [
+      {
+        "name": "Python",
+        "category": "programming_language",
+        "proficiency": "Advanced",
+        "years_of_experience": 4.0
+      },
+      {
+        "name": "pandas",
+        "category": "framework",
+        "proficiency": "Advanced",
+        "years_of_experience": 4.0
+      },
+      {
+        "name": "PostgreSQL",
+        "category": "database",
+        "proficiency": "Intermediate",
+        "years_of_experience": 3.0
+      },
+      {
+        "name": "Tableau",
+        "category": "tool",
+        "proficiency": "Advanced",
+        "years_of_experience": 3.0
+      },
+      {
+        "name": "scikit-learn",
+        "category": "framework",
+        "proficiency": "Intermediate",
+        "years_of_experience": 2.0
+      }
+    ],
+    "core_skills": [
+      "Python",
+      "PostgreSQL",
+      "Tableau"
+    ],
+    "experience": [
+      {
+        "title": "Data Analyst",
+        "company": "Brightwell Retail Group",
+        "location": "Westmere",
+        "start_date": "2020-02-01T00:00:00",
+        "end_date": "2024-02-01T00:00:00",
+        "current": false,
+        "description": "Built sales and stock reports for 140 stores and supported the pricing team with analysis.",
+        "highlights": [
+          "Built a weekly stock-out report used by 140 store managers.",
+          "Raised forecast accuracy from 72% to 81%, a 9 percentage-point gain.",
+          "Automated a pricing extract that saved the pricing team 6 hours a week."
+        ],
+        "technologies": [
+          "Python",
+          "PostgreSQL",
+          "Tableau",
+          "pandas"
+        ]
+      },
+      {
+        "title": "Analytics Intern",
+        "company": "Lumen Transit Authority",
+        "location": "Westmere",
+        "start_date": "2019-06-01T00:00:00",
+        "end_date": "2019-12-01T00:00:00",
+        "current": false,
+        "description": "Prepared ridership data for a bus service review.",
+        "highlights": [
+          "Cleaned two years of ridership counts for a service review."
+        ],
+        "technologies": [
+          "Python",
+          "pandas"
+        ]
+      }
+    ],
+    "projects": [
+      {
+        "name": "Shelf Scout",
+        "description": "A product search prototype for store staff that uses retrieval and reranking over the product catalogue.",
+        "technologies": [
+          "Python",
+          "scikit-learn"
+        ],
+        "start_date": "2022-01-01T00:00:00",
+        "end_date": "2022-06-01T00:00:00",
+        "highlights": [
+          "Returned the right product in the top 3 results for 85% of test queries."
+        ],
+        "role": "Developer"
+      },
+      {
+        "name": "Basket Lens",
+        "description": "A weekly demand forecast for 40 high-volume products using gradient boosting.",
+        "technologies": [
+          "Python",
+          "scikit-learn",
+          "pandas"
+        ],
+        "start_date": "2023-01-01T00:00:00",
+        "end_date": "2023-08-01T00:00:00",
+        "highlights": [],
+        "role": "Developer"
+      }
+    ],
+    "education": [
+      {
+        "degree": "Bachelor of Science in Statistics",
+        "school": "Harlow University",
+        "end_date": "2019-05-01T00:00:00"
+      }
+    ],
+    "certifications": [],
+    "targets": {
+      "keywords": [
+        "data analyst"
+      ],
+      "locations": [
+        "Westmere"
+      ],
+      "remote_preference": true
+    }
+  }
+}
