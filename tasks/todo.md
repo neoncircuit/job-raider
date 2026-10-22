@@ -482,8 +482,48 @@ Labeling rules (2026-10-22, see `tasks/handoff-step3-2.md`): label each check on
     - **Sentence frames repeat with new names.** With the company, title, and JD need phrase replaced by placeholders, only 370 of 573 long sentences are distinct (0.646, not 0.998); one frame is in 18 cases, and 19 frames are in 5 or more cases (for example "If <co> hired me as a <title>, I would spend the first weeks learning ..."). The repeated frames are filler; every injected error is in its own sentence, so the scores of the specific checks still rest on varied cases. The L1 to L3 normalization replaces only digits, so it misses this.
     - **New validator bug: no word boundary in the scope check.** "before I called the speedup real" raised `scope_inflation` because "called the" contains "led the" (`technique_mismatch__bridge_finetune`).
     - More validator findings for the fix plan: a duration range ("3-5 years" of FastAPI with a 3-year cap) is missed; "managed a team of twelve" is missed; a "led" claim at a fake employer passes because the profile has "Led a team of 3" elsewhere (the leadership allowance is for the whole profile, not per work item); a disclaimed technology ("I have not run Kubernetes") is still flagged; "SQL" is flagged when the profile has PostgreSQL (the guide does not say whether a related technology counts); the analogy "similar to penetration testing" and the technique "reinforcement learning on Atlas Search" are missed.
-- [ ] Fix M7 after the baseline: keep numbers and known short tech names that `cover_letter_grounding.py:414` drops today (`len(word) > 3`); flag the homonyms `swift`, `express`, `spring`, and `spark` (allowlist at `cover_letter_grounding.py:163-209`) only in a tech context. Record the numbers after the fix.
-- [ ] CI gate: a pytest runs the suite and fails if a metric is below `tests/fixtures/eval/grounding/thresholds.json`. Raise a threshold only in a commit that shows the new numbers (Question 4).
+- [ ] Fix the validator (M7 and the Baseline 2 findings): the fix plan below (F1 to F7), then the dataset item D5.
+- [ ] CI gate: a pytest runs the suite and fails if a metric is below `tests/fixtures/eval/grounding/thresholds.json`. Raise a threshold only in a commit that shows the new numbers (Question 4). Set the first thresholds from the numbers after D5.
+
+##### Step 3.2 fix plan: the grounding validator (2026-10-22)
+
+**Goal:** Each grounding check finds what the labeling guide defines, and each fix is measured. `ungrounded_claims` becomes measurable first, because today it is predicted for all 65 letters.
+
+**Measurement rules:**
+
+- Reference: Baseline 2 (dataset SHA-256 `13e5ec3d...`, MLflow run `2d73d7766c004c1a90cd1c9393b78341`). The labels do not change during the fixes.
+- Each fix: unit tests first, with new sentences that are not copied from the dataset (they fail on the current code); a mutation proof; then `python main.py eval grounding`, and the per-label change against the previous run in the fix note. When a fix lowers the F1 of another label, explain it or revert the fix.
+- Only general rules. No fix may refer to a `case_id`, a fixture file, or a fictional name from the dataset.
+- One commit per fix. Black, ruff, the mypy gate, and the full pytest suite before each commit.
+
+```mermaid
+flowchart LR
+    H[Holdout set, Question 1] --> F1[F1 ungrounded: skip non-claims]
+    F1 --> F2[F2 unsupported numbers]
+    F2 --> F3[F3 technology detection]
+    F3 --> F4[F4 duration ranges]
+    F4 --> F5[F5 scope inflation]
+    F5 --> F6[F6 fabricated experience]
+    F6 --> F7[F7 technique and analogy]
+    F7 --> D5[D5 slot-normalized dataset]
+    D5 --> R[Holdout run and CI gate]
+```
+
+- [ ] **F1. `ungrounded_claims` skips sentences that state no fact (effort: M).** In `flag_ungrounded_sentences` (`cover_letter_grounding.py:1401`), skip: a greeting, including a leading greeting clause such as "Dear Hiring Team," before the first sentence; a sign-off ("Sincerely, Mara Chen", "Best regards"); thanks and calls to action (reuse `CoverLetterValidator.CALL_TO_ACTION_PHRASES`); statements of interest, motivation, values, or working style (guide D4); and plans or intentions ("I would ...", "If <company> hired me ...", "In my first month ..."). Guard: never skip a sentence that has a number, a technology from the lexicon, a duration, or a past-tense claim verb ("built", "led", "shipped", "reduced"). Check whether the stricter threshold for the last paragraph (`closing_min_overlap_ratio`) is still needed, and keep it only if the eval supports it. Tests: those sentence types are not flagged; "I would bring ten years of Kubernetes experience" and "Thank you. At my last job I cut costs by 90%." are still flagged. Report how many cases have `ungrounded_claims` predicted (65 today) and the clean false-positive rate.
+- [ ] **F2. Unsupported numbers (effort: S; M7, part 1).** Add a number check to `ungrounded_claims`: each percentage, multiplier ("3x"), or count in a sentence about the candidate must appear in the profile (bullets, highlights, descriptions), after normalization ("90%", "90 percent", "ninety percent"). This replaces the M7 idea of keeping short tokens in the word overlap; the `len(word) > 3` filter at `cover_letter_grounding.py:414` stays unless the eval shows a need. Tests: "cut costs by 90%" and "3x faster" are flagged for a profile without those numbers, and supported numbers are not.
+- [ ] **F3. Technology detection (effort: M; M7, part 2).** (a) The homonyms `swift`, `express`, `spring`, and `spark` (allowlist at `cover_letter_grounding.py:163-209`) count only in a technology context, for example "Spring Boot", "Express.js", "Apache Spark", "Swift for iOS", or "built with Spark". (b) `Go` (in `_AMBIGUOUS_TEXT_ALIASES`, line 363) counts only in a technology context, for example "in Go", "Go services", "written in Go", or "Golang". (c) Negated claims are disclaimers: "I have not run X", "I have never used X" (`_TECH_DISCLAIMER_BEFORE_RE`, line 579). (d) Related technologies (Question 2): SQL is supported when the profile has a SQL database such as PostgreSQL, MySQL, or SQLite. Tests for each part, with normal-English negatives.
+- [ ] **F4. Duration ranges (effort: S).** "3-5 years" compares the top of the range with the cap. Today the code uses the bottom on purpose (comment at `cover_letter_grounding.py:965`, "conservative claim amount"). Reason for the change: the guide counts a range as inflated when its top is longer than the cap, and a reader takes the top as the claim (Question 3). Tests: a range above the cap is flagged; a range within the cap is not.
+- [ ] **F5. Scope inflation (effort: S).** Match `_SCOPE_INFLATION_PHRASES` (`cover_letter_grounding.py:124`) as whole words. Today the substring match (about line 1185) makes "called the" match "led the". Add "managed a team", "managed N engineers", "headed", "oversaw", and "owned the". Make the allowance per claim: the profile must have the same leadership phrase with the same object (for example "led a team of 3"); the verb alone somewhere in the profile is not enough. Tests: "before I called the speedup real" is not flagged; "managed a team of twelve" is flagged; "led fraud research at <another employer>" is flagged when the profile has only "Led a team of 3".
+- [ ] **F6. Fabricated experience (effort: M).** Today only selected project names are checked (`_check_accuracy`, `cover_letter_validator.py:584-613`). Add a grounding check for employers ("worked at X", "joined X", "interned at X"), titles ("my title was X", "as a <title> at X"), degrees (Bachelor, Master, MBA, PhD, doctorate, "degree in"), and certifications ("certified", "certificate", "certification"). Compare them with `profile.experience` (company, title), `profile.education` (degree, school), `profile.certifications` (name, issuer), and `profile.projects`. Tests for each kind, plus supported claims that must not be flagged.
+- [ ] **F7. Technique and analogy (effort: S).** Add "reinforcement learning", "reranking", and "distillation" to `_TECHNIQUE_TERMS` (`cover_letter_grounding.py:137`). When a sentence names two projects, check each technique against the project nearest to it (the bug from the first baseline). Find the cause of the missed analogy onto a JD-only duty (`_ANALOGY_MARKER_RE`, line 381), and fix it only if the cause is general.
+- [ ] **D5. Slot-normalized diversity (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
+
+##### Questions before the fixes (2026-10-22)
+
+1. **Holdout set.** Before the fixes, write about 20 new cases (same guide and limits, including L7 and L8) in `tests/fixtures/eval/grounding_holdout/`, and do not open them while fixing. Run them one time after F7. This shows whether the fixes generalize or only fit the 65 cases. Recommendation: yes; Claude writes the holdout set in this session, and the fixer does not open the folder.
+2. **Related technologies.** Treat SQL as supported when the profile has a SQL database (a small explicit map in the code, and a "Changes" entry in the guide). The current labels already treat SQL this way. Recommendation: yes.
+3. **Duration ranges.** Use the top of a range (F4). Recommendation: yes.
+4. **Who and when.** Cursor does F1 to F3 and stops for review (F1 can hide real claims if its skip rules are too wide), then F4 to F7 and D5. Recommendation: yes.
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4
@@ -554,7 +594,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Cursor: rework the grounding dataset (D1 to D4) under the measurable diversity limits L1 to L6, then run Baseline 2, as described in `tasks/handoff-step3-2-rework.md`. Then the user reviews Baseline 2 before the M7 fixes and the CI gate. Step 3.1 is pushed (`2a1f202`; CI run 39713285071 passed).
+Answer the four "Questions before the fixes" under the Step 3.2 fix plan. Then the holdout set (if approved) and the fixes F1 to F3. Baseline 2 is the reference. Step 3.1 is pushed (`2a1f202`); the Step 3.2 dataset work is local only.
 
 ## Backlog
 
