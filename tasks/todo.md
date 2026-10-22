@@ -372,6 +372,8 @@ flowchart LR
 
 ##### Step 3.2: Grounding golden set, then the M7 fixes (effort: M) — M4, M7
 
+Labeling rules (2026-10-22, see `tasks/handoff-step3-2.md`): label each check on its own with its definition, so one sentence can have more than one label (for example, a fabricated technology is also an ungrounded claim); write the labels before the validator runs; an unsupported number without from/to endpoints is `ungrounded_claims`, not `inconsistent_metric`; `fabricated_experience` covers projects, employers, titles, degrees, and certifications, which is wider than the code checks today.
+
 - [ ] `tests/fixtures/eval/grounding/cases.jsonl` with at least 60 cases. Each case has a synthetic profile, a job, a letter, and the expected set of issues:
   - clean letters that match the profile (expected: no issues);
   - one injected error per case: a number that the profile does not support ("90%", "3x"), an employer, a degree, inflated years of experience, or a tech that the profile does not have;
@@ -452,7 +454,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Step 3.2 (grounding golden set and labeling guide, then the M7 fixes). Step 3.1 is done locally.
+Cursor: the first part of Step 3.2 (labeling guide, constructed cases, dataset test, baseline), as described in `tasks/handoff-step3-2.md`. Then the user reviews the baseline before the M7 fixes and the CI gate. Step 3.1 is pushed (`2a1f202`; CI run 39713285071 passed).
 
 ## Backlog
 
