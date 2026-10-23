@@ -847,6 +847,26 @@ flowchart LR
 
     **Dataset limit (record with the numbers):** the constructed filler is templated (one frame in 36 of 65 letters), so the sentence precision and the clean false-positive rate describe these letters, not real letters. The constructed set measures targeted checks (one injected error per letter). The realistic false-positive measure is the user-labeled set of real generated letters (decision 1 of 2026-10-22).
 
+  - **Holdout run (2026-10-24, the one run, decision 2 after D5 and D6).** Claude added the holdout's `ungrounded_sentences` first (`8508922`: 11 sentences in 11 cases, 12 empty lists, no case-level change; the validator did not run on the holdout before). Command `.venv/bin/python main.py eval grounding --dataset tests/fixtures/eval/grounding_holdout` from `apps/backend-py`, one time, at `8508922` with a clean tree. Dataset SHA-256 `db1031331481...`, MLflow run `cb3e608baa354a21844913f2c8a5dd2f`, report `20261023T180301660897Z.json`. Labels and letters of the holdout do not change after this run; a later round of fixes needs a new holdout set.
+
+    | Label | Holdout P | Holdout R | Holdout support | Main set (3b) P | Main set (3b) R | Main set support |
+    |-------|-----------|-----------|-----------------|-----------------|-----------------|------------------|
+    | `fabricated_technology` | 1.000 | 1.000 | 3 | 0.800 | 1.000 | 8 |
+    | `inflated_duration` | 1.000 | 1.000 | 2 | 1.000 | 1.000 | 5 |
+    | `inconsistent_metric` | 1.000 | 1.000 | 1 | 1.000 | 1.000 | 3 |
+    | `fabricated_experience` | 0.500 | 1.000 | 2 | 0.857 | 0.750 | 8 |
+    | `analogical_claim` | 1.000 | 1.000 | 1 | 1.000 | 1.000 | 3 |
+    | `scope_inflation` | 0.500 | 1.000 | 1 | 1.000 | 1.000 | 4 |
+    | `technique_mismatch` | 1.000 | 1.000 | 1 | 0.750 | 1.000 | 3 |
+    | `ungrounded_claims` (case) | 0.500 | 1.000 | 11 | 0.523 | 1.000 | 34 |
+    | micro | 0.611 | 1.000 | — | 0.654 | 0.971 | — |
+    | `ungrounded_claims` (sentence) | 0.104 | 0.727 | 11 | 0.154 | 0.638 | 69 |
+
+    Micro F1: holdout 0.759, main set 0.781. Clean false-positive rate: holdout 0.909 (10 of 11), main set 1.000 (29 of 29).
+    - **Recall generalizes:** every injected error in the holdout was found at case level. The support is 1 to 3 per specific check, so one case moves a value by 0.33 to 1.0.
+    - **Precision does not fully generalize.** The 2 `fabricated_experience` false positives come from a short employer name ("At Harrow I reduced ...", where the profile says "Harrow Freight Systems"). The `scope_inflation` false positive comes from an object before the verb ("The on-call rotation I led had 4 engineers" gives the claim "led had 4 engineers"). Claude reproduced both classes on the probe-set-2 profile with new sentences, so the causes are confirmed without another holdout run. Neither class is in the main set. Known limits 9 and 10.
+    - **The ungrounded sentence check** flags 10 of 11 clean holdout letters (plans, opinions, and job restatements, as in the main set), and misses 3 labeled sentences that other checks found at case level (the scikit-learn range, the Corvane employer, and distillation on Basket Lens): the overlap check reads words, and those sentences use profile words. Known limit 11.
+
 ##### Decisions before the fixes (2026-10-22)
 
 All four recommendations were accepted.
@@ -889,6 +909,9 @@ The deterministic grounding rules read surface words. After the last rule round 
 6. **Employers, verb list.** "At <Org>, I <verb>" reads only the verbs in `_PAST_CLAIM_VERBS` and "worked". A verb outside that list is missed ("At <Org>, I rebuilt ...").
 7. **Titles, other forms.** Only "as a <title> at <Org>" and "my title was <title>" are read. "I was a <title> at <Org>" is missed.
 8. **Products and projects.** A product or project name is checked only when the project is selected (main-set case `fabricated_experience__harbor_mint`).
+9. **Employers, short names.** Names must be equal after normalization, so a short form of a profile employer ("At Harrow I ..." for "Harrow Freight Systems") is an unknown employer (found by the holdout run).
+10. **Leadership, object before the verb.** "The rotation I led had 4 engineers" gives the claim "led had 4 engineers", which the profile does not contain (found by the holdout run).
+11. **Ungrounded sentences and the other checks.** The ungrounded sentence check reads word overlap with the profile only. A sentence that another check flags (a fabricated employer, an inflated range, a technique on the wrong project) is not in its findings when the sentence uses profile words (3 holdout sentences).
 
 ##### Decisions after F5b and F6b (2026-10-23)
 
@@ -975,7 +998,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Decide on "Questions after D5 and D6" (a small mechanical fix of the D5 letters, then Baseline 3b). Next: Claude adds the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. D5 and D6 are `5a408f8`, `dee440d`, `7dc3128`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
+Step 3.2: the D5 fix, Baseline 3b, and the one holdout run are done (see "Holdout run (2026-10-24)"). Left in Step 3.2: the CI gate (a thresholds file for the main set, from Baseline 3b), and the user-labeled set of about 15 real generated letters (decision 1 of 2026-10-22), which is the realistic false-positive measure. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. D5 and D6 are `5a408f8`, `dee440d`, `7dc3128`. The D5 fix and the holdout labels are `4ddbb5f`, `8508922`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 
