@@ -1437,6 +1437,7 @@ def _has_candidate_subject(prefix: str) -> bool:
     auxiliaries (``_SCOPE_SUBJECT_AUXILIARIES``). A claim requires
     ``I`` or ``we``, a joining word (``and``, a comma, ``then``) with
     ``I`` or ``we`` earlier in the sentence, or no word before the verb.
+    A curly apostrophe counts as a straight one, so ``I’ve`` is ``I've``.
 
     Args:
         prefix: Sentence text before the leadership phrase.
@@ -1444,9 +1445,8 @@ def _has_candidate_subject(prefix: str) -> bool:
     Returns:
         True when the candidate is the subject of the phrase.
     """
-    tokens = [
-        match.group(0).lower() for match in _SCOPE_LEFT_TOKEN_RE.finditer(prefix or "")
-    ]
+    text = (prefix or "").replace("\u2019", "'")
+    tokens = [match.group(0).lower() for match in _SCOPE_LEFT_TOKEN_RE.finditer(text)]
     if not tokens:
         return True
     index = len(tokens) - 1

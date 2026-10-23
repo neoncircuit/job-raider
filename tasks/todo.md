@@ -791,7 +791,10 @@ flowchart LR
       - "At <Org>, I rebuilt the rate engine" is missed because "rebuilt" is not in `_PAST_CLAIM_VERBS`. The comma form works ("At <Org>, I built" is flagged). This is a known limit (item 6 below).
     - **Probe set 3, classes that no handoff named: 0 of 5 right.** They are known limits 1, 2, 4, 5, and 7 below.
     - The full gate at `cfca1a0`: Black and Ruff clean, mypy gate 182 known errors and 0 new, pytest 1193 passed.
-    - See "Known limits of the rule checks" and "Questions after F5b and F6b" (after "Decisions after F5a and F6a").
+    - See "Known limits of the rule checks" and "Decisions after F5b and F6b" (after "Decisions after F5a and F6a").
+- [x] **F5b-fix. Curly apostrophe in the subject rule (effort: S; Claude; decision 1 after F5b and F6b).** `_has_candidate_subject` reads a curly apostrophe as a straight one before it splits the words, so "I’ve led ..." and "we’re leading ..." keep their subject.
+
+  **Done (2026-10-23).** One line in `_has_candidate_subject` that replaces U+2019 (the curly apostrophe, written as an escape like the other curly-apostrophe patterns in the file) with a straight apostrophe, and a docstring sentence. Test `test_curly_apostrophe_contractions_are_candidate_subjects` checks "I've led", "We're leading", and "I'm leading" with both apostrophes. Before the fix it failed on "I’ve led the compiler rollout since spring." after the straight form passed. Mutation: the normalization line replaced with `text = prefix or ""  # mutated` (1 occurrence, checksum `2d8b7a34...` to `80f6e149...`); the new test failed; the file was restored (`2d8b7a34...`). Eval: `.venv/bin/python main.py eval grounding`, MLflow run `3190eee25d674e2abfbf28880169fe7b`, report `20261023T080455452866Z.json`; every metric is the same as after F6b (micro F1 0.793; the main set has no curly apostrophes in leadership claims). Gate: Black and Ruff clean, mypy gate 182 known errors and 0 new, pytest 1194 passed.
 - [ ] **D5. Slot-normalized diversity and hard negatives (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Hard negatives (decision 2 after F4 to F7): some of the new clean filler sentences use ordinary phrasings that the scope and experience checks confused ("led to", "managed to", "as a result", "a leading provider", "master" as a verb, a talk at an event, a certificate that the job asks for). Write their labels before the validator runs. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
 - [ ] **D6. Elaboration rule and sentence-level `ungrounded_claims` (effort: M; dataset and suite; decisions after F1 to F3).** Add the strict elaboration rule (decision 1) and a rule for specific past practices to the labeling guide, with a "Changes" entry. Add `ungrounded_sentences` (exact sentence texts) to `GroundingCase`, and label every main-set case: list each sentence that is ungrounded under the guide, then set the case-level `ungrounded_claims` label from that list. Extend the grounding suite to score `ungrounded_claims` per sentence (sentence precision, recall, and F1, with a documented sentence split) in addition to the case-level scores. Claude adds the sentence labels to the holdout set. Then run the main set, and run the holdout one time.
 
@@ -838,9 +841,9 @@ The deterministic grounding rules read surface words. After the last rule round 
 7. **Titles, other forms.** Only "as a <title> at <Org>" and "my title was <title>" are read. "I was a <title> at <Org>" is missed.
 8. **Products and projects.** A product or project name is checked only when the project is selected (main-set case `fabricated_experience__harbor_mint`).
 
-##### Questions after F5b and F6b (2026-10-23)
+##### Decisions after F5b and F6b (2026-10-23)
 
-1. **Who fixes the curly-apostrophe regression?** Recommendation: Claude, here, before the D5 and D6 handoff. The fix is small: the subject tokens accept the curly apostrophe and compare it as a straight one, with a test ("I’ve led", "we’re leading", and the straight forms) and a mutation proof. Then the rule checks are closed, and the next handoff is D5 and D6.
+1. **Claude fixes the curly-apostrophe regression here** (item F5b-fix), with a failing test first and a mutation proof. Then the rule checks are closed, and the next handoff is D5 and D6 (`tasks/handoff-step3-2-d5-d6.md`).
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4
@@ -911,7 +914,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Decide on "Questions after F5b and F6b" (the curly-apostrophe regression from F5b). No more rule rounds after that: the dataset pass D5 (with hard negatives) and D6 (elaboration rule and sentence-level `ungrounded_claims`), with Claude adding the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
+Cursor: the dataset pass D5 (slot-normalized limits, filler rewrite, hard negatives) and D6 (elaboration rule and sentence-level `ungrounded_claims`), as described in `tasks/handoff-step3-2-d5-d6.md`, then a stop for review. The rule checks are closed (see "Known limits of the rule checks"). After that: Claude adds the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 

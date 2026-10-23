@@ -1639,6 +1639,29 @@ def test_candidate_subjects_with_adverbs_or_coordination_are_scope_claims() -> N
         assert any("Scope inflation" in flag for flag in flags)
 
 
+def test_curly_apostrophe_contractions_are_candidate_subjects() -> None:
+    """'I’ve' and 'we’re' with a curly apostrophe are subjects, like the straight forms."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    bullets = ["Wrote telemetry parsers in Erlang."]
+    for straight in (
+        "I've led the compiler rollout since spring.",
+        "We're leading the compiler rollout this year.",
+        "I'm leading the buffer review for the studio.",
+    ):
+        curly = straight.replace("'", "’")
+        for sentence in (straight, curly):
+            flags = flag_scope_and_technique_overclaims(
+                sentence,
+                None,
+                {},
+                resume_bullets=bullets,
+            )
+            assert any("Scope inflation" in flag for flag in flags), sentence
+
+
 def test_degree_and_certificate_claims_require_first_person_owner() -> None:
     """General statements, requirements without first-person words, and idioms are not claims."""
     from src.generation.cover_letter_grounding import (
