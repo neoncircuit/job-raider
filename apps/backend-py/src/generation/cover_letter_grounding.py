@@ -154,6 +154,19 @@ _SCOPE_NON_OBJECT_STARTS: frozenset[str] = frozenset({"to", "me", "us", "them"})
 # An article before "leading" marks an adjective ("a leading lab").
 _ADJECTIVE_LEADING_PREFIX_RE = re.compile(r"\b(?:a|an|the)\s+$", re.IGNORECASE)
 
+# Short lists for the subject rule on leadership verbs.
+_SCOPE_FIRST_PERSON_SUBJECTS: frozenset[str] = frozenset(
+    {"i", "we", "i've", "we've", "i'm", "we're", "i'd", "we'd"}
+)
+_SCOPE_SUBJECT_AUXILIARIES: frozenset[str] = frozenset(
+    {"have", "has", "had", "am", "is", "are", "was", "were", "be", "been"}
+)
+_SCOPE_SUBJECT_ADVERBS: frozenset[str] = frozenset(
+    {"also", "once", "later", "always", "often", "already", "still", "just", "even"}
+)
+_SCOPE_SUBJECT_JOINERS: frozenset[str] = frozenset({"and", ",", "then"})
+_SCOPE_LEFT_TOKEN_RE = re.compile(r"[A-Za-z]+(?:'[A-Za-z]+)?|[,.;:!?]")
+
 # Words that end the object of a leadership claim.
 _SCOPE_OBJECT_STOPS: frozenset[str] = frozenset(
     {
@@ -1415,16 +1428,58 @@ def _normalize_scope_text(text: str) -> str:
     return lowered
 
 
+def _has_candidate_subject(prefix: str) -> bool:
+    """
+    Return whether the candidate is the subject of the verb after ``prefix``.
+
+    Looks at the nearest word to the left of the leadership phrase,
+    skipping adverbs (``-ly`` words and ``_SCOPE_SUBJECT_ADVERBS``) and
+    auxiliaries (``_SCOPE_SUBJECT_AUXILIARIES``). A claim requires
+    ``I`` or ``we``, a joining word (``and``, a comma, ``then``) with
+    ``I`` or ``we`` earlier in the sentence, or no word before the verb.
+
+    Args:
+        prefix: Sentence text before the leadership phrase.
+
+    Returns:
+        True when the candidate is the subject of the phrase.
+    """
+    tokens = [
+        match.group(0).lower() for match in _SCOPE_LEFT_TOKEN_RE.finditer(prefix or "")
+    ]
+    if not tokens:
+        return True
+    index = len(tokens) - 1
+    while index >= 0:
+        token = tokens[index]
+        if token in _SCOPE_SUBJECT_AUXILIARIES or token in _SCOPE_SUBJECT_ADVERBS:
+            index -= 1
+            continue
+        if len(token) > 2 and token.endswith("ly"):
+            index -= 1
+            continue
+        break
+    if index < 0:
+        return True
+    nearest = tokens[index]
+    if nearest in _SCOPE_FIRST_PERSON_SUBJECTS:
+        return True
+    if nearest in _SCOPE_SUBJECT_JOINERS:
+        return any(tok in _SCOPE_FIRST_PERSON_SUBJECTS for tok in tokens[:index])
+    return False
+
+
 def _leadership_claims(text: str) -> List[str]:
     """
     Return leadership claims in ``text``, each with its object.
 
-    A bare verb such as ``led`` or ``managed`` counts only with a noun
-    phrase after it: ``to``, ``me``, ``us``, and ``them`` do not start
-    an object. ``leading`` after ``a``, ``an``, ``the``, or a hyphen is
-    an adjective, not a claim. The object stops at a preposition or a
-    clause word such as ``to`` or ``that``, and it is at most six words.
-    ``called the`` does not match ``led the``.
+    A leadership phrase is a claim only when the candidate is its
+    subject (``_has_candidate_subject``). A bare verb such as ``led`` or
+    ``managed`` counts only with a noun phrase after it: ``to``, ``me``,
+    ``us``, and ``them`` do not start an object. ``leading`` after ``a``,
+    ``an``, ``the``, or a hyphen is an adjective, not a claim. The object
+    stops at a preposition or a clause word such as ``to`` or ``that``,
+    and it is at most six words. ``called the`` does not match ``led the``.
 
     Args:
         text: One sentence, any case.
@@ -1439,6 +1494,8 @@ def _leadership_claims(text: str) -> List[str]:
         if head.lower().startswith("leading") and (
             prefix.endswith("-") or _ADJECTIVE_LEADING_PREFIX_RE.search(prefix)
         ):
+            continue
+        if not _has_candidate_subject(prefix):
             continue
         words: List[str] = []
         for word in (text or "")[match.end() :].split():

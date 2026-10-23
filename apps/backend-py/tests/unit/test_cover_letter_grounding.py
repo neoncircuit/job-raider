@@ -1587,3 +1587,53 @@ def test_project_name_inside_a_longer_word_is_not_a_project_span() -> None:
         )
         == []
     )
+
+
+def test_non_candidate_subjects_and_managed_adjective_are_not_scope_claims() -> None:
+    """Another person, the company, a relative clause, or 'a managed <tech>' is not a claim."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    bullets = ["Wrote telemetry parsers in Erlang."]
+    for sentence in (
+        "My supervisor led the compiler rollout, and I tuned the buffer.",
+        "My mentor led the storage audit and owned the release calendar.",
+        "Your group is leading the transition to open telemetry.",
+        "The profiler trace that led directly to the memory fix stayed in the repo.",
+        "I moved the archive to a managed Valkey service.",
+        "We deployed a fully managed Valkey cluster for the studio.",
+    ):
+        assert (
+            flag_scope_and_technique_overclaims(
+                sentence,
+                None,
+                {},
+                resume_bullets=bullets,
+            )
+            == []
+        )
+
+
+def test_candidate_subjects_with_adverbs_or_coordination_are_scope_claims() -> None:
+    """First-person subjects, sentence-start verbs, and coordinated verbs with 'I' are claims."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    bullets = ["Wrote telemetry parsers in Erlang."]
+    for sentence in (
+        "I led the compiler rollout for the studio.",
+        "Last quarter I also led the compiler rollout.",
+        "We led the compiler rollout across three regions.",
+        "I tuned the buffer and owned the release calendar.",
+        "Led the compiler rollout at Tamarack Vault.",
+        "I successfully managed a team of 6 analysts on the buffer rewrite.",
+    ):
+        flags = flag_scope_and_technique_overclaims(
+            sentence,
+            None,
+            {},
+            resume_bullets=bullets,
+        )
+        assert any("Scope inflation" in flag for flag in flags)
