@@ -982,11 +982,20 @@ Shape of the file:
 }
 ```
 
-**Questions for this proposal:**
+**Decisions on this proposal (2026-10-24).** All three recommendations were accepted.
 
-1. **Counts with no margin (recommended), or ratio floors with a margin?** Counts catch every single regression and do not drift; a deliberate trade-off needs one edited line with a reason.
-2. **Holdout and real letters out of CI (recommended)?**
-3. **Who implements it?** Recommendation: Claude, here. It is one JSON file and one test of about 80 lines, with a test first and a mutation proof (lower one pin by one, and the test must fail with that label and its cases in the message).
+1. **Counts with no margin.** Each pin is a count from Baseline 3b; a deliberate trade-off needs one edited line with a reason.
+2. **The holdout and the real letters stay out of CI.**
+3. **Claude implements it here**, with a failing test first and a mutation proof.
+
+- [ ] **CI gate for the grounding suite (effort: S; Claude; decisions on the CI gate proposal).** `tests/fixtures/eval/grounding/thresholds.json` with the pins above, and `tests/unit/test_grounding_thresholds.py`. A short section in `docs/usage.md`.
+
+  **In progress (2026-10-24, stopped for the day).** `tests/unit/test_grounding_thresholds.py` is written and not committed: `threshold_check` (dataset SHA first, then each label's false positives and false negatives, then the sentence counts, with the cases behind each worse count), the gate test, a test that each pin change has a dated entry, and four tests on small synthetic reports. The first run, before `thresholds.json` exists: 3 failed, 3 passed. The 2 file tests fail with `FileNotFoundError` (expected: the test came first). `test_a_null_pin_is_not_gated_and_a_missing_pin_fails` fails because of a test bug: its sentence count (0) is below its pin (2), so it is listed as tightenable; the assert must check only the violations. Next steps:
+    1. Fix that assert.
+    2. Add `thresholds.json` with the pins of the proposal table and the first `changes` entry (Baseline 3b, MLflow run `7a5ebb3f22c940c888a548e0258b779e`).
+    3. Mutation proofs: lower `fabricated_experience` `max_false_positives` from 1 to 0 (the gate must fail and name `clean__deans_list`); change one character of the dataset SHA-256 (the gate must fail with "dataset changed"); loosen `count > pin` in `_compare` (a synthetic test must fail).
+    4. A short "CI gate" section in `docs/usage.md` (how to run the test, and how to change a pin).
+    5. The full gate, the Done note, and one commit.
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4
@@ -1057,7 +1066,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Step 3.2: the D5 fix, Baseline 3b, and the one holdout run are done (see "Holdout run (2026-10-24)"). Decide on "CI gate proposal for the grounding suite". Left in Step 3.2 after that: the CI gate itself, and the user-labeled set of about 15 real generated letters (decision 1 of 2026-10-22), which is the realistic false-positive measure. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. D5 and D6 are `5a408f8`, `dee440d`, `7dc3128`. The D5 fix and the holdout labels are `4ddbb5f`, `8508922`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
+Step 3.2: the D5 fix, Baseline 3b, and the one holdout run are done (see "Holdout run (2026-10-24)"). The CI gate proposal is accepted, and the gate is in progress (see the "CI gate for the grounding suite" item for the next steps; the test file is not committed yet). Left in Step 3.2 after that: the user-labeled set of about 15 real generated letters (decision 1 of 2026-10-22), which is the realistic false-positive measure. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. D5 and D6 are `5a408f8`, `dee440d`, `7dc3128`. The D5 fix and the holdout labels are `4ddbb5f`, `8508922`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 
