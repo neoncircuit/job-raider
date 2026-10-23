@@ -1177,7 +1177,7 @@ def flag_inflated_duration_claims(
     """
     Flag duration claims that exceed merged resume experience (or skill years).
 
-        Extracts patterns such as ``over 2 years``, ``2-3 years``, and
+    Extracts patterns such as ``over 2 years``, ``2-3 years``, and
     ``five years of``. A range is compared by its top: the guide counts
     a range as inflated when that top is longer than the cap, and a
     reader takes the top as the claim. A single number, including
@@ -1504,14 +1504,11 @@ def _project_name_spans(
     for name in project_names:
         if not name:
             continue
-        needle = name.lower()
-        start = 0
-        while True:
-            index = lowered.find(needle, start)
-            if index < 0:
-                break
-            raw.append((index, index + len(needle), name))
-            start = index + 1
+        pattern = re.compile(
+            rf"(?<![A-Za-z0-9]){re.escape(name.lower())}(?![A-Za-z0-9])"
+        )
+        for match in pattern.finditer(lowered):
+            raw.append((match.start(), match.end(), name))
     kept: List[tuple[int, int, str]] = []
     for span in raw:
         covered = any(

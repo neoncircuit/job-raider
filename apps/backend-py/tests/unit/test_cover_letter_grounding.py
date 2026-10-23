@@ -1561,3 +1561,29 @@ def test_scope_inflation_positives_stay_flagged_with_new_objects() -> None:
             resume_bullets=bullets,
         )
         assert any("Scope inflation" in flag for flag in flags)
+
+
+def test_project_name_inside_a_longer_word_is_not_a_project_span() -> None:
+    """A project name that appears only inside a longer word does not steal a technique."""
+    from src.generation.cover_letter_grounding import (
+        _project_name_spans,
+        flag_scope_and_technique_overclaims,
+    )
+
+    techniques = {
+        "Quarry": ["retrieval"],
+        "Anvil Foundry": ["fine-tuning"],
+    }
+    sentence = "Inside the quarryman logs I ran fine-tuning on Anvil Foundry."
+    assert _project_name_spans(sentence, ["Quarry", "Anvil Foundry"]) == [
+        (47, 60, "Anvil Foundry")
+    ]
+    assert (
+        flag_scope_and_technique_overclaims(
+            sentence,
+            None,
+            techniques,
+            resume_bullets=["Ran fine-tuning on Anvil Foundry"],
+        )
+        == []
+    )
