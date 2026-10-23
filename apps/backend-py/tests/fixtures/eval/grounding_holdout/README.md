@@ -28,4 +28,5 @@ flowchart LR
 
 - `profiles.json`: 2 fictional profiles (`platform`, `analytics`), different from the main set.
 - `cases.jsonl`: 23 cases, written on 2026-10-22 before any fix. Each case has a `note` that explains its labels.
+- `ungrounded_sentences` (D6): added by Claude on 2026-10-24, before the holdout run and without running the validator on this set. 11 sentences in 11 cases; the other 12 cases have an empty list. No case-level label changed. Convention: the technologies of an experience support a sentence that names them for the work of that experience ("I built the report with Python and PostgreSQL").
 - `tests/unit/test_grounding_holdout.py` checks the format, the diversity limits (also with company and title replaced), and that no case ID, company, or long sentence is shared with the main set. It does not run the validator.
