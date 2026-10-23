@@ -1260,3 +1260,124 @@ def test_fabricated_certificate_is_flagged_and_a_real_one_is_not() -> None:
         job,
     )
     assert fake and real == []
+
+
+def _two_desk_profile() -> UserProfile:
+    """Two projects, each with one documented technique."""
+    return UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Remote"),
+        projects=[
+            Project(
+                name="North Desk",
+                description="A retrieval index for support notes.",
+                technologies=["Python"],
+                highlights=["Built a retrieval index"],
+            ),
+            Project(
+                name="South Desk",
+                description="Fine-tuning a classifier on ticket labels.",
+                technologies=["Python"],
+                highlights=["Ran fine-tuning on the label set"],
+            ),
+        ],
+    )
+
+
+def test_distillation_on_a_project_without_it_is_flagged() -> None:
+    """Distillation is a technique and must be on the named project."""
+    from src.generation.cover_letter_grounding import flag_claim_overclaims
+
+    findings = flag_claim_overclaims(
+        "I used distillation on North Desk.",
+        _two_desk_profile(),
+    )
+    joined = " ".join(flag for item in findings for flag in item["flags"])
+    assert "distillation" in joined
+    assert "North Desk" in joined
+
+
+def test_each_technique_is_checked_against_the_nearest_project() -> None:
+    """A technique next to its own project is not a mismatch."""
+    from src.generation.cover_letter_grounding import flag_claim_overclaims
+
+    findings = flag_claim_overclaims(
+        "I used retrieval on North Desk and fine-tuning on South Desk.",
+        _two_desk_profile(),
+    )
+    joined = " ".join(flag for item in findings for flag in item["flags"]).lower()
+    assert "technique mismatch" not in joined
+
+
+def test_a_technique_beside_the_other_project_is_flagged() -> None:
+    """Distillation beside South Desk is not saved by North Desk."""
+    from src.generation.cover_letter_grounding import flag_claim_overclaims
+
+    findings = flag_claim_overclaims(
+        "I used retrieval on North Desk and distillation on South Desk.",
+        _two_desk_profile(),
+    )
+    joined = " ".join(flag for item in findings for flag in item["flags"])
+    assert "distillation" in joined
+    assert "South Desk" in joined
+
+
+def _forms_profile(*, with_testing: bool) -> UserProfile:
+    """A forms profile, with penetration testing only when requested."""
+    highlights = ["Built accessible forms for the public site"]
+    if with_testing:
+        highlights.append("Ran penetration testing on the checkout flow")
+    return UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Remote"),
+        experience=[
+            WorkExperience(
+                title="Engineer",
+                company="Cedar Desk",
+                start_date=datetime(2022, 1, 1),
+                highlights=highlights,
+            )
+        ],
+    )
+
+
+def _testing_job() -> JobListing:
+    """A job whose duty is written as two words, penetration testing."""
+    return JobListing(
+        title="Platform Engineer",
+        company="Harbor Labs",
+        job_id="pen-1",
+        source=JobSource.MANUAL,
+        description="The team handles penetration testing for payment forms.",
+    )
+
+
+def test_hyphenated_analogy_target_matches_a_spaced_jd_duty() -> None:
+    """A hyphen in the letter still maps onto the spaced job duty."""
+    letter = "The forms I built are similar to the penetration-testing step."
+    findings = flag_analogical_claims(
+        letter,
+        _forms_profile(with_testing=False),
+        _testing_job(),
+    )
+    joined = " ".join(flag for item in findings for flag in item["flags"])
+    assert "penetration" in joined
+    assert "testing" in joined
+
+
+def test_hyphenated_analogy_is_allowed_when_the_resume_has_the_words() -> None:
+    """The same hyphen is not a claim when the resume states the duty."""
+    letter = "The forms I built are similar to the penetration-testing step."
+    assert (
+        flag_analogical_claims(
+            letter,
+            _forms_profile(with_testing=True),
+            _testing_job(),
+        )
+        == []
+    )
+
+
+def test_significant_words_keeps_a_hyphenated_compound() -> None:
+    """Hyphen splits stay inside the analogy check."""
+    assert significant_words("penetration-testing") == ["penetration-testing"]

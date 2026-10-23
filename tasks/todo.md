@@ -654,7 +654,29 @@ flowchart LR
   | `technique_mismatch` | 1.000 | 1.000 | 0.667 | 0.667 | 0.800 | 0.800 | 2 | 2 |
   | `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
   | micro | 0.644 | 0.663 | 0.866 | 0.940 | 0.739 | 0.778 | — | — |
-- [ ] **F7. Technique and analogy (effort: S).** Add "reinforcement learning", "reranking", and "distillation" to `_TECHNIQUE_TERMS` (`cover_letter_grounding.py:137`). When a sentence names two projects, check each technique against the project nearest to it (the bug from the first baseline). Find the cause of the missed analogy onto a JD-only duty (`_ANALOGY_MARKER_RE`, line 381), and fix it only if the cause is general.
+- [x] **F7. Technique and analogy (effort: S).** Add "reinforcement learning", "reranking", and "distillation" to `_TECHNIQUE_TERMS` (`cover_letter_grounding.py:137`). When a sentence names two projects, check each technique against the project nearest to it (the bug from the first baseline). Find the cause of the missed analogy onto a JD-only duty (`_ANALOGY_MARKER_RE`, line 381), and fix it only if the cause is general.
+
+  **Done (2026-10-23).** `_TECHNIQUE_TERMS` now includes `reinforcement learning`, `reranking`, and `distillation`. Each technique mention is checked against the project name closest to it. A shorter name inside a longer name is not a separate project. `significant_words` is unchanged.
+
+  The missed analogy is `analogical_claim__forms_security`. The letter says "similar to the penetration-testing duty". `significant_words` keeps `penetration-testing` as one token because `_WORD_RE` includes the hyphen. The job text says "penetration testing" as two words, so the compound is not in the job word set. `duty`, `habit`, `checking`, and `edges` are not in that job text either, so they were not the miss. The profile does not contain `penetration` or `testing`. The cause is general: a hyphenated compound in the letter does not meet the same duty written with a space. The fix is local to `flag_analogical_claims`. The parts of a hyphenated target word count only when every part is a job word. `analogical_claim__forms_security` is now a true positive.
+
+  Tests, written before the change: 4 failed, 2 passed. Failures: "I used distillation on North Desk" was not flagged (`assert 'distillation' in ''`); "retrieval on North Desk and fine-tuning on South Desk" was flagged as fine-tuning for North Desk; "distillation on South Desk" was not flagged (`assert 'distillation' in ''`); "similar to the penetration-testing step" was not flagged (`assert 'penetration' in ''`). The same hyphen was already allowed when the resume says "penetration testing", and `significant_words("penetration-testing")` was already one token. No existing test was changed.
+
+  Mutation: the nearest-project assignment was replaced with `named = project_name  # single project` (1 occurrence). Checksum changed (`58df6c5b...` to `1a80f474...`). `grep -F` count of the mutated text was 1. The two-project tests failed: fine-tuning was charged to North Desk, and distillation was charged to North Desk. The single-project distillation test and both analogy tests stayed green, because the analogy split is a different line. The file was restored and matched the backup byte for byte (`58df6c5b...`).
+
+  Eval: `.venv/bin/python main.py eval grounding` from `apps/backend-py`. Git SHA `20b472d6fdc6cbb6a7642182b8bae4d90c992e52`, `git_dirty` true. Dataset SHA-256 unchanged. MLflow run `f62f6ce8206f4618ac7831b58209ef26`. Report `20261023T022615113861Z.json`. No label F1 fell. `clean_false_positive_rate` stayed 0.966 (28/29). `ungrounded_claims` stayed predicted on 64 cases. `technique_mismatch__atlas_rl` is now a true positive. `analogical_claim__forms_security` gained `analogical_claim`; its extra `ungrounded_claims` was already predicted before this fix. Atlas Search already documents `reranking`, so that new term does not flag that project.
+
+  | Label | P before (F6) | P after | R before | R after | F1 before | F1 after | Predicted before | Predicted after |
+  |-------|---------------|---------|----------|---------|-----------|----------|------------------|-----------------|
+  | `fabricated_technology` | 0.889 | 0.889 | 1.000 | 1.000 | 0.941 | 0.941 | 9 | 9 |
+  | `inflated_duration` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 5 | 5 |
+  | `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+  | `fabricated_experience` | 1.000 | 1.000 | 0.750 | 0.750 | 0.857 | 0.857 | 6 | 6 |
+  | `analogical_claim` | 1.000 | 1.000 | 0.667 | 1.000 | 0.800 | 1.000 | 2 | 3 |
+  | `scope_inflation` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 4 | 4 |
+  | `technique_mismatch` | 1.000 | 1.000 | 0.667 | 1.000 | 0.800 | 1.000 | 2 | 3 |
+  | `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
+  | micro | 0.663 | 0.670 | 0.940 | 0.970 | 0.778 | 0.793 | — | — |
 - [ ] **D5. Slot-normalized diversity (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
 - [ ] **D6. Elaboration rule and sentence-level `ungrounded_claims` (effort: M; dataset and suite; decisions after F1 to F3).** Add the strict elaboration rule (decision 1) and a rule for specific past practices to the labeling guide, with a "Changes" entry. Add `ungrounded_sentences` (exact sentence texts) to `GroundingCase`, and label every main-set case: list each sentence that is ungrounded under the guide, then set the case-level `ungrounded_claims` label from that list. Extend the grounding suite to score `ungrounded_claims` per sentence (sentence precision, recall, and F1, with a documented sentence split) in addition to the case-level scores. Claude adds the sentence labels to the holdout set. Then run the main set, and run the holdout one time.
 
@@ -744,7 +766,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Cursor: validator fixes F4 to F7, as described in `tasks/handoff-step3-2-f4-f7.md`, then a stop for review. After that: the dataset pass D5 and D6 (elaboration rule and sentence-level `ungrounded_claims`), with Claude adding the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are done locally (`972bdde`, `9b48608`, `635a1ed`). Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
+Cursor: validator fixes F4 to F7 are done locally and stop here for review. After that: the dataset pass D5 and D6 (elaboration rule and sentence-level `ungrounded_claims`), with Claude adding the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F6 are `b10e04e`, `b0ca3aa`, `20b472d`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 

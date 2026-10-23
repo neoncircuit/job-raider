@@ -190,6 +190,9 @@ _TECHNIQUE_TERMS: tuple[str, ...] = (
     "real-time",
     "realtime",
     "containerized",
+    "reinforcement learning",
+    "reranking",
+    "distillation",
 )
 
 # Canonical tech names for letter-vs-resume Technical Skills checks.
@@ -1458,6 +1461,79 @@ def _resume_has_leadership_claim(claim: str, resume_text: str) -> bool:
     return normalized in _normalize_scope_text(resume_text)
 
 
+def _project_name_spans(
+    sentence: str, project_names: Sequence[str]
+) -> List[tuple[int, int, str]]:
+    """
+    Find project-name spans in a sentence.
+
+    A shorter name that sits inside a longer name is dropped, so
+    ``Desk`` does not steal a span from ``North Desk``.
+
+    Args:
+        sentence: Cover-letter sentence.
+        project_names: Known project names.
+
+    Returns:
+        ``(start, end, name)`` spans in the sentence.
+    """
+    lowered = (sentence or "").lower()
+    raw: List[tuple[int, int, str]] = []
+    for name in project_names:
+        if not name:
+            continue
+        needle = name.lower()
+        start = 0
+        while True:
+            index = lowered.find(needle, start)
+            if index < 0:
+                break
+            raw.append((index, index + len(needle), name))
+            start = index + 1
+    kept: List[tuple[int, int, str]] = []
+    for span in raw:
+        covered = any(
+            other[0] <= span[0] and span[1] <= other[1] and len(other[2]) > len(span[2])
+            for other in raw
+        )
+        if not covered:
+            kept.append(span)
+    return kept
+
+
+def _nearest_project_name(
+    term_start: int,
+    term_end: int,
+    spans: Sequence[tuple[int, int, str]],
+) -> Optional[str]:
+    """
+    Return the project name closest to a technique mention.
+
+    Args:
+        term_start: Start index of the technique in the sentence.
+        term_end: End index of the technique in the sentence.
+        spans: Project-name spans from ``_project_name_spans``.
+
+    Returns:
+        The nearest project name, or ``None`` when ``spans`` is empty.
+        A tie goes to the longer name.
+    """
+    if not spans:
+        return None
+
+    def _distance(span: tuple[int, int, str]) -> tuple[int, int]:
+        start, end, name = span
+        if term_end <= start:
+            gap = start - term_end
+        elif end <= term_start:
+            gap = term_start - end
+        else:
+            gap = 0
+        return (gap, -len(name))
+
+    return min(spans, key=_distance)[2]
+
+
 def flag_scope_and_technique_overclaims(
     sentence: str,
     project_name: Optional[str],
@@ -1475,14 +1551,16 @@ def flag_scope_and_technique_overclaims(
        the same claim and the same object. Number words and digits are
        equal. The verb alone, on a different object, is not enough.
     2. Technique mismatch: flags a named technique (e.g. ``retrieval``,
-       ``fine-tuning``) when the referenced project's known technique list
-       does not include it.
+       ``fine-tuning``, ``distillation``) when the nearest named project's
+       technique list does not include it. Each mention is checked against
+       the project closest to it, so two projects in one sentence do not
+       share one technique list.
 
     Args:
         sentence: A single sentence from the generated cover letter.
-        project_name: The project this sentence is describing, used to
-            look up what techniques that project actually uses. May be
-            ``None`` when no project is named (technique check is skipped).
+        project_name: Fallback project when the sentence names none.
+            When the sentence names one or more projects, each technique
+            is checked against the project nearest to that mention.
         project_techniques: Mapping of project name to the list of
             techniques verified to apply to it.
         resume_bullets: Optional resume corpus. A leadership claim is
@@ -1508,16 +1586,26 @@ def flag_scope_and_technique_overclaims(
                 "individual contribution"
             )
 
-    if project_name:
-        known = project_techniques.get(project_name, [])
-        known_lower = " ".join(known).lower()
-        for term in _TECHNIQUE_TERMS:
-            if _whole_term_in_text(lowered, term) and not _whole_term_in_text(
-                known_lower, term
-            ):
-                flags.append(
-                    f"Technique mismatch: '{term}' not verified for " f"{project_name}"
-                )
+    spans = _project_name_spans(sentence, list(project_techniques.keys()))
+    seen_terms: Set[tuple[str, str]] = set()
+    for term in _TECHNIQUE_TERMS:
+        pattern = re.compile(
+            rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])",
+            re.IGNORECASE,
+        )
+        for match in pattern.finditer(sentence or ""):
+            named = (
+                _nearest_project_name(match.start(), match.end(), spans)
+                if spans
+                else project_name
+            )
+            if not named or (term, named) in seen_terms:
+                continue
+            seen_terms.add((term, named))
+            known = project_techniques.get(named, [])
+            known_lower = " ".join(known).lower()
+            if not _whole_term_in_text(known_lower, term):
+                flags.append(f"Technique mismatch: '{term}' not verified for {named}")
 
     return flags
 
@@ -2080,6 +2168,21 @@ def flag_analogical_claims(
             continue
         target = cleaned[match.end() :]
         target_words = significant_words(target)
+        # ``significant_words`` keeps a hyphenated compound as one token.
+        # A job duty written as two words (``penetration testing``) would
+        # otherwise miss ``penetration-testing`` in the letter. The parts
+        # count only when each of them is a job word. The split stays here
+        # so overlap checks keep the compound as one token.
+        for word in list(target_words):
+            if "-" not in word:
+                continue
+            parts = [
+                part
+                for part in word.split("-")
+                if len(part) > 3 and part not in _STOPWORDS
+            ]
+            if parts and all(part in jd_words for part in parts):
+                target_words.extend(parts)
         if not target_words:
             continue
         jd_only = [
