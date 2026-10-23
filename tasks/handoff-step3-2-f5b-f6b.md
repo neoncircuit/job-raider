@@ -111,3 +111,99 @@ At the end, add "Cursor results (date)" to this file with:
 - Any class that you found and did not fix (for the known-limits list).
 - Any label you think is wrong (do not change it).
 - Every check you ran and its result. Say clearly what you did not run.
+
+## Cursor results (2026-10-23)
+
+Work stopped after F6b. D5, D6, and the holdout were not started. Nothing was pushed.
+
+### Commits
+
+- `96d0f9416fc65679c6c42e8741a37b2ee8f030bd` fix(grounding): require a candidate subject for leadership claims.
+- `cfca1a08f2324277a8afd31d2fa8b8071ddfebf3` fix(grounding): add owner rule and close experience pattern gaps.
+
+Each commit contains only the files of that fix. This results section is left unstaged. `tasks/handoff-2026-10-19.md` and `tasks/handoff-step2.md` stayed untracked.
+
+Dataset SHA-256 stayed `13e5ec3d685a45d93da14e72ac1ea5f58239b94af98f7fb909dda58278b1c2f0`. No main-set true positive was lost. No label metric got worse. No existing test was changed. No label was changed.
+
+### F5b. Subject rule for leadership claims
+
+`_has_candidate_subject` inspects the nearest word to the left of each leadership phrase after skipping adverbs (`-ly` words and `_SCOPE_SUBJECT_ADVERBS`) and auxiliaries (`_SCOPE_SUBJECT_AUXILIARIES`). The phrase is a claim only when that nearest word is a first-person subject (`i`, `we`, or a contraction), a joining word (`and`, `,`, `then`) with a first-person subject earlier in the sentence, or when no word precedes the phrase. Another person (`My supervisor led`, `My mentor led ... and owned`), the company (`Your group is leading`), a relative clause (`that led directly to`), and `a managed <technology> service` or `a fully managed <technology> cluster` are not claims.
+
+Tests, written before the change: 1 failed, 1 passed. `test_non_candidate_subjects_and_managed_adjective_are_not_scope_claims` failed on `My supervisor led the compiler rollout, and I tuned the buffer.` (`Scope inflation: 'led the compiler rollout'`). `test_candidate_subjects_with_adverbs_or_coordination_are_scope_claims` already passed. After the change, all 11 selected scope tests passed.
+
+Mutation: `if not _has_candidate_subject(prefix):` was replaced with `if False and not _has_candidate_subject(prefix):` (1 occurrence). Checksum changed from `820ea92d965099d1d1cdc6b191815222dc1375b9ba562a08fac403cbf1cfbc0a` to `3b0f666731d1b4af2cbe0f41a7f9b9a279f4129de0944d35137a1987f501c97f`. `grep -F` count was 1. `test_non_candidate_subjects_and_managed_adjective_are_not_scope_claims` failed again. The file was restored and matched the backup byte for byte.
+
+Eval: Git SHA `6f7520d104bd39a99f8db9a4b64b8dbbe269569d`, dirty true. MLflow run `caeb086ce9074734b42903ae389c7735`. Report `20261023T062730103001Z.json`. No label metric changed against S1.
+
+| Label | P before (S1) | P after | R before | R after | F1 before | F1 after | Predicted before | Predicted after |
+|-------|---------------|---------|----------|---------|-----------|----------|------------------|-----------------|
+| `fabricated_technology` | 0.889 | 0.889 | 1.000 | 1.000 | 0.941 | 0.941 | 9 | 9 |
+| `inflated_duration` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 5 | 5 |
+| `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `fabricated_experience` | 1.000 | 1.000 | 0.750 | 0.750 | 0.857 | 0.857 | 6 | 6 |
+| `analogical_claim` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `scope_inflation` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 4 | 4 |
+| `technique_mismatch` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
+| micro | 0.670 | 0.670 | 0.970 | 0.970 | 0.793 | 0.793 | — | — |
+
+### F6b. Owner rule and pattern gaps
+
+1. **Owner rule for degrees and certificates:** `flag_fabricated_experience_claims` checks degree and certificate mentions only when `_FIRST_PERSON_OWNER_RE` (`I`, `I'm`, `I've`, `my`, `me`, `we`, `our`, with straight or curly apostrophes) matches in the sentence.
+2. **Requirement or plan phrase before the mention:** `_CERT_REQUIREMENT_OR_PLAN_RE` (including `prefers`) skips a degree or certificate mention only when it matches in `cleaned[: match.start()]`.
+3. **`At <Org>, I <verb>` and `worked`:** `_AT_ORG_I_RE` allows an optional comma after `<Org>`, and the loop accepts `verb == "worked"` alongside `_PAST_CLAIM_VERBS` without adding `worked` to `_PAST_CLAIM_VERBS`.
+4. **Title at that employer:** `_profile_has_title` takes `company` and, when `_profile_has_employer(profile, company)` is true, checks `title` only against experience entries at that company.
+5. **`certified in <Tech>`:** `_certificate_name` reads the capitalized name after `certified in` via `_CERT_IN_AFTER_RE`.
+6. **Certificate words in the compare:** `_profile_has_certificate` strips `certified`, `certificate`, and `certification` (`_CERT_COMPARE_STOP_WORDS`) from the letter's certificate name before the subset check, and returns `True` when no word remains.
+7. **Degree words before plural people and curly apostrophes:** `_DEGREE_PLURAL_PEOPLE_RE` skips degree words followed by `students`, `interns`, `applicants`, `graduates`, `holders`, `candidates`, or `researchers`. `_DEGREE_WORD_CONTEXT_RE` and `_DEGREE_TAIL_RE` accept both `'` and `\u2019`.
+
+Tests, written before the change: 5 failed (`Podman certification is less useful than hands-on debugging` was flagged; `I hold the Solstice Inspector certificate that this role requires` was missed; `At Vesper Foundry, I built the telemetry collector` was missed; `As a Lead Telemetry Engineer at Tamarack Vault` passed when that title belonged to `Briar Forge`; `I am certified in Podman` was missed). After the change, all 11 selected F6/F6a/F6b tests passed.
+
+Mutations (7, one for each rule; base SHA-256 `0f2583fb08bcb305...`):
+1. Owner rule (`has_first_person = True`, SHA `1792a1a787e904af...`, `grep -F` count 1): `test_degree_and_certificate_claims_require_first_person_owner` failed; restored to `0f2583fb08bcb305...`.
+2. Requirement skip before mention (`_CERT_REQUIREMENT_OR_PLAN_RE.search(cleaned)` on the certificate loop, SHA `a93984afc1e3fae0...`, `grep -F` count 1): `test_requirement_or_plan_skips_only_when_it_precedes_the_mention` failed; restored to `0f2583fb08bcb305...`.
+3. Optional comma in `_AT_ORG_I_RE` (comma removed, SHA `cd900cecba8aa818...`, `grep -F` count 1): `test_at_org_comma_and_worked_verb_are_checked_while_events_are_skipped` failed; restored to `0f2583fb08bcb305...`.
+4. Title at employer (`restrict_company = False`, SHA `5ef505220b383b8f...`, `grep -F` count 1): `test_title_at_employer_must_match_that_employer_on_the_profile` failed; restored to `0f2583fb08bcb305...`.
+5. `certified in` branch (`if False and cert_word.lower() == "certified":`, SHA `e3934b071b12f122...`, `grep -F` count 1): `test_certified_in_and_cert_words_ignored_in_subset_compare` failed; restored to `0f2583fb08bcb305...`.
+6. Certificate words in compare (`name_words = _normalize_proper_name(name).split()`, SHA `5427f2e82ea739a3...`, `grep -F` count 1): `test_certified_in_and_cert_words_ignored_in_subset_compare` failed; restored to `0f2583fb08bcb305...`.
+7. Degree words before plural people (`if False and _DEGREE_PLURAL_PEOPLE_RE.match(rest_raw):`, SHA `b632e868ef2c6697...`, `grep -F` count 1): `test_degree_words_before_plural_people_and_curly_apostrophe` failed; restored to `0f2583fb08bcb305...`.
+
+Eval: Git SHA `96d0f9416fc65679c6c42e8741a37b2ee8f030bd`, dirty true. MLflow run `f7c476fc9dfe45e79f8b3830e9143381`. Report `20261023T065359298984Z.json`. No label metric changed against F5b.
+
+| Label | P before (F5b) | P after | R before | R after | F1 before | F1 after | Predicted before | Predicted after |
+|-------|----------------|---------|----------|---------|-----------|----------|------------------|-----------------|
+| `fabricated_technology` | 0.889 | 0.889 | 1.000 | 1.000 | 0.941 | 0.941 | 9 | 9 |
+| `inflated_duration` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 5 | 5 |
+| `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `fabricated_experience` | 1.000 | 1.000 | 0.750 | 0.750 | 0.857 | 0.857 | 6 | 6 |
+| `analogical_claim` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `scope_inflation` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 4 | 4 |
+| `technique_mismatch` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
+| micro | 0.670 | 0.670 | 0.970 | 0.970 | 0.793 | 0.793 | — | — |
+
+### Name check
+
+`grep -c "<name>" tests/fixtures/eval/grounding/cases.jsonl tests/fixtures/eval/grounding/profiles.json` returned `0` in both files for every name used in the new F5b and F6b tests: `Podman`, `Seismology`, `Solstice Inspector`, `Vesper Foundry`, `Tamarack Vault`, `PyForum`, `Elena`, `Briar Forge`, `Redwood Network Specialist`, `Bramblewood Institute`, `Ansible Automation Specialist`, `Ansible`, `Redwood Certified Network Specialist`, `Econometrics`, `Valkey`, and `Erlang`.
+
+### Classes found and not fixed (for the known-limits list)
+
+- **Idiom `to some degree in ...` in a first-person sentence:** `_FIRST_PERSON_OWNER_RE` skips `"Timing drift happens to some degree in every audio pipeline."` because the sentence has no first-person word, but if a sentence includes a first-person word (`"I saw timing drift to some degree in every audio pipeline."`), `_BARE_DEGREE_IN_RE` still matches `degree in every audio pipeline`. Per the handoff ("Do not add rules for classes that this handoff does not name"), no extra idiom rule was added.
+- **Third-person degree or certificate mention in a sentence that also has a first-person clause:** Because the owner rule checks whether the sentence contains a first-person word, a compound sentence such as `"My colleague holds a Master's degree in Seismology, and I wrote the parser."` has `My` and `I` in the sentence and will still check the degree.
+- **Coordinated verb after a non-subject `I`/`we` earlier in the sentence:** In `_has_candidate_subject`, a joining word (`and`, `,`, `then`) checks whether `I` or `we` is earlier in the sentence (`"The outage hit us, and led the postmortem"` has `us`, not `I`/`we`, so it is skipped; `"When I arrived, my supervisor reviewed the logs and led the rollout"` has `I` earlier, so `and led` would be treated as a claim).
+- **Main-set `fabricated_experience` misses unchanged from F6:** `fabricated_experience__harbor_mint` (`"I also built Harbor Mint, a Python reconciliation product..."` is a project name with no selected project) and `prompt_injection__led_orbit_aws` (`"I led fraud research at Orbit Lantern using AWS"` uses `at <Org> using`, not `at <Org> I`).
+
+### Labels left as they are
+
+No label was changed. `ungrounded_claims` remains predicted on 64 of 65 cases for D6.
+
+### Checks
+
+| Fix | Black | Ruff | mypy gate | pytest |
+|-----|-------|------|-----------|--------|
+| F5b | exit 0, 271 files unchanged | clean | 182 known, 0 new | 1187 passed, 1 Starlette warning, 163 s |
+| F6b | exit 0, 271 files unchanged | clean | 182 known, 0 new | 1193 passed, 1 warning, 161 s |
+
+Black reformatted `cover_letter_grounding.py` once during F6b before the gate. `scripts/mypy_gate.py --update` was not run.
+
+Not run: frontend checks, D5, D6, the holdout, the CI gate, and push. The holdout cases and profiles were not opened.

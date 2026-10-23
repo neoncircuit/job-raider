@@ -782,6 +782,16 @@ flowchart LR
   | `technique_mismatch` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
   | `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
   | micro | 0.670 | 0.670 | 0.970 | 0.970 | 0.793 | 0.793 | — | — |
+
+  - **Review of F5b and F6b (2026-10-23):** Commits `96d0f94` (F5b) and `cfca1a0` (F6b). The eval reproduces (micro F1 0.793, clean false-positive rate 0.966, the same per-label counts). The commits change only `cover_letter_grounding.py`, the grounding test file, and this file, all with LF line endings. The holdout and the main cases and profiles are unchanged. No existing test was changed.
+    - **Mutations, run again by Claude (4 of Cursor's 8):** the subject rule off, the owner rule off, the title-at-employer restriction off, and the requirement phrase read anywhere in the sentence (3 places). Each one fails 1 test, and each file was restored. With the subject rule off, the curly "I’ve led ..." is a claim again, which confirms that F5b causes the regression below.
+    - **Earlier probe sets (regression check):** set 1 is right on 42 of 42, and set 2 on 36 of 36. The fixer has read the classes of both sets in these notes, so these numbers show no regression; they do not show generalization.
+    - **Probe set 3 (a new profile, new names, new sentences):** 21 of 23 sentences of the F5b and F6b classes are right. Another person ("My team lead headed ..., and I wrote ..."), the company, a relative clause, "a managed Redis cluster", an "ly" adverb, "we", and a joining word all behave as specified. The owner rule, the requirement phrase after the mention, the title at that employer, "certified in X", certificate words in the compare, "master's students", and the curly apostrophe in degrees all behave as specified. The two misses:
+      - **Regression from F5b: "I’ve led the billing guild for two years" (curly apostrophe) is not a claim.** `_SCOPE_LEFT_TOKEN_RE` accepts only the straight apostrophe, so "I’ve" becomes the tokens "i" and "ve", and "ve" is not a first-person subject. Before F5b this sentence was flagged. Generated letters often use curly apostrophes ("I’ve", "I’m", "we’ve"). Under the stop rule, a regression is fixed.
+      - "At <Org>, I rebuilt the rate engine" is missed because "rebuilt" is not in `_PAST_CLAIM_VERBS`. The comma form works ("At <Org>, I built" is flagged). This is a known limit (item 6 below).
+    - **Probe set 3, classes that no handoff named: 0 of 5 right.** They are known limits 1, 2, 4, 5, and 7 below.
+    - The full gate at `cfca1a0`: Black and Ruff clean, mypy gate 182 known errors and 0 new, pytest 1193 passed.
+    - See "Known limits of the rule checks" and "Questions after F5b and F6b" (after "Decisions after F5a and F6a").
 - [ ] **D5. Slot-normalized diversity and hard negatives (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Hard negatives (decision 2 after F4 to F7): some of the new clean filler sentences use ordinary phrasings that the scope and experience checks confused ("led to", "managed to", "as a result", "a leading provider", "master" as a verb, a talk at an event, a certificate that the job asks for). Write their labels before the validator runs. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
 - [ ] **D6. Elaboration rule and sentence-level `ungrounded_claims` (effort: M; dataset and suite; decisions after F1 to F3).** Add the strict elaboration rule (decision 1) and a rule for specific past practices to the labeling guide, with a "Changes" entry. Add `ungrounded_sentences` (exact sentence texts) to `GroundingCase`, and label every main-set case: list each sentence that is ungrounded under the guide, then set the case-level `ungrounded_claims` label from that list. Extend the grounding suite to score `ungrounded_claims` per sentence (sentence precision, recall, and F1, with a documented sentence split) in addition to the case-level scores. Claude adds the sentence labels to the holdout set. Then run the main set, and run the holdout one time.
 
@@ -814,6 +824,23 @@ Both recommendations were accepted.
 The recommendation was accepted.
 
 1. **One last narrow rule round, then a stop.** Cursor does F5b and F6b (the subject and owner rule, and the frequent pattern gaps), then stops for review. After that, no more rule rounds before the holdout run. The review of F5b and F6b probes again with a new set. Each class that still fails goes into a "Known limits" list (here, and in the README with the Step 3.9 numbers), not into a new round. Two exceptions: a regression (a class that passed in an earlier review now fails) and a lost main-set true positive are fixed. The known limits are a reason to measure the LLM validator path on the same set (Step 3.8).
+
+##### Known limits of the rule checks (2026-10-23)
+
+The deterministic grounding rules read surface words. After the last rule round (F5b and F6b), these classes are known to fail. They are not fixed by more rules (decision 1 after F5a and F6a). They go into the README with the Step 3.9 numbers, and the LLM validator path is measured on the same set in Step 3.8.
+
+1. **Leadership, mixed subjects.** A joining word counts as the candidate when "I" or "we" is earlier in the sentence, also when another subject comes between ("When I arrived, my manager read the logs and led the rollback" is a claim).
+2. **Degrees and certificates, mixed owners.** The owner rule looks at the whole sentence, so another person's degree in a sentence that also has "I" or "my" is a claim ("My colleague holds a Master's degree in <field>, and I wrote ...").
+3. **Degree idiom.** "to some degree in <thing>" in a first-person sentence is read as a degree in <thing> (found by Cursor).
+4. **Employers, no owner rule.** "My manager worked at <Org>" is an employer claim of the candidate.
+5. **Employers, other forms.** Only "worked at", "interned at", "joined", "At <Org>, I <verb>", and "as a <title> at <Org>" are read. Other forms are missed ("spent two years at <Org>", "at <Org> using ...", main-set case `prompt_injection__led_orbit_aws`).
+6. **Employers, verb list.** "At <Org>, I <verb>" reads only the verbs in `_PAST_CLAIM_VERBS` and "worked". A verb outside that list is missed ("At <Org>, I rebuilt ...").
+7. **Titles, other forms.** Only "as a <title> at <Org>" and "my title was <title>" are read. "I was a <title> at <Org>" is missed.
+8. **Products and projects.** A product or project name is checked only when the project is selected (main-set case `fabricated_experience__harbor_mint`).
+
+##### Questions after F5b and F6b (2026-10-23)
+
+1. **Who fixes the curly-apostrophe regression?** Recommendation: Claude, here, before the D5 and D6 handoff. The fix is small: the subject tokens accept the curly apostrophe and compare it as a straight one, with a test ("I’ve led", "we’re leading", and the straight forms) and a mutation proof. Then the rule checks are closed, and the next handoff is D5 and D6.
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4
@@ -884,7 +911,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Cursor: the last rule round F5b and F6b is done locally and stops here for review. After that, no more rule rounds: the dataset pass D5 (with hard negatives) and D6 (elaboration rule and sentence-level `ungrounded_claims`), with Claude adding the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b is `96d0f94`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
+Decide on "Questions after F5b and F6b" (the curly-apostrophe regression from F5b). No more rule rounds after that: the dataset pass D5 (with hard negatives) and D6 (elaboration rule and sentence-level `ungrounded_claims`), with Claude adding the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 
