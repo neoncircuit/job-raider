@@ -1856,7 +1856,7 @@ _EMPLOYER_RES: tuple[re.Pattern[str], ...] = (
     re.compile(rf"\b[Jj]oined\s+(?P<org>{_ORG_NAME})"),
 )
 _AT_ORG_I_RE = re.compile(
-    rf"\b[Aa]t\s+(?P<org>{_ORG_NAME})\s+I\s+(?P<verb>[A-Za-z]+)\b"
+    rf"\b[Aa]t\s+(?P<org>{_ORG_NAME}),?\s+I\s+(?P<verb>[A-Za-z]+)\b"
 )
 # Short list of role nouns that mark a job title in "as a <title> at <company>".
 _TITLE_ROLE_NOUNS: frozenset[str] = frozenset(
@@ -1893,11 +1893,16 @@ _DEGREE_LEVEL_RE = re.compile(
     re.IGNORECASE,
 )
 _DEGREE_WORD_CONTEXT_RE = re.compile(
-    r"^(?:'s\b|\s+(?:of|in|degree)\b)",
+    r"^(?:['\u2019]s\b|\s+(?:of|in|degree)\b)",
+    re.IGNORECASE,
+)
+# Plural person nouns that follow a degree word ("PhD students", "Master's interns").
+_DEGREE_PLURAL_PEOPLE_RE = re.compile(
+    r"^(?:['\u2019]s)?\s+(?:students|interns|applicants|graduates|holders|candidates|researchers)\b",
     re.IGNORECASE,
 )
 _DEGREE_TAIL_RE = re.compile(
-    r"(?:'s)?(?:\s+degree)?"
+    r"(?:['\u2019]s)?(?:\s+degree)?"
     r"(?:\s+of\s+(?:arts|science|engineering))?"
     r"(?:\s+in\s+(?P<field>(?:(?!from\b|at\b)[A-Za-z][A-Za-z-]*)"
     r"(?:\s+(?!from\b|at\b)[A-Za-z][A-Za-z-]*){0,5}))?"
@@ -1910,14 +1915,24 @@ _BARE_DEGREE_IN_RE = re.compile(
     rf"(?:\s+(?:from|at)\s+(?P<school>{_ORG_NAME}))?",
     re.IGNORECASE,
 )
+_FIRST_PERSON_OWNER_RE = re.compile(
+    r"\b(?:i|i['\u2019]m|i['\u2019]ve|my|me|we|our)\b",
+    re.IGNORECASE,
+)
 _CERT_WORD_RE = re.compile(
     r"\b(?:certified|certificate|certification)\b",
     re.IGNORECASE,
 )
-# Short list of job-requirement and future-plan phrases that skip a certificate mention.
+_CERT_IN_AFTER_RE = re.compile(
+    r"^\s+in\s+(?P<name>[A-Z][\w&.'-]*(?:\s+[A-Z][\w&.'-]*){0,3})"
+)
+_CERT_COMPARE_STOP_WORDS: frozenset[str] = frozenset(
+    {"certified", "certificate", "certification"}
+)
+# Short list of job-requirement and future-plan phrases that skip a certificate or degree mention.
 _CERT_REQUIREMENT_OR_PLAN_RE = re.compile(
     r"\b(?:"
-    r"asks\s+for|requires|required|preferred|"
+    r"asks\s+for|requires|required|preferred|prefers|"
     r"plan\s+to|hope\s+to|want\s+to|would\s+like\s+to|intend\s+to"
     r")\b",
     re.IGNORECASE,
@@ -2055,22 +2070,29 @@ def _title_ends_with_role_noun(title: str) -> bool:
     return bool(words) and words[-1] in _TITLE_ROLE_NOUNS
 
 
-def _profile_has_title(profile: UserProfile, title: str) -> bool:
+def _profile_has_title(profile: UserProfile, title: str, company: str = "") -> bool:
     """
     Return whether ``title`` is supported by a job title on the profile.
 
     A shorter title such as ``backend consultant`` is supported when all
     its words appear in one profile title such as ``Senior Backend
-    Consultant``.
+    Consultant``. When ``company`` is on the profile, the title must
+    match an experience entry at that company.
 
     Args:
         profile: Candidate profile.
         title: Title named in the letter.
+        company: Optional employer from ``as a <title> at <company>``.
 
     Returns:
-        True when all words of ``title`` are in one profile experience title.
+        True when all words of ``title`` are in a matching profile title.
     """
+    restrict_company = bool(company) and _profile_has_employer(profile, company)
     for experience in profile.experience or []:
+        if restrict_company and not _same_proper_name(
+            company, experience.company or ""
+        ):
+            continue
         if _title_words_in_text(title, experience.title or ""):
             return True
     return False
@@ -2119,7 +2141,8 @@ def _profile_has_certificate(profile: UserProfile, name: str) -> bool:
     """
     Return whether the profile lists this certificate.
 
-    A certificate name is supported when all its normalized words appear
+    A certificate name is supported when all its normalized words (with
+    ``certified``, ``certificate``, and ``certification`` removed) appear
     in one profile certification name, or when it equals the issuer.
 
     Args:
@@ -2129,9 +2152,13 @@ def _profile_has_certificate(profile: UserProfile, name: str) -> bool:
     Returns:
         True when the name matches a certification name or issuer.
     """
-    name_words = _normalize_proper_name(name).split()
+    name_words = [
+        word
+        for word in _normalize_proper_name(name).split()
+        if word not in _CERT_COMPARE_STOP_WORDS
+    ]
     if not name_words:
-        return False
+        return True
     for certification in profile.certifications or []:
         cert_words = set(_normalize_proper_name(certification.name or "").split())
         if all(word in cert_words for word in name_words):
@@ -2145,9 +2172,9 @@ def _certificate_name(sentence: str, start: int, end: int) -> str:
     """
     Return the capitalized name around a certificate word.
 
-    Capitalized words are read before and after the certificate word.
-    The certificate word itself is included when it is capitalized in a
-    title such as ``Redwood Certified Network Specialist``.
+    Capitalized words are read before and after the certificate word, or
+    after ``certified in``. Certificate words themselves are stripped
+    before returning so a bare ``Certified`` leaves no claim.
 
     Args:
         sentence: Sentence that contains the certificate word.
@@ -2157,6 +2184,12 @@ def _certificate_name(sentence: str, start: int, end: int) -> str:
     Returns:
         The name, or an empty string when none is visible.
     """
+    cert_word = sentence[start:end].strip(".,;:")
+    if cert_word.lower() == "certified":
+        in_match = _CERT_IN_AFTER_RE.match(sentence[end:])
+        if in_match:
+            return in_match.group("name").strip()
+
     before: List[str] = []
     for token in sentence[:start].split()[-6:]:
         bare = token.strip(".,;:")
@@ -2209,7 +2242,8 @@ def _experience_claim_is_supported(
         profile: Candidate profile.
         level: Degree level when ``kind`` is ``degree``.
         field: Field of study when ``kind`` is ``degree``.
-        school: School when ``kind`` is ``degree``.
+        school: School when ``kind`` is ``degree``, or employer when
+            ``kind`` is ``title``.
 
     Returns:
         True when the profile contains the claim.
@@ -2217,7 +2251,7 @@ def _experience_claim_is_supported(
     if kind == "employer":
         return _profile_has_employer(profile, claim)
     if kind == "title":
-        return _profile_has_title(profile, claim)
+        return _profile_has_title(profile, claim, company=school)
     if kind == "degree":
         return _profile_has_degree(profile, level, field, school)
     if kind == "certificate":
@@ -2267,7 +2301,8 @@ def flag_fabricated_experience_claims(
                     continue
                 claims.append(("employer", org, "", "", ""))
         for match in _AT_ORG_I_RE.finditer(cleaned):
-            if match.group("verb").lower() not in _PAST_CLAIM_VERBS:
+            verb = match.group("verb").lower()
+            if verb not in _PAST_CLAIM_VERBS and verb != "worked":
                 continue
             org = match.group("org").strip()
             if _same_proper_name(org, target_company):
@@ -2276,8 +2311,9 @@ def flag_fabricated_experience_claims(
         title_match = _TITLE_WAS_RE.search(cleaned)
         if title_match:
             title = title_match.group("title").strip()
+            title_company = (title_match.group("company") or "").strip()
             if not _same_proper_name(title, target_title):
-                claims.append(("title", title, "", "", ""))
+                claims.append(("title", title, "", "", title_company))
         for as_title in _AS_TITLE_RE.finditer(cleaned):
             title = as_title.group("title").strip()
             company = as_title.group("company").strip()
@@ -2290,42 +2326,49 @@ def flag_fabricated_experience_claims(
             if is_target_title and is_target_company:
                 continue
             if not is_target_title:
-                claims.append(("title", title, "", "", ""))
+                claims.append(("title", title, "", "", company))
             if company and not is_target_company:
                 claims.append(("employer", company, "", "", ""))
+        has_first_person = _FIRST_PERSON_OWNER_RE.search(cleaned) is not None
         degree_spans: List[tuple[int, int]] = []
-        for match in _DEGREE_LEVEL_RE.finditer(cleaned):
-            raw_level = match.group("level")
-            rest_raw = cleaned[match.end() :]
-            if raw_level.lower() in {
-                "bachelor",
-                "master",
-            } and not _DEGREE_WORD_CONTEXT_RE.match(rest_raw):
-                continue
-            rest = rest_raw.lstrip(".")
-            tail = _DEGREE_TAIL_RE.match(rest)
-            field = (tail.group("field") or "").strip() if tail else ""
-            school = (tail.group("school") or "").strip() if tail else ""
-            level = _canonical_degree_level(raw_level)
-            text = " ".join(part for part in (level, field, school) if part)
-            tail_end = match.end() + (tail.end() if tail else 0)
-            degree_spans.append((match.start(), tail_end))
-            claims.append(("degree", text, level, field, school))
-        for match in _BARE_DEGREE_IN_RE.finditer(cleaned):
-            if any(start <= match.start() < end for start, end in degree_spans):
-                continue
-            field = (match.group("field") or "").strip()
-            school = (match.group("school") or "").strip()
-            text = " ".join(part for part in ("degree", field, school) if part)
-            claims.append(("degree", text, "", field, school))
-        if not (
-            _CERT_REQUIREMENT_OR_PLAN_RE.search(cleaned)
-            or _is_skippable_non_claim(cleaned)
-        ):
-            for match in _CERT_WORD_RE.finditer(cleaned):
-                name = _certificate_name(cleaned, match.start(), match.end())
-                if name:
-                    claims.append(("certificate", name, "", "", ""))
+        if has_first_person:
+            for match in _DEGREE_LEVEL_RE.finditer(cleaned):
+                if _CERT_REQUIREMENT_OR_PLAN_RE.search(cleaned[: match.start()]):
+                    continue
+                raw_level = match.group("level")
+                rest_raw = cleaned[match.end() :]
+                if _DEGREE_PLURAL_PEOPLE_RE.match(rest_raw):
+                    continue
+                if raw_level.lower() in {
+                    "bachelor",
+                    "master",
+                } and not _DEGREE_WORD_CONTEXT_RE.match(rest_raw):
+                    continue
+                rest = rest_raw.lstrip(".")
+                tail = _DEGREE_TAIL_RE.match(rest)
+                field = (tail.group("field") or "").strip() if tail else ""
+                school = (tail.group("school") or "").strip() if tail else ""
+                level = _canonical_degree_level(raw_level)
+                text = " ".join(part for part in (level, field, school) if part)
+                tail_end = match.end() + (tail.end() if tail else 0)
+                degree_spans.append((match.start(), tail_end))
+                claims.append(("degree", text, level, field, school))
+            for match in _BARE_DEGREE_IN_RE.finditer(cleaned):
+                if any(start <= match.start() < end for start, end in degree_spans):
+                    continue
+                if _CERT_REQUIREMENT_OR_PLAN_RE.search(cleaned[: match.start()]):
+                    continue
+                field = (match.group("field") or "").strip()
+                school = (match.group("school") or "").strip()
+                text = " ".join(part for part in ("degree", field, school) if part)
+                claims.append(("degree", text, "", field, school))
+            if not _is_skippable_non_claim(cleaned):
+                for match in _CERT_WORD_RE.finditer(cleaned):
+                    if _CERT_REQUIREMENT_OR_PLAN_RE.search(cleaned[: match.start()]):
+                        continue
+                    name = _certificate_name(cleaned, match.start(), match.end())
+                    if name:
+                        claims.append(("certificate", name, "", "", ""))
         for kind, claim, level, field, school in claims:
             if _experience_claim_is_supported(
                 kind, claim, profile, level=level, field=field, school=school

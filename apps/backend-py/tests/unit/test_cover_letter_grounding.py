@@ -1637,3 +1637,222 @@ def test_candidate_subjects_with_adverbs_or_coordination_are_scope_claims() -> N
             resume_bullets=bullets,
         )
         assert any("Scope inflation" in flag for flag in flags)
+
+
+def test_degree_and_certificate_claims_require_first_person_owner() -> None:
+    """General statements, requirements without first-person words, and idioms are not claims."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    profile = _desk_profile()
+    job = _desk_job()
+    for sentence in (
+        "Podman certification is less useful than hands-on debugging.",
+        "The listing prefers a Master's degree in Seismology.",
+        "Timing drift happens to some degree in every audio pipeline.",
+    ):
+        assert flag_fabricated_experience_claims(sentence, profile, job) == []
+
+    claimed_cert = flag_fabricated_experience_claims(
+        "My Podman certification is from last spring.",
+        profile,
+        job,
+    )
+    claimed_degree = flag_fabricated_experience_claims(
+        "I earned a Master's degree in Seismology.",
+        profile,
+        job,
+    )
+    assert claimed_cert
+    assert claimed_degree
+
+
+def test_requirement_or_plan_skips_only_when_it_precedes_the_mention() -> None:
+    """A requirement or plan phrase after a claim does not hide the claim."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    profile = _desk_profile()
+    job = _desk_job()
+    held_cert = flag_fabricated_experience_claims(
+        "I hold the Solstice Inspector certificate that this role requires.",
+        profile,
+        job,
+    )
+    held_degree = flag_fabricated_experience_claims(
+        "I hold a Master's degree in Seismology that the posting asks for.",
+        profile,
+        job,
+    )
+    planned = flag_fabricated_experience_claims(
+        "The role asks for a Solstice Inspector certificate, and I plan to earn a "
+        "Master's degree in Seismology.",
+        profile,
+        job,
+    )
+    would_like = flag_fabricated_experience_claims(
+        "I would like to finish a Master's degree in Seismology.",
+        profile,
+        job,
+    )
+    assert held_cert
+    assert held_degree
+    assert planned == []
+    assert would_like == []
+
+
+def test_at_org_comma_and_worked_verb_are_checked_while_events_are_skipped() -> None:
+    """'At <Org>, I <verb>' and 'At <Org> I worked' check the employer, while event talks do not."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    profile = _desk_profile()
+    job = _desk_job()
+    fake_comma = flag_fabricated_experience_claims(
+        "At Vesper Foundry, I built the telemetry collector.",
+        profile,
+        job,
+    )
+    fake_worked = flag_fabricated_experience_claims(
+        "At Vesper Foundry I worked on the telemetry collector.",
+        profile,
+        job,
+    )
+    real_comma = flag_fabricated_experience_claims(
+        "At Tamarack Vault, I worked on the telemetry collector.",
+        profile,
+        job,
+    )
+    event_comma = flag_fabricated_experience_claims(
+        "At PyForum, I gave a talk on audio buffers.",
+        profile,
+        job,
+    )
+    assert fake_comma
+    assert fake_worked
+    assert real_comma == []
+    assert event_comma == []
+
+
+def test_title_at_employer_must_match_that_employer_on_the_profile() -> None:
+    """In 'as a <title> at <employer>', the title must belong to that employer entry."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    profile = UserProfile(
+        name="Elena",
+        contact=ContactInfo(email="e@example.com", location="Remote"),
+        experience=[
+            WorkExperience(
+                title="Junior Analyst",
+                company="Tamarack Vault",
+                start_date=datetime(2019, 1, 1),
+                end_date=datetime(2020, 1, 1),
+            ),
+            WorkExperience(
+                title="Lead Telemetry Engineer",
+                company="Briar Forge",
+                start_date=datetime(2020, 1, 1),
+                end_date=datetime(2022, 1, 1),
+            ),
+        ],
+    )
+    job = _desk_job()
+    swapped = flag_fabricated_experience_claims(
+        "As a Lead Telemetry Engineer at Tamarack Vault, I wrote the collector.",
+        profile,
+        job,
+    )
+    matched = flag_fabricated_experience_claims(
+        "As a Lead Telemetry Engineer at Briar Forge, I wrote the collector.",
+        profile,
+        job,
+    )
+    shorter = flag_fabricated_experience_claims(
+        "As an analyst at Tamarack Vault, I checked the logs.",
+        profile,
+        job,
+    )
+    assert swapped and swapped[0]["kind"] == "title"
+    assert matched == []
+    assert shorter == []
+
+
+def test_certified_in_and_cert_words_ignored_in_subset_compare() -> None:
+    """'certified in <Tech>' reads <Tech>, and certificate words are ignored in the compare."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    profile = UserProfile(
+        name="Elena",
+        contact=ContactInfo(email="e@example.com", location="Remote"),
+        certifications=[
+            Certification(
+                name="Redwood Network Specialist",
+                issuer="Bramblewood Institute",
+            ),
+            Certification(
+                name="Ansible Automation Specialist",
+                issuer="Bramblewood Institute",
+            ),
+        ],
+    )
+    job = _desk_job()
+    fake_in = flag_fabricated_experience_claims(
+        "I am certified in Podman for container builds.",
+        profile,
+        job,
+    )
+    real_in = flag_fabricated_experience_claims(
+        "I am certified in Ansible for studio builds.",
+        profile,
+        job,
+    )
+    with_certified_word = flag_fabricated_experience_claims(
+        "I am a Redwood Certified Network Specialist.",
+        profile,
+        job,
+    )
+    assert fake_in
+    assert real_in == []
+    assert with_certified_word == []
+
+
+def test_degree_words_before_plural_people_and_curly_apostrophe() -> None:
+    """Plural person nouns after a degree word are not candidate degrees, and ’ matches '."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    profile = _desk_profile()
+    job = _desk_job()
+    for sentence in (
+        "I mentored two PhD interns during the summer session.",
+        "We interviewed MBA candidates and Master's students for the lab.",
+        "I worked alongside Bachelor’s graduates on the audio rig.",
+    ):
+        assert flag_fabricated_experience_claims(sentence, profile, job) == []
+
+    singular_candidate = flag_fabricated_experience_claims(
+        "I am a PhD candidate in Seismology.",
+        profile,
+        job,
+    )
+    curly_fake = flag_fabricated_experience_claims(
+        "I earned a Master’s degree in Seismology.",
+        profile,
+        job,
+    )
+    curly_real = flag_fabricated_experience_claims(
+        "I earned a Bachelor’s degree in Econometrics.",
+        profile,
+        job,
+    )
+    assert singular_candidate
+    assert curly_fake
+    assert curly_real == []
