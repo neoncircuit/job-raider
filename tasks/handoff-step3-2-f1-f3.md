@@ -83,3 +83,108 @@ At the end, add "Cursor results (date)" to this file with:
 - Any existing test you changed, and why.
 - Any label you think is wrong (do not change it).
 - Every check you ran and its result. Say clearly what you did not run.
+
+## Cursor results (2026-10-22)
+
+Work stopped after F3. F4 to F7 and D5 were not started. Nothing was pushed.
+
+### Commits
+
+- `972bddeb3896f6700ec065d3cb45632f37b06669` fix(grounding): skip non-claim sentences in the ungrounded check.
+- `9b486082ad7f7499c931c019f204e8d0a64c384b` fix(grounding): flag percents and counts the profile does not state.
+- `635a1ed3938ada8d88931f0b51b9550cad04dfdc` fix(grounding): match technologies only in a skill context.
+
+Each commit contains only that fix. This results section is not part of those commits. `tasks/handoff-2026-10-19.md` and `tasks/handoff-step2.md` stayed untracked.
+
+### F1. Non-claim sentences
+
+`flag_ungrounded_sentences` skips a greeting, including a leading "Dear ...," clause, a sign-off, thanks, a call to action from `CoverLetterValidator.CALL_TO_ACTION_PHRASES`, a statement of interest or values, and a plan. A number, a duration, a lexicon technology, or a past-tense claim verb keeps the sentence in the check. "hired me" is not treated as that verb. The greeting clause is removed before the overlap check, so those words cannot hide the claim that follows.
+
+The stricter closing overlap of 0.4 flagged the same sentences as 0.3 on this set (0 differences). The default `closing_min_overlap_ratio` is now 0.3, the same as the body. The table below was measured at 0.4, before that default change. The sentence sets match, so the table is the result for the committed default.
+
+Tests, written before the change, on the old code: 3 failed, 1 passed. `test_plan_with_a_claim_is_still_flagged` already passed. Failures: non-claim sentences were flagged (the first extra item was `Hello`); "Thank you." was flagged; "Dear Hiring Partner, I invented..." was not flagged.
+
+Mutation: the skip call was replaced with `if False and _is_skippable_non_claim(remainder):` (1 occurrence). The checksum changed from `c903f4b7de21664fa5fb527309e5522fea935996b9b3a3645e15127319792125` to `2859f811fee8aa02a9538a9f52ee358180e6ed8bbfa703c7da5d114d1fe2cf15`. `grep -F` count of the mutated text was 1. The non-claim test and the thanks test failed. The file was restored and matched the backup byte for byte. The greeting test stayed green under that mutation because the greeting strip is a separate line.
+
+Eval: `.venv/bin/python main.py eval grounding` from `apps/backend-py`. Git SHA `b63f68c540f25791532136388c5c579a54922602`, dirty true. Dataset SHA-256 `13e5ec3d685a45d93da14e72ac1ea5f58239b94af98f7fb909dda58278b1c2f0` (unchanged). MLflow run `9603cef286114118ac897a0fe630ef75`. `ungrounded_claims` was predicted on 64 of 65 cases (65 of 65 in Baseline 2). `clean_false_positive_rate` is 0.966 (28 of 29; Baseline 2 was 1.000, 29 of 29). No label F1 fell.
+
+| Label | P before | P after | R before | R after | F1 before | F1 after | Predicted before | Predicted after |
+|-------|----------|---------|----------|---------|-----------|----------|------------------|-----------------|
+| `fabricated_technology` | 0.500 | 0.500 | 0.875 | 0.875 | 0.636 | 0.636 | 14 | 14 |
+| `inflated_duration` | 1.000 | 1.000 | 0.800 | 0.800 | 0.889 | 0.889 | 4 | 4 |
+| `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `fabricated_experience` | 1.000 | 1.000 | 0.125 | 0.125 | 0.222 | 0.222 | 1 | 1 |
+| `analogical_claim` | 1.000 | 1.000 | 0.667 | 0.667 | 0.800 | 0.800 | 2 | 2 |
+| `scope_inflation` | 0.667 | 0.667 | 0.500 | 0.500 | 0.571 | 0.571 | 3 | 3 |
+| `technique_mismatch` | 1.000 | 1.000 | 0.667 | 0.667 | 0.800 | 0.800 | 2 | 2 |
+| `ungrounded_claims` | 0.508 | 0.516 | 1.000 | 1.000 | 0.673 | 0.680 | 65 | 64 |
+| micro | 0.574 | 0.581 | 0.806 | 0.806 | 0.671 | 0.675 | — | — |
+
+### F2. Unsupported numbers
+
+`flag_unsupported_number_sentences` checks a sentence that F1 does not skip. A percent (`90%`, `90 percent`, `ninety percent`), a multiplier (`3x`, `3 times`), or a count with a noun (`four engineers` when the profile says `4`) must appear in the summary, experience descriptions and highlights, project descriptions and highlights, or education text. Durations and calendar years are not checked here. A count is checked only when the sentence has a past-tense claim verb. Percents and multipliers are always checked. The `len(word) > 3` filter in `significant_words` stays. This eval did not show a need to remove it.
+
+Tests, before the function existed: 5 failed with `ImportError: cannot import name 'flag_unsupported_number_sentences'`. After the function, `test_cover_letter_grounding.py` and `test_cover_letter_validator.py` passed (61 tests).
+
+Mutation: `if unsupported:` was replaced with `if False and unsupported:` (1 occurrence). The checksum changed from `e098df84b812976c02bdaebc8252e178a3b0187e0a2473a52a871b6ef54d79ed` to `dc74a8627f7f6a76bdb409d4b06c2dd2466ee33a61e7ddc1a82bbcca40e78a29`. `grep -F` count of the mutated text was 1. `test_unsupported_percent_and_multiplier_are_flagged` failed (`assert '90%' in ''`). The file was restored and matched the backup byte for byte.
+
+A first eval flagged the plan sentence in `clean__harbor_tests` that says "one test" and put `clean_false_positive_rate` back to 1.000. `ungrounded_claims` F1 fell from 0.680 to 0.673 (MLflow `76b91069c6294d86bb7d9e577610c56b`). That count has no past-tense claim verb, so it is not an achievement figure. The check now ignores such counts. A regression test covers a plan count ("one note about the change"). That first run is not the recorded F2 result.
+
+Eval after that correction: Git SHA `972bddeb3896f6700ec065d3cb45632f37b06669`, dirty true. Dataset SHA-256 unchanged. MLflow run `353119451f9e4acca1abf9dfa60c688a`. Case predictions are identical to the F1 run. No label F1 fell. `clean_false_positive_rate` stays 0.966 (28 of 29). `ungrounded_claims` stays predicted on 64 of 65 cases. The unsupported numbers in this set were already flagged by the overlap check.
+
+| Label | P before (F1) | P after | R before | R after | F1 before | F1 after | Predicted before | Predicted after |
+|-------|---------------|---------|----------|---------|-----------|----------|------------------|-----------------|
+| `fabricated_technology` | 0.500 | 0.500 | 0.875 | 0.875 | 0.636 | 0.636 | 14 | 14 |
+| `inflated_duration` | 1.000 | 1.000 | 0.800 | 0.800 | 0.889 | 0.889 | 4 | 4 |
+| `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `fabricated_experience` | 1.000 | 1.000 | 0.125 | 0.125 | 0.222 | 0.222 | 1 | 1 |
+| `analogical_claim` | 1.000 | 1.000 | 0.667 | 0.667 | 0.800 | 0.800 | 2 | 2 |
+| `scope_inflation` | 0.667 | 0.667 | 0.500 | 0.500 | 0.571 | 0.571 | 3 | 3 |
+| `technique_mismatch` | 1.000 | 1.000 | 0.667 | 0.667 | 0.800 | 0.800 | 2 | 2 |
+| `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
+| micro | 0.581 | 0.581 | 0.806 | 0.806 | 0.675 | 0.675 | — | — |
+
+### F3. Technology detection
+
+`swift`, `express`, `spring`, and `spark` count only as a product name or next to a technology word. Ordinary English ("a swift reply", "spring semester", "spark curiosity", "express my interest") does not count. Bare `Go` counts for `in Go`, `written in Go`, `using Go`, `with Go`, and `Go service` / `Go services`. `go live`, `go through`, and `ready to go` do not count. `Golang` was already a lexicon term. `have not run`, `never run`, `have never used`, and `do not have` are disclaimers. A profile skill of PostgreSQL, MySQL, SQLite, MariaDB, SQL Server, or Oracle supports a letter that says SQL. The reverse is not implied. The labeling guide has a Changes entry dated 2026-10-22. No label was changed. `len(word) > 3` stays.
+
+Tests, written before the change: 4 failed, 1 passed. The technology-context homonym test already passed. Failures: ordinary English extracted `swift`, `express`, `spring`, and `spark` (`assert 'swift' not in {'express', 'spark', 'spring', 'swift'}`); `written in Go` did not extract `golang` (`assert 'golang' in set()`); `I have not run Kubernetes` was still a claim (`assert 'kubernetes' not in {'kubernetes'}`); SQL was fabricated when the profile listed PostgreSQL (`assert 'sql' not in ['sql']`). After the change, `test_cover_letter_grounding.py` and `test_cover_letter_validator.py` passed (67 tests).
+
+Mutation: `if canonical in _CONTEXTUAL_HOMONYMS and not _homonym_in_tech_context(` was replaced with `if False and canonical in _CONTEXTUAL_HOMONYMS and not _homonym_in_tech_context(` (1 occurrence). The checksum changed from `fdf5fb4ecece7d443217f4c2cbdc70eb98a49f2b85d155d4fcd53e34fe27fc32` to `8ee0af5584cdc77c54ec339a461065ee99932b25e88b68315b3739def50298a4`. `grep -F` count of the mutated text was 1. `test_ordinary_english_homonyms_are_not_technologies` failed with the same `swift` assertion. The other four F3 tests stayed green. The file was restored and matched the backup byte for byte.
+
+Eval: Git SHA `9b486082ad7f7499c931c019f204e8d0a64c384b`, dirty true. Dataset SHA-256 unchanged. MLflow run `ed3a986964b841a4b8b3f337c273a304`. Report `apps/backend-py/data/eval/grounding/20261022T170347243249Z.json`. No label F1 fell. `ungrounded_claims` stays predicted on 64 of 65 cases. `clean_false_positive_rate` stays 0.966 (28 of 29).
+
+| Label | P before (F2) | P after | R before | R after | F1 before | F1 after | Predicted before | Predicted after |
+|-------|---------------|---------|----------|---------|-----------|----------|------------------|-----------------|
+| `fabricated_technology` | 0.500 | 0.889 | 0.875 | 1.000 | 0.636 | 0.941 | 14 | 9 |
+| `inflated_duration` | 1.000 | 1.000 | 0.800 | 0.800 | 0.889 | 0.889 | 4 | 4 |
+| `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `fabricated_experience` | 1.000 | 1.000 | 0.125 | 0.125 | 0.222 | 0.222 | 1 | 1 |
+| `analogical_claim` | 1.000 | 1.000 | 0.667 | 0.667 | 0.800 | 0.800 | 2 | 2 |
+| `scope_inflation` | 0.667 | 0.667 | 0.500 | 0.500 | 0.571 | 0.571 | 3 | 3 |
+| `technique_mismatch` | 1.000 | 1.000 | 0.667 | 0.667 | 0.800 | 0.800 | 2 | 2 |
+| `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
+| micro | 0.581 | 0.625 | 0.806 | 0.821 | 0.675 | 0.710 | — | — |
+
+Five homonym cases lost a false `fabricated_technology` (`homonym__swift_reply`, `homonym__spring_semester`, `homonym__spark_curiosity`, `homonym__express_interest`, `homonym__all_four`). They still have extra `ungrounded_claims` from weak overlap. `fabricated_technology__go` is now a true positive, so recall of that label is 1.000. `inflated_duration__three_to_five_fastapi` lost a false `fabricated_technology` because the letter says SQL and the profile lists PostgreSQL. `inflated_duration` is still missed on that case. That miss belongs to the duration-range check (F4).
+
+`analogical_claim__fastapi_kubernetes` still has an extra `fabricated_technology`. The letter says "similar to running Kubernetes" before "I have not run Kubernetes". The earlier mention is not one of the disclaimer phrases, so the claim wins. No case-specific rule was added. The expected label was left as it is.
+
+### Existing tests
+
+No existing test was changed. The test that says "shipped Spring services" still asserts only that `java` is fabricated. "Spring services" now counts as a technology context, and that assertion still passes.
+
+### Labels
+
+No label looks wrong. No label was changed. The remaining extra `fabricated_technology` on `analogical_claim__fastapi_kubernetes` is a prediction the three disclaimer phrases do not cover. The expected label stays `analogical_claim`.
+
+### Checks
+
+| Check | F1 | F2 | F3 |
+|-------|----|----|----|
+| Black `--check` on `main.py`, `scripts/mypy_gate.py`, `src/`, `tests/` | 271 files unchanged | 271 files unchanged | 271 files unchanged |
+| ruff on the same paths | clean | clean | clean |
+| `scripts/mypy_gate.py` | 182 known, 0 new | 182 known, 0 new | 182 known, 0 new |
+| full pytest | 1149 passed, 1 Starlette warning, 325 s | 1155 passed, 1 warning, 218 s | 1160 passed, 1 Starlette warning, 222 s |
+
+`scripts/mypy_gate.py --update` was not run. Frontend checks were not run. The CI gate was not run. The holdout cases and profiles were not opened. F4, F5, F6, F7, and D5 were not started. Nothing was pushed.

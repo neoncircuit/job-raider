@@ -3399,3 +3399,4 @@
 - Read a sample of the cases yourself before you trust a baseline. Count distinct sentences.
 - Normalize the slot values before you count (company, job title, names, and phrases copied from the input). The rework met "a long sentence in at most 3 cases" with 0.998 distinct sentences, but with the company and title replaced only 0.646 were distinct, and one sentence frame was in 18 letters.
 - A label that the system predicts for every case carries no information. Check the predicted count per label before you read its precision and recall.
+- Diversity rules make the writer paraphrase, and paraphrase invites added details. In the reworked set, many "clean" letters restated profile facts with new outcomes or purposes ("and the afternoon queue moved again"), which the guide counts as unsupported. Check clean cases for added details, and give the guide an explicit elaboration rule before you write them.
