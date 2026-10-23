@@ -16,7 +16,9 @@ from src.generation.cover_letter_grounding import (
 )
 from src.models.job_listing import JobListing, JobRequirement, JobSource
 from src.models.user_profile import (
+    Certification,
     ContactInfo,
+    Education,
     Project,
     Skill,
     SkillCategory,
@@ -1106,3 +1108,155 @@ def test_leadership_verb_with_a_different_object_is_flagged() -> None:
     )
     assert any("Scope inflation" in flag for flag in team_only)
     assert any("Scope inflation" in flag for flag in other_object)
+
+
+def _desk_job() -> JobListing:
+    """Target role used to check that the job itself is not a claim."""
+    return JobListing(
+        title="Backend Engineer",
+        company="Harbor Labs",
+        job_id="desk-1",
+        source=JobSource.MANUAL,
+        description="Build services for the archive.",
+    )
+
+
+def _desk_profile() -> UserProfile:
+    """Profile with one employer, one degree, and one certificate."""
+    return UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Remote"),
+        experience=[
+            WorkExperience(
+                title="Analyst",
+                company="Northwind Desk Inc.",
+                start_date=datetime(2020, 1, 1),
+                end_date=datetime(2022, 1, 1),
+            )
+        ],
+        education=[
+            Education(
+                degree="Bachelor of Science in Statistics",
+                school="Cedar College",
+            )
+        ],
+        certifications=[
+            Certification(name="Billing Desk Auditor", issuer="Cedar College"),
+        ],
+    )
+
+
+def test_fabricated_employer_is_flagged_and_a_real_one_is_not() -> None:
+    """An employer is flagged only when it is absent from the profile."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    profile = _desk_profile()
+    job = _desk_job()
+    fake = flag_fabricated_experience_claims(
+        "I worked at Orbit Lantern on the nightly job.",
+        profile,
+        job,
+    )
+    real = flag_fabricated_experience_claims(
+        "I worked at Northwind Desk on the nightly job.",
+        profile,
+        job,
+    )
+    joined = flag_fabricated_experience_claims(
+        "I joined Orbit Lantern after the desk closed.",
+        profile,
+        job,
+    )
+    assert fake and real == []
+    assert joined
+
+
+def test_target_company_and_ordinary_at_are_not_employers() -> None:
+    """The target company and 'at the start' are not employer claims."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    findings = flag_fabricated_experience_claims(
+        "I want to join Harbor Labs. At the start of the project I opened the notes.",
+        _desk_profile(),
+        _desk_job(),
+    )
+    assert findings == []
+
+
+def test_fabricated_title_is_flagged_and_the_job_title_is_not() -> None:
+    """A past title is checked. The title of the target job is not a claim."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    profile = _desk_profile()
+    job = _desk_job()
+    fake = flag_fabricated_experience_claims(
+        "My title was Director of Engineering.",
+        profile,
+        job,
+    )
+    real = flag_fabricated_experience_claims(
+        "My title was Analyst.",
+        profile,
+        job,
+    )
+    target = flag_fabricated_experience_claims(
+        "In a first month as a Backend Engineer at Harbor Labs I would read the queue.",
+        profile,
+        job,
+    )
+    assert fake and real == []
+    assert target == []
+
+
+def test_fabricated_degree_is_flagged_and_an_abbreviation_matches() -> None:
+    """A missing degree is flagged. B.Sc. matches Bachelor of Science."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    profile = _desk_profile()
+    job = _desk_job()
+    fake = flag_fabricated_experience_claims(
+        "I hold a Master of Arts in Design History from Glassmill College.",
+        profile,
+        job,
+    )
+    real = flag_fabricated_experience_claims(
+        "I hold a B.Sc. in Statistics from Cedar College.",
+        profile,
+        job,
+    )
+    at_school = flag_fabricated_experience_claims(
+        "I finished a Bachelor of Science in Statistics at Cedar College.",
+        profile,
+        job,
+    )
+    assert fake and real == []
+    assert at_school == []
+
+
+def test_fabricated_certificate_is_flagged_and_a_real_one_is_not() -> None:
+    """A certificate is compared with the profile certifications."""
+    from src.generation.cover_letter_grounding import (
+        flag_fabricated_experience_claims,
+    )
+
+    profile = _desk_profile()
+    job = _desk_job()
+    fake = flag_fabricated_experience_claims(
+        "I earned the Northbridge Ledger Auditor certificate.",
+        profile,
+        job,
+    )
+    real = flag_fabricated_experience_claims(
+        "I earned the Billing Desk Auditor certificate.",
+        profile,
+        job,
+    )
+    assert fake and real == []

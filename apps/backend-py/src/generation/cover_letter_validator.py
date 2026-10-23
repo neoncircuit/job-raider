@@ -23,6 +23,7 @@ from .cover_letter_grounding import (
     collect_resume_bullets,
     flag_analogical_claims,
     flag_claim_overclaims,
+    flag_fabricated_experience_claims,
     flag_fabricated_technologies,
     flag_inconsistent_percent_claims,
     flag_inflated_duration_claims,
@@ -270,6 +271,9 @@ class CoverLetterValidator:
             issues.extend(tone_issues)
 
         accuracy_issues = self._check_accuracy(content_lower, profile, selection)
+        if flag_fabricated_experience_claims(content, profile, job):
+            if CoverLetterIssue.FABRICATED_EXPERIENCE not in accuracy_issues:
+                accuracy_issues.append(CoverLetterIssue.FABRICATED_EXPERIENCE)
         issues.extend(accuracy_issues)
 
         if short_answer_mode:

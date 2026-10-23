@@ -1639,6 +1639,390 @@ def is_domain_mismatch(
     return jd_resume_overlap_ratio(job, profile) < threshold
 
 
+def _normalize_proper_name(name: str) -> str:
+    """
+    Normalize an organization, title, or school name for comparison.
+
+    Comparison ignores case and punctuation. Suffixes such as ``Inc.`` and
+    ``Ltd.`` are removed.
+
+    Args:
+        name: Raw name from a letter or a profile.
+
+    Returns:
+        Lowercase name with one space between words.
+    """
+    cleaned = re.sub(r"[^\w\s]", " ", (name or "").lower())
+    suffixes = {
+        "inc",
+        "incorporated",
+        "ltd",
+        "limited",
+        "llc",
+        "corp",
+        "corporation",
+        "co",
+        "plc",
+    }
+    words = [word for word in cleaned.split() if word and word not in suffixes]
+    return " ".join(words)
+
+
+def _same_proper_name(left: str, right: str) -> bool:
+    """
+    Return whether two proper names are the same after normalization.
+
+    Args:
+        left: First name.
+        right: Second name.
+
+    Returns:
+        True when both normalize to the same non-empty text.
+    """
+    normalized_left = _normalize_proper_name(left)
+    normalized_right = _normalize_proper_name(right)
+    return bool(normalized_left) and normalized_left == normalized_right
+
+
+_ORG_NAME = r"[A-Z][\w&.'-]*(?:\s+[A-Z][\w&.'-]*){0,3}"
+_EMPLOYER_RES: tuple[re.Pattern[str], ...] = (
+    re.compile(rf"\b(?:worked|interned)\s+at\s+(?P<org>{_ORG_NAME})"),
+    re.compile(rf"\bjoined\s+(?P<org>{_ORG_NAME})"),
+    re.compile(rf"\bat\s+(?P<org>{_ORG_NAME})\s+I\b"),
+)
+_TITLE_WAS_RE = re.compile(
+    rf"\bmy title(?:\s+at\s+(?P<company>{_ORG_NAME}))?\s+was\s+"
+    r"(?P<title>[A-Z][^.,;\n]+)",
+    re.IGNORECASE,
+)
+_AS_TITLE_RE = re.compile(
+    r"\bas an?\s+(?P<title>[A-Z][\w/&+' .-]{1,60}?)\s+at\s+"
+    rf"(?P<company>{_ORG_NAME})",
+    re.IGNORECASE,
+)
+_DEGREE_LEVEL_RE = re.compile(
+    r"\b(?P<level>ph\.?d|doctorate|doctoral|mba|bachelor|master|"
+    r"b\.sc|b\.s|m\.sc|m\.a|m\.s)(?![A-Za-z])",
+    re.IGNORECASE,
+)
+_DEGREE_TAIL_RE = re.compile(
+    r"(?:\s+of\s+(?:arts|science|engineering))?"
+    r"(?:\s+in\s+(?P<field>(?:(?!from\b|at\b)[A-Za-z][A-Za-z-]*)"
+    r"(?:\s+(?!from\b|at\b)[A-Za-z][A-Za-z-]*){0,5}))?"
+    rf"(?:\s+(?:from|at)\s+(?P<school>{_ORG_NAME}))?",
+    re.IGNORECASE,
+)
+_CERT_WORD_RE = re.compile(
+    r"\b(?:certified|certificate|certification)\b",
+    re.IGNORECASE,
+)
+_CERT_NAME_SKIP = frozenset(
+    {
+        "the",
+        "a",
+        "an",
+        "my",
+        "our",
+        "i",
+        "earned",
+        "hold",
+        "received",
+        "got",
+    }
+)
+
+
+def _canonical_degree_level(raw: str) -> str:
+    """
+    Map a degree word or abbreviation to a level name.
+
+    ``B.Sc.`` and ``Bachelor`` are both ``bachelor``. ``PhD`` and
+    ``doctorate`` are both ``doctorate``.
+
+    Args:
+        raw: Matched degree token.
+
+    Returns:
+        A level name: bachelor, master, mba, or doctorate.
+    """
+    compact = re.sub(r"[^a-z]", "", (raw or "").lower())
+    if compact in {"phd", "doctorate", "doctoral"}:
+        return "doctorate"
+    if compact == "mba":
+        return "mba"
+    if compact in {"bsc", "bs", "bachelor"}:
+        return "bachelor"
+    if compact in {"msc", "ma", "ms", "master"}:
+        return "master"
+    return compact
+
+
+def _field_in_text(field: str, text: str) -> bool:
+    """
+    Return whether every content word of ``field`` appears in ``text``.
+
+    Args:
+        field: Field of study from the letter.
+        text: Profile degree text.
+
+    Returns:
+        True when each content word is present as a whole word.
+    """
+    words = [
+        word
+        for word in (field or "").lower().split()
+        if word not in {"of", "in", "and", "the"}
+    ]
+    if not words:
+        return True
+    haystack = text or ""
+    return all(
+        re.search(rf"\b{re.escape(word)}\b", haystack, re.IGNORECASE) for word in words
+    )
+
+
+def _profile_has_employer(profile: UserProfile, org: str) -> bool:
+    """
+    Return whether ``org`` is a company on the profile.
+
+    Args:
+        profile: Candidate profile.
+        org: Employer named in the letter.
+
+    Returns:
+        True when an experience company normalizes to the same name.
+    """
+    for experience in profile.experience or []:
+        if _same_proper_name(org, experience.company or ""):
+            return True
+    return False
+
+
+def _profile_has_title(profile: UserProfile, title: str) -> bool:
+    """
+    Return whether ``title`` is a job title on the profile.
+
+    Args:
+        profile: Candidate profile.
+        title: Title named in the letter.
+
+    Returns:
+        True when an experience title normalizes to the same name.
+    """
+    for experience in profile.experience or []:
+        if _same_proper_name(title, experience.title or ""):
+            return True
+    return False
+
+
+def _profile_has_degree(
+    profile: UserProfile,
+    level: str,
+    field: str,
+    school: str,
+) -> bool:
+    """
+    Return whether the profile has this degree.
+
+    The level, the field, and the school must agree when the letter
+    states them. ``B.Sc. in Statistics`` agrees with ``Bachelor of
+    Science in Statistics``.
+
+    Args:
+        profile: Candidate profile.
+        level: Canonical degree level, or empty.
+        field: Field of study, or empty.
+        school: School name, or empty.
+
+    Returns:
+        True when one education entry supports the claim.
+    """
+    for education in profile.education or []:
+        degree = education.degree or ""
+        level_match = _DEGREE_LEVEL_RE.search(degree)
+        profile_level = (
+            _canonical_degree_level(level_match.group("level")) if level_match else ""
+        )
+        if level and profile_level != level:
+            continue
+        if field and not _field_in_text(field, degree):
+            continue
+        if school and not _same_proper_name(school, education.school or ""):
+            continue
+        if level or field or school:
+            return True
+    return False
+
+
+def _profile_has_certificate(profile: UserProfile, name: str) -> bool:
+    """
+    Return whether the profile lists this certificate.
+
+    Args:
+        profile: Candidate profile.
+        name: Certificate name from the letter.
+
+    Returns:
+        True when the name matches a certification name or issuer.
+    """
+    for certification in profile.certifications or []:
+        if _same_proper_name(name, certification.name or ""):
+            return True
+        if _same_proper_name(name, certification.issuer or ""):
+            return True
+    return False
+
+
+def _certificate_name(sentence: str, start: int) -> str:
+    """
+    Return the capitalized name that precedes a certificate word.
+
+    Args:
+        sentence: Sentence that contains the certificate word.
+        start: Start index of that word.
+
+    Returns:
+        The name, or an empty string when none is visible.
+    """
+    words: List[str] = []
+    for token in sentence[:start].split()[-6:]:
+        bare = token.strip(".,;:")
+        if not bare or bare.lower() in _CERT_NAME_SKIP:
+            if not words:
+                continue
+            words = []
+            continue
+        if bare[:1].isupper() or bare.lower() in {"of", "and"}:
+            words.append(bare)
+            continue
+        words = []
+    return " ".join(words)
+
+
+def _experience_claim_is_supported(
+    kind: str,
+    claim: str,
+    profile: UserProfile,
+    level: str = "",
+    field: str = "",
+    school: str = "",
+) -> bool:
+    """
+    Return whether the profile supports one experience claim.
+
+    Args:
+        kind: ``employer``, ``title``, ``degree``, or ``certificate``.
+        claim: Display text of the claim.
+        profile: Candidate profile.
+        level: Degree level when ``kind`` is ``degree``.
+        field: Field of study when ``kind`` is ``degree``.
+        school: School when ``kind`` is ``degree``.
+
+    Returns:
+        True when the profile contains the claim.
+    """
+    if kind == "employer":
+        return _profile_has_employer(profile, claim)
+    if kind == "title":
+        return _profile_has_title(profile, claim)
+    if kind == "degree":
+        return _profile_has_degree(profile, level, field, school)
+    if kind == "certificate":
+        return _profile_has_certificate(profile, claim)
+    return False
+
+
+def flag_fabricated_experience_claims(
+    letter_text: str,
+    profile: UserProfile,
+    job: JobListing,
+) -> List[dict]:
+    """
+    Flag employers, titles, degrees, and certificates the profile lacks.
+
+    Patterns are narrow: ``worked at``, ``joined``, ``interned at``, and
+    ``at <Organization> I``. The target company and the target job title
+    are not claims. ``at the start`` is not an employer. A degree
+    abbreviation such as ``B.Sc.`` matches ``Bachelor of Science``.
+    ``at <school>`` names the school in the same way as ``from <school>``.
+
+    The selected-project check in the validator stays in place.
+
+    Args:
+        letter_text: Cover-letter body.
+        profile: Candidate profile.
+        job: Target job. Its company and title are not claims.
+
+    Returns:
+        A list of ``{"sentence", "kind", "claim", "flags"}`` findings.
+    """
+    if not letter_text or not letter_text.strip():
+        return []
+
+    target_company = job.company or ""
+    target_title = job.title or ""
+    findings: List[dict] = []
+    for sentence in _SENTENCE_SPLIT.split(letter_text.strip()):
+        cleaned = sentence.strip().rstrip(".")
+        if not cleaned:
+            continue
+        claims: List[tuple[str, str, str, str, str]] = []
+        for pattern in _EMPLOYER_RES:
+            for match in pattern.finditer(cleaned):
+                org = match.group("org").strip()
+                if _same_proper_name(org, target_company):
+                    continue
+                claims.append(("employer", org, "", "", ""))
+        title_match = _TITLE_WAS_RE.search(cleaned)
+        if title_match:
+            title = title_match.group("title").strip()
+            if not _same_proper_name(title, target_title):
+                claims.append(("title", title, "", "", ""))
+        as_title = _AS_TITLE_RE.search(cleaned)
+        if as_title:
+            title = as_title.group("title").strip()
+            company = as_title.group("company").strip()
+            if not (
+                _same_proper_name(title, target_title)
+                and (
+                    not company
+                    or _same_proper_name(company, target_company)
+                    or _profile_has_employer(profile, company)
+                )
+            ):
+                if not _same_proper_name(title, target_title):
+                    claims.append(("title", title, "", "", ""))
+        for match in _DEGREE_LEVEL_RE.finditer(cleaned):
+            rest = cleaned[match.end() :].lstrip(".")
+            tail = _DEGREE_TAIL_RE.match(rest)
+            field = (tail.group("field") or "").strip() if tail else ""
+            school = (tail.group("school") or "").strip() if tail else ""
+            level = _canonical_degree_level(match.group("level"))
+            text = " ".join(part for part in (level, field, school) if part)
+            claims.append(("degree", text, level, field, school))
+        for match in _CERT_WORD_RE.finditer(cleaned):
+            name = _certificate_name(cleaned, match.start())
+            if name:
+                claims.append(("certificate", name, "", "", ""))
+        for kind, claim, level, field, school in claims:
+            if _experience_claim_is_supported(
+                kind, claim, profile, level=level, field=field, school=school
+            ):
+                continue
+            findings.append(
+                {
+                    "sentence": cleaned,
+                    "kind": kind,
+                    "claim": claim,
+                    "flags": [
+                        "Fabricated experience: "
+                        f"{kind} '{claim}' is not on the resume"
+                    ],
+                }
+            )
+    return findings
+
+
 def flag_analogical_claims(
     letter_text: str,
     profile: UserProfile,
