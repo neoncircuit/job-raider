@@ -10,8 +10,6 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Set, Tuple
 
-import pytest
-
 from src.evaluation.datasets import load_jsonl
 from src.evaluation.suites.grounding import GroundingCase
 from src.models.user_profile import UserProfile
@@ -288,10 +286,6 @@ def test_grounding_dataset_diversity() -> None:
     assert not violations, {"violations": violations, "stats": stats}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="D6b will add ungrounded_sentences to every main-set case",
-)
 def test_grounding_dataset_has_sentence_labels() -> None:
     """
     Require a sentence-level ungrounded list on every main-set case.
