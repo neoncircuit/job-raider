@@ -678,3 +678,72 @@ class TestGroundingHardFails:
         assert result.recommendation == "reject"
         assert result.details["analogical_claims"]
         assert result.details["grounding_penalty"]["analogical_claim"] >= 1
+
+    def test_fabricated_employer_raises_fabricated_experience_without_selected_project(
+        self,
+    ) -> None:
+        """The validator raises FABRICATED_EXPERIENCE for a fake employer even with no selected project."""
+        profile = UserProfile(
+            name="Elena",
+            contact=ContactInfo(email="e@example.com", location="Remote"),
+            experience=[
+                WorkExperience(
+                    title="Senior Backend Consultant",
+                    company="Tamarack Vault",
+                    start_date=datetime(2020, 1, 1),
+                    highlights=["Built audio telemetry tools in Python"],
+                )
+            ],
+        )
+        job = JobListing(
+            title="Telemetry Specialist",
+            company="Kestrel Audio",
+            job_id="kestrel-val-1",
+            source=JobSource.MANUAL,
+            description="Build audio telemetry tools in Python.",
+        )
+        selection = SelectionOutput(
+            selected_projects=[],
+            keywords_to_emphasize=[],
+            key_achievements=[],
+            summary_suggestion="",
+            raw_response="",
+        )
+        fake_content = (
+            "Dear Hiring Manager,\n\n"
+            "I worked at Vesper Foundry on audio telemetry tools in Python. "
+            "Thank you for considering my application.\n\n"
+            "Sincerely,\nElena"
+        )
+        real_content = (
+            "Dear Hiring Manager,\n\n"
+            "I worked at Tamarack Vault on audio telemetry tools in Python. "
+            "Thank you for considering my application.\n\n"
+            "Sincerely,\nElena"
+        )
+        validator = CoverLetterValidator(llm_router=None, strict_mode=False)
+        fake_result = validator.validate(
+            GeneratedCoverLetter(
+                content=fake_content,
+                highlighted_experiences=[],
+                word_count=len(fake_content.split()),
+                model_used="test",
+            ),
+            job,
+            profile,
+            selection,
+        )
+        real_result = validator.validate(
+            GeneratedCoverLetter(
+                content=real_content,
+                highlighted_experiences=[],
+                word_count=len(real_content.split()),
+                model_used="test",
+            ),
+            job,
+            profile,
+            selection,
+        )
+
+        assert CoverLetterIssue.FABRICATED_EXPERIENCE in fake_result.issues
+        assert CoverLetterIssue.FABRICATED_EXPERIENCE not in real_result.issues

@@ -1113,35 +1113,38 @@ def test_leadership_verb_with_a_different_object_is_flagged() -> None:
 def _desk_job() -> JobListing:
     """Target role used to check that the job itself is not a claim."""
     return JobListing(
-        title="Backend Engineer",
-        company="Harbor Labs",
-        job_id="desk-1",
+        title="Telemetry Specialist",
+        company="Kestrel Audio",
+        job_id="kestrel-1",
         source=JobSource.MANUAL,
-        description="Build services for the archive.",
+        description="Build audio telemetry tools.",
     )
 
 
 def _desk_profile() -> UserProfile:
     """Profile with one employer, one degree, and one certificate."""
     return UserProfile(
-        name="Alex",
-        contact=ContactInfo(email="a@example.com", location="Remote"),
+        name="Elena",
+        contact=ContactInfo(email="e@example.com", location="Remote"),
         experience=[
             WorkExperience(
-                title="Analyst",
-                company="Northwind Desk Inc.",
+                title="Senior Backend Consultant",
+                company="Tamarack Vault Inc.",
                 start_date=datetime(2020, 1, 1),
                 end_date=datetime(2022, 1, 1),
             )
         ],
         education=[
             Education(
-                degree="Bachelor of Science in Statistics",
-                school="Cedar College",
+                degree="Bachelor of Science in Econometrics",
+                school="Bramblewood Institute",
             )
         ],
         certifications=[
-            Certification(name="Billing Desk Auditor", issuer="Cedar College"),
+            Certification(
+                name="Redwood Certified Network Specialist - Professional",
+                issuer="Bramblewood Institute",
+            ),
         ],
     )
 
@@ -1155,40 +1158,56 @@ def test_fabricated_employer_is_flagged_and_a_real_one_is_not() -> None:
     profile = _desk_profile()
     job = _desk_job()
     fake = flag_fabricated_experience_claims(
-        "I worked at Orbit Lantern on the nightly job.",
+        "I worked at Vesper Foundry on the codec queue.",
         profile,
         job,
     )
     real = flag_fabricated_experience_claims(
-        "I worked at Northwind Desk on the nightly job.",
+        "I worked at Tamarack Vault on the codec queue.",
+        profile,
+        job,
+    )
+    with_pronoun = flag_fabricated_experience_claims(
+        "While I worked at Tamarack Vault I trimmed the codec buffer.",
         profile,
         job,
     )
     joined = flag_fabricated_experience_claims(
-        "I joined Orbit Lantern after the desk closed.",
+        "I joined Vesper Foundry after the autumn release.",
         profile,
         job,
     )
     assert fake and real == []
+    assert with_pronoun == []
     assert joined
 
 
 def test_target_company_and_ordinary_at_are_not_employers() -> None:
-    """The target company and 'at the start' are not employer claims."""
+    """The target company, an event talk, and 'at the start' are not employer claims."""
     from src.generation.cover_letter_grounding import (
         flag_fabricated_experience_claims,
     )
 
+    profile = _desk_profile()
+    job = _desk_job()
     findings = flag_fabricated_experience_claims(
-        "I want to join Harbor Labs. At the start of the project I opened the notes.",
-        _desk_profile(),
-        _desk_job(),
+        "At Kestrel Audio I built a prototype during the workshop. "
+        "At PyForum I gave a talk on audio buffers. "
+        "At the start of the quarter I wrote the benchmark.",
+        profile,
+        job,
+    )
+    fake_at_org = flag_fabricated_experience_claims(
+        "At Vesper Foundry I built the audio router.",
+        profile,
+        job,
     )
     assert findings == []
+    assert fake_at_org
 
 
 def test_fabricated_title_is_flagged_and_the_job_title_is_not() -> None:
-    """A past title is checked. The title of the target job is not a claim."""
+    """A past title is checked, a shorter title passes, and the job title is skipped."""
     from src.generation.cover_letter_grounding import (
         flag_fabricated_experience_claims,
     )
@@ -1196,26 +1215,50 @@ def test_fabricated_title_is_flagged_and_the_job_title_is_not() -> None:
     profile = _desk_profile()
     job = _desk_job()
     fake = flag_fabricated_experience_claims(
-        "My title was Director of Engineering.",
+        "My title was Staff Consultant.",
         profile,
         job,
     )
     real = flag_fabricated_experience_claims(
-        "My title was Analyst.",
+        "My title was Senior Backend Consultant.",
+        profile,
+        job,
+    )
+    shorter = flag_fabricated_experience_claims(
+        "As a backend consultant at Tamarack Vault, I tuned the buffer.",
+        profile,
+        job,
+    )
+    non_role = flag_fabricated_experience_claims(
+        "As a precaution at Tamarack Vault, I archived the old logs.",
+        profile,
+        job,
+    )
+    fake_company = flag_fabricated_experience_claims(
+        "I worked as a Backend Consultant at Vesper Foundry.",
         profile,
         job,
     )
     target = flag_fabricated_experience_claims(
-        "In a first month as a Backend Engineer at Harbor Labs I would read the queue.",
+        "In a first month as a Telemetry Specialist at Kestrel Audio I would check the alerts.",
+        profile,
+        job,
+    )
+    capitalized_as_fake_company = flag_fabricated_experience_claims(
+        "As a Backend Consultant at Vesper Foundry, I tuned the buffer.",
         profile,
         job,
     )
     assert fake and real == []
+    assert shorter == []
+    assert non_role == []
+    assert fake_company
+    assert capitalized_as_fake_company
     assert target == []
 
 
 def test_fabricated_degree_is_flagged_and_an_abbreviation_matches() -> None:
-    """A missing degree is flagged. B.Sc. matches Bachelor of Science."""
+    """Degree level and field are checked, and ordinary 'master' uses are skipped."""
     from src.generation.cover_letter_grounding import (
         flag_fabricated_experience_claims,
     )
@@ -1223,62 +1266,105 @@ def test_fabricated_degree_is_flagged_and_an_abbreviation_matches() -> None:
     profile = _desk_profile()
     job = _desk_job()
     fake = flag_fabricated_experience_claims(
-        "I hold a Master of Arts in Design History from Glassmill College.",
+        "I hold a Master of Arts in Astrophysics from Larkspur Polytech.",
+        profile,
+        job,
+    )
+    wrong_field = flag_fabricated_experience_claims(
+        "I completed a Bachelor's degree in Biophysics.",
+        profile,
+        job,
+    )
+    degree_in = flag_fabricated_experience_claims(
+        "I completed a degree in Biophysics.",
         profile,
         job,
     )
     real = flag_fabricated_experience_claims(
-        "I hold a B.Sc. in Statistics from Cedar College.",
+        "I hold a B.Sc. in Econometrics from Bramblewood Institute.",
         profile,
         job,
     )
     at_school = flag_fabricated_experience_claims(
-        "I finished a Bachelor of Science in Statistics at Cedar College.",
+        "I finished a Bachelor of Science in Econometrics at Bramblewood Institute.",
+        profile,
+        job,
+    )
+    ordinary_master = flag_fabricated_experience_claims(
+        "I want to master Elixir and keep the master branch green.",
         profile,
         job,
     )
     assert fake and real == []
+    assert wrong_field
+    assert degree_in
     assert at_school == []
+    assert ordinary_master == []
 
 
 def test_fabricated_certificate_is_flagged_and_a_real_one_is_not() -> None:
-    """A certificate is compared with the profile certifications."""
+    """Certificates read both sides of the keyword and skip requirements or plans."""
     from src.generation.cover_letter_grounding import (
         flag_fabricated_experience_claims,
     )
 
     profile = _desk_profile()
     job = _desk_job()
-    fake = flag_fabricated_experience_claims(
-        "I earned the Northbridge Ledger Auditor certificate.",
+    fake_before = flag_fabricated_experience_claims(
+        "I earned the Solstice Vault Inspector certificate.",
         profile,
         job,
     )
-    real = flag_fabricated_experience_claims(
-        "I earned the Billing Desk Auditor certificate.",
+    fake_after = flag_fabricated_experience_claims(
+        "I am a Certified Solstice Inspector.",
         profile,
         job,
     )
-    assert fake and real == []
+    real_before = flag_fabricated_experience_claims(
+        "I earned the Redwood Network Specialist certificate.",
+        profile,
+        job,
+    )
+    real_both_sides = flag_fabricated_experience_claims(
+        "I am a Redwood Certified Network Specialist.",
+        profile,
+        job,
+    )
+    real_issuer = flag_fabricated_experience_claims(
+        "My Bramblewood Institute certification covered network audits.",
+        profile,
+        job,
+    )
+    requirement_and_plan = flag_fabricated_experience_claims(
+        "The posting asks for a Solstice Inspector certificate, which I plan to earn. "
+        "I hope to complete the Solstice Inspector certification next year.",
+        profile,
+        job,
+    )
+    assert fake_before and fake_after
+    assert real_before == []
+    assert real_both_sides == []
+    assert real_issuer == []
+    assert requirement_and_plan == []
 
 
 def _two_desk_profile() -> UserProfile:
     """Two projects, each with one documented technique."""
     return UserProfile(
-        name="Alex",
-        contact=ContactInfo(email="a@example.com", location="Remote"),
+        name="Elena",
+        contact=ContactInfo(email="e@example.com", location="Remote"),
         projects=[
             Project(
-                name="North Desk",
-                description="A retrieval index for support notes.",
+                name="Quarry Beacon",
+                description="A retrieval index for audio transcripts.",
                 technologies=["Python"],
                 highlights=["Built a retrieval index"],
             ),
             Project(
-                name="South Desk",
-                description="Fine-tuning a classifier on ticket labels.",
+                name="Anvil Foundry",
+                description="Fine-tuning a classifier on acoustic tags.",
                 technologies=["Python"],
-                highlights=["Ran fine-tuning on the label set"],
+                highlights=["Ran fine-tuning on the tag set"],
             ),
         ],
     )
@@ -1289,12 +1375,12 @@ def test_distillation_on_a_project_without_it_is_flagged() -> None:
     from src.generation.cover_letter_grounding import flag_claim_overclaims
 
     findings = flag_claim_overclaims(
-        "I used distillation on North Desk.",
+        "I used distillation on Quarry Beacon.",
         _two_desk_profile(),
     )
     joined = " ".join(flag for item in findings for flag in item["flags"])
     assert "distillation" in joined
-    assert "North Desk" in joined
+    assert "Quarry Beacon" in joined
 
 
 def test_each_technique_is_checked_against_the_nearest_project() -> None:
@@ -1302,7 +1388,7 @@ def test_each_technique_is_checked_against_the_nearest_project() -> None:
     from src.generation.cover_letter_grounding import flag_claim_overclaims
 
     findings = flag_claim_overclaims(
-        "I used retrieval on North Desk and fine-tuning on South Desk.",
+        "I used retrieval on Quarry Beacon and fine-tuning on Anvil Foundry.",
         _two_desk_profile(),
     )
     joined = " ".join(flag for item in findings for flag in item["flags"]).lower()
@@ -1310,30 +1396,30 @@ def test_each_technique_is_checked_against_the_nearest_project() -> None:
 
 
 def test_a_technique_beside_the_other_project_is_flagged() -> None:
-    """Distillation beside South Desk is not saved by North Desk."""
+    """Distillation beside Anvil Foundry is not saved by Quarry Beacon."""
     from src.generation.cover_letter_grounding import flag_claim_overclaims
 
     findings = flag_claim_overclaims(
-        "I used retrieval on North Desk and distillation on South Desk.",
+        "I used retrieval on Quarry Beacon and distillation on Anvil Foundry.",
         _two_desk_profile(),
     )
     joined = " ".join(flag for item in findings for flag in item["flags"])
     assert "distillation" in joined
-    assert "South Desk" in joined
+    assert "Anvil Foundry" in joined
 
 
 def _forms_profile(*, with_testing: bool) -> UserProfile:
-    """A forms profile, with penetration testing only when requested."""
-    highlights = ["Built accessible forms for the public site"]
+    """A telemetry profile, with capacity planning only when requested."""
+    highlights = ["Built audio buffer monitors for the studio"]
     if with_testing:
-        highlights.append("Ran penetration testing on the checkout flow")
+        highlights.append("Handled capacity planning for the studio cluster")
     return UserProfile(
-        name="Alex",
-        contact=ContactInfo(email="a@example.com", location="Remote"),
+        name="Elena",
+        contact=ContactInfo(email="e@example.com", location="Remote"),
         experience=[
             WorkExperience(
-                title="Engineer",
-                company="Cedar Desk",
+                title="Consultant",
+                company="Tamarack Vault",
                 start_date=datetime(2022, 1, 1),
                 highlights=highlights,
             )
@@ -1342,32 +1428,32 @@ def _forms_profile(*, with_testing: bool) -> UserProfile:
 
 
 def _testing_job() -> JobListing:
-    """A job whose duty is written as two words, penetration testing."""
+    """A job whose duty is written as two words, capacity planning."""
     return JobListing(
-        title="Platform Engineer",
-        company="Harbor Labs",
-        job_id="pen-1",
+        title="Telemetry Specialist",
+        company="Kestrel Audio",
+        job_id="cap-1",
         source=JobSource.MANUAL,
-        description="The team handles penetration testing for payment forms.",
+        description="The group handles capacity planning for studio clusters.",
     )
 
 
 def test_hyphenated_analogy_target_matches_a_spaced_jd_duty() -> None:
     """A hyphen in the letter still maps onto the spaced job duty."""
-    letter = "The forms I built are similar to the penetration-testing step."
+    letter = "The buffer monitors I wrote are akin to the capacity-planning work."
     findings = flag_analogical_claims(
         letter,
         _forms_profile(with_testing=False),
         _testing_job(),
     )
     joined = " ".join(flag for item in findings for flag in item["flags"])
-    assert "penetration" in joined
-    assert "testing" in joined
+    assert "capacity" in joined
+    assert "planning" in joined
 
 
 def test_hyphenated_analogy_is_allowed_when_the_resume_has_the_words() -> None:
     """The same hyphen is not a claim when the resume states the duty."""
-    letter = "The forms I built are similar to the penetration-testing step."
+    letter = "The buffer monitors I wrote are akin to the capacity-planning work."
     assert (
         flag_analogical_claims(
             letter,
@@ -1380,7 +1466,7 @@ def test_hyphenated_analogy_is_allowed_when_the_resume_has_the_words() -> None:
 
 def test_significant_words_keeps_a_hyphenated_compound() -> None:
     """Hyphen splits stay inside the analogy check."""
-    assert significant_words("penetration-testing") == ["penetration-testing"]
+    assert significant_words("capacity-planning") == ["capacity-planning"]
 
 
 def test_bare_verb_results_pronouns_and_infinitives_are_not_scope_claims() -> None:
