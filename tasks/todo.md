@@ -928,6 +928,65 @@ Both recommendations were accepted. Claude does both steps here.
     - Run the eval one time as Baseline 3b, and record the templates as a dataset limit: the constructed set is for targeted checks (one injected error per letter), not for a realistic false-positive rate.
     - Do not start another rewrite round against new template limits. A writer meets each new limit by filling a new slot. The realistic false-positive measure is the set of about 15 real generated letters that the user labels (decision 1 of 2026-10-22), and the holdout.
 2. **Then the holdout.** After Baseline 3b, Claude adds the holdout's `ungrounded_sentences` labels without running the validator on the holdout, and runs the holdout one time (the README rule). The CI thresholds come after that.
+
+##### CI gate proposal for the grounding suite (2026-10-24, for review; nothing is wired yet)
+
+**Goal:** CI fails when a change makes the deterministic grounding checks worse on the main set (decision 4 of 2026-10-22).
+
+```mermaid
+flowchart LR
+    T[thresholds.json] --> S{Dataset SHA-256 equal?}
+    S -- no --> F1[Fail: dataset changed, pin a new baseline]
+    S -- yes --> R[run_grounding_suite on the main set]
+    R --> C{Each count at or below its pin?}
+    C -- no --> F2[Fail: list each worse count and its cases]
+    C -- yes --> P[Pass, and list counts that can be tightened]
+```
+
+1. **Gate counts, not ratios.** The suite is deterministic: the same code and the same data give the same counts. A ratio with a margin is either too loose or too tight: one more false positive moves `inconsistent_metric` precision from 1.000 to 0.750, but a margin of 0.05 on `ungrounded_claims` hides about 3 false positives. So for each label, the gate requires false positives at or below the pinned count and false negatives at or below the pinned count. With the dataset fixed, the precision and recall of a label then cannot go down.
+2. **Pinned values (Baseline 3b, dataset `92cb028b34d4...`, MLflow run `7a5ebb3f...`):**
+
+    | Check | Max false positives | Max false negatives | Support |
+    |-------|---------------------|---------------------|---------|
+    | `fabricated_technology` | 2 | 0 | 8 |
+    | `inflated_duration` | 0 | 0 | 5 |
+    | `inconsistent_metric` | 0 | 0 | 3 |
+    | `fabricated_experience` | 1 | 2 | 8 |
+    | `analogical_claim` | 0 | 0 | 3 |
+    | `scope_inflation` | 0 | 0 | 4 |
+    | `technique_mismatch` | 1 | 0 | 3 |
+    | `ungrounded_claims` (case) | not gated | 0 | 34 |
+    | `ungrounded_claims` (sentence) | 242 | 25 | 69 |
+
+    The case-level false positives of `ungrounded_claims` are not gated: the check is predicted on all 65 letters, so the count is always 31 of 31, and the sentence counts are the real gate for that check. Micro F1 (0.781) and the clean false-positive rate (1.000) are reported, not gated; they follow from the counts.
+3. **Dataset pin.** The thresholds file stores the dataset SHA-256. When the main set changes, the test fails before it compares counts, so a dataset edit cannot pass against old numbers. A new baseline run then sets new pins.
+4. **Changes to a pin.** A count below its pin passes, and the test prints the pins that can be tightened. A pin changes only by hand, in the same commit as the change that moves it, with an entry in the file's `changes` list (date, reason, MLflow run). Raising a pin (accepting a worse count) needs its reason there, and is a review item.
+5. **Where it runs.** `tests/fixtures/eval/grounding/thresholds.json` and one test, `tests/unit/test_grounding_thresholds.py`, which calls `run_grounding_suite()` (no MLflow run, no report file). CI already runs `pytest tests/` in the backend job, so the workflow does not change. Cost: 4 to 11 s for the suite on `/mnt/d` (measured), less on CI.
+6. **Failure message.** For each worse count, the test lists the cases that changed (the report rows `missed` and `extra` for that label; `sentence_missed` and `sentence_extra` for the sentence counts), so the developer sees which letters moved.
+7. **Not in CI:** the holdout (it ran one time; a CI run would show its failures to the next fixer, and a later round needs a new holdout), and the user's real letters (local only, decision 2 of 2026-10-22).
+
+Shape of the file:
+
+```json
+{
+  "suite": "grounding",
+  "dataset_sha256": "92cb028b34d4425070d40abbc075b4fe239f64d87751b35b3df3204f4e02c52f",
+  "baseline": "3b",
+  "mlflow_run": "7a5ebb3f22c940c888a548e0258b779e",
+  "labels": {
+    "fabricated_technology": {"max_false_positives": 2, "max_false_negatives": 0},
+    "ungrounded_claims": {"max_false_positives": null, "max_false_negatives": 0}
+  },
+  "sentence": {"max_false_positives": 242, "max_false_negatives": 25},
+  "changes": [{"date": "2026-10-24", "reason": "First pins, from Baseline 3b.", "mlflow_run": "7a5ebb3f22c940c888a548e0258b779e"}]
+}
+```
+
+**Questions for this proposal:**
+
+1. **Counts with no margin (recommended), or ratio floors with a margin?** Counts catch every single regression and do not drift; a deliberate trade-off needs one edited line with a reason.
+2. **Holdout and real letters out of CI (recommended)?**
+3. **Who implements it?** Recommendation: Claude, here. It is one JSON file and one test of about 80 lines, with a test first and a mutation proof (lower one pin by one, and the test must fail with that label and its cases in the message).
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4
@@ -998,7 +1057,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Step 3.2: the D5 fix, Baseline 3b, and the one holdout run are done (see "Holdout run (2026-10-24)"). Left in Step 3.2: the CI gate (a thresholds file for the main set, from Baseline 3b), and the user-labeled set of about 15 real generated letters (decision 1 of 2026-10-22), which is the realistic false-positive measure. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. D5 and D6 are `5a408f8`, `dee440d`, `7dc3128`. The D5 fix and the holdout labels are `4ddbb5f`, `8508922`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
+Step 3.2: the D5 fix, Baseline 3b, and the one holdout run are done (see "Holdout run (2026-10-24)"). Decide on "CI gate proposal for the grounding suite". Left in Step 3.2 after that: the CI gate itself, and the user-labeled set of about 15 real generated letters (decision 1 of 2026-10-22), which is the realistic false-positive measure. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. D5 and D6 are `5a408f8`, `dee440d`, `7dc3128`. The D5 fix and the holdout labels are `4ddbb5f`, `8508922`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 
