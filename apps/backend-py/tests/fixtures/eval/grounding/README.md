@@ -8,8 +8,10 @@ validator output.
 ```mermaid
 flowchart LR
     P[Read profile and job] --> L[Read letter]
-    L --> E[Label each check separately]
-    E --> N[Write note and labels]
+    L --> S[Split sentences]
+    S --> E[Label each check separately]
+    E --> U[List ungrounded sentences]
+    U --> N[Write note and labels]
     N --> V[Validate case format]
     V --> B[Run baseline after all labels are fixed]
 ```
@@ -145,6 +147,34 @@ A self-assessment that implies a fact is `ungrounded_claims` when the profile
 does not support it. Examples are "I am an expert in distributed systems" and
 "I have shipped many production ML systems."
 
+A sentence that restates a profile fact and adds a detail that the profile
+does not state is `ungrounded_claims`. The added detail may be an outcome,
+a purpose, a setting, or a specific practice. Example: the profile states
+that a PostgreSQL report fell from twelve seconds to four seconds. The
+sentence "One PostgreSQL report I reworked fell from twelve seconds to four
+seconds, and the afternoon queue moved again" is ungrounded because the
+afternoon queue is not in the profile.
+
+A specific past practice is a fact about the candidate. Example: "After the
+nightly import failed twice, I added a retry and a log line" is
+`ungrounded_claims` unless the profile states that practice. A present-tense
+preference or working style with no specific past event, such as "I prefer
+to write the test first", stays a value statement and is not
+`ungrounded_claims`.
+
+## Sentence labels
+
+`ungrounded_sentences` holds the exact letter sentences that are ungrounded
+under this guide. Split the letter the same way the validator does: join
+whitespace, then split after `.`, `!`, or `?` when whitespace follows. A
+greeting without a full stop stays joined to the next sentence
+("Dear team, I ..."). Copy each listed sentence exactly.
+
+A sentence with another label, for example `fabricated_technology`, is also
+listed when it is ungrounded (Rule 1). An empty list means no sentence is
+ungrounded, and `ungrounded_claims` is absent from `expected_issues`. `None`
+means the case is not labeled at sentence level.
+
 ## Case Format
 
 `cases.jsonl` contains one JSON object per line. Each object uses the
@@ -159,6 +189,8 @@ does not support it. Examples are "I am an expert in distributed systems" and
   to four paragraphs, and a closing. No sentence describes the profile or the
   dataset.
 - `expected_issues`: Labels assigned with this guide.
+- `ungrounded_sentences`: Exact sentences that are ungrounded under this
+  guide, or `null` when the case is not labeled at sentence level.
 - `note`: The injected condition and why each applicable label is present or
   absent.
 
@@ -183,6 +215,14 @@ retrieval on Atlas Search" when that fact is true.
 
 ## Changes
 
+- **2026-10-23, strict elaboration and sentence labels (D6).** A restated
+  profile fact that adds an unsupported outcome, purpose, setting, or
+  practice is `ungrounded_claims`. A specific past practice is a candidate
+  fact. A present-tense preference with no past event stays a value
+  statement. Each main-set case lists those sentences in
+  `ungrounded_sentences`. Reason: decisions 1 and 2 after F1 to F3. The
+  case-level `ungrounded_claims` label was predicted on almost every letter,
+  so it carried no information.
 - **2026-10-22, techniques are not technologies (D3).** Retrieval, reranking,
   RAG, fine-tuning, reinforcement learning, and distillation stay techniques.
   A technique on the wrong project is `technique_mismatch` and

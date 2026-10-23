@@ -448,6 +448,27 @@ _NON_TECH_SKILL_CATEGORIES = frozenset(
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 _WORD_RE = re.compile(r"[a-z0-9+#./-]+", re.IGNORECASE)
 
+
+def split_letter_sentences(text: str) -> List[str]:
+    """
+    Split a cover letter into the sentences the validator reads.
+
+    Whitespace is joined. The text is then split with ``_SENTENCE_SPLIT``.
+    A greeting without a full stop stays joined to the next sentence
+    ("Dear team, I ..."), because the splitter only breaks on ``.!?``.
+
+    Args:
+        text: Cover-letter body.
+
+    Returns:
+        Sentences in order. Empty parts are dropped.
+    """
+    joined = " ".join((text or "").split())
+    if not joined:
+        return []
+    return [part.strip() for part in _SENTENCE_SPLIT.split(joined) if part.strip()]
+
+
 # Glue phrases that map resume facts onto JD-only duties. The left-hand
 # side is often resume-true; the right-hand side is the overclaim.
 _ANALOGY_MARKER_RE = re.compile(
