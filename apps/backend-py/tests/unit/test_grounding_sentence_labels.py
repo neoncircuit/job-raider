@@ -283,36 +283,6 @@ def test_sentence_scores_on_a_known_example(
     assert report.details["cases"][1]["sentence_extra"] == [other]
 
 
-def test_containment_mapping_mutation_fails(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Exact match instead of containment fails the greeting mapping test."""
-    from src.evaluation.suites import grounding as suite
-
-    original = suite.map_finding_to_letter_sentence
-
-    def _exact(finding: str, sentences: List[str]) -> Any:
-        needle = suite._normalize_sentence_key(finding)
-        for sentence in sentences:
-            if needle == suite._normalize_sentence_key(sentence):
-                return sentence
-        return None
-
-    monkeypatch.setattr(suite, "map_finding_to_letter_sentence", _exact)
-    finding = "I invented a QuantumLoom compiler at Zorblax Foundry"
-    _patch_validate(monkeypatch, [finding])
-    dataset = _write_dataset(
-        tmp_path / "mutate",
-        [_case(case_id="d6a__mutate")],
-    )
-
-    report = suite.run_grounding_suite(dataset)
-    row = report.details["cases"][0]
-    assert finding in row["sentence_extra"]
-    assert GREETING_SENTENCE in row["sentence_missed"]
-    monkeypatch.setattr(suite, "map_finding_to_letter_sentence", original)
-
-
 def _patch_validate(monkeypatch: pytest.MonkeyPatch, findings: List[str]) -> None:
     """
     Replace the validator with a result that returns the given findings.

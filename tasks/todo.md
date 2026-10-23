@@ -839,7 +839,13 @@ flowchart LR
     - **The letters got worse.** L7 and L8 hold because the new filler puts a per-case phrase (from the job description or the company name) into fixed frames, and the slot normalization does not replace those phrases. Counts in the 65 letters, before D5 and after: "I would stay on the X `<company>` already named, and I would not invent a second Y" 0 and 36; "`<company>` already said the `<title>` must ..." 0 and 25; "... is the example I would ask to ..." 0 and 28; "I would rather X than Y" 35 and 41. Many fillers do not fit the job ("I would stay on the mutual file Redcedar Mutual already named" for a job about renewal quotes). Sentences that break the Voice rule went from 3 to 16 (in 14 letters), and several of them state their own label: "..., and that sentence is about speed, not a technology", "..., which the profile already has", "I read that as a job requirement", "I will not raise that number". This is the diversity-gaming failure in `lessons.md` again: limits that a writer can meet by filling slots.
     - **What Baseline 3 measures.** Of the 252 sentence-level false positives, 163 are plans, wishes, example frames, job restatements, or interest sentences, most of them in the new frames. The validator does flag plans that repeat the job's words, and real letters do that too, so this is a real weakness. But the size of the number belongs to these letters. The clean false-positive rate is 1.000 (29 of 29).
     - The full gate at `7dc3128`: Black and Ruff clean, mypy gate 182 known errors and 0 new, pytest 1203 passed.
-    - See "Questions after D5 and D6".
+    - See "Decisions after D5 and D6".
+
+  - **D5 fix and Baseline 3b (2026-10-24, Claude, decision 1 after D5 and D6).** In 14 letters, 16 Voice-rule sentences or clauses were removed mechanically (a meta clause cut at its comma or semicolon; a meta sentence deleted). Two dependent edits: "I do not add a longer one." was deleted with "The degree and the two internships are the record." (it referred to it), and "It is a Java project I built." became "Campus Queue is a Java project I built." after the sentence before it was deleted. No new content, no labeled sentence, and no label changed. `test_grounding_dataset_letters_keep_the_candidate_voice` (explicit references to the profile, the dataset, "that sentence", or a self-assessment) failed before the edit with 9 hits and passes after it; the other 7 sentences need a reviewer, which the test docstring says. L5 now needs 10 letters over 220 words, not 15: the removed padding took 6 letters below 220 (11 remain), and the letters were not padded again. `test_containment_mapping_mutation_fails` was deleted. Dataset tests 14 passed; gate: Black and Ruff clean, mypy gate 182 known errors and 0 new, pytest 1203 passed.
+
+    Baseline 3b: `.venv/bin/python main.py eval grounding`, one run. Dataset SHA-256 `92cb028b34d4...`, MLflow run `7a5ebb3f22c940c888a548e0258b779e`, report `20261023T174538710359Z.json`. Case level: the same as Baseline 3 for every label (micro F1 0.781; the per-label table under Baseline 3 holds). Sentence level: precision 0.154, recall 0.638, F1 0.248 (TP 44, FP 242, FN 25); the removed text was 10 of the 252 false positives. Clean false-positive rate 1.000 (29 of 29). Of the 242 false positives, 156 are plans, wishes, example frames, job restatements, or interest sentences.
+
+    **Dataset limit (record with the numbers):** the constructed filler is templated (one frame in 36 of 65 letters), so the sentence precision and the clean false-positive rate describe these letters, not real letters. The constructed set measures targeted checks (one injected error per letter). The realistic false-positive measure is the user-labeled set of real generated letters (decision 1 of 2026-10-22).
 
 ##### Decisions before the fixes (2026-10-22)
 
@@ -888,15 +894,17 @@ The deterministic grounding rules read surface words. After the last rule round 
 
 1. **Claude fixes the curly-apostrophe regression here** (item F5b-fix), with a failing test first and a mutation proof. Then the rule checks are closed, and the next handoff is D5 and D6 (`tasks/handoff-step3-2-d5-d6.md`).
 
-##### Questions after D5 and D6 (2026-10-24)
+##### Decisions after D5 and D6 (2026-10-24)
 
-1. **What to do about the D5 letters?** Recommendation: a small, mechanical fix here, then stop changing the constructed set.
+Both recommendations were accepted. Claude does both steps here.
+
+1. **A small, mechanical fix of the D5 letters, then no more changes to the constructed set.**
     - Remove the 16 Voice-rule sentences or clauses (delete the meta clause, such as ", and that sentence is about speed, not a technology"; delete a whole meta sentence when the letter keeps 150 words). Write no new content, so no new fact and no new label enters. No sentence in `ungrounded_sentences` is touched.
     - Add a Voice check to `test_grounding_dataset.py` (no sentence names the profile, the dataset, a label, or "that sentence").
     - Delete `test_containment_mapping_mutation_fails` (it proves nothing) and keep the real mutation result in these notes.
     - Run the eval one time as Baseline 3b, and record the templates as a dataset limit: the constructed set is for targeted checks (one injected error per letter), not for a realistic false-positive rate.
     - Do not start another rewrite round against new template limits. A writer meets each new limit by filling a new slot. The realistic false-positive measure is the set of about 15 real generated letters that the user labels (decision 1 of 2026-10-22), and the holdout.
-2. **Then the holdout.** After Baseline 3b, Claude adds the holdout's `ungrounded_sentences` labels and runs the holdout one time (the README rule), then proposes the CI thresholds.
+2. **Then the holdout.** After Baseline 3b, Claude adds the holdout's `ungrounded_sentences` labels without running the validator on the holdout, and runs the holdout one time (the README rule). The CI thresholds come after that.
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4

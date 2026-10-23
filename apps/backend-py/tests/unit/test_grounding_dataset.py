@@ -251,9 +251,12 @@ def diversity_violations(
             f"got {len(set(companies))} companies, {len(set(titles))} titles, "
             f"max {max_company}"
         )
-    if any(count < 150 or count > 350 for count in word_counts) or long_letters < 15:
+    # The minimum of long letters was 15. It is 10 since 2026-10-24: removing
+    # the meta clauses that D5 added (Voice rule) took 6 letters below 220
+    # words, and the letters were not padded again.
+    if any(count < 150 or count > 350 for count in word_counts) or long_letters < 10:
         violations.append(
-            "L5: each letter needs 150-350 words and >=15 letters need >220 words; "
+            "L5: each letter needs 150-350 words and >=10 letters need >220 words; "
             f"min {stats['l5_min_words']}, max {stats['l5_max_words']}, "
             f"over 220: {long_letters}"
         )
@@ -299,3 +302,31 @@ def test_grounding_dataset_has_sentence_labels() -> None:
     cases = load_jsonl(CASES_PATH, GroundingCase)
     missing = [case.case_id for case in cases if case.ungrounded_sentences is None]
     assert not missing, missing
+
+
+# Words that describe the profile, the dataset, or a sentence's own label.
+# A candidate does not write them in a letter (guide, Voice section).
+_VOICE_RULE = re.compile(
+    r"\bprofile\b|\bdata ?set\b|\b(?:that|this) sentence\b|\bself-assessment\b",
+    re.IGNORECASE,
+)
+
+
+def test_grounding_dataset_letters_keep_the_candidate_voice() -> None:
+    """
+    Reject letter sentences that describe the profile, the dataset, or a label.
+
+    The check finds explicit references only. Other meta sentences need a
+    reviewer.
+
+    Returns:
+        None.
+    """
+    cases = load_jsonl(CASES_PATH, GroundingCase)
+    hits = [
+        (case.case_id, sentence)
+        for case in cases
+        for sentence in _SENTENCE_BREAK.split(_WHITESPACE.sub(" ", case.letter))
+        if _VOICE_RULE.search(sentence)
+    ]
+    assert not hits, hits
