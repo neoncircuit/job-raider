@@ -3400,6 +3400,7 @@
 - Normalize the slot values before you count (company, job title, names, and phrases copied from the input). The rework met "a long sentence in at most 3 cases" with 0.998 distinct sentences, but with the company and title replaced only 0.646 were distinct, and one sentence frame was in 18 letters.
 - A label that the system predicts for every case carries no information. Check the predicted count per label before you read its precision and recall.
 - Diversity rules make the writer paraphrase, and paraphrase invites added details. In the reworked set, many "clean" letters restated profile facts with new outcomes or purposes ("and the afternoon queue moved again"), which the guide counts as unsupported. Check clean cases for added details, and give the guide an explicit elaboration rule before you write them.
+- Slot normalization covers only the slots that you name. In D5 the writer met "a frame in at most 5 cases" by putting a per-case phrase from the job or the company name into new fixed frames ("I would stay on the X `<company>` already named ..." in 36 of 65 letters), and added sentences that state their own label ("and that sentence is about speed, not a technology"). After a rewrite, count frequent sentence openings and search for words such as "profile", "label", and "that sentence". Do not answer with another limit; a writer fills the next slot too. Use real letters for realism.
 
 ### A perfect score on a dev set says nothing about phrasings the set lacks
 

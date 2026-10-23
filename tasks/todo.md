@@ -795,8 +795,51 @@ flowchart LR
 - [x] **F5b-fix. Curly apostrophe in the subject rule (effort: S; Claude; decision 1 after F5b and F6b).** `_has_candidate_subject` reads a curly apostrophe as a straight one before it splits the words, so "I’ve led ..." and "we’re leading ..." keep their subject.
 
   **Done (2026-10-23).** One line in `_has_candidate_subject` that replaces U+2019 (the curly apostrophe, written as an escape like the other curly-apostrophe patterns in the file) with a straight apostrophe, and a docstring sentence. Test `test_curly_apostrophe_contractions_are_candidate_subjects` checks "I've led", "We're leading", and "I'm leading" with both apostrophes. Before the fix it failed on "I’ve led the compiler rollout since spring." after the straight form passed. Mutation: the normalization line replaced with `text = prefix or ""  # mutated` (1 occurrence, checksum `2d8b7a34...` to `80f6e149...`); the new test failed; the file was restored (`2d8b7a34...`). Eval: `.venv/bin/python main.py eval grounding`, MLflow run `3190eee25d674e2abfbf28880169fe7b`, report `20261023T080455452866Z.json`; every metric is the same as after F6b (micro F1 0.793; the main set has no curly apostrophes in leadership claims). Gate: Black and Ruff clean, mypy gate 182 known errors and 0 new, pytest 1194 passed.
-- [ ] **D5. Slot-normalized diversity and hard negatives (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Hard negatives (decision 2 after F4 to F7): some of the new clean filler sentences use ordinary phrasings that the scope and experience checks confused ("led to", "managed to", "as a result", "a leading provider", "master" as a verb, a talk at an event, a certificate that the job asks for). Write their labels before the validator runs. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
-- [ ] **D6. Elaboration rule and sentence-level `ungrounded_claims` (effort: M; dataset and suite; decisions after F1 to F3).** Add the strict elaboration rule (decision 1) and a rule for specific past practices to the labeling guide, with a "Changes" entry. Add `ungrounded_sentences` (exact sentence texts) to `GroundingCase`, and label every main-set case: list each sentence that is ungrounded under the guide, then set the case-level `ungrounded_claims` label from that list. Extend the grounding suite to score `ungrounded_claims` per sentence (sentence precision, recall, and F1, with a documented sentence split) in addition to the case-level scores. Claude adds the sentence labels to the holdout set. Then run the main set, and run the holdout one time.
+- [x] **D5. Slot-normalized diversity and hard negatives (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Hard negatives (decision 2 after F4 to F7): some of the new clean filler sentences use ordinary phrasings that the scope and experience checks confused ("led to", "managed to", "as a result", "a leading provider", "master" as a verb, a talk at an event, a certificate that the job asks for). Write their labels before the validator runs. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
+
+  **Done (2026-10-23).** Commit `5a408f8`. The test change came first. On the pre-D5 letters the new limits failed: L7, a slot-normalized frame is in 18 cases (max 5), and 19 frames are in 5 or more cases; L8, distinct frames / long sentences is 0.6457 (min 0.85). After the rewrite the dataset test passes. Every letter changed. 322 long sentences were removed and 482 were added. The 29 clean letters were rewritten under the strict elaboration rule. 12 hard-negative sentences were added (8 in clean letters). The validator was not run. Gate for this commit is recorded with D6a and D6b in the handoff.
+
+  | Limit | Before D5 | After D5 |
+  |-------|-----------|----------|
+  | L1 max cases for one sentence | 2 | 2 |
+  | L2 max shared long sentences | 1 | 1 |
+  | L3 distinct / all long sentences | 572 / 573 (0.9983) | 717 / 726 (0.9876) |
+  | L4 companies / titles / max per company | 22 / 16 / 3 | 22 / 16 / 3 |
+  | L5 word min / max / letters over 220 | 164 / 253 / 18 | 165 / 241 / 17 |
+  | L6 cases per profile | backend 24, ml 26, grad 15 | unchanged |
+  | L7 max cases for one frame | 18 (19 frames in 5 or more) | 2 (0 frames in 5 or more) |
+  | L8 distinct frames / long sentences | 370 / 573 (0.6457) | 716 / 726 (0.9862) |
+- [x] **D6. Elaboration rule and sentence-level `ungrounded_claims` (effort: M; dataset and suite; decisions after F1 to F3).** Add the strict elaboration rule (decision 1) and a rule for specific past practices to the labeling guide, with a "Changes" entry. Add `ungrounded_sentences` (exact sentence texts) to `GroundingCase`, and label every main-set case: list each sentence that is ungrounded under the guide, then set the case-level `ungrounded_claims` label from that list. Extend the grounding suite to score `ungrounded_claims` per sentence (sentence precision, recall, and F1, with a documented sentence split) in addition to the case-level scores. Claude adds the sentence labels to the holdout set. Then run the main set, and run the holdout one time.
+
+  **Done (2026-10-23), main set only.** D6a is `dee440d`. D6b is `7dc3128`. The guide has the strict elaboration rule, the practice rule, and a Sentence labels section. `split_letter_sentences` is public. `GroundingCase.ungrounded_sentences` is a list on every main-set case (65 lists, 69 labeled sentences). The only case-level `ungrounded_claims` change is `analogical_claim__fastapi_kubernetes` (absent to present), because two other sentences add unsupported practices. The validator did not run between the start of D5b and the D6b commit. Claude still adds the holdout sentence labels. The holdout run is still open.
+
+  **Baseline 3 (2026-10-23).** First eval after the D6b labels. Command `.venv/bin/python main.py eval grounding` from `apps/backend-py`. Git SHA `7dc312826dd19db204f512e779f0caded9b8ee83`, `git_dirty` true (unrelated local files; the D6b files are committed). Dataset SHA-256 `9503f62694e1a76017d81868781e8bcbdb084d1093a4ad447dd12fa6310f8603`. MLflow run `64d8bea7b6fc4c3099f68285d38fe745`. Report `20261023T170157819207Z.json`. Do not read this as a gain over Baseline 2: the letters and the `ungrounded_claims` labels changed.
+
+  | Label | P | R | F1 | Predicted | Support |
+  |-------|---|---|----|-----------|---------|
+  | `fabricated_technology` | 0.800 | 1.000 | 0.889 | 10 | 8 |
+  | `inflated_duration` | 1.000 | 1.000 | 1.000 | 5 | 5 |
+  | `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 3 | 3 |
+  | `fabricated_experience` | 0.857 | 0.750 | 0.800 | 7 | 8 |
+  | `analogical_claim` | 1.000 | 1.000 | 1.000 | 3 | 3 |
+  | `scope_inflation` | 1.000 | 1.000 | 1.000 | 4 | 4 |
+  | `technique_mismatch` | 0.750 | 1.000 | 0.857 | 4 | 3 |
+  | `ungrounded_claims` | 0.523 | 1.000 | 0.687 | 65 | 34 |
+  | micro | 0.653 | 0.971 | 0.781 | — | — |
+
+  Sentence-level `ungrounded_claims`: precision 0.149, recall 0.638, F1 0.241, TP 44, FP 252, FN 25, labeled cases 65. Clean false-positive rate 1.000 (29 of 29).
+
+  Differences that come from the dataset: `ungrounded_claims` support fell from 64 to 34 because D6b sets the case label from the sentence list; the check is still predicted on all 65 letters, so case-level recall stays 1.000. New case-level extra labels on rewritten letters: `fabricated_technology` on `fabricated_technology__rather_than_java` and `analogical_claim__fastapi_kubernetes`; `fabricated_experience` on `clean__deans_list`; `technique_mismatch` on `analogical_claim__retrieval_ok`. The two `fabricated_experience` misses are the known limits (`harbor_mint`, `prompt_injection__led_orbit_aws`). Labels and letters were not changed after this run.
+
+  - **Review of D5 and D6 (2026-10-24):** Commits `5a408f8` (D5), `dee440d` (D6a), and `7dc3128` (D6b). Only the main set, the guide, the dataset tests, the suite, and `split_letter_sentences` changed, all with LF line endings. The holdout files and `test_grounding_holdout.py` are unchanged. Baseline 3 reproduces exactly (micro F1 0.781; sentence precision 0.149, recall 0.638, F1 0.241; 0 unmapped findings).
+    - **No eval run in the label window.** The only report files around it are `20261023T080455...` (Claude's curly-fix eval, before D5) and `20261023T170157...` (Baseline 3, 3 minutes after the D6b commit). A script can run the validator without a report, so this supports the statement; it does not prove it.
+    - **Labels: good.** Claude labeled a fixed random sample of 10 cases (5 with no issue, 5 with issues) without seeing Cursor's labels, then compared. All 10 sentences that Claude marked as clearly ungrounded are in Cursor's lists, and Cursor has no sentence that Claude did not mark. Two borderline sentences differ ("A model release waited on offline evaluation datasets I built for that classifier work", which ties the datasets to the classifier; "The employer on this work is Northstar Ledger, and the product I talk about is Ledger Bridge"); Cursor's reading is defensible.
+    - **Code: good, with one false proof.** The containment mapping, the field checks, and the None handling are correct. `test_containment_mapping_mutation_fails` is not a mutation proof: it puts its own exact-match function in place and checks that function, so it passes whatever the real code does. Claude ran the real mutation (containment to exact match in `map_finding_to_letter_sentence`, 1 occurrence, checksum `5571e91c...` to `0b0d0ca6...`): `test_greeting_finding_maps_to_the_full_sentence` fails, and the file was restored. So the real code is protected by that test.
+    - **One wrong statement:** "`ungrounded_claims` support fell from 64 to 34" (here and in the handoff). 64 was the predicted count at Baseline 2. The support was 33 at Baseline 2 and is 34 now (one case changed, `analogical_claim__fastapi_kubernetes`).
+    - **The letters got worse.** L7 and L8 hold because the new filler puts a per-case phrase (from the job description or the company name) into fixed frames, and the slot normalization does not replace those phrases. Counts in the 65 letters, before D5 and after: "I would stay on the X `<company>` already named, and I would not invent a second Y" 0 and 36; "`<company>` already said the `<title>` must ..." 0 and 25; "... is the example I would ask to ..." 0 and 28; "I would rather X than Y" 35 and 41. Many fillers do not fit the job ("I would stay on the mutual file Redcedar Mutual already named" for a job about renewal quotes). Sentences that break the Voice rule went from 3 to 16 (in 14 letters), and several of them state their own label: "..., and that sentence is about speed, not a technology", "..., which the profile already has", "I read that as a job requirement", "I will not raise that number". This is the diversity-gaming failure in `lessons.md` again: limits that a writer can meet by filling slots.
+    - **What Baseline 3 measures.** Of the 252 sentence-level false positives, 163 are plans, wishes, example frames, job restatements, or interest sentences, most of them in the new frames. The validator does flag plans that repeat the job's words, and real letters do that too, so this is a real weakness. But the size of the number belongs to these letters. The clean false-positive rate is 1.000 (29 of 29).
+    - The full gate at `7dc3128`: Black and Ruff clean, mypy gate 182 known errors and 0 new, pytest 1203 passed.
+    - See "Questions after D5 and D6".
 
 ##### Decisions before the fixes (2026-10-22)
 
@@ -844,6 +887,16 @@ The deterministic grounding rules read surface words. After the last rule round 
 ##### Decisions after F5b and F6b (2026-10-23)
 
 1. **Claude fixes the curly-apostrophe regression here** (item F5b-fix), with a failing test first and a mutation proof. Then the rule checks are closed, and the next handoff is D5 and D6 (`tasks/handoff-step3-2-d5-d6.md`).
+
+##### Questions after D5 and D6 (2026-10-24)
+
+1. **What to do about the D5 letters?** Recommendation: a small, mechanical fix here, then stop changing the constructed set.
+    - Remove the 16 Voice-rule sentences or clauses (delete the meta clause, such as ", and that sentence is about speed, not a technology"; delete a whole meta sentence when the letter keeps 150 words). Write no new content, so no new fact and no new label enters. No sentence in `ungrounded_sentences` is touched.
+    - Add a Voice check to `test_grounding_dataset.py` (no sentence names the profile, the dataset, a label, or "that sentence").
+    - Delete `test_containment_mapping_mutation_fails` (it proves nothing) and keep the real mutation result in these notes.
+    - Run the eval one time as Baseline 3b, and record the templates as a dataset limit: the constructed set is for targeted checks (one injected error per letter), not for a realistic false-positive rate.
+    - Do not start another rewrite round against new template limits. A writer meets each new limit by filling a new slot. The realistic false-positive measure is the set of about 15 real generated letters that the user labels (decision 1 of 2026-10-22), and the holdout.
+2. **Then the holdout.** After Baseline 3b, Claude adds the holdout's `ungrounded_sentences` labels and runs the holdout one time (the README rule), then proposes the CI thresholds.
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4
@@ -914,7 +967,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Cursor: the dataset pass D5 (slot-normalized limits, filler rewrite, hard negatives) and D6 (elaboration rule and sentence-level `ungrounded_claims`), as described in `tasks/handoff-step3-2-d5-d6.md`, then a stop for review. The rule checks are closed (see "Known limits of the rule checks"). After that: Claude adds the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
+Decide on "Questions after D5 and D6" (a small mechanical fix of the D5 letters, then Baseline 3b). Next: Claude adds the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. D5 and D6 are `5a408f8`, `dee440d`, `7dc3128`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 

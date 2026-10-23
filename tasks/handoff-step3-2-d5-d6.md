@@ -123,3 +123,128 @@ At the end, add "Cursor results (date)" to this file with:
 - Baseline 3: the table and the sentence-level numbers.
 - Any label or letter you think is wrong (after Baseline 3, do not change it).
 - Every check you ran and its result. Say clearly what you did not run.
+
+## Cursor results (2026-10-23)
+
+### Commits
+
+| Step | Hash | Subject |
+|------|------|---------|
+| D5 | `5a408f8` | test(grounding): add slot-normalized L7 and L8, then rewrite filler and hard negatives. |
+| D6a | `dee440d` | feat(eval): add sentence-level ungrounded labels, split, and suite scoring. |
+| D6b | `7dc3128` | feat(eval): label ungrounded sentences on all 65 main-set cases. |
+
+Do not push. The D6b commit message says why: the sentence labels are frozen before the first eval run.
+
+### D5
+
+The test change came first. Recomputed on the pre-D5 letters (`9405a14`) with the D5a functions, the new limits failed:
+
+```
+L7 FAIL: a slot-normalized frame is in 18 cases (max 5)
+L7 note: 19 frames are in 5 or more cases
+L8 FAIL: distinct frames / long sentences is 0.6457 (min 0.85)
+```
+
+L1 to L8 before and after:
+
+| Limit | Before | After |
+|-------|--------|-------|
+| L1 max cases for one sentence | 2 | 2 |
+| L2 max shared long sentences | 1 | 1 |
+| L3 distinct / all | 572 / 573 (0.9983) | 717 / 726 (0.9876) |
+| L4 companies / titles / max per company | 22 / 16 / 3 | 22 / 16 / 3 |
+| L5 word min / max / letters over 220 | 164 / 253 / 18 | 165 / 241 / 17 |
+| L6 cases per profile | backend 24, ml 26, grad 15 | unchanged |
+| L7 max cases for one frame | 18 (19 frames in 5 or more) | 2 (0 frames in 5 or more) |
+| L8 distinct frames / long sentences | 370 / 573 (0.6457) | 716 / 726 (0.9862) |
+
+Rewrite counts:
+
+- Filler frames: every letter changed. 322 sentences were removed and 482 were added (set difference of split sentences). New sentences are letter-specific, not word swaps in one frame.
+- Strict clean letters: all 29 letters with no expected issue were rewritten so a restated profile fact does not add an unsupported outcome, purpose, setting, or practice.
+- Hard negatives: 12 sentences, 8 of them in clean letters. Each required form is present one time.
+
+Hard-negative list:
+
+| Case | Form | Sentence |
+|------|------|----------|
+| `clean__ledger_hours` | led to | Late scans led to a dock backlog, which is the queue Northwind Parcel already named. |
+| `clean__query_story` | managed to | Your overnight batch managed to list the failed labels before the dock opened. |
+| `clean__bridge_validation` | a/the leading | Cedar Kiln Analytics is a leading analytics shop for weekly export checks. |
+| `clean__docker_handoff` | person headed | I would ask about the chart migration that your platform lead headed last season. |
+| `clean__college_path` | a managed technology service | Harborline Mutual runs a managed PostgreSQL service for claim packets. |
+| `clean__atlas_search` | master branch | I would read the master branch notes Harborline Mutual already publishes before I ask a question. |
+| `clean__finch_tuning` | job asks for a certificate | The posting asks for a laboratory quality certificate; I read that as a job requirement. |
+| `clean__eval_sets` | as a result at | As a result at Quartz Orchard Systems, a half-finished sample can look complete. |
+| `fabricated_technology__aws` | industry-leading | Copperline Transit is an industry-leading transit desk for late-trip notes. |
+| `fabricated_technology__gcp` | led someone to | A scoring change at Moss Kiln Studio led reviewers to reopen one failed run. |
+| `inflated_duration__over_five_years` | master as a verb | I would master the grain-check checklist Marlowe Grain already posted, then ask one question. |
+| `scope_inflation__led_backend` | as a word at | As a newcomer at Lumenfield Civic I would only read the case notes. |
+
+### D6a
+
+Guide: under `ungrounded_claims`, the strict elaboration rule and one example; the practice rule (specific past practice is a candidate fact; present-tense preference is not); a Sentence labels section; a Changes entry dated 2026-10-23; the Mermaid diagram now has Split sentences and List ungrounded sentences.
+
+Code: `split_letter_sentences` in `cover_letter_grounding.py`; `ungrounded_sentences` on `GroundingCase`; suite sentence scores (`sentence.precision`, `sentence.recall`, `sentence.f1`, `sentence.labeled_cases`, per-case `sentence_missed` and `sentence_extra`).
+
+Tests before the change: `test_grounding_dataset_has_sentence_labels` failed because every main-set case still had `None`. That assertion was committed as `xfail(strict=True)` with a reason that names D6b. An unused import of `run_grounding_suite` failed ruff; the import was removed before the D6a commit. The scoring tests use a small dataset in `tmp_path` with new names.
+
+Mutation: `test_containment_mapping_mutation_fails` replaces containment with exact match. The greeting finding then maps to no letter sentence, so the test expects that finding in `sentence_extra` and the full greeting sentence in `sentence_missed`. The test passes, which shows that containment is required.
+
+### D6b
+
+69 sentences are listed in `ungrounded_sentences` across 65 cases (31 empty lists, 34 nonempty). 29 clean letters and 2 analogy-only letters have `[]`.
+
+The only case-level `ungrounded_claims` change: `analogical_claim__fastapi_kubernetes`, absent to present. The analogy sentence stays analogical only. Two other sentences add unsupported practices (SQL written so a reviewer could compare a batch total; a failed Ledger Bridge import returned the row and the rule). The list is nonempty, so the case label must include `ungrounded_claims`.
+
+The validator did not run between the start of D5b and the D6b commit. Labels were decided from the guide and the profiles only.
+
+### Baseline 3
+
+Command `.venv/bin/python main.py eval grounding` from `apps/backend-py`, one time, after `7dc3128`.
+
+- Dataset SHA-256: `9503f62694e1a76017d81868781e8bcbdb084d1093a4ad447dd12fa6310f8603`
+- Git SHA: `7dc312826dd19db204f512e779f0caded9b8ee83` (`git_dirty` true; unrelated local files)
+- MLflow run: `64d8bea7b6fc4c3099f68285d38fe745`
+- Report: `apps/backend-py/data/eval/grounding/20261023T170157819207Z.json`
+
+| Label | P | R | F1 | Predicted | Support |
+|-------|---|---|----|-----------|---------|
+| `fabricated_technology` | 0.800 | 1.000 | 0.889 | 10 | 8 |
+| `inflated_duration` | 1.000 | 1.000 | 1.000 | 5 | 5 |
+| `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `fabricated_experience` | 0.857 | 0.750 | 0.800 | 7 | 8 |
+| `analogical_claim` | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `scope_inflation` | 1.000 | 1.000 | 1.000 | 4 | 4 |
+| `technique_mismatch` | 0.750 | 1.000 | 0.857 | 4 | 3 |
+| `ungrounded_claims` | 0.523 | 1.000 | 0.687 | 65 | 34 |
+| micro | 0.653 | 0.971 | 0.781 | — | — |
+
+Sentence-level `ungrounded_claims`: precision 0.149, recall 0.638, F1 0.241, TP 44, FP 252, FN 25, labeled cases 65. Clean false-positive rate 1.000 (29 of 29).
+
+Do not compare this with Baseline 2 as a gain. The letters changed in D5. The `ungrounded_claims` support fell from 64 to 34 because D6b sets that label from the sentence list. The check is still predicted on all 65 letters.
+
+### Labels or letters that may be wrong
+
+Do not change them after Baseline 3.
+
+- 36 of the 69 labeled sentences are elaboration or practice details in injected-error letters, not the injected-error sentence. The guide requires them. They cause most of the 25 sentence false negatives, because the overlap check does not read those details.
+- `analogical_claim__fastapi_kubernetes` now has `ungrounded_claims` only because of those extra sentences. A reviewer who wants analogy-only cases to stay without that label should drop those two sentences from the list.
+- Hard-negative sentences are labeled clean. The validator still flags several of them as `ungrounded_claims` (plans, job restatements). That is a validator miss, not a label error.
+- New case-level extras from the D5 letters: `fabricated_technology` on `fabricated_technology__rather_than_java` and `analogical_claim__fastapi_kubernetes`; `fabricated_experience` on `clean__deans_list`; `technique_mismatch` on `analogical_claim__retrieval_ok`. The letters look correct under the guide.
+
+### Checks
+
+Ran:
+
+- Dataset tests after D6b labels: `test_grounding_dataset.py`, `test_grounding_sentence_labels.py`, `test_grounding_holdout.py` — 14 passed.
+- D6b gate: Black clean (272 files), ruff clean, mypy gate 182 known errors and 0 new, pytest 1203 passed.
+- Baseline 3: `main.py eval grounding` one time after `7dc3128`.
+
+Did not run:
+
+- The validator, `main.py eval`, or any script that prints validator findings for the main set, from the start of D5b until after the D6b commit.
+- Holdout labeling or the holdout eval.
+- Frontend checks.
+- Push.
