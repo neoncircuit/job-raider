@@ -1015,3 +1015,94 @@ def test_single_duration_number_stays_that_number() -> None:
         profile,
     )
     assert findings == []
+
+
+def test_ordinary_words_are_not_scope_inflation() -> None:
+    """'called the' and 'handled the' are not leadership claims."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    bullets = ["I kept notes for the billing desk."]
+    called = flag_scope_and_technique_overclaims(
+        "I checked the result before I called the speedup real.",
+        None,
+        {},
+        resume_bullets=bullets,
+    )
+    handled = flag_scope_and_technique_overclaims(
+        "I handled the migration for the billing desk.",
+        None,
+        {},
+        resume_bullets=bullets,
+    )
+    assert called == []
+    assert handled == []
+
+
+def test_new_leadership_claims_are_flagged() -> None:
+    """A team claim is flagged when the profile does not state that claim."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    bullets = ["Led a team of 3 engineers on the billing desk."]
+    managed = flag_scope_and_technique_overclaims(
+        "I managed a team of twelve engineers on the billing desk.",
+        None,
+        {},
+        resume_bullets=bullets,
+    )
+    oversaw = flag_scope_and_technique_overclaims(
+        "I oversaw a team of eight engineers on the billing desk.",
+        None,
+        {},
+        resume_bullets=bullets,
+    )
+    assert any("Scope inflation" in flag for flag in managed)
+    assert any("Scope inflation" in flag for flag in oversaw)
+
+
+def test_same_leadership_claim_is_not_flagged() -> None:
+    """The same team claim is allowed, and a number word matches a digit."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    bullets = ["Led a team of 3 engineers on the billing desk."]
+    same = flag_scope_and_technique_overclaims(
+        "I led a team of 3 engineers on the billing desk.",
+        None,
+        {},
+        resume_bullets=bullets,
+    )
+    words = flag_scope_and_technique_overclaims(
+        "I led a team of three engineers on the billing desk.",
+        None,
+        {},
+        resume_bullets=bullets,
+    )
+    assert same == []
+    assert words == []
+
+
+def test_leadership_verb_with_a_different_object_is_flagged() -> None:
+    """The verb alone in the profile does not allow a different object."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    team_only = flag_scope_and_technique_overclaims(
+        "I led the fraud research at another company.",
+        None,
+        {},
+        resume_bullets=["Led a team of 3 engineers on the billing desk."],
+    )
+    other_object = flag_scope_and_technique_overclaims(
+        "I led the fraud research at another company.",
+        None,
+        {},
+        resume_bullets=["Led the weekly review of the billing desk."],
+    )
+    assert any("Scope inflation" in flag for flag in team_only)
+    assert any("Scope inflation" in flag for flag in other_object)

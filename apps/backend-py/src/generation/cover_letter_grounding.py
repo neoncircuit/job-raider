@@ -121,16 +121,63 @@ _OVERCLAIM_TOKENS: frozenset[str] = frozenset(
 )
 
 # Leadership/ownership phrasing that inflates seniority beyond IC bullets.
+# Bare verbs (led, managed, headed, oversaw) are matched with the object
+# that follows them. "called the" does not match "led the".
 _SCOPE_INFLATION_PHRASES: tuple[str, ...] = (
-    "leading the",
-    "led the",
+    "leading the development",
+    "led the development",
     "leading development",
     "led development",
-    "spearheaded",
-    "owned entirely",
     "architected the platform",
     "drove the strategy",
     "drove strategy",
+    "owned entirely",
+    "spearheaded",
+    "leading the",
+    "led the",
+    "owned the",
+    "managed",
+    "headed",
+    "oversaw",
+    "leading",
+    "led",
+)
+
+# A bare verb needs an object. A longer phrase is a claim by itself.
+_SCOPE_BARE_VERBS: frozenset[str] = frozenset(
+    {"led", "leading", "managed", "headed", "oversaw"}
+)
+
+# Words that end the object of a leadership claim.
+_SCOPE_OBJECT_STOPS: frozenset[str] = frozenset(
+    {
+        "at",
+        "for",
+        "on",
+        "in",
+        "with",
+        "using",
+        "while",
+        "before",
+        "after",
+        "during",
+        "because",
+        "and",
+        "then",
+        "so",
+        "but",
+        "when",
+        "where",
+        "which",
+        "who",
+    }
+)
+
+_SCOPE_HEAD_RE = re.compile(
+    r"\b(?P<head>"
+    + "|".join(re.escape(phrase) for phrase in _SCOPE_INFLATION_PHRASES)
+    + r")\b",
+    re.IGNORECASE,
 )
 
 # Technique terms that must be attributed to the same project they describe.
@@ -1335,6 +1382,82 @@ def _whole_term_in_text(text: str, term: str) -> bool:
     )
 
 
+def _normalize_scope_text(text: str) -> str:
+    """
+    Lowercase a leadership claim and write number words as digits.
+
+    ``twelve`` and ``12`` become the same token, so a claim and a resume
+    bullet can match when only the number spelling differs.
+
+    Args:
+        text: Claim or resume text.
+
+    Returns:
+        Normalized text with one space between words.
+    """
+    lowered = re.sub(r"\s+", " ", (text or "").lower()).strip()
+    for word in sorted(_CLAIM_NUMBER_VALUES, key=len, reverse=True):
+        value = _CLAIM_NUMBER_VALUES[word]
+        digits = str(int(value)) if float(value).is_integer() else str(value)
+        lowered = re.sub(rf"\b{re.escape(word)}\b", digits, lowered)
+    return lowered
+
+
+def _leadership_claims(text: str) -> List[str]:
+    """
+    Return leadership claims in ``text``, each with its object.
+
+    A bare verb such as ``led`` or ``managed`` counts only with the words
+    that follow it. The object stops at a preposition such as ``at`` or
+    ``on``, and it is at most six words. ``called the`` does not match
+    ``led the``.
+
+    Args:
+        text: One sentence, any case.
+
+    Returns:
+        Claim strings such as ``led a team of 3 engineers``.
+    """
+    claims: List[str] = []
+    for match in _SCOPE_HEAD_RE.finditer(text or ""):
+        head = match.group("head")
+        words: List[str] = []
+        for word in (text or "")[match.end() :].split():
+            bare = word.strip(".,;:").lower()
+            if not bare or bare in _SCOPE_OBJECT_STOPS:
+                break
+            words.append(word.strip(".,;:"))
+            if len(words) >= 6:
+                break
+        if not words:
+            if head.lower() in _SCOPE_BARE_VERBS:
+                continue
+            claims.append(head)
+            continue
+        claims.append(f"{head} {' '.join(words)}")
+    return claims
+
+
+def _resume_has_leadership_claim(claim: str, resume_text: str) -> bool:
+    """
+    Return whether the resume states the same leadership claim.
+
+    The comparison is the whole claim, including the object. Number words
+    and digits are equal. The verb on a different object does not match.
+
+    Args:
+        claim: Leadership claim from the letter.
+        resume_text: Resume corpus.
+
+    Returns:
+        True when the normalized claim appears in the resume text.
+    """
+    normalized = _normalize_scope_text(claim)
+    if not normalized:
+        return False
+    return normalized in _normalize_scope_text(resume_text)
+
+
 def flag_scope_and_technique_overclaims(
     sentence: str,
     project_name: Optional[str],
@@ -1348,9 +1471,9 @@ def flag_scope_and_technique_overclaims(
     catch, since both failure modes hide a misleading term inside a
     sentence that is otherwise well-grounded:
 
-    1. Scope inflation: flags verbs implying leadership/ownership beyond an
-       individual contribution, unless that exact phrasing already appears
-       in the resume corpus.
+    1. Scope inflation: a leadership claim is flagged unless the resume has
+       the same claim and the same object. Number words and digits are
+       equal. The verb alone, on a different object, is not enough.
     2. Technique mismatch: flags a named technique (e.g. ``retrieval``,
        ``fine-tuning``) when the referenced project's known technique list
        does not include it.
@@ -1362,8 +1485,9 @@ def flag_scope_and_technique_overclaims(
             ``None`` when no project is named (technique check is skipped).
         project_techniques: Mapping of project name to the list of
             techniques verified to apply to it.
-        resume_bullets: Optional resume corpus; scope phrases present here
-            are treated as allowed (the candidate really wrote them).
+        resume_bullets: Optional resume corpus. A leadership claim is
+            allowed only when this text has the same claim and the same
+            object.
 
     Returns:
         A list of human-readable flags describing what was found, empty
@@ -1376,11 +1500,11 @@ def flag_scope_and_technique_overclaims(
 
     resume_lower = " ".join(resume_bullets or []).lower()
 
-    for phrase in _SCOPE_INFLATION_PHRASES:
-        if phrase in lowered and phrase not in resume_lower:
+    for claim in _leadership_claims(lowered):
+        if not _resume_has_leadership_claim(claim, resume_lower):
             flags.append(
                 "Scope inflation: "
-                f"'{phrase}' implies leadership/ownership beyond an "
+                f"'{claim}' implies leadership/ownership beyond an "
                 "individual contribution"
             )
 
