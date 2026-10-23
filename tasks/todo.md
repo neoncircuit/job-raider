@@ -505,7 +505,9 @@ flowchart LR
     F4 --> F5[F5 scope inflation]
     F5 --> F6[F6 fabricated experience]
     F6 --> F7[F7 technique and analogy]
-    F7 --> D5[D5 slot-normalized dataset]
+    F7 --> F5a[F5a scope rework]
+    F5a --> F6a[F6a experience rework]
+    F6a --> D5[D5 slot-normalized dataset and hard negatives]
     D5 --> D6[D6 elaboration rule and sentence labels]
     D6 --> R[Holdout run and CI gate]
 ```
@@ -686,8 +688,10 @@ flowchart LR
     - **The F6 tests reuse the main set.** "I hold a Master of Arts in Design History from Glassmill College." is a sentence of `fabricated_experience__glassmill_degree`. "Orbit Lantern", "Northbridge Ledger Auditor", "Director of Engineering", and "similar to the penetration-testing" also come from main-set letters. The handoff asked for new sentences. So the tests show that F6 fits the main set, not that it generalizes, and the probes show that it does not. The main-set precision of 1.000 for F5 and F6 only says that the main set has none of these ordinary phrases.
     - Small items: the first docstring line of `flag_inflated_duration_claims` has 8 spaces of indent; `_project_name_spans` finds a project name inside a longer word (no word boundary); `test_target_company_and_ordinary_at_are_not_employers` uses "I want to join Harbor Labs", which no pattern reads ("joined" only), so it does not test the target-company rule (the title test does, through "at Harbor Labs I").
     - The probes use general letter phrasing. Claude wrote the holdout, and no probe copies a holdout sentence. The full gate at `115fcd9`: Black and Ruff clean, mypy gate 182 known errors and 0 new, pytest 1179 passed.
-    - See "Questions after F4 to F7".
-- [ ] **D5. Slot-normalized diversity (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
+    - See "Decisions after F4 to F7" and the items F5a and F6a.
+- [ ] **F5a. Scope inflation rework (effort: S; decision 1 after F4 to F7).** A leadership verb is a claim only when a noun phrase follows it: "to" (also "managed to"), "me", "us", and "them" do not start an object, and "leading" used as an adjective ("a leading provider") is not a claim. The object ends at "to", "that", "which", and "who" as well as at the current stops, so the profile comparison uses the object noun phrase. Tests with new sentences for each ordinary use, and the F5 positives still flagged. Handoff: `tasks/handoff-step3-2-f5a-f6a.md`.
+- [ ] **F6a. Fabricated experience rework (effort: M; decision 1 after F4 to F7).** Organization names, titles, degrees, and certificates as in the F4 to F7 review: a name never takes the pronoun "I"; an event is not an employer; a shorter title is supported; "as a X at Y" needs a role noun and checks Y; "master" and "bachelor" are degrees only in a degree phrase, and "Bachelor's degree in X" reads the field; a certificate name is read on both sides of the certificate word and is supported when its words are part of a profile certification; a job requirement or a plan is not a claim. A validator test for the wiring. Tests with new sentences and new names only. Handoff: `tasks/handoff-step3-2-f5a-f6a.md`.
+- [ ] **D5. Slot-normalized diversity and hard negatives (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Hard negatives (decision 2 after F4 to F7): some of the new clean filler sentences use ordinary phrasings that the scope and experience checks confused ("led to", "managed to", "as a result", "a leading provider", "master" as a verb, a talk at an event, a certificate that the job asks for). Write their labels before the validator runs. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
 - [ ] **D6. Elaboration rule and sentence-level `ungrounded_claims` (effort: M; dataset and suite; decisions after F1 to F3).** Add the strict elaboration rule (decision 1) and a rule for specific past practices to the labeling guide, with a "Changes" entry. Add `ungrounded_sentences` (exact sentence texts) to `GroundingCase`, and label every main-set case: list each sentence that is ungrounded under the guide, then set the case-level `ungrounded_claims` label from that list. Extend the grounding suite to score `ungrounded_claims` per sentence (sentence precision, recall, and F1, with a documented sentence split) in addition to the case-level scores. Claude adds the sentence labels to the holdout set. Then run the main set, and run the holdout one time.
 
 ##### Decisions before the fixes (2026-10-22)
@@ -707,13 +711,12 @@ All three recommendations were accepted.
 2. **Sentence-level labels for `ungrounded_claims`.** Each case gets an `ungrounded_sentences` list with the exact sentences that are ungrounded under the guide. The suite scores that check per sentence (precision and recall over sentences) in addition to the case-level label. The other checks stay case-level.
 3. **Order.** Cursor does F4 to F7 now. Then one dataset pass (D5 and D6) before the holdout run. Claude adds the holdout's sentence labels, so the fixer still does not open the holdout cases.
 
-##### Questions after F4 to F7 (2026-10-23)
+##### Decisions after F4 to F7 (2026-10-23)
 
-1. **Rework F5 and F6 before D5 and D6?** Recommendation: yes, in Cursor, as F5a and F6a. The holdout runs one time, and these failures are already known. A holdout run now only measures them again and uses up the holdout. Scope:
-    - F5a: a leadership verb is a claim only when a noun phrase follows it. "to" (also "managed to"), "me", "us", and "them" do not start an object. "leading" after "a", "an", "the", or "industry" is an adjective. The object also ends at "to" and at "that", "which", and "who". The profile comparison uses that object.
-    - F6a: a name never takes the pronoun "I". An event (a talk, a conference, a meetup) is not an employer. A letter title is supported when its words are part of a profile title; the title pattern needs a role noun (engineer, analyst, intern, and so on), and the employer in "as a X at Y" is checked. "master" and "bachelor" are degrees only with "'s", "of", "in", or "degree"; "Bachelor's degree in X" reads the field. A certificate name is the capitalized words on both sides of the certificate word, and it is supported when its words are part of a profile certification name or issuer; a job requirement or a plan is not a claim. Add a validator test for the wiring.
-    - Tests use new sentences and new names only. No name or sentence from the main set. Claude probes again with new sentences after the rework.
-2. **Hard negatives in D5?** Recommendation: yes. When D5 rewrites the repeated filler frames, some new clean sentences use the ordinary phrasings above ("led to", "managed to", "as a result", "a leading provider", "master" as a verb, a talk at an event). Labels are written before the validator runs. Then the main-set precision of F5 and F6 shows something. The holdout stays the only unbiased measure.
+Both recommendations were accepted.
+
+1. **Rework F5 and F6 before D5 and D6.** Cursor does F5a and F6a, then stops for review. Reason: the holdout runs one time, and these failures are already known. A holdout run now only measures them again and uses up the holdout. Tests use new sentences and new names only: no name or sentence from the main set, and no sentence copied from the review notes. Claude probes again with new sentences after the rework.
+2. **Hard negatives in D5.** When D5 rewrites the repeated filler frames, some new clean sentences use the ordinary phrasings that the scope and experience checks confused. Labels are written before the validator runs. Then the main-set precision of these checks shows something. The holdout stays the only unbiased measure.
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4
@@ -784,7 +787,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Decide on "Questions after F4 to F7" (rework F5 and F6 before D5 and D6, and hard negatives in D5). After that: the dataset pass D5 and D6 (elaboration rule and sentence-level `ungrounded_claims`), with Claude adding the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
+Cursor: the F5a and F6a rework, as described in `tasks/handoff-step3-2-f5a-f6a.md`, then a stop for review. After that: the dataset pass D5 (with hard negatives) and D6 (elaboration rule and sentence-level `ungrounded_claims`), with Claude adding the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 
