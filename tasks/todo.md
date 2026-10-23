@@ -507,7 +507,8 @@ flowchart LR
     F6 --> F7[F7 technique and analogy]
     F7 --> F5a[F5a scope rework]
     F5a --> F6a[F6a experience rework]
-    F6a --> D5[D5 slot-normalized dataset and hard negatives]
+    F6a --> F5b[F5b and F6b: subject rule, last rule round]
+    F5b --> D5[D5 slot-normalized dataset and hard negatives]
     D5 --> D6[D6 elaboration rule and sentence labels]
     D6 --> R[Holdout run and CI gate]
 ```
@@ -738,7 +739,9 @@ flowchart LR
     - **Classes that the handoff did not name: 1 of 14 right.** Scope: "a managed PostgreSQL service" ("managed" as an adjective); "My director led the migration, and I wrote ..." (another person led); "The audit that led directly to ..." (an adverb before "to"); "Your team is leading the shift ..." (the company leads). Experience, missed: "At <Org>, I built ..." (the comma form, which is the most common way a letter names an employer); "At <Org> I worked on ..." ("worked" is not in `_PAST_CLAIM_VERBS`); "As a Lead Data Engineer at <employer on the profile>" when the title at that employer was "Junior Analyst" (title and employer are checked one at a time, not as a pair); "I am certified in Terraform" ("in" stops the name); "I hold the <name> certificate that this role requires" (the requirement skip covers the whole sentence). Experience, flagged in error: "Kubernetes certification is less useful than production time" (a general statement); "The posting prefers a Master's degree in ..." (a job requirement, for a degree); "I mentored two PhD interns" (a degree word before a person noun); "to some degree in every service". The curly apostrophe in "Master’s degree in X" is read only through "degree in X"; with a different field the result is right.
     - Six of the 13 wrong results have one cause: a check does not ask who the subject or owner is. A leadership verb, a certificate word, or a degree word counts in any clause, also when the clause is about another person, the company, the job, or nothing in particular. The five misses are pattern gaps.
     - The full gate at `aaf0fdf`: Black and Ruff clean, mypy gate 182 known errors and 0 new, pytest 1185 passed.
-    - See "Questions after F5a and F6a" (after "Decisions after F4 to F7").
+    - See "Decisions after F5a and F6a" (after "Decisions after F4 to F7").
+- [ ] **F5b. Scope inflation: the subject rule (effort: S; last rule round, decision 1 after F5a and F6a).** A leadership verb is a claim only when the candidate is its subject: the nearest word to its left (after adverbs and auxiliaries) is "I" or "we", or a joining word ("and", a comma, "then") when "I" or "we" is earlier in the sentence, or there is no word (the sentence starts with the verb). Another person, the company, and a relative clause are not the candidate. "a managed service" is then not a claim either. Handoff: `tasks/handoff-step3-2-f5b-f6b.md`.
+- [ ] **F6b. Fabricated experience: owner rule and pattern gaps (effort: M; last rule round, decision 1 after F5a and F6a).** A certificate or degree claim needs a first-person word in the sentence, and a requirement or plan phrase skips it only when that phrase comes before it. "At <Org>, I <verb>" with the comma, and "worked" there. In "as a X at Y", X must match the title at Y when Y is on the profile. "certified in X" reads X. Certificate words are ignored in the name compare. A degree word before a plural person noun ("PhD students") is not the candidate's degree. Handoff: `tasks/handoff-step3-2-f5b-f6b.md`.
 - [ ] **D5. Slot-normalized diversity and hard negatives (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Hard negatives (decision 2 after F4 to F7): some of the new clean filler sentences use ordinary phrasings that the scope and experience checks confused ("led to", "managed to", "as a result", "a leading provider", "master" as a verb, a talk at an event, a certificate that the job asks for). Write their labels before the validator runs. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
 - [ ] **D6. Elaboration rule and sentence-level `ungrounded_claims` (effort: M; dataset and suite; decisions after F1 to F3).** Add the strict elaboration rule (decision 1) and a rule for specific past practices to the labeling guide, with a "Changes" entry. Add `ungrounded_sentences` (exact sentence texts) to `GroundingCase`, and label every main-set case: list each sentence that is ungrounded under the guide, then set the case-level `ungrounded_claims` label from that list. Extend the grounding suite to score `ungrounded_claims` per sentence (sentence precision, recall, and F1, with a documented sentence split) in addition to the case-level scores. Claude adds the sentence labels to the holdout set. Then run the main set, and run the holdout one time.
 
@@ -766,17 +769,11 @@ Both recommendations were accepted.
 1. **Rework F5 and F6 before D5 and D6.** Cursor does F5a and F6a, then stops for review. Reason: the holdout runs one time, and these failures are already known. A holdout run now only measures them again and uses up the holdout. Tests use new sentences and new names only: no name or sentence from the main set, and no sentence copied from the review notes. Claude probes again with new sentences after the rework.
 2. **Hard negatives in D5.** When D5 rewrites the repeated filler frames, some new clean sentences use the ordinary phrasings that the scope and experience checks confused. Labels are written before the validator runs. Then the main-set precision of these checks shows something. The holdout stays the only unbiased measure.
 
-##### Questions after F5a and F6a (2026-10-23)
+##### Decisions after F5a and F6a (2026-10-23)
 
-1. **One more rule round, then a stop?** Each round fixes the classes that it names, and a new probe set finds classes that no round named. Rules on surface words will always have a long tail. Recommendation: one last narrow round (F5b and F6b, Cursor) for the frequent classes only, then no more rule rounds before the holdout run. The classes that stay go into the README as known limits; they are a reason to measure the LLM validator path on the same set (Step 3.8). Scope:
-    - A leadership claim, a certificate claim, and a degree claim count only when the clause names the candidate as subject or owner ("I", "my", "we", "our"). This covers another person's leadership, the company, a relative clause, a general statement, and a job requirement.
-    - "managed" after an article or an adverb and before a noun ("a managed service", "fully managed") is an adjective.
-    - "At <Org>, I <verb>" (with the comma) is read like "At <Org> I <verb>", and "worked" counts as a work verb there.
-    - In "as a <title> at <employer>", when the employer is on the profile, the title must match the title at that employer.
-    - "certified in X" reads X. The words "certified", "certificate", and "certification" are ignored when a letter name is compared with a profile certification.
-    - A requirement or plan phrase skips a certificate only when it comes before the certificate word in the clause ("asks for a X certificate", "plan to earn X"), not after it ("the X certificate that this role requires").
-    - "PhD" or "MBA" before a person noun (students, interns, candidates) is not the candidate's degree.
-2. **Stop now instead?** The alternative is to accept F5a and F6a as they are, start D5 and D6, and list all 13 classes as known limits. This saves one round, but the "At <Org>, I" miss and the "managed service" false flag are frequent in generated letters, so the holdout would mostly measure them again.
+The recommendation was accepted.
+
+1. **One last narrow rule round, then a stop.** Cursor does F5b and F6b (the subject and owner rule, and the frequent pattern gaps), then stops for review. After that, no more rule rounds before the holdout run. The review of F5b and F6b probes again with a new set. Each class that still fails goes into a "Known limits" list (here, and in the README with the Step 3.9 numbers), not into a new round. Two exceptions: a regression (a class that passed in an earlier review now fails) and a lost main-set true positive are fixed. The known limits are a reason to measure the LLM validator path on the same set (Step 3.8).
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4
@@ -847,7 +844,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Decide on "Questions after F5a and F6a" (one last rule round F5b and F6b, or stop now). After that: the dataset pass D5 (with hard negatives) and D6 (elaboration rule and sentence-level `ungrounded_claims`), with Claude adding the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
+Cursor: the last rule round F5b and F6b, as described in `tasks/handoff-step3-2-f5b-f6b.md`, then a stop for review. After that, no more rule rounds: the dataset pass D5 (with hard negatives) and D6 (elaboration rule and sentence-level `ungrounded_claims`), with Claude adding the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 
