@@ -148,6 +148,12 @@ _SCOPE_BARE_VERBS: frozenset[str] = frozenset(
     {"led", "leading", "managed", "headed", "oversaw"}
 )
 
+# Words that do not start the object of a bare leadership verb.
+_SCOPE_NON_OBJECT_STARTS: frozenset[str] = frozenset({"to", "me", "us", "them"})
+
+# An article before "leading" marks an adjective ("a leading lab").
+_ADJECTIVE_LEADING_PREFIX_RE = re.compile(r"\b(?:a|an|the)\s+$", re.IGNORECASE)
+
 # Words that end the object of a leadership claim.
 _SCOPE_OBJECT_STOPS: frozenset[str] = frozenset(
     {
@@ -168,8 +174,11 @@ _SCOPE_OBJECT_STOPS: frozenset[str] = frozenset(
         "but",
         "when",
         "where",
+        "to",
+        "that",
         "which",
         "who",
+        "whose",
     }
 )
 
@@ -1410,10 +1419,12 @@ def _leadership_claims(text: str) -> List[str]:
     """
     Return leadership claims in ``text``, each with its object.
 
-    A bare verb such as ``led`` or ``managed`` counts only with the words
-    that follow it. The object stops at a preposition such as ``at`` or
-    ``on``, and it is at most six words. ``called the`` does not match
-    ``led the``.
+    A bare verb such as ``led`` or ``managed`` counts only with a noun
+    phrase after it: ``to``, ``me``, ``us``, and ``them`` do not start
+    an object. ``leading`` after ``a``, ``an``, ``the``, or a hyphen is
+    an adjective, not a claim. The object stops at a preposition or a
+    clause word such as ``to`` or ``that``, and it is at most six words.
+    ``called the`` does not match ``led the``.
 
     Args:
         text: One sentence, any case.
@@ -1424,9 +1435,20 @@ def _leadership_claims(text: str) -> List[str]:
     claims: List[str] = []
     for match in _SCOPE_HEAD_RE.finditer(text or ""):
         head = match.group("head")
+        prefix = (text or "")[: match.start()]
+        if head.lower().startswith("leading") and (
+            prefix.endswith("-") or _ADJECTIVE_LEADING_PREFIX_RE.search(prefix)
+        ):
+            continue
         words: List[str] = []
         for word in (text or "")[match.end() :].split():
             bare = word.strip(".,;:").lower()
+            if (
+                not words
+                and head.lower() in _SCOPE_BARE_VERBS
+                and bare in _SCOPE_NON_OBJECT_STARTS
+            ):
+                break
             if not bare or bare in _SCOPE_OBJECT_STOPS:
                 break
             words.append(word.strip(".,;:"))

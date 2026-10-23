@@ -1381,3 +1381,97 @@ def test_hyphenated_analogy_is_allowed_when_the_resume_has_the_words() -> None:
 def test_significant_words_keeps_a_hyphenated_compound() -> None:
     """Hyphen splits stay inside the analogy check."""
     assert significant_words("penetration-testing") == ["penetration-testing"]
+
+
+def test_bare_verb_results_pronouns_and_infinitives_are_not_scope_claims() -> None:
+    """A result, a pronoun, or an infinitive after a bare verb is not a claim."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    bullets = ["Built the nightly export job for the warehouse."]
+    for sentence in (
+        "The cache index led to a shorter morning run.",
+        "The socket trace led me to the broken retry loop.",
+        "That outage led us to check the backup tape each Friday.",
+        "The log diff led them to the stale config file.",
+        "I managed to trim the container image before the freeze.",
+    ):
+        assert (
+            flag_scope_and_technique_overclaims(
+                sentence,
+                None,
+                {},
+                resume_bullets=bullets,
+            )
+            == []
+        )
+
+
+def test_adjective_leading_is_not_scope_inflation() -> None:
+    """'leading' after an article or a hyphen is an adjective, not a claim."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    bullets = ["Wrote audio codec benchmarks in Python."]
+    for sentence in (
+        "We read papers from a leading lab in speech synthesis.",
+        "The group maintains an open-source, sector-leading codec benchmark.",
+        "The leading explanation pointed to clock drift on the host.",
+    ):
+        assert (
+            flag_scope_and_technique_overclaims(
+                sentence,
+                None,
+                {},
+                resume_bullets=bullets,
+            )
+            == []
+        )
+
+
+def test_team_claim_before_an_infinitive_or_clause_matches_the_profile() -> None:
+    """The object stops before 'to' or 'that', so the team noun phrase is compared."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    bullets = ["Led a team of 4 engineers that rewrote the invoice parser."]
+    supported = flag_scope_and_technique_overclaims(
+        "I led a team of four engineers to rewrite the invoice parser.",
+        None,
+        {},
+        resume_bullets=bullets,
+    )
+    wrong_size = flag_scope_and_technique_overclaims(
+        "I led a team of six engineers to rewrite the invoice parser.",
+        None,
+        {},
+        resume_bullets=bullets,
+    )
+    assert supported == []
+    assert any("Scope inflation" in flag for flag in wrong_size)
+
+
+def test_scope_inflation_positives_stay_flagged_with_new_objects() -> None:
+    """Leadership phrases with unsupported objects are still flagged."""
+    from src.generation.cover_letter_grounding import (
+        flag_scope_and_technique_overclaims,
+    )
+
+    bullets = ["Built the nightly export job for the warehouse."]
+    for sentence in (
+        "I led the storage overhaul for the warehouse.",
+        "I managed a team of 5 engineers on the storage overhaul.",
+        "I headed the schema review for the warehouse.",
+        "I owned the release calendar for the warehouse.",
+        "I oversaw the backup rotation for the warehouse.",
+    ):
+        flags = flag_scope_and_technique_overclaims(
+            sentence,
+            None,
+            {},
+            resume_bullets=bullets,
+        )
+        assert any("Scope inflation" in flag for flag in flags)
