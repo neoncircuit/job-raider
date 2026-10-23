@@ -946,3 +946,72 @@ def test_sql_is_supported_when_the_profile_has_a_sql_database() -> None:
         skills=[Skill(name="Python", category=SkillCategory.PROGRAMMING_LANGUAGE)],
     )
     assert "sql" in flag_fabricated_technologies(letter, bare)
+
+
+def _skill_year_profile(skill_name: str, years: float) -> UserProfile:
+    """Profile whose only duration cap is one skill's years of experience."""
+    return UserProfile(
+        name="Alex",
+        contact=ContactInfo(email="a@example.com", location="Remote"),
+        skills=[
+            Skill(
+                name=skill_name,
+                category=SkillCategory.PROGRAMMING_LANGUAGE,
+                years_of_experience=years,
+            )
+        ],
+    )
+
+
+def test_duration_range_uses_the_top_against_the_cap() -> None:
+    """A range is inflated when its top is longer than the skill cap."""
+    from src.generation.cover_letter_grounding import flag_inflated_duration_claims
+
+    profile = _skill_year_profile("FastAPI", 3.0)
+    digit = flag_inflated_duration_claims(
+        "I have 3-5 years of FastAPI experience.",
+        profile,
+    )
+    words = flag_inflated_duration_claims(
+        "I have three to five years of FastAPI experience.",
+        profile,
+    )
+    assert digit and digit[0]["claimed_years"] == 5.0
+    assert words and words[0]["claimed_years"] == 5.0
+
+
+def test_word_range_above_the_cap_is_flagged() -> None:
+    """'two to four years' is flagged when the cap is 2."""
+    from src.generation.cover_letter_grounding import flag_inflated_duration_claims
+
+    profile = _skill_year_profile("Python", 2.0)
+    findings = flag_inflated_duration_claims(
+        "I have two to four years of Python experience.",
+        profile,
+    )
+    assert findings
+    assert findings[0]["claimed_years"] == 4.0
+
+
+def test_range_within_the_cap_is_not_flagged() -> None:
+    """'three to four years' is inside a cap of 4."""
+    from src.generation.cover_letter_grounding import flag_inflated_duration_claims
+
+    profile = _skill_year_profile("Python", 4.0)
+    findings = flag_inflated_duration_claims(
+        "I have three to four years of Python experience.",
+        profile,
+    )
+    assert findings == []
+
+
+def test_single_duration_number_stays_that_number() -> None:
+    """'over 5 years' is still a claim of 5, not a range."""
+    from src.generation.cover_letter_grounding import flag_inflated_duration_claims
+
+    profile = _skill_year_profile("Python", 5.0)
+    findings = flag_inflated_duration_claims(
+        "I have over 5 years of Python experience.",
+        profile,
+    )
+    assert findings == []

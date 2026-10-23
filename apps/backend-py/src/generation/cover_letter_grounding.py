@@ -1118,11 +1118,14 @@ def flag_inflated_duration_claims(
     """
     Flag duration claims that exceed merged resume experience (or skill years).
 
-    Extracts patterns such as ``over 2 years``, ``2-3 years``, and
-    ``five years of``. The default cap is total years from merged,
-    non-overlapping experience intervals. When a sentence also names a
-    skill that has ``years_of_experience`` set, that skill-specific cap
-    is applied for the claim.
+        Extracts patterns such as ``over 2 years``, ``2-3 years``, and
+    ``five years of``. A range is compared by its top: the guide counts
+    a range as inflated when that top is longer than the cap, and a
+    reader takes the top as the claim. A single number, including
+    ``over 5 years``, stays that number. The default cap is total years
+    from merged, non-overlapping experience intervals. When a sentence
+    also names a skill that has ``years_of_experience`` set, that
+    skill-specific cap is applied for the claim.
 
     Args:
         letter_text: Generated cover-letter body.
@@ -1153,13 +1156,12 @@ def flag_inflated_duration_claims(
             low = _parse_year_token(match.group("low") or "")
             if low is None:
                 continue
-            prefix = (match.group("prefix") or "").lower()
-            # Range lower bound is the conservative claim amount.
-            claimed = low
-            if prefix in {"over", "more than", "at least"}:
-                claimed = low
-            elif prefix == "nearly":
-                claimed = low
+            high = _parse_year_token(match.group("high") or "")
+            # The top of a range is the claim. The guide counts a range
+            # as inflated when its top is longer than the cap, and a
+            # reader takes the top as the claim. A single number,
+            # including "over 5 years", stays that number.
+            claimed = high if high is not None else low
 
             cap = total_cap
             for skill_name, skill_years in skill_caps:
