@@ -506,7 +506,8 @@ flowchart LR
     F5 --> F6[F6 fabricated experience]
     F6 --> F7[F7 technique and analogy]
     F7 --> D5[D5 slot-normalized dataset]
-    D5 --> R[Holdout run and CI gate]
+    D5 --> D6[D6 elaboration rule and sentence labels]
+    D6 --> R[Holdout run and CI gate]
 ```
 
 - [x] **F1. `ungrounded_claims` skips sentences that state no fact (effort: M).** In `flag_ungrounded_sentences` (`cover_letter_grounding.py:1401`), skip: a greeting, including a leading greeting clause such as "Dear Hiring Team," before the first sentence; a sign-off ("Sincerely, Mara Chen", "Best regards"); thanks and calls to action (reuse `CoverLetterValidator.CALL_TO_ACTION_PHRASES`); statements of interest, motivation, values, or working style (guide D4); and plans or intentions ("I would ...", "If <company> hired me ...", "In my first month ..."). Guard: never skip a sentence that has a number, a technology from the lexicon, a duration, or a past-tense claim verb ("built", "led", "shipped", "reduced"). Check whether the stricter threshold for the last paragraph (`closing_min_overlap_ratio`) is still needed, and keep it only if the eval supports it. Tests: those sentence types are not flagged; "I would bring ten years of Kubernetes experience" and "Thank you. At my last job I cut costs by 90%." are still flagged. Report how many cases have `ungrounded_claims` predicted (65 today) and the clean false-positive rate.
@@ -595,6 +596,7 @@ flowchart LR
 - [ ] **F6. Fabricated experience (effort: M).** Today only selected project names are checked (`_check_accuracy`, `cover_letter_validator.py:584-613`). Add a grounding check for employers ("worked at X", "joined X", "interned at X"), titles ("my title was X", "as a <title> at X"), degrees (Bachelor, Master, MBA, PhD, doctorate, "degree in"), and certifications ("certified", "certificate", "certification"). Compare them with `profile.experience` (company, title), `profile.education` (degree, school), `profile.certifications` (name, issuer), and `profile.projects`. Tests for each kind, plus supported claims that must not be flagged.
 - [ ] **F7. Technique and analogy (effort: S).** Add "reinforcement learning", "reranking", and "distillation" to `_TECHNIQUE_TERMS` (`cover_letter_grounding.py:137`). When a sentence names two projects, check each technique against the project nearest to it (the bug from the first baseline). Find the cause of the missed analogy onto a JD-only duty (`_ANALOGY_MARKER_RE`, line 381), and fix it only if the cause is general.
 - [ ] **D5. Slot-normalized diversity (effort: S; dataset).** Add to `test_grounding_dataset_diversity`: a normalization that also replaces each case's job company, job title, and JD need phrase (as in the Baseline 2 review), with two limits: L7, a sentence frame is in at most 5 cases; L8, distinct frames divided by long sentences is at least 0.85. Rewrite the repeated filler frames (today 19 frames are in 5 or more cases, and one is in 18). Change only filler sentences, never a labeled sentence or a label. Run the suite again; these numbers are the reference for the CI gate. D5 comes after the fixes, so each fix is measured on the Baseline 2 set.
+- [ ] **D6. Elaboration rule and sentence-level `ungrounded_claims` (effort: M; dataset and suite; decisions after F1 to F3).** Add the strict elaboration rule (decision 1) and a rule for specific past practices to the labeling guide, with a "Changes" entry. Add `ungrounded_sentences` (exact sentence texts) to `GroundingCase`, and label every main-set case: list each sentence that is ungrounded under the guide, then set the case-level `ungrounded_claims` label from that list. Extend the grounding suite to score `ungrounded_claims` per sentence (sentence precision, recall, and F1, with a documented sentence split) in addition to the case-level scores. Claude adds the sentence labels to the holdout set. Then run the main set, and run the holdout one time.
 
 ##### Decisions before the fixes (2026-10-22)
 
@@ -605,11 +607,13 @@ All four recommendations were accepted.
 3. **Duration ranges:** a range is compared by its top (F4).
 4. **Who and when:** Cursor does F1 to F3 and stops for review, then F4 to F7 and D5.
 
-##### Questions after F1 to F3 (2026-10-23)
+##### Decisions after F1 to F3 (2026-10-23)
 
-1. **Elaboration rule.** When a sentence restates a profile fact and adds a detail that the profile does not state (an outcome, a purpose, a setting, a practice), is the sentence `ungrounded_claims`? (a) Yes, strict: the added detail is an unsupported fact. This is what a hallucination guard should catch, and it matches the guide's current wording. (b) No, lenient: only new achievements, numbers, tools, employers, or roles count. Recommendation: (a).
-2. **Sentence-level labels for `ungrounded_claims`.** Add an `ungrounded_sentences` list to each case (the exact sentences that are ungrounded under the guide), and score that check per sentence (precision and recall over sentences) in addition to the case-level label. The other checks stay case-level. Recommendation: yes. It is the only way to measure this check on realistic letters.
-3. **Order.** F4 to F7 do not depend on this (their labels are case-level and work). Recommendation: Cursor does F4 to F7 now; then one dataset pass (D5, the elaboration relabel, and the sentence labels) before the holdout run. The holdout set then also needs sentence labels; Claude adds them, so that the fixer still does not open it.
+All three recommendations were accepted.
+
+1. **Elaboration rule (strict).** A sentence that restates a profile fact and adds a detail that the profile does not state (an outcome, a purpose, a setting, or a specific practice) is `ungrounded_claims`. The added detail is an unsupported fact.
+2. **Sentence-level labels for `ungrounded_claims`.** Each case gets an `ungrounded_sentences` list with the exact sentences that are ungrounded under the guide. The suite scores that check per sentence (precision and recall over sentences) in addition to the case-level label. The other checks stay case-level.
+3. **Order.** Cursor does F4 to F7 now. Then one dataset pass (D5 and D6) before the holdout run. Claude adds the holdout's sentence labels, so the fixer still does not open the holdout cases.
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
 
 ##### Step 3.3: Scam set, then the R3 fixes (effort: M) — R3, M4
@@ -680,7 +684,7 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Next
 
-Cursor: validator fixes F1 to F3, as described in `tasks/handoff-step3-2-f1-f3.md`, then a stop for review. The holdout set (23 cases, `a1c818a`) is written and must not be opened until its one run after F7. Baseline 2 is the reference. Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
+Cursor: validator fixes F4 to F7, as described in `tasks/handoff-step3-2-f4-f7.md`, then a stop for review. After that: the dataset pass D5 and D6 (elaboration rule and sentence-level `ungrounded_claims`), with Claude adding the holdout's sentence labels, then the one holdout run and the CI gate. F1 to F3 are done locally (`972bdde`, `9b48608`, `635a1ed`). Step 3.1 is pushed (`2a1f202`); the Step 3.2 work is local only.
 
 ## Backlog
 

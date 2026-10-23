@@ -13,7 +13,7 @@ flowchart LR
 
 1. **Do not open the cases while you fix the validator.** Read only this file. A fix that is tuned to these letters makes the holdout useless.
 2. The labels follow the main labeling guide, `../grounding/README.md`, including its Changes section and the decisions of 2026-10-22 (SQL is supported when the profile has a SQL database; a duration range is compared by its top).
-3. The validator runs on this set one time, after fix F7:
+3. The validator runs on this set one time, after fix F7 and the dataset pass D6 (decision 3 after F1 to F3, 2026-10-23). Before that run, Claude adds the `ungrounded_sentences` labels of D6 to these cases, so the fixer still does not open them:
 
     Run the holdout (from `apps/backend-py`):
 
