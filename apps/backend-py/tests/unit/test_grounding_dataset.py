@@ -8,7 +8,7 @@ import json
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Dict, List, Sequence, Set, Tuple
+from typing import Any, Dict, List, Sequence, Set, Tuple
 
 from src.evaluation.datasets import load_jsonl
 from src.evaluation.suites.grounding import GroundingCase
@@ -123,11 +123,42 @@ def normalize_long_sentences(text: str) -> List[str]:
     return long_sentences
 
 
+def normalize_slot_sentences(text: str, job: Dict[str, Any]) -> List[str]:
+    """
+    Normalize a letter with job slots and return sentences of 8 or more words.
+
+    Company becomes ``<co>``, title becomes ``<title>`` (including ``a/an
+    <title>`` as ``a <title>``), and the phrase after "the need to" up to
+    the next ``,``, ``.``, ``:``, or ``;`` becomes ``<need>``. Digits then
+    become ``#``. Frames that differ only in those slots count as one frame.
+
+    Args:
+        text: Cover letter text.
+        job: Case job with company and title.
+
+    Returns:
+        Slot-normalized long sentences in order.
+    """
+    joined = " ".join(text.split())
+    for key, slot in (("company", "<co>"), ("title", "<title>")):
+        value = str(job.get(key) or "")
+        if value:
+            joined = re.sub(re.escape(value), slot, joined, flags=re.IGNORECASE)
+    long_sentences: List[str] = []
+    for part in re.split(r"(?<=[.!?])\s+", joined):
+        sentence = re.sub(r"\d+", "#", part.lower()).strip()
+        sentence = re.sub(r"\b(a|an) <title>", "a <title>", sentence)
+        sentence = re.sub(r"the need to [^,.:;]+", "the need to <need>", sentence)
+        if len(sentence.split()) >= 8:
+            long_sentences.append(sentence)
+    return long_sentences
+
+
 def diversity_violations(
     cases: Sequence[GroundingCase], profile_ids: Sequence[str]
 ) -> Tuple[List[str], Dict[str, object]]:
     """
-    Check diversity limits L1 to L6 for a grounding case list.
+    Check diversity limits L1 to L8 for a grounding case list.
 
     Args:
         cases: Validated cases in dataset order.
@@ -139,6 +170,9 @@ def diversity_violations(
     """
     long_by_case: Dict[str, List[str]] = {
         case.case_id: normalize_long_sentences(case.letter) for case in cases
+    }
+    frames_by_case: Dict[str, List[str]] = {
+        case.case_id: normalize_slot_sentences(case.letter, case.job) for case in cases
     }
     all_long = [
         sentence for sentences in long_by_case.values() for sentence in sentences
@@ -171,6 +205,18 @@ def diversity_violations(
     long_letters = sum(count > 220 for count in word_counts)
     profile_counts = Counter(case.profile_id for case in cases)
 
+    cases_per_frame: Dict[str, Set[str]] = defaultdict(set)
+    for case_id, sentences in frames_by_case.items():
+        for sentence in set(sentences):
+            cases_per_frame[sentence].add(case_id)
+    max_frame_cases = max((len(ids) for ids in cases_per_frame.values()), default=0)
+    frames_in_five_or_more = sum(1 for ids in cases_per_frame.values() if len(ids) >= 5)
+    all_frames = [
+        sentence for sentences in frames_by_case.values() for sentence in sentences
+    ]
+    distinct_frames = len(set(all_frames))
+    frame_ratio = (distinct_frames / total) if total else 0.0
+
     stats: Dict[str, object] = {
         "l1_max_cases_for_one_sentence": max_sentence_cases,
         "l2_max_shared_long_sentences": max_shared,
@@ -184,6 +230,11 @@ def diversity_violations(
         "l5_max_words": max(word_counts, default=0),
         "l5_letters_over_220": long_letters,
         "l6_cases_per_profile": dict(profile_counts),
+        "l7_max_cases_for_one_frame": max_frame_cases,
+        "l7_frames_in_5_or_more_cases": frames_in_five_or_more,
+        "l8_distinct_frames": distinct_frames,
+        "l8_long_sentences": total,
+        "l8_ratio": round(frame_ratio, 4),
     }
     violations: List[str] = []
     if max_sentence_cases > 3:
@@ -211,12 +262,20 @@ def diversity_violations(
             violations.append(
                 f"L6: profile {profile_id} is used by {profile_counts[profile_id]} cases (min 12)"
             )
+    if max_frame_cases > 5:
+        violations.append(
+            f"L7: a slot-normalized frame appears in {max_frame_cases} cases (max 5)"
+        )
+    if total == 0 or frame_ratio < 0.85:
+        violations.append(
+            f"L8: distinct frames / all long sentences is {frame_ratio:.4f} (min 0.85)"
+        )
     return violations, stats
 
 
 def test_grounding_dataset_diversity() -> None:
     """
-    Require measurable letter and job diversity (limits L1 to L6).
+    Require measurable letter and job diversity (limits L1 to L8).
 
     Returns:
         None.
