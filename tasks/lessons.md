@@ -3400,3 +3400,16 @@
 - Normalize the slot values before you count (company, job title, names, and phrases copied from the input). The rework met "a long sentence in at most 3 cases" with 0.998 distinct sentences, but with the company and title replaced only 0.646 were distinct, and one sentence frame was in 18 letters.
 - A label that the system predicts for every case carries no information. Check the predicted count per label before you read its precision and recall.
 - Diversity rules make the writer paraphrase, and paraphrase invites added details. In the reworked set, many "clean" letters restated profile facts with new outcomes or purposes ("and the afternoon queue moved again"), which the guide counts as unsupported. Check clean cases for added details, and give the guide an explicit elaboration rule before you write them.
+
+### A perfect score on a dev set says nothing about phrasings the set lacks
+
+**Lesson:** After F4 to F7, the scope and fabricated-experience checks had precision 1.000 on the 65-case main set. Probes with 42 new sentences found 15 false flags in those two checks ("led to a 30% drop", "a leading provider of", "managed to cut", "the master branch", "As a result at <company>", "at KubeCon I gave a talk"). The main set had none of these ordinary phrasings. The fixer's tests also reused main-set sentences and names, so they proved a fit to the set, not a rule.
+
+**Why:**
+- A new pattern check is measured on the cases it was written for. Precision is only measured on the negatives that the set contains, and a constructed set rarely contains ordinary uses of the same words.
+- Tests copied from the dataset pass by construction.
+
+**How to apply:**
+- For each new pattern, write probes with ordinary uses of the same words (a verb as a phrase, a word in a different sense, a job requirement, an event) before you trust its precision.
+- In review, grep the new tests for names and sentences from the dataset (`grep -c "<name>"` in both files).
+- Mutate the call site as well as the function. A check can be correct in its own tests and still be unused: here, turning off the validator call left every unit test green.
