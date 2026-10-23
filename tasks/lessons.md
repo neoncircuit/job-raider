@@ -3413,3 +3413,16 @@
 - For each new pattern, write probes with ordinary uses of the same words (a verb as a phrase, a word in a different sense, a job requirement, an event) before you trust its precision.
 - In review, grep the new tests for names and sentences from the dataset (`grep -c "<name>"` in both files).
 - Mutate the call site as well as the function. A check can be correct in its own tests and still be unused: here, turning off the validator call left every unit test green.
+
+### Set a stop rule for rule rounds on a long-tail check
+
+**Lesson:** The F5a and F6a rework fixed every failure class that its handoff named: a second probe set, with new sentences of those classes, was right on 21 of 22. But new sentences of classes that the handoff did not name were right on 1 of 14. A rule round on surface words fixes what it names and nothing else, so each new probe set finds a new tail.
+
+**Why:**
+- Claim checks on surface words (a verb, a degree word, a certificate word) have many ordinary uses. Each review can name only the uses that its probes found.
+- Several wrong results had one cause that no rule round named: the check did not ask who the subject or owner of the clause is.
+
+**How to apply:**
+- Before a rule round, look for a shared cause behind the probe failures, and fix that cause instead of each phrase.
+- Decide the stop rule before the rounds start: a fixed number of rounds, or a precision target on a held-out probe set. Then list the classes that stay as known limits.
+- Keep a probe set that the fixer has not seen for each review, and write a new one each time. A probe set that the fixer has read (in review notes) measures the notes, not the rule.

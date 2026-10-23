@@ -123,3 +123,115 @@ At the end, add "Cursor results (date)" to this file with:
 - Any main-set true positive that was lost, and why.
 - Any label you think is wrong (do not change it).
 - Every check you ran and its result. Say clearly what you did not run.
+
+## Cursor results (2026-10-23)
+
+Work stopped after S1. D5, D6, and the holdout were not started. Nothing was pushed.
+
+### Commits
+
+- `27bd81f6b5026b67642d3d060b036a525584e12e` fix(grounding): skip non-noun objects and adjective 'leading' in scope checks.
+- `ec82fb277533375172cb81217f839e12b8464da3` fix(grounding): tighten employer, title, degree, and certificate checks.
+- `aaf0fdfd4e04c6bfe4a1876700d711a255f794ed` fix(grounding): match project-name spans on word boundaries.
+
+Each commit contains only the files of that item. This results section is left unstaged. `tasks/handoff-2026-10-19.md` and `tasks/handoff-step2.md` stayed untracked.
+
+Dataset SHA-256 stayed `13e5ec3d685a45d93da14e72ac1ea5f58239b94af98f7fb909dda58278b1c2f0`. No main-set true positive was lost. No label metric got worse. No label was changed.
+
+### F5a. Scope inflation
+
+`_leadership_claims` skips `leading` when `a`, `an`, `the`, or a hyphen comes before it. After a bare leadership verb (`led`, `leading`, `managed`, `headed`, `oversaw`), `to`, `me`, `us`, and `them` do not start an object (`_SCOPE_NON_OBJECT_STARTS`). `_SCOPE_OBJECT_STOPS` now includes `to`, `that`, and `whose` along with `which` and `who`, so the object ends before an infinitive or a relative clause.
+
+Tests, written before the change: 3 failed, 1 passed. Failures: `The cache index led to a shorter morning run.` was flagged (`Scope inflation: 'led to a shorter morning run'`); `We read papers from a leading lab in speech synthesis.` was flagged (`Scope inflation: 'leading lab'`); `I led a team of four engineers to rewrite the invoice parser.` was flagged against `Led a team of 4 engineers that rewrote the invoice parser.` (`Scope inflation: 'led a team of four engineers to'`). `test_scope_inflation_positives_stay_flagged_with_new_objects` already passed.
+
+Mutation: the adjective skip, the non-object start check, and the new stops (`to`, `that`, `whose`) were replaced with the old loop body (1 occurrence). Checksum changed from `c63c2894dd6747d37193f312dccb134f20e06cd07a82ac6e4174f30c9fa11a5e` to `262455e937d83f0d88c82df438d905ee22b7185369afe756af890e2bf2d895e3`. `grep -F` count of the mutated line was 1. All 3 failure-class tests failed again. The file was restored and matched the backup byte for byte.
+
+Eval: Git SHA `6bf4fd31c5480e1997703171daac15e0e73afd1d`, dirty true. MLflow run `09871db45a9145b391761e829168c3f6`. Report `20261023T032922271752Z.json`. No label metric changed against F7.
+
+| Label | P before (F7) | P after | R before | R after | F1 before | F1 after | Predicted before | Predicted after |
+|-------|---------------|---------|----------|---------|-----------|----------|------------------|-----------------|
+| `fabricated_technology` | 0.889 | 0.889 | 1.000 | 1.000 | 0.941 | 0.941 | 9 | 9 |
+| `inflated_duration` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 5 | 5 |
+| `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `fabricated_experience` | 1.000 | 1.000 | 0.750 | 0.750 | 0.857 | 0.857 | 6 | 6 |
+| `analogical_claim` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `scope_inflation` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 4 | 4 |
+| `technique_mismatch` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
+| micro | 0.670 | 0.670 | 0.970 | 0.970 | 0.793 | 0.793 | — | — |
+
+### F6a. Fabricated experience
+
+`_ORG_TOKEN` uses `(?!I\b)[A-Z][\w&.'-]*`, so a name never takes the pronoun `I`. `_AT_ORG_I_RE` matches `[Aa]t <Org> I <verb>` only when `<verb>` is in `_PAST_CLAIM_VERBS`, so an event talk (`At PyForum I gave a talk`) is skipped while `At Vesper Foundry I built` is checked. `_AS_TITLE_RE` matches `[Aa]s an? <title> at <Org>` with a capitalized company, requires the title to end with a role noun from `_TITLE_ROLE_NOUNS`, checks `<Org>` as an employer claim when it is not the target company, and removes the dead branch. `_profile_has_title` allows a letter title when all its words appear in one profile title. `bachelor` and `master` match in the letter only when `'s`, `of`, `in`, or `degree` follows them (`_DEGREE_WORD_CONTEXT_RE`); `_DEGREE_TAIL_RE` reads the field after `'s degree in`, and `_BARE_DEGREE_IN_RE` reads `degree in <field>` with no level. `_certificate_name` reads capitalized words on both sides of the certificate word and includes capitalized `Certified` when words follow it; `_profile_has_certificate` allows a name when all its words appear in one profile certification name or when it equals the issuer; requirement and plan sentences are skipped via `_CERT_REQUIREMENT_OR_PLAN_RE` and `_is_skippable_non_claim`. `test_fabricated_employer_raises_fabricated_experience_without_selected_project` in `tests/test_cover_letter_validator.py` tests the validator wiring.
+
+Tests, written before the change: 5 failed in `tests/unit/test_cover_letter_grounding.py` (`Tamarack Vault I` was flagged; `At Vesper Foundry I built the audio router.` was missed; `As a backend consultant at Tamarack Vault` was flagged against `Senior Backend Consultant`; `I completed a Bachelor's degree in Biophysics.` was missed; `I am a Certified Solstice Inspector.` was missed). After making `[Aa]t` and `[Aa]s` match at sentence start and fixing the `SelectionOutput` fields in the validator test, all 12 selected tests passed.
+
+Mutations:
+1. In `cover_letter_validator.py`, `if flag_fabricated_experience_claims(content, profile, job):` was replaced with `if False and flag_fabricated_experience_claims(content, profile, job):` (1 occurrence). Checksum changed from `f8eb02f8d757d745180d2f795df762581c84393dd6089d8c40a899c933733097` to `e40807f329774959da72bc7818ef31ef4867e53f85728ddc2f41684ac9aa59c4`. `grep -F` count was 1. `test_fabricated_employer_raises_fabricated_experience_without_selected_project` failed. The file was restored and matched the backup byte for byte.
+2. In `cover_letter_grounding.py`, `_ORG_TOKEN = r"(?!I\b)[A-Z][\w&.'-]*"` was replaced with `_ORG_TOKEN = r"[A-Z][\w&.'-]*"  # allow I in org` (1 occurrence). Checksum changed from `f907c4900f70a3a30e455576f110a24d4ca584227ccc57db99ea62ad4cfdb9ab` to `58268eb91d8f1a3072af960a6a365037d4413ba39c0377b20121d9af2da40a86`. `grep -F` count was 1. `test_fabricated_employer_is_flagged_and_a_real_one_is_not` failed on `Tamarack Vault I`. The file was restored and matched the backup byte for byte.
+
+Eval: Git SHA `27bd81f6b5026b67642d3d060b036a525584e12e`, dirty true. MLflow run `545cd75cfb204fb28c1f25e5531bd750`. Report `20261023T035536113628Z.json`. No label metric changed against F5a.
+
+| Label | P before (F5a) | P after | R before | R after | F1 before | F1 after | Predicted before | Predicted after |
+|-------|----------------|---------|----------|---------|-----------|----------|------------------|-----------------|
+| `fabricated_technology` | 0.889 | 0.889 | 1.000 | 1.000 | 0.941 | 0.941 | 9 | 9 |
+| `inflated_duration` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 5 | 5 |
+| `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `fabricated_experience` | 1.000 | 1.000 | 0.750 | 0.750 | 0.857 | 0.857 | 6 | 6 |
+| `analogical_claim` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `scope_inflation` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 4 | 4 |
+| `technique_mismatch` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
+| micro | 0.670 | 0.670 | 0.970 | 0.970 | 0.793 | 0.793 | — | — |
+
+### S1. Small items
+
+The first line of the second docstring paragraph of `flag_inflated_duration_claims` now has 4 spaces of indent instead of 8. `_project_name_spans` matches each project name with `(?<![A-Za-z0-9])...(?![A-Za-z0-9])` instead of `str.find`, so a project name inside a longer word is not a span.
+
+Tests, written before the change: `test_project_name_inside_a_longer_word_is_not_a_project_span` failed (`[(11, 17, 'Quarry'), (47, 60, 'Anvil Foundry')] != [(47, 60, 'Anvil Foundry')]` on `"Inside the quarryman logs I ran fine-tuning on Anvil Foundry."`). After the change, the test passed.
+
+Mutation: the regex span loop in `_project_name_spans` was replaced with `index = lowered.find(name.lower())  # substring find` (1 occurrence). Checksum changed from `778c059f7854e96abcfd917df0527ceb2e1c13e7edcc8b6e0d83eaa69a5ab179` to `4636a5c3e08e3d21929ff133242bd9b73f07526f2e3674dc78d91efc9f5357e3`. `grep -F` count was 1. `test_project_name_inside_a_longer_word_is_not_a_project_span` failed again. The file was restored and matched the backup byte for byte.
+
+Eval: Git SHA `ec82fb277533375172cb81217f839e12b8464da3`, dirty true. MLflow run `df038b8f80624f91b33742de8dd576ef`. Report `20261023T041001420647Z.json`. No label metric changed against F6a.
+
+| Label | P before (F6a) | P after | R before | R after | F1 before | F1 after | Predicted before | Predicted after |
+|-------|----------------|---------|----------|---------|-----------|----------|------------------|-----------------|
+| `fabricated_technology` | 0.889 | 0.889 | 1.000 | 1.000 | 0.941 | 0.941 | 9 | 9 |
+| `inflated_duration` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 5 | 5 |
+| `inconsistent_metric` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `fabricated_experience` | 1.000 | 1.000 | 0.750 | 0.750 | 0.857 | 0.857 | 6 | 6 |
+| `analogical_claim` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `scope_inflation` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 4 | 4 |
+| `technique_mismatch` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 3 | 3 |
+| `ungrounded_claims` | 0.516 | 0.516 | 1.000 | 1.000 | 0.680 | 0.680 | 64 | 64 |
+| micro | 0.670 | 0.670 | 0.970 | 0.970 | 0.793 | 0.793 | — | — |
+
+### Rewritten tests and name check (item 8)
+
+Rewritten helpers and tests in `tests/unit/test_cover_letter_grounding.py`:
+- `_desk_job` and `_desk_profile`
+- `test_fabricated_employer_is_flagged_and_a_real_one_is_not`
+- `test_target_company_and_ordinary_at_are_not_employers` (now uses `"At Kestrel Audio I built a prototype during the workshop."`, which `_AT_ORG_I_RE` matches and skips via the target-company rule)
+- `test_fabricated_title_is_flagged_and_the_job_title_is_not`
+- `test_fabricated_degree_is_flagged_and_an_abbreviation_matches`
+- `test_fabricated_certificate_is_flagged_and_a_real_one_is_not`
+- `_two_desk_profile`, `test_distillation_on_a_project_without_it_is_flagged`, `test_each_technique_is_checked_against_the_nearest_project`, `test_a_technique_beside_the_other_project_is_flagged`
+- `_forms_profile`, `_testing_job`, `test_hyphenated_analogy_target_matches_a_spaced_jd_duty`, `test_hyphenated_analogy_is_allowed_when_the_resume_has_the_words`, `test_significant_words_keeps_a_hyphenated_compound`
+
+`grep -c "<name>" tests/fixtures/eval/grounding/cases.jsonl tests/fixtures/eval/grounding/profiles.json` returned `0` in both files for every name used in the rewritten and new tests: `Elena`, `Tamarack Vault`, `Kestrel Audio`, `Bramblewood Institute`, `Vesper Foundry`, `Larkspur Polytech`, `Solstice Vault Inspector`, `Solstice Inspector`, `Redwood Certified Network Specialist`, `Redwood Network Specialist`, `PyForum`, `Quarry Beacon`, `Anvil Foundry`, and `Quarry`.
+
+### Labels left as they are
+
+No label was changed. The two `fabricated_experience` misses (`fabricated_experience__harbor_mint` and `prompt_injection__led_orbit_aws`) and the `ungrounded_claims` measurement (predicted on 64 of 65 cases, for D6) are unchanged from F6 and F7.
+
+### Checks
+
+| Item | Black | Ruff | mypy gate | pytest |
+|------|-------|------|-----------|--------|
+| F5a | exit 0, 271 files unchanged | clean | 182 known, 0 new | 1183 passed, 1 Starlette warning, 176 s |
+| F6a | exit 0, 271 files unchanged | clean | 182 known, 0 new | 1184 passed, 1 warning, 155 s |
+| S1 | exit 0, 271 files unchanged | clean | 182 known, 0 new | 1185 passed, 1 warning, 152 s |
+
+Black reformatted `cover_letter_grounding.py` once during F6a before the gate. `scripts/mypy_gate.py --update` was not run.
+
+Not run: frontend checks, D5, D6, the holdout, the CI gate, and push. The holdout cases and profiles were not opened.
