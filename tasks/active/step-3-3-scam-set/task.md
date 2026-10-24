@@ -12,7 +12,7 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 - Two stages, each with a handoff in this folder and a review in `notes.md`: Stage A (set, suites, baselines), then Stage B (R3 fixes, threshold, held-out run, CI gate, notebook).
 
 ## Acceptance Criteria
-- [ ] A1. Labeling guide and `apps/backend-py/tests/fixtures/eval/scam/cases.jsonl` with at least 40 postings (legitimate fixture postings, written legitimate postings, hard negatives, and written scams for each indicator group), with structure and diversity tests.
+- [x] A1. Labeling guide and `apps/backend-py/tests/fixtures/eval/scam/cases.jsonl` with at least 40 postings (legitimate fixture postings, written legitimate postings, hard negatives, and written scams for each indicator group), with structure and diversity tests.
 - [ ] A2. `scam` suite (committed set) and `emscad` suite (local CSV, seeded tuning and held-out parts) in `python main.py eval`, with unit tests and a mutation proof.
 - [ ] A3. Baseline on the committed set, and on the EMSCAD tuning part when the CSV is present.
 - [ ] Review of Stage A (Claude).
