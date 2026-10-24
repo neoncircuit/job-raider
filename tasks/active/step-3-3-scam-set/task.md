@@ -16,11 +16,15 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 - [x] A2. `scam` suite (committed set) and `emscad` suite (local CSV, seeded tuning and held-out parts) in `python main.py eval`, with unit tests and a mutation proof.
 - [x] A3. Baseline on the committed set, and on the EMSCAD tuning part when the CSV is present. (Committed set: 2026-10-24, Cursor. EMSCAD tuning part: 2026-10-25, Claude, in `notes.md`.)
 - [x] Review of Stage A (Claude, 2026-10-25, in `notes.md`). Result: rework the written cases and close the test gaps before Stage B.
-- [ ] B1. R3 fixes: word boundaries and phrase context for the `SUSPICIOUS_PATTERNS` and `ScamFilter.REJECT_PATTERNS` false positives, each measured.
-- [ ] B2. Threshold chosen on the EMSCAD tuning part; the held-out part run one time.
+- [ ] AF1. Stage A fixes: the 34 written cases rewritten in their authors' voice, with the same IDs, forms, and labels; indicator groups assigned again; dataset checks S9 to S13 (decision 1 of 2026-10-25; `handoff-stage-a-fixes.md`).
+- [ ] AF2. Stage A fixes: tests that catch mutations M1 to M4, and the EMSCAD part in the MLflow run name and tags (decisions 2 and 3).
+- [ ] AF3. Baseline A3b on the reworked committed set.
+- [ ] Review of the Stage A fixes (Claude).
+- [ ] B1. R3 fixes: word boundaries and phrase context for the `SUSPICIOUS_PATTERNS` and `ScamFilter.REJECT_PATTERNS` false positives, including `no.*interview` and `gift cards`, each measured.
+- [ ] B2. Threshold chosen on the EMSCAD tuning part for a low false-positive rate (option (a), decision 4); a guard so the held-out part runs one time; the held-out part run one time.
 - [ ] B3. CI gate on the committed set (count pins in a thresholds file).
 - [ ] B4. The notebook calls `python main.py eval emscad`, so the logic exists only once.
 - [ ] Done when: the README states precision and recall on the held-out EMSCAD part, and the committed set guards the false-positive cases.
 
 ## Status
-`in-progress` (Stage A done and reviewed on 2026-10-25; the Stage A fixes come next, then Stage B)
+`in-progress` (Stage A done and reviewed on 2026-10-25; the Stage A fixes are with Cursor: `handoff-stage-a-fixes.md`; then Stage B)

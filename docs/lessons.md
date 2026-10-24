@@ -3427,3 +3427,26 @@
 - Before a rule round, look for a shared cause behind the probe failures, and fix that cause instead of each phrase.
 - Decide the stop rule before the rounds start: a fixed number of rounds, or a precision target on a held-out probe set. Then list the classes that stay as known limits.
 - Keep a probe set that the fixer has not seen for each review, and write a new one each time. A probe set that the fixer has read (in review notes) measures the notes, not the rule.
+
+## Scam evaluation set (2026-10-25)
+
+### Name the author of constructed text, not only the words it must not use
+
+**Lesson:** The Step 3.3 Voice rule banned words ("label", "dataset", "this posting is"). The writer met the rule and passed every diversity limit (1.000 distinct long sentences). But the set still had four problems:
+- 20 of the 22 scams were written by an outside narrator ("The vacancy is a shell.").
+- All 12 written legitimate postings had a sentence that said what the employer never asks for.
+- Company names stated the label ("Blank Card Jobs").
+- Every written scam was shorter than every written legitimate posting.
+
+One narrator sentence ("The text says only ...") fired a detector pattern, so the baseline measured the narration in part.
+
+**Why:**
+- A word ban says what the text must not contain. It does not say who writes the text.
+- The writer wrote each class as a contrast to the other, so the contrast went into the text: in the scams' self-description, in the legitimate postings' disclaimers, and in the names and lengths.
+- The handoff's own 30-word floor stopped a real form, the very short empty listing.
+
+**How to apply:**
+- In a guide for constructed text, state the author of each class (the employer, the scammer, the candidate) and reject sentences that judge the text from outside.
+- Before the baseline, look for features that separate the classes without the label's content: length, line structure, names, and a repeated move such as a disclaimer. Each one should overlap between the classes.
+- Check that each limit in a handoff allows the real forms of the class (short listings, long scams).
+- Read every written case, not a sample of 10. A writer's own read of its cases is not a review.

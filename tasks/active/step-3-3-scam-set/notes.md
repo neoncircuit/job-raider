@@ -130,6 +130,28 @@ Claude's recommendation: (a) in Stage B, and (c) as its own later step if the us
 3. **EMSCAD tuning baseline: done.** The user put `fake_job_postings.csv` in `apps/backend-py/data/kaggle/` on 2026-10-25, and Claude ran the tuning part one time (see "EMSCAD tuning baseline"). The held-out part still waits for Stage B.
 4. **Stage B scope.** Add `no.*interview` and the `gift cards` substring to B1. Choose (a), (b), or (c) from "EMSCAD tuning baseline" before the Stage B handoff. Claude recommends (a). The weekly-pay recall gap goes to the known limits under (a).
 
+## Decisions (2026-10-25)
+
+The user accepted all four recommendations.
+
+1. **Rework the written cases before Stage B.** A "Stage A fixes" round (Cursor, `handoff-stage-a-fixes.md`) rewrites the 34 written cases:
+    - every posting in the voice of its author;
+    - the anti-scam sentence in at most 3 legitimate postings (the anti-fraud notice and 2 others);
+    - neutral company names;
+    - line breaks in about half of the postings;
+    - lengths that overlap between the classes;
+    - indicator groups assigned again.
+
+    Each case keeps its `case_id`, its form, and its `scam` or `legit` label. Then Baseline A3b runs one time. A3 stays in the record.
+2. **Close the test gaps** M1 to M4 in the same round, each with a real mutation proof.
+3. **Show the EMSCAD part** in the MLflow run name and as a tag.
+4. **Stage B is option (a).** It has three parts:
+    - the R3 precision fixes, with `no.*interview` and the `gift cards` substring added to B1;
+    - a threshold chosen on the EMSCAD tuning part for a low false-positive rate (the Stage B handoff fixes the selection rule before the tuning runs);
+    - a guard so the held-out part runs one time, then the one held-out run.
+
+    The weekly-pay gap and the low EMSCAD recall go to the known limits. A learned classifier (option c) is not part of Step 3.3. It is parked in `tasks/backlog.md`.
+
 ## Blockers / Questions
 
 - None. The CSV is in `apps/backend-py/data/kaggle/` (2026-10-25; ignored by git through `data/`).
