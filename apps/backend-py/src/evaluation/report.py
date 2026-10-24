@@ -38,6 +38,7 @@ class EvalReport(BaseModel):
     metadata: RunMetadata
     metrics: Dict[str, Optional[float]]
     details: Dict[str, Any] = Field(default_factory=dict)
+    tags: Dict[str, str] = Field(default_factory=dict)
 
 
 def write_report(report: EvalReport, out_dir: Optional[Path] = None) -> Path:
@@ -165,6 +166,12 @@ def log_report_to_mlflow(
         return None
 
     metadata = report.metadata
+    part = report.tags.get("part")
+    run_name = (
+        f"{report.suite}-{part}-{report_path.stem}"
+        if part
+        else f"{report.suite}-{report_path.stem}"
+    )
     try:
         tracker = tracker_factory(
             tracking_uri=uri,
@@ -175,12 +182,13 @@ def log_report_to_mlflow(
             logger.warning("MLflow is not installed; run not logged.")
             return None
         run_id = tracker.start_run(
-            run_name=f"{report.suite}-{report_path.stem}",
+            run_name=run_name,
             tags={
                 "suite": report.suite,
                 "git_sha": metadata.git_sha,
                 "git_dirty": str(metadata.git_dirty),
                 "dataset_sha256": metadata.dataset_sha256,
+                **report.tags,
             },
         )
         try:

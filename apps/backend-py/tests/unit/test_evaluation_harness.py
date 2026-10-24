@@ -426,6 +426,32 @@ class TestReport:
         assert run.data.metrics["micro.precision"] == pytest.approx(0.75)
         assert "micro.recall" not in run.data.metrics
 
+    def test_emscad_part_is_in_run_name_and_tags(self, tmp_path: Path) -> None:
+        """An EMSCAD report tags the part and puts it in the run name."""
+        import mlflow
+        from mlflow.tracking import MlflowClient
+
+        report = _report(tmp_path)
+        report.suite = "emscad"
+        report.tags = {"part": "tuning"}
+        path = write_report(report, out_dir=tmp_path / "eval")
+        uri = f"sqlite:///{(tmp_path / 'mlflow.db').as_posix()}"
+        previous_uri = mlflow.get_tracking_uri()
+
+        run_id = log_report_to_mlflow(
+            report,
+            path,
+            tracking_uri=uri,
+            artifact_location=(tmp_path / "artifacts").as_uri(),
+            experiment_name="eval_test",
+        )
+
+        assert run_id is not None
+        assert mlflow.get_tracking_uri() == previous_uri
+        run = MlflowClient(tracking_uri=uri).get_run(run_id)
+        assert run.data.tags["part"] == "tuning"
+        assert run.info.run_name.startswith("emscad-tuning-")
+
 
 # ---------------------------------------------------------------------------
 # Grounding suite

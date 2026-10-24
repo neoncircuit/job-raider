@@ -15,6 +15,8 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 import pytest
 
+from src.evaluation.report import EvalReport
+from src.evaluation.run_metadata import build_run_metadata
 from src.evaluation.suites import SUITE_NAMES, get_suite
 from src.evaluation.suites.emscad import (
     EMSCAD_CSV_NAME,
@@ -25,6 +27,7 @@ from src.evaluation.suites.emscad import (
 )
 from src.evaluation.suites.scam import run_scam_suite
 from src.models.job_listing import ExperienceLevel, JobListing, JobType
+from src.scoring.scam_detector import JobScamDetector
 
 
 class _FakeDetector:
@@ -367,6 +370,57 @@ class TestScamSuite:
         assert case_row["quick_filter"] is True
         assert case_row["predicted"] == "scam"
 
+    def test_sweep_flags_confidence_equal_to_threshold(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        A confidence of 0.70 is flagged in the 0.70 sweep row (T4).
+
+        Args:
+            tmp_path: Temporary dataset folder.
+            monkeypatch: Detector replacement.
+        """
+        dataset = tmp_path / "scam"
+        _write_cases(
+            dataset,
+            [
+                {
+                    "case_id": "scam_payment__on_threshold",
+                    "job": _job("eq", description="Pay a fee to begin the week."),
+                    "expected": "scam",
+                    "indicator_groups": ["payment"],
+                    "source": "written",
+                    "note": "Exact 0.70 confidence.",
+                },
+                {
+                    "case_id": "legit_written__clean_sweep",
+                    "job": _job("cl", description="Keep the quay chart current."),
+                    "expected": "legit",
+                    "indicator_groups": [],
+                    "source": "written",
+                    "note": "Low confidence.",
+                },
+            ],
+        )
+        _patch_detector(
+            monkeypatch,
+            {
+                "eq": (True, 0.70, ["on the line"]),
+                "cl": (False, 0.10, []),
+            },
+        )
+
+        report = run_scam_suite(dataset)
+
+        at_threshold = next(
+            row for row in report.details["threshold_sweep"] if row["threshold"] == 0.7
+        )
+        detector = JobScamDetector(threshold=0.7)
+        on_line_is_scam = 0.70 >= detector.threshold
+        assert on_line_is_scam is True
+        assert at_threshold["recall"] == pytest.approx(1.0)
+        assert at_threshold["false_positive_rate"] == pytest.approx(0.0)
+
 
 class TestEmscadSuite:
     """CSV mapping, seeded split, missing file, and the runner."""
@@ -557,6 +611,70 @@ class TestEmscadSuite:
         assert report.details["tuning_rows"] + report.details["heldout_rows"] == 8
         assert report.metrics["case_count"] == float(report.details["part_rows"])
 
+    def test_run_emscad_suite_uses_the_requested_part(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        Tuning and held-out reports use the matching split IDs (T1).
+
+        Args:
+            tmp_path: Temporary CSV folder.
+            monkeypatch: Detector replacement.
+        """
+        self._write_csv(
+            tmp_path,
+            [self._row(f"L{i}", "0") for i in range(6)]
+            + [self._row(f"S{i}", "1") for i in range(6)],
+        )
+        monkeypatch.setattr(
+            "src.evaluation.suites.emscad.JobScamDetector",
+            lambda threshold=0.7: _FakeDetector(),
+        )
+        monkeypatch.setattr(
+            "src.evaluation.suites.emscad.ScamFilter.is_potential_scam",
+            lambda job: False,
+        )
+        rows = load_emscad(tmp_path / EMSCAD_CSV_NAME)
+        tuning, heldout = split_emscad(rows, seed=EMSCAD_SPLIT_SEED)
+
+        tuning_report = run_emscad_suite(tmp_path, part="tuning")
+        held_report = run_emscad_suite(tmp_path, part="heldout")
+
+        tuning_ids = [row.job.job_id for row in tuning]
+        held_ids = [row.job.job_id for row in heldout]
+        assert [row["case_id"] for row in tuning_report.details["cases"]] == tuning_ids
+        assert [row["case_id"] for row in held_report.details["cases"]] == held_ids
+        assert set(tuning_ids).isdisjoint(held_ids)
+        assert tuning_report.tags == {"part": "tuning"}
+        assert held_report.tags == {"part": "heldout"}
+
+    def test_split_keeps_label_counts_on_uneven_classes(self, tmp_path: Path) -> None:
+        """
+        A 10/4 split at 0.5 puts 5 and 2 of each label in each part (T3).
+
+        Args:
+            tmp_path: Temporary CSV folder.
+        """
+        rows = load_emscad(
+            self._write_csv(
+                tmp_path,
+                [self._row(f"L{i}", "0") for i in range(10)]
+                + [self._row(f"S{i}", "1") for i in range(4)],
+            )
+        )
+
+        tuning, heldout = split_emscad(
+            rows, seed=EMSCAD_SPLIT_SEED, held_out_fraction=0.5
+        )
+
+        def counts(part: Sequence[Any]) -> tuple[int, int]:
+            legit = sum(1 for item in part if item.expected == "legit")
+            scam = sum(1 for item in part if item.expected == "scam")
+            return legit, scam
+
+        assert counts(tuning) == (5, 2)
+        assert counts(heldout) == (5, 2)
+
 
 class TestRegistryAndPart:
     """Suite registry and the ``--part`` CLI flag."""
@@ -581,3 +699,72 @@ class TestRegistryAndPart:
         assert held.part == "heldout"
         scam_args = parse(["eval", "scam"])
         assert scam_args.part == "tuning"
+
+    def test_run_eval_command_passes_part_only_to_emscad(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        ``run_eval_command`` forwards ``--part`` only to the emscad runner (T2).
+
+        Args:
+            tmp_path: Temporary output folder.
+            monkeypatch: Suite registry replacement.
+        """
+        import main as cli
+        from tests.unit.test_cli import parse
+
+        seen: Dict[str, Dict[str, Any]] = {}
+
+        def _tiny(suite: str) -> EvalReport:
+            path = tmp_path / f"{suite}.jsonl"
+            path.write_text("{}\n", encoding="utf-8")
+            return EvalReport(
+                suite=suite,
+                metadata=build_run_metadata(suite, [path], 1, repo_dir=tmp_path),
+                metrics={"precision": 1.0},
+                details={},
+            )
+
+        def fake_emscad(dataset: Path, **kwargs: Any) -> EvalReport:
+            seen["emscad"] = dict(kwargs)
+            return _tiny("emscad")
+
+        def fake_scam(dataset: Path, **kwargs: Any) -> EvalReport:
+            seen["scam"] = dict(kwargs)
+            return _tiny("scam")
+
+        def fake_get_suite(name: str) -> tuple:
+            if name == "emscad":
+                return fake_emscad, tmp_path
+            return fake_scam, tmp_path
+
+        monkeypatch.setattr("src.evaluation.suites.get_suite", fake_get_suite)
+        out = tmp_path / "out"
+        emscad_args = parse(
+            [
+                "eval",
+                "emscad",
+                "--dataset",
+                str(tmp_path),
+                "--out",
+                str(out),
+                "--no-mlflow",
+                "--part",
+                "heldout",
+            ]
+        )
+        scam_args = parse(
+            [
+                "eval",
+                "scam",
+                "--dataset",
+                str(tmp_path),
+                "--out",
+                str(out),
+                "--no-mlflow",
+            ]
+        )
+        assert cli.run_eval_command(emscad_args) == 0
+        assert seen["emscad"] == {"part": "heldout"}
+        assert cli.run_eval_command(scam_args) == 0
+        assert seen["scam"] == {}

@@ -283,4 +283,5 @@ def run_emscad_suite(
         metadata=metadata,
         metrics=metrics,
         details=details,
+        tags={"part": part},
     )
