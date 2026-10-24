@@ -155,15 +155,27 @@ cases have `expected` `legit`.
 
 ## Voice
 
-Write each posting as an employer writing to applicants. No sentence
-names the dataset, a label, or the test. The words "label", "test case",
-"indicator", "dataset", and the phrase "this posting is" never appear in
-the title or the description. "scam" and "fraud" may appear only in the
-anti-fraud notice of `hard_negative__antifraud_notice`. The note of that
-case records those words.
+Each written posting is the text that its author would publish.
 
-Use real-looking but fictional company names for written cases. A
-company is in at most 2 cases.
+- A legitimate posting is written by the employer.
+- A scam is written by the scammer, who wants the reader to reply. It
+  sells the job (pay, ease, speed) and it gives the next step: a
+  number, a handle, a mailbox, or a fee. Write scams the way real
+  scams are written: amounts with currency signs, short lines,
+  capitals or "!" where a real scam would use them, and vague
+  promises. A scam leaves out what it does not have. It does not name
+  an office. It does not say "there is no office".
+
+No sentence judges the posting from outside. No sentence names the
+dataset, a label, or the test. The words "label", "test case",
+"indicator", "dataset", and the phrase "this posting is" never appear
+in the title or the description. "scam" and "fraud" may appear only in
+the anti-fraud notice of `hard_negative__antifraud_notice`. The note of
+that case records those words.
+
+Use names that a real business could have. Do not use a real company's
+name. No word in a name describes the posting's quality, speed, or
+content. A company is in at most 2 cases.
 
 ## Diversity Limits
 
@@ -177,15 +189,28 @@ sentence has 8 or more words after whitespace is joined. Digits become
   0.90.
 - S4: With the company and the title replaced by slots, a sentence frame
   is in at most 3 cases.
-- S5: A 4-word sentence opening (company replaced) is in at most 4
-  cases.
+- S5: The first 4 words of each posting, and each 4-word sentence
+  opening (company replaced), are each in at most 4 cases.
 - S6: At least 25 distinct companies. A company is in at most 2 cases.
 - S7: The Voice rule.
-- S8: Word counts from 30 to 450. At least 6 written postings have more
-  than 200 words.
+- S8: Every written case has 30 to 450 words, except `scam_listing`,
+  which has 8 to 450. At least 6 written postings have more than 200
+  words, and at least 2 of those 6 are scams.
+- S9: None of the narrator phrases in the dataset test appear in a
+  written title or description.
+- S10: At most 3 written legitimate postings match an anti-scam
+  sentence. `hard_negative__antifraud_notice` matches.
+- S11: No written company name has a word from the banned list
+  (Generic, Blank, Vague, Hollow, Shadow, Quiet, Instant, SameDay,
+  Flash, Rapid, Quick, Empty, Fake, Shell, Secret, Mystery).
+- S12: At least 6 of the 12 written legitimate postings and at least
+  8 of the 22 scams use line breaks. Of the 6 hard negatives, at
+  least 2 use line breaks and at least 2 stay on one line.
+- S13: At least 4 scams have more than 150 words. At least 3 written
+  legitimate postings have fewer than 100 words. At least 2
+  `scam_listing` postings have fewer than 20 words.
 
-After the tests pass, read 10 cases from start to end and check that
-each one reads like a real posting.
+After the tests pass, read all 34 written cases from start to end.
 
 ## Counts
 
@@ -199,6 +224,13 @@ The committed set has at least 40 cases:
 
 ## Changes
 
+- **2026-10-25, author voice and S9 to S13 (Stage A review).** Voice
+  now states the author of each class. S5 counts posting openings and
+  sentence openings. S8 allows short `scam_listing` texts and requires
+  long scams. S9 to S13 cover narrator phrases, anti-scam sentences,
+  company words, line breaks, and length overlap. No `case_id`,
+  `expected` label, or form changed. Reason: Stage A review findings
+  1 to 5.
 - **2026-10-24, initial guide (Step 3.3 Stage A).** Purpose-based labels
   for `scam` and `legit`, five indicator groups, six hard-negative
   forms, Voice, and diversity limits S1 to S8. Reason: measure the

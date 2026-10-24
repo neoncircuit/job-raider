@@ -16,7 +16,7 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 - [x] A2. `scam` suite (committed set) and `emscad` suite (local CSV, seeded tuning and held-out parts) in `python main.py eval`, with unit tests and a mutation proof.
 - [x] A3. Baseline on the committed set, and on the EMSCAD tuning part when the CSV is present. (Committed set: 2026-10-24, Cursor. EMSCAD tuning part: 2026-10-25, Claude, in `notes.md`.)
 - [x] Review of Stage A (Claude, 2026-10-25, in `notes.md`). Result: rework the written cases and close the test gaps before Stage B.
-- [ ] AF1. Stage A fixes: the 34 written cases rewritten in their authors' voice, with the same IDs, forms, and labels; indicator groups assigned again; dataset checks S9 to S13 (decision 1 of 2026-10-25; `handoff-stage-a-fixes.md`).
+- [x] AF1. Stage A fixes: the 34 written cases rewritten in their authors' voice, with the same IDs, forms, and labels; indicator groups assigned again; dataset checks S9 to S13 (decision 1 of 2026-10-25; `handoff-stage-a-fixes.md`).
 - [ ] AF2. Stage A fixes: tests that catch mutations M1 to M4, and the EMSCAD part in the MLflow run name and tags (decisions 2 and 3).
 - [ ] AF3. Baseline A3b on the reworked committed set.
 - [ ] Review of the Stage A fixes (Claude).

@@ -32,7 +32,20 @@ MINIMUM_HARD_NEGATIVES = 6
 MINIMUM_PER_INDICATOR = 4
 MINIMUM_COMPANIES = 25
 MINIMUM_LONG_WRITTEN = 6
+MINIMUM_LONG_SCAMS = 2
+MINIMUM_SCAM_OVER_150 = 4
+MINIMUM_SHORT_WRITTEN_LEGIT = 3
+MINIMUM_SHORT_LISTING = 2
+MINIMUM_LISTING_WORDS = 8
+MINIMUM_OTHER_WRITTEN_WORDS = 30
+MAXIMUM_WRITTEN_WORDS = 450
+MINIMUM_LEGIT_WITH_BREAKS = 6
+MINIMUM_SCAM_WITH_BREAKS = 8
+MINIMUM_HARD_WITH_BREAKS = 2
+MINIMUM_HARD_ONE_LINE = 2
+MAX_ANTI_SCAM_LEGIT = 3
 MAX_CASES_PER_COMPANY = 2
+MAX_OPENING_CASES = 4
 
 WRITTEN_GROUPS = frozenset({"legit_written", "hard_negative"} | set(SCAM_CASE_GROUPS))
 VOICE_FORBIDDEN = (
@@ -44,6 +57,52 @@ VOICE_FORBIDDEN = (
 )
 VOICE_SCAM_FRAUD = re.compile(r"\b(scam|fraud)\b", re.IGNORECASE)
 HARD_NEGATIVE_ANTIFRAUD_ID = "hard_negative__antifraud_notice"
+NARRATOR_PHRASES = (
+    "the listing",
+    "this listing",
+    "the text says",
+    "the page",
+    "the vacancy is",
+    "does not fit",
+    "cannot fit",
+    "a recruiter can",
+    "public register",
+    "the purpose is",
+    "the real step",
+    "is not named",
+    "names no",
+    "nothing here",
+    "is a shell",
+    "the rush is",
+)
+ANTI_SCAM_PATTERNS = (
+    r"never ask(s)?\b",
+    r"does not (ask|charge|hire|request)",
+    r"do(es)? not (buy|purchase|pay|move|complete)",
+    r"no (applicant|application|placement|training) fee",
+    r"\bno kit\b",
+    r"not a (paid|work-from-home|trading)",
+)
+FORBIDDEN_COMPANY_WORDS = frozenset(
+    {
+        "generic",
+        "blank",
+        "vague",
+        "hollow",
+        "shadow",
+        "quiet",
+        "instant",
+        "sameday",
+        "flash",
+        "rapid",
+        "quick",
+        "empty",
+        "fake",
+        "shell",
+        "secret",
+        "mystery",
+    }
+)
 
 _WHITESPACE = re.compile(r"\s+")
 _SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+")
@@ -150,6 +209,55 @@ def _opening_key(text: str, company: str) -> str:
         joined = re.sub(re.escape(company), "<co>", joined, flags=re.IGNORECASE)
     words = joined.lower().split()
     return " ".join(words[:4])
+
+
+def _sentence_opening_keys(text: str, company: str) -> List[str]:
+    """
+    Return the first four words of each sentence, with the company slotted.
+
+    Args:
+        text: Posting description.
+        company: Company name.
+
+    Returns:
+        One opening per sentence that has words.
+    """
+    joined = " ".join((text or "").split())
+    if company:
+        joined = re.sub(re.escape(company), "<co>", joined, flags=re.IGNORECASE)
+    keys: List[str] = []
+    for part in _SENTENCE_BREAK.split(joined):
+        words = part.lower().split()
+        if words:
+            keys.append(" ".join(words[:4]))
+    return keys
+
+
+def _has_line_break(text: str) -> bool:
+    """
+    Return whether a description contains a line break.
+
+    Args:
+        text: Posting description.
+
+    Returns:
+        True when the text contains ``\\n``.
+    """
+    return "\n" in (text or "")
+
+
+def _matches_any(text: str, patterns: Sequence[str]) -> bool:
+    """
+    Return whether any regex matches the text.
+
+    Args:
+        text: Title and description.
+        patterns: Regular expressions.
+
+    Returns:
+        True when a pattern matches.
+    """
+    return any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in patterns)
 
 
 def _fixture_text(source: str) -> str:
@@ -277,18 +385,82 @@ def _diversity_stats(
     max_frame_cases = max((len(ids) for ids in cases_per_frame.values()), default=0)
     openings: Dict[str, Set[str]] = defaultdict(set)
     for case in written:
-        key = _opening_key(
-            str(case.job.get("description") or ""), str(case.job.get("company") or "")
-        )
-        if key:
+        description = str(case.job.get("description") or "")
+        company = str(case.job.get("company") or "")
+        posting_open = _opening_key(description, company)
+        if posting_open:
+            openings[posting_open].add(case.case_id)
+        for key in _sentence_opening_keys(description, company):
             openings[key].add(case.case_id)
     max_opening_cases = max((len(ids) for ids in openings.values()), default=0)
     companies = [str(case.job.get("company") or "") for case in cases]
     company_counts = Counter(companies)
-    word_counts = [
-        len(str(case.job.get("description") or "").split()) for case in written
-    ]
+    word_by_case = {
+        case.case_id: len(str(case.job.get("description") or "").split())
+        for case in written
+    }
+    word_counts = list(word_by_case.values())
     long_written = sum(count > 200 for count in word_counts)
+    long_scams = sum(
+        word_by_case[case.case_id] > 200 for case in written if case.expected == "scam"
+    )
+    listing_words = [
+        word_by_case[case.case_id]
+        for case in written
+        if _case_group(case.case_id) == "scam_listing"
+    ]
+    other_words = [
+        word_by_case[case.case_id]
+        for case in written
+        if _case_group(case.case_id) != "scam_listing"
+    ]
+    written_legit = [
+        case
+        for case in written
+        if _case_group(case.case_id) in {"legit_written", "hard_negative"}
+    ]
+    hard = [case for case in written if _case_group(case.case_id) == "hard_negative"]
+    scams = [case for case in written if case.expected == "scam"]
+    legit_breaks = sum(
+        1
+        for case in written_legit
+        if _has_line_break(str(case.job.get("description") or ""))
+    )
+    scam_breaks = sum(
+        1 for case in scams if _has_line_break(str(case.job.get("description") or ""))
+    )
+    hard_breaks = sum(
+        1 for case in hard if _has_line_break(str(case.job.get("description") or ""))
+    )
+    hard_one_line = len(hard) - hard_breaks
+    narrator = [
+        case.case_id
+        for case in written
+        if any(
+            phrase
+            in f"{case.job.get('title') or ''} {case.job.get('description') or ''}".lower()
+            for phrase in NARRATOR_PHRASES
+        )
+    ]
+    anti_scam = [
+        case.case_id
+        for case in written_legit
+        if _matches_any(
+            f"{case.job.get('title') or ''} {case.job.get('description') or ''}",
+            ANTI_SCAM_PATTERNS,
+        )
+    ]
+    company_word_hits = [
+        f"{case.case_id}:{case.job.get('company')}"
+        for case in written
+        if any(
+            word.lower() in FORBIDDEN_COMPANY_WORDS
+            for word in re.findall(r"[A-Za-z]+", str(case.job.get("company") or ""))
+        )
+    ]
+    scams_over_150 = sum(1 for case in scams if word_by_case[case.case_id] > 150)
+    short_legit = sum(1 for case in written_legit if word_by_case[case.case_id] < 100)
+    short_listing = sum(1 for count in listing_words if count < 20)
 
     stats: Dict[str, object] = {
         "s1_max_cases_for_one_sentence": max_sentence_cases,
@@ -300,9 +472,21 @@ def _diversity_stats(
         "s5_max_cases_for_one_opening": max_opening_cases,
         "s6_companies": len(set(companies)),
         "s6_max_cases_per_company": max(company_counts.values(), default=0),
-        "s8_min_words": min(word_counts, default=0),
+        "s8_listing_min_words": min(listing_words, default=0),
+        "s8_other_min_words": min(other_words, default=0),
         "s8_max_words": max(word_counts, default=0),
         "s8_written_over_200": long_written,
+        "s8_scams_over_200": long_scams,
+        "s9_narrator_cases": narrator,
+        "s10_anti_scam_cases": anti_scam,
+        "s11_company_word_hits": company_word_hits,
+        "s12_legit_with_breaks": legit_breaks,
+        "s12_scam_with_breaks": scam_breaks,
+        "s12_hard_with_breaks": hard_breaks,
+        "s12_hard_one_line": hard_one_line,
+        "s13_scams_over_150": scams_over_150,
+        "s13_short_written_legit": short_legit,
+        "s13_short_listing": short_listing,
         "written_count": len(written),
     }
     violations: List[str] = []
@@ -318,9 +502,10 @@ def _diversity_stats(
         violations.append(
             f"S4: a slot-normalized frame appears in {max_frame_cases} cases (max 3)"
         )
-    if max_opening_cases > 4:
+    if max_opening_cases > MAX_OPENING_CASES:
         violations.append(
-            f"S5: a 4-word opening appears in {max_opening_cases} cases (max 4)"
+            f"S5: a 4-word opening appears in {max_opening_cases} cases "
+            f"(max {MAX_OPENING_CASES})"
         )
     if len(set(companies)) < MINIMUM_COMPANIES:
         violations.append(
@@ -333,15 +518,79 @@ def _diversity_stats(
             if count > MAX_CASES_PER_COMPANY
         ]
         violations.append(f"S6: a company is in more than 2 cases: {over}")
-    if any(count < 30 or count > 450 for count in word_counts):
+    if any(
+        count < MINIMUM_LISTING_WORDS or count > MAXIMUM_WRITTEN_WORDS
+        for count in listing_words
+    ):
         violations.append(
-            "S8: a written posting is outside 30 to 450 words; "
-            f"min {min(word_counts, default=0)}, max {max(word_counts, default=0)}"
+            "S8: a scam_listing posting is outside 8 to 450 words; "
+            f"min {min(listing_words, default=0)}, max {max(listing_words, default=0)}"
+        )
+    if any(
+        count < MINIMUM_OTHER_WRITTEN_WORDS or count > MAXIMUM_WRITTEN_WORDS
+        for count in other_words
+    ):
+        violations.append(
+            "S8: a non-listing written posting is outside 30 to 450 words; "
+            f"min {min(other_words, default=0)}, max {max(other_words, default=0)}"
         )
     if long_written < MINIMUM_LONG_WRITTEN:
         violations.append(
             f"S8: {long_written} written postings over 200 words "
             f"(min {MINIMUM_LONG_WRITTEN})"
+        )
+    if long_scams < MINIMUM_LONG_SCAMS:
+        violations.append(
+            f"S8: {long_scams} written scams over 200 words "
+            f"(min {MINIMUM_LONG_SCAMS})"
+        )
+    if narrator:
+        violations.append(f"S9: narrator phrases in {narrator}")
+    if len(anti_scam) > MAX_ANTI_SCAM_LEGIT:
+        violations.append(
+            f"S10: {len(anti_scam)} written legitimate postings have an "
+            f"anti-scam sentence (max {MAX_ANTI_SCAM_LEGIT}): {anti_scam}"
+        )
+    if HARD_NEGATIVE_ANTIFRAUD_ID not in anti_scam:
+        violations.append(
+            f"S10: {HARD_NEGATIVE_ANTIFRAUD_ID} must match an anti-scam sentence"
+        )
+    if company_word_hits:
+        violations.append(f"S11: company names use banned words: {company_word_hits}")
+    if legit_breaks < MINIMUM_LEGIT_WITH_BREAKS:
+        violations.append(
+            f"S12: {legit_breaks} written legitimate postings have line breaks "
+            f"(min {MINIMUM_LEGIT_WITH_BREAKS})"
+        )
+    if scam_breaks < MINIMUM_SCAM_WITH_BREAKS:
+        violations.append(
+            f"S12: {scam_breaks} scams have line breaks "
+            f"(min {MINIMUM_SCAM_WITH_BREAKS})"
+        )
+    if hard_breaks < MINIMUM_HARD_WITH_BREAKS:
+        violations.append(
+            f"S12: {hard_breaks} hard negatives have line breaks "
+            f"(min {MINIMUM_HARD_WITH_BREAKS})"
+        )
+    if hard_one_line < MINIMUM_HARD_ONE_LINE:
+        violations.append(
+            f"S12: {hard_one_line} hard negatives stay on one line "
+            f"(min {MINIMUM_HARD_ONE_LINE})"
+        )
+    if scams_over_150 < MINIMUM_SCAM_OVER_150:
+        violations.append(
+            f"S13: {scams_over_150} scams over 150 words "
+            f"(min {MINIMUM_SCAM_OVER_150})"
+        )
+    if short_legit < MINIMUM_SHORT_WRITTEN_LEGIT:
+        violations.append(
+            f"S13: {short_legit} written legitimate postings under 100 words "
+            f"(min {MINIMUM_SHORT_WRITTEN_LEGIT})"
+        )
+    if short_listing < MINIMUM_SHORT_LISTING:
+        violations.append(
+            f"S13: {short_listing} scam_listing postings under 20 words "
+            f"(min {MINIMUM_SHORT_LISTING})"
         )
     return violations, stats
 
@@ -420,7 +669,7 @@ def test_scam_dataset_structure_and_counts() -> None:
 
 def test_scam_dataset_diversity() -> None:
     """
-    Require measurable diversity on written postings (limits S1 to S8).
+    Require measurable diversity on written postings (limits S1 to S13).
 
     Returns:
         None.
