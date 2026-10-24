@@ -14,7 +14,7 @@ Every number in the README and in the resume framing (review section 7) comes fr
 - [x] 3.1 Eval harness and run metadata.
 - [x] 3.2 Grounding set, validator fixes, holdout run, and CI gate.
 - [ ] 3.2 About 15 real generated letters, labeled by the user and run locally (decision 1 of 2026-10-22): the realistic false-positive measure.
-- [ ] 3.3 Scam set, then the R3 fixes.
+- [ ] 3.3 Scam set, then the R3 fixes (`tasks/active/step-3-3-scam-set/`).
 - [ ] 3.4 Ranking set, then the R4 and R5 fixes.
 - [ ] 3.5 Dedupe set, then the R2 fix.
 - [ ] 3.6 Real cost and usage tracking.

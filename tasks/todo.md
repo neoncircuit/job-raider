@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Step 3.3: Scam set, then the R3 fixes (`tasks/active/step-3-measurable-claims/`)
+- [ ] Step 3.3: Scam set, then the R3 fixes (`tasks/active/step-3-3-scam-set/`; Stage A is with Cursor: `handoff-stage-a.md`)
 - [ ] Step 3.2 remainder: about 15 real generated letters, labeled by the user and run locally (`tasks/active/step-3-measurable-claims/`)
 - [ ] Step 1 manual check: a full-mode dry run from the Pipeline page with Ollama running; needs the user (`tasks/active/step-1-core-flow/`)
 
