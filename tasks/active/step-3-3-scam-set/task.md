@@ -14,8 +14,8 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 ## Acceptance Criteria
 - [x] A1. Labeling guide and `apps/backend-py/tests/fixtures/eval/scam/cases.jsonl` with at least 40 postings (legitimate fixture postings, written legitimate postings, hard negatives, and written scams for each indicator group), with structure and diversity tests.
 - [x] A2. `scam` suite (committed set) and `emscad` suite (local CSV, seeded tuning and held-out parts) in `python main.py eval`, with unit tests and a mutation proof.
-- [ ] A3. Baseline on the committed set, and on the EMSCAD tuning part when the CSV is present.
-- [ ] Review of Stage A (Claude).
+- [x] A3. Baseline on the committed set, and on the EMSCAD tuning part when the CSV is present. (Committed set: 2026-10-24, Cursor. EMSCAD tuning part: 2026-10-25, Claude, in `notes.md`.)
+- [x] Review of Stage A (Claude, 2026-10-25, in `notes.md`). Result: rework the written cases and close the test gaps before Stage B.
 - [ ] B1. R3 fixes: word boundaries and phrase context for the `SUSPICIOUS_PATTERNS` and `ScamFilter.REJECT_PATTERNS` false positives, each measured.
 - [ ] B2. Threshold chosen on the EMSCAD tuning part; the held-out part run one time.
 - [ ] B3. CI gate on the committed set (count pins in a thresholds file).
@@ -23,4 +23,4 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 - [ ] Done when: the README states precision and recall on the held-out EMSCAD part, and the committed set guards the false-positive cases.
 
 ## Status
-`in-progress` (Stage A handed to Cursor: `handoff-stage-a.md`)
+`in-progress` (Stage A done and reviewed on 2026-10-25; the Stage A fixes come next, then Stage B)

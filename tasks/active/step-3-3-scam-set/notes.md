@@ -17,10 +17,119 @@
 - **Data.** `apps/backend-py/data/kaggle/` has only `.gitkeep`: the CSV is not there yet. The source fixtures have about 12 public postings (`tests/fixtures/careersatgov/` 3, `jobstreet/` 3, `mycareersfuture/` 2, `jd_paste/` 4); the search-page fixtures have teaser text only.
 - **Out of scope, seen in passing:** `stage_filter_scams` reports `original_count` after the quick filter has removed postings, so the count is too small.
 
-## Stage A review
+## Stage A review (2026-10-25, Claude)
 
-(Claude adds the review here after Cursor's results in `handoff-stage-a.md`.)
+Commits `26988ab`, `8615c3f`, `ad0819d`. Cursor's results are at the end of `handoff-stage-a.md`.
+
+**Verdict.** The suites compute the right values, and the baseline reproduces. Four tests do not guard what they claim (finding 6). The written cases are not ready to be the CI guard: they are not in the voice of the people who would write them, and three patterns go through every written case. Rework the written cases and close the test gaps before Stage B (see "Recommendations"). The EMSCAD tuning baseline, which ran after the CSV arrived, shows that the current filter removes about 45 real postings for each fraud that it catches. Stage B needs a scope decision first.
+
+### What I checked and found correct
+
+- **Commits.** Three commits, each with only the files of its step. All new files are LF. `src/scoring/` did not change. The 14 CRLF files were not committed.
+- **Order.** The MLflow store has one scam run (`6be4c68d`, 08:31 UTC = 16:31 local). It started after the A2 commit (16:29) and after the A1 commit (15:30). `data/eval/scam/` has one report. Nothing shows a detector run before the A1 commit.
+- **Decision.** `decide_pipeline_scam` is the pipeline decision: `stage_filter_scams` calls `ScamFilter.filter_collection` (which calls `is_potential_scam`), then `JobScamDetector.detect` at 0.7.
+- **EMSCAD mapping.** `row_to_job_listing` is notebook cell 8. Two differences, both better: an empty title becomes "Unknown" (not "nan"), and booleans are read from the CSV text.
+- **Sweep.** I recomputed the 0.70 row from the per-case rows: detector only, TP 4, FP 4 (precision 0.50, recall 0.18), as reported.
+- **Labels.** I read all 34 written cases. I agree with the `scam` or `legit` label of each case.
+- **Reproduction.** `main.py eval scam --no-mlflow` on the same dataset SHA-256 gives the same metrics, the same 46 per-case rows, and the same sweep as the A3 report.
+
+### Findings
+
+1. **The scams are written by a narrator, not by a scammer (major).** At least 20 of the 22 scam texts have sentences that judge the posting from outside: "The listing says ...", "The rate cannot fit the task.", "The vacancy is a shell.", "There is nothing here a recruiter can treat as a vacancy.", "The purpose is a hook, not a hire a recruiter can defend." The guide's own Voice rule says to write each posting as its author. A real scam posting sells the job. The 22 scams have no "$" and no "!". The narration already changed one detector result: `text.*only` fired on "The text says only that ..." in `scam_listing__generic_online`. That is a narration hit, not a scam signal. Cursor's 10-case read said the cases read as real postings. The scams do not.
+2. **The anti-scam sentence is a template (major).** All 12 written legitimate postings (6 `legit_written` and 6 hard negatives) have a sentence that says what the employer never asks for ("never asks an applicant to buy a radio or a pass", "No kit purchase. No remote onboarding fee.", "does not charge applicants and does not hire through messaging apps"). Only `hard_negative__antifraud_notice` needs one. A legitimate posting that says it is not a scam has its label in its text. S1 to S5 cannot see this, because the words change in each case. This is the slot lesson again (`docs/lessons.md`).
+3. **Company names show the label (moderate).** Generic Work Online, Blank Card Jobs, Vague Role Board, Hollow Brand Recruit, Shadow Desk Agency, Quiet Mandate Group, InstantSeat Staffing, SameDay Hire Co, FlashRole Partners, RapidOnboard Ltd, QuickPath Hiring.
+4. **Length and line structure (moderate).** Length separates the written classes completely: the written scams have 55 to 93 words, and the written legitimate postings have 115 to 248. No written posting has a line break (0 of 34). EMSCAD descriptions also have no line break (0 of 17,880), but pasted postings in the pipeline do (the `jd_paste` fixtures have 18 to 24). `.` in a pattern does not match a line break, so the line structure changes which `.*` patterns fire. A probe that put each sentence of the written cases on its own line changed 7 confidences and 3 decisions: two false positives went away (`hard_negative__signal_processing`, `hard_negative__competitive_hearthline`, both through `no.*interview`), and one true positive went away (`scam_payment__amberline_training_fee`, through `wire.*transfer`). The set needs both forms, so that a B1 fix is measured on both. Part of this is from my handoff: the 30-word floor of S8 stops very short listing-quality scams (so the detector's under-100-characters check can never fire on a written case), and I asked for 6 postings over 200 words but not for long scams.
+5. **Some indicator groups are missing (minor).** `scam_contact__elmwood_gmail` asks the applicant to buy a flight on their card (payment). `scam_urgency__rapid_onboard_blur` gives only "a personal number" (contact). The guide says to list every group that the posting shows.
+6. **Test gaps (moderate).** I ran six real mutations (`tests/unit/test_scam_suite.py` and `tests/unit/test_cli.py`, 49 tests; each file restored, checksums matched). Cursor's two mutations hold. Four of mine survived:
+
+    | Mutation | Result |
+    |----------|--------|
+    | M1 `run_emscad_suite` returns the tuning rows for `part="heldout"` | **survived** (49 passed) |
+    | M2 `main.py` does not pass `--part` to the runner | **survived** (49 passed) |
+    | M3 `split_emscad` puts both labels in one bucket (no stratification) | **survived** (49 passed) |
+    | M4 the sweep uses `>` in place of `>=` | **survived** (49 passed) |
+    | M5 per-group recall counts a miss as a hit | caught (`comparison failed`) |
+    | M6 the `fraudulent` label is inverted | caught (`test_load_emscad_maps_notebook_fields`) |
+
+    M1 and M2 matter most: with either one, the single held-out run in Stage B would score the tuning part and nobody would see it. M4 matters because detector scores are multiples of 0.05, so many cases sit exactly on a sweep step. M3 survives because the test has 6 rows of each label and checks only that both labels are in both parts; it must check the count per label in each part.
+7. **MLflow cannot tell the EMSCAD parts apart (minor).** The part is only in the JSON artifact. The run name, the tags, the params, and the dataset SHA-256 are the same for a tuning run and a held-out run. `--part heldout` also has no guard against a second run.
+8. **S5 is not the stated rule (minor).** The test counts the first 4 words of each posting. The handoff asked for 4-word sentence openings. Both are inside the limit today (largest counts 1 and 3).
+9. **A3 is not complete.** Cursor checked A3 in `task.md` (not committed), but the EMSCAD tuning baseline did not run because the CSV is not there. I set A3 back to open.
+
+### What the baseline shows for Stage B (keep as the record)
+
+- All 5 false positives are hard negatives. `no.*interview` is in 4 of the 5, and it also puts 2 clean legitimate postings at 0.40 (`no` matches inside "note" and "not"). The R3 list did not name it; it belongs in B1. The `ScamFilter` substring `gift cards` fires on the anti-fraud notice, so it belongs in B1 with `bitcoin`.
+- A recall gap that is not R3: `_check_salary` reads only hourly and annual pay, so 4000 and 8000 per week score nothing (`scam_compensation__goldpeak_weekly`, `scam_compensation__wealthpath_kit_pay`, both 0.10).
+- EMSCAD (checked on the CSV with counts only, 2026-10-25: SHA-256 `59253295129d8b6a27607f9904f7d4ddf4dbb0ee35e079c7eb51b58b5e62bf60`, 17,880 rows, 866 fraudulent) has no company column, so every row maps to "Unknown", and no recruiter email, so every row gets the 10 "no company email" points. The text masks emails (`#EMAIL_...#` in 889 rows; no row has a literal `@gmail.com`), URLs (4,679 rows), and phone numbers (444 rows). EMSCAD cannot measure the contact group. Only the committed set can. The largest field has 14,907 characters, so the default CSV field limit is enough.
+
+### EMSCAD tuning baseline (A3, 2026-10-25, Claude)
+
+Run one time with the unchanged detector, after the review mutations were restored. The held-out part did not run.
+
+Run the EMSCAD tuning part (from `apps/backend-py`):
+
+```bash
+.venv/bin/python main.py eval emscad --part tuning
+```
+
+| Field | Value |
+|-------|-------|
+| Report | `apps/backend-py/data/eval/emscad/20261024T172032465209Z.json` |
+| MLflow run | `99102a9ba7d841758ec33cf68291e76a` (run name `emscad-20261024T172032465209Z`; the part is only in the report, see finding 7) |
+| Dataset SHA-256 (report, name plus LF content) | `a771a4eae6078269a0e57a2c5bfadc1de57f1e917885deefb8012c0a06f641a4` |
+| CSV file SHA-256 | `59253295129d8b6a27607f9904f7d4ddf4dbb0ee35e079c7eb51b58b5e62bf60` |
+| Git SHA | `ad0819d` (dirty: the 14 CRLF files and this review) |
+| Split | seed 20261024, half held out: 8,940 tuning rows (433 fraudulent, 8,507 legitimate), 8,940 held-out rows |
+| Precision | 0.0219 |
+| Recall | 0.0069 |
+| F1 | 0.0105 |
+| False-positive rate | 0.0158 |
+
+Confusion: TP 3, FP 134, FN 430, TN 8,373. The quick filter fired on 35 rows, and all 35 are legitimate.
+
+Top reasons on the 134 false positives: `no company email` 134 (every row), `pay.*to.*work` 64, `no.*interview` 47, `wire.*transfer` 22, excessive capitals in the title 19, `payment.*required` 18, `text.*only` 15, `start.*today` 13.
+
+Detector-only sweep (selected rows; the base rate of fraud is 0.048):
+
+| Threshold | Precision | Recall | F1 | FPR |
+|----------:|----------:|-------:|---:|----:|
+| 0.10 | 0.048 | 1.000 | 0.092 | 1.000 |
+| 0.15 | 0.059 | 0.206 | 0.092 | 0.166 |
+| 0.30 | 0.044 | 0.106 | 0.062 | 0.118 |
+| 0.50 | 0.026 | 0.032 | 0.029 | 0.062 |
+| 0.70 | 0.029 | 0.007 | 0.011 | 0.012 |
+| 0.90 | 0.043 | 0.005 | 0.008 | 0.005 |
+
+**What this means.**
+
+- At 0.70 the pipeline catches 3 of 433 frauds and removes 134 of 8,507 real postings: about 45 real postings for each fraud that it catches. Its precision (0.022) is below the base rate (0.048), so a flagged posting is less likely to be fraud than an average posting.
+- No threshold helps. The best F1 of the detector is 0.092, which is also the F1 of flagging every row. Every row gets 0.10 from the "no company email" check.
+- The rules look for forms (fees, messaging apps, urgency) that EMSCAD frauds rarely show in text, and EMSCAD masks the emails and links that the contact rules need.
+
+**Consequence for Stage B (decide before its handoff).** The R3 fixes can cut the false positives. That is the real harm today, because the filter removes real jobs without a trace. The R3 fixes cannot give a useful recall. The Done-when line ("the README states precision and recall on the held-out EMSCAD part") will report a recall near zero unless Stage B also adds detection. There are three options:
+
+- **(a)** Precision only: R3 fixes, then a threshold chosen for a low false-positive rate. Report the held-out numbers as they are.
+- **(b)** Option (a), plus one round of new rule signals, tuned on the tuning part only.
+- **(c)** Option (a), plus a learned classifier (for example TF-IDF and logistic regression) trained on the tuning part and judged one time on the held-out part. EMSCAD postings are from 2012 to 2014 and mostly from the US, so the result does not transfer directly to current postings in Singapore.
+
+Claude's recommendation: (a) in Stage B, and (c) as its own later step if the user wants a detection number, because it changes the pipeline design.
+
+### Recommendations
+
+1. **Rework the written cases before Stage B (Cursor, "Stage A fixes").** Each case keeps its `case_id`, its form, and its `scam` or `legit` label.
+    - Rewrite the 22 scams as the scammer would publish them, and add measurable checks to `test_scam_dataset.py`.
+    - Keep the anti-scam sentence only in the anti-fraud notice and in at most 2 other postings.
+    - Give neutral names to the companies that show the label.
+    - Put line breaks (sections or lists) in at least half of the written postings.
+    - Make the lengths overlap: some long scams, some short legitimate postings, and some listing-quality scams under 30 words. This changes the S8 floor for `scam_listing`.
+    - Assign the indicator groups again from the guide before any run.
+    - Then run the set one time as Baseline A3b, and keep A3 in the record.
+
+    Why: the Stage B CI gate pins counts on this set, and the B1 fixes are judged on it. EMSCAD cannot replace it for the contact group or the R3 forms.
+2. **Close the test gaps in the same round,** and show the EMSCAD part in the MLflow run name and tags.
+3. **EMSCAD tuning baseline: done.** The user put `fake_job_postings.csv` in `apps/backend-py/data/kaggle/` on 2026-10-25, and Claude ran the tuning part one time (see "EMSCAD tuning baseline"). The held-out part still waits for Stage B.
+4. **Stage B scope.** Add `no.*interview` and the `gift cards` substring to B1. Choose (a), (b), or (c) from "EMSCAD tuning baseline" before the Stage B handoff. Claude recommends (a). The weekly-pay recall gap goes to the known limits under (a).
 
 ## Blockers / Questions
 
-- The EMSCAD baseline needs the user to put `fake_job_postings.csv` in `apps/backend-py/data/kaggle/` (decision 3 of 2026-10-22).
+- None. The CSV is in `apps/backend-py/data/kaggle/` (2026-10-25; ignored by git through `data/`).
