@@ -20,8 +20,8 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 - [ ] AF2. Stage A fixes: tests that catch mutations M1 to M4, and the EMSCAD part in the MLflow run name and tags (decisions 2 and 3).
 - [ ] AF3. Baseline A3b on the reworked committed set.
 - [ ] Review of the Stage A fixes (Claude).
-- [ ] B1. R3 fixes: word boundaries and phrase context for the `SUSPICIOUS_PATTERNS` and `ScamFilter.REJECT_PATTERNS` false positives, including `no.*interview` and `gift cards`, each measured.
-- [ ] B2. Threshold chosen on the EMSCAD tuning part for a low false-positive rate (option (a), decision 4); a guard so the held-out part runs one time; the held-out part run one time.
+- [ ] B1. R3 fixes: word boundaries and phrase context for the `SUSPICIOUS_PATTERNS` and `ScamFilter.REJECT_PATTERNS` false positives, including `no.*interview` and `gift cards`, each measured. One round over the fixed list of the B1 stop rule (decision 5), plus at most one fix round.
+- [ ] B2. Threshold `t*` and the `scam_action` (`drop` or `flag`) chosen on the EMSCAD tuning part by rules S1 and S2 (decision 5); a guard so the held-out part runs one time; the held-out part run one time and reported by rule S3.
 - [ ] B3. CI gate on the committed set (count pins in a thresholds file).
 - [ ] B4. The notebook calls `python main.py eval emscad`, so the logic exists only once.
 - [ ] Done when: the README states precision and recall on the held-out EMSCAD part, and the committed set guards the false-positive cases.

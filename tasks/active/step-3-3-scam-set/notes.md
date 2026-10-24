@@ -132,7 +132,7 @@ Claude's recommendation: (a) in Stage B, and (c) as its own later step if the us
 
 ## Decisions (2026-10-25)
 
-The user accepted all four recommendations.
+The user accepted the four recommendations of the review (decisions 1 to 4), and later the same day the Stage B rules (decision 5).
 
 1. **Rework the written cases before Stage B.** A "Stage A fixes" round (Cursor, `handoff-stage-a-fixes.md`) rewrites the 34 written cases:
     - every posting in the voice of its author;
@@ -151,6 +151,64 @@ The user accepted all four recommendations.
     - a guard so the held-out part runs one time, then the one held-out run.
 
     The weekly-pay gap and the low EMSCAD recall go to the known limits. A learned classifier (option c) is not part of Step 3.3. It is parked in `tasks/backlog.md`.
+5. **Stage B rules (accepted later on 2026-10-25).** The user accepted the selection rule and the B1 stop rule as written in "Stage B selection rule and B1 stop rule":
+    - S1: the threshold `t*`;
+    - S2: the action, `drop` or `flag`, with the `scam_action` setting;
+    - S3: the held-out report, with Wilson 95% intervals;
+    - S4: the numbers 0.005, 0.50, and 10 do not change after a tuning run;
+    - B1 is one round over a fixed pattern list, plus at most one fix round.
+
+    On today's code the rules pick `flag`.
+
+## Stage B selection rule and B1 stop rule (decision 5, 2026-10-25)
+
+Claude proposed these rules, and the user accepted them as written on 2026-10-25. They are fixed before B1 and before any tuning run, so that the tuning results cannot move them.
+
+**Why a rule with an action.** The pipeline removes a flagged posting without a trace, and the user never sees it. A false positive costs a real job. A false negative shows a scam that the user can still judge, and the job page can still run the trust analysis on request (`/jobs/{id}/trust`). So the threshold rule also decides whether the filter may remove postings at all.
+
+**Rule S1, the threshold.**
+
+- Use the pipeline decision after B1: the quick filter and the detector together.
+- Score it on the EMSCAD tuning part at each threshold from 0.05 to 1.00, in steps of 0.05.
+- The threshold `t*` is the one with the highest recall among those whose false-positive rate is at most 0.005. That is at most 1 real posting in 200, or 42 of the 8,507 legitimate tuning rows. On a tie, use the higher threshold.
+- If no threshold has a false-positive rate of 0.005 or less, `t*` is 1.00.
+
+**Rule S2, the action.**
+
+- At `t*`, the pipeline may remove (`drop`) flagged postings only if two conditions hold on the tuning part:
+    - the precision is at least 0.50, so a removed posting is at least as likely to be fraud as real;
+    - at least 10 frauds are flagged, so that the precision does not rest on a few rows.
+- Otherwise the pipeline keeps every posting (`flag`). It stores the detector confidence and reasons in the posting's metadata and logs them.
+- Stage B adds a pipeline setting `scam_action` (`drop` or `flag`) and sets its default from this rule. The quick filter follows the same action.
+
+**Rule S3, the report.**
+
+- The held-out part runs one time, at `t*`, with the chosen action.
+- Report the precision, the recall, and the false-positive rate, each with its counts and a Wilson 95% interval.
+- The README states these numbers, the action, and the limits of EMSCAD:
+    - the postings are from 2012 to 2014;
+    - emails and links are masked;
+    - there are no company names.
+
+**Rule S4, no change after a tuning run.** The numbers 0.005, 0.50, and 10 do not change after a tuning run. A change needs a new user decision with its reason, recorded before the held-out run.
+
+**B1 stop rule.**
+
+- B1 is one round over a fixed list:
+    - every pattern in `JobScamDetector.SUSPICIOUS_PATTERNS` that has `.*` or no word boundary (`pay.*to.*work`, `no.*interview`, `text.*only`, `start.*today`, `immediate.*hire`, `signal`, `kik`, `telegram`, `whatsapp`, and the others of these two kinds);
+    - the `ScamFilter.REJECT_PATTERNS` substrings `bitcoin` and `gift cards`.
+- B1 adds no new pattern for recall (option a).
+- After the review, at most one fix round follows. What then stays wrong goes to the known limits.
+- After B1, every hard negative in the committed set must be `legit`.
+
+**What the rules pick on today's code** (tuning report of 2026-10-25, before B1):
+
+| Quick filter | Thresholds with FPR at most 0.005 | `t*` | Precision at `t*` | Flagged frauds | Action |
+|--------------|-----------------------------------|------|-------------------|----------------|--------|
+| On | none (lowest FPR 0.0061 at 0.95 and 1.00) | 1.00 | 0.000 | 0 | `flag` |
+| Off | 0.95, 1.00 (recall 0.000) | 1.00 | 0.000 | 0 | `flag` |
+
+At every threshold today, the pipeline removes about 16 or more real postings for each fraud that it catches. The best case is 0.15: 89 frauds and 1,419 real postings, precision 0.059 against a base rate of 0.048. Unless B1 changes this a lot, the likely Stage B result is `flag`: the pipeline stops removing postings and only records the score.
 
 ## Blockers / Questions
 
