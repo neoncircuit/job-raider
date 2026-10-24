@@ -798,7 +798,7 @@ Settings already exposes ``enable_cache`` / ``cache_ttl``, and ``ResponseCache``
 
 - Re-running the same validate/extract/parse request within TTL avoids a second model call.
 - Cover-letter generation quality and novelty are unchanged.
-- Phases 2+ (prompt hygiene, cloud prefix cache, keep_alive) remain gated in ``tasks/todo.md``.
+- Phases 2+ (prompt hygiene, cloud prefix cache, keep_alive) remain gated in ``tasks/todo.md`` (now in ``tasks/archive/legacy/todo-done.md``).
 
 ## 2026-08-07 - Paste JD paths normalize and structure without LLM
 

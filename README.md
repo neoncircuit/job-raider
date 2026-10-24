@@ -244,7 +244,7 @@ job-raider/                      # Project root (monorepo)
 ├── scripts/                     # Shell/utility scripts
 │   ├── cleanup.sh               # Temporary file cleanup
 │   └── find-port.sh             # Dynamic port discovery
-├── tasks/                       # Project tracking (todo.md, lessons.md)
+├── tasks/                       # Task tracking (index.md, todo.md, active/, archive/)
 ├── .github/workflows/           # CI/CD pipelines
 ├── docker-compose.yml           # Multi-service orchestration
 ├── docker-rebuild.sh            # Docker rebuild helper (WSL2 caching workaround)

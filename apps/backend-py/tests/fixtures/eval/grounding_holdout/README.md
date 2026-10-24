@@ -1,6 +1,6 @@
 # Grounding Holdout Set
 
-This folder holds a second, smaller set of labeled cover letters. It shows whether the validator fixes of Step 3.2 (F1 to F7, then F5a, F6a, F5b, and F6b in `tasks/todo.md`) work on letters that the fixes were not measured on.
+This folder holds a second, smaller set of labeled cover letters. It shows whether the validator fixes of Step 3.2 (F1 to F7, then F5a, F6a, F5b, and F6b; the record is in `tasks/archive/step-3-2-grounding-validator/notes.md`) work on letters that the fixes were not measured on.
 
 ```mermaid
 flowchart LR
@@ -22,7 +22,7 @@ flowchart LR
     .venv/bin/python main.py eval grounding --dataset tests/fixtures/eval/grounding_holdout
     ```
 
-4. Record the numbers in `tasks/todo.md` next to the main-set numbers after F7. Do not change a label or a letter after that run. A later round of fixes needs a new holdout set.
+4. Record the numbers next to the main-set numbers (done: "Holdout run (2026-10-24)" in `tasks/archive/step-3-2-grounding-validator/notes.md`). Do not change a label or a letter after that run. A later round of fixes needs a new holdout set.
 
 ## Contents
 

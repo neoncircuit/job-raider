@@ -508,7 +508,7 @@ job-raider/                      # Project root (monorepo)
 ├── data/                        # Shared data
 ├── docs/                        # Documentation
 ├── scripts/                     # Shell/utility scripts
-└── tasks/                       # Project tasks and lessons
+└── tasks/                       # Task tracking (index.md, todo.md, active/, archive/)
 ```
 
 ### Contributing

@@ -13,7 +13,7 @@
 - One tack per subagent for focused execution
 
 ### 3. Self-Improvement Loop
-- After ANY correction from the user: update `tasks/lessons.md` with the pattern
+- After ANY correction from the user: update `docs/lessons.md` with the pattern
 - Write rules for yourself that prevent the same mistake
 - Ruthlessly iterate on these lessons until mistake rate drops
 - Review lessons at session start for relevant project
@@ -38,12 +38,14 @@
 
 ## Task Management
 
-1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
+The task system is described in `tasks/index.md`. Read it and `tasks/todo.md` (the current priorities) first.
+
+1. **Plan First**: Copy `tasks/active/_template/` to `tasks/active/<task-slug>/` and write the plan in its `task.md`, with checkable acceptance criteria
 2. **Verify Plan**: Check in before starting implementation
-3. **Track Progress**: Mark items complete as you go
+3. **Track Progress**: Check off acceptance criteria in `task.md` as you go
 4. **Explain Changes**: High-level summary at each step
-5. **Document Results**: Add review section to `tasks/todo.md`
-6. **Capture Lessons**: Update `tasks/todo.md` after corrections
+5. **Document Results**: Add a review section to the task's `notes.md`; when the task is done, move its folder to `tasks/archive/`
+6. **Capture Lessons**: Update `docs/lessons.md` after corrections
 
 ## Important Instructions
 
