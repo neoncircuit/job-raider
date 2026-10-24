@@ -263,3 +263,215 @@ At the end of this file, add "Cursor results (date)" with:
 - F2: the new tests and their failure output before the code, and the five mutation results.
 - F3: the tables from section F3.
 - Every check that you ran and its result. Say clearly what you did not run.
+
+## Cursor results (2026-10-25)
+
+### Commits
+
+| Step | Hash | Subject |
+|------|------|---------|
+| F1 | `eaeeb8d` | fix(eval): rewrite the written scam cases in their authors' voice |
+| F2 | `2be0e1f` | test(eval): close the scam suite test gaps and tag the EMSCAD part |
+| F3 | *(this commit)* | docs(tasks): record Baseline A3b for the scam set |
+
+### F1. Rewrite
+
+**Counts.** 46 cases. 24 legitimate (12 fixture, 6 written, 6 hard negative). 22 scams (4 payment, 4 contact, 4 urgency, 4 compensation, 6 listing). Indicator-group support: payment 6, contact 8, urgency 5, compensation 4, listing_quality 7.
+
+**New checks on the old set** (before the rewrite). `test_scam_dataset_diversity` failed:
+
+- S8: 0 written scams over 200 words (min 2).
+- S9: narrator phrases in many scams (`amberline_training_fee` and others).
+- S10: more than 3 written legitimate postings have an anti-scam sentence.
+- S11: company names use banned words (Quick, Instant, SameDay, Flash, Rapid, Quiet, Generic, Blank, Vague, Shadow, Hollow).
+- S12: 0 written legitimate postings have line breaks (min 6); 0 scams have line breaks (min 8).
+- S13: 0 scams over 150 words (min 4); 0 written legitimate postings under 100 words (min 3); 0 `scam_listing` postings under 20 words (min 2).
+
+S1 to S7 and the 30-to-450 word floor still passed on the old set.
+
+**S1 to S13 on the rewritten set**
+
+| Check | Value |
+|-------|-------|
+| S1 max cases for one long sentence | 1 |
+| S2 max shared long sentences | 0 |
+| S3 distinct / all long sentences | 162 / 162 (1.000) |
+| S4 max cases for one frame | 1 |
+| S5 max cases for one opening | 3 |
+| S6 companies / max per company | 45 / 2 |
+| S8 listing min / other min / max words | 8 / 31 / 244 |
+| S8 written over 200 / scams over 200 | 6 / 2 |
+| S9 narrator cases | none |
+| S10 anti-scam legitimate cases | `hard_negative__bitcoin_exchange`, `hard_negative__antifraud_notice` |
+| S11 banned company words | none |
+| S12 legit / scam / hard breaks; hard one-line | 7 / 8 / 3; 3 |
+| S13 scams over 150 / short written legit / short listing | 4 / 6 / 4 |
+
+Written postings over 200 words: `legit_written__harbor_kiln_planner` (237), `legit_written__pine_quay_cataloguer` (244), `hard_negative__signal_processing` (240), `hard_negative__bitcoin_exchange` (217), `scam_payment__amberline_training_fee` (211), `scam_compensation__goldpeak_weekly` (204). Scams over 150 words also include `scam_payment__crestvale_forward` (180) and `scam_contact__novachat_whatsapp` (152).
+
+**Company names that changed**
+
+| Old | New |
+|-----|-----|
+| QuickPath Hiring | Oakmere Fulfilment |
+| InstantSeat Staffing | Northgate Crewing |
+| SameDay Hire Co | Pellam Night Desk |
+| FlashRole Partners | Campus Line Media |
+| RapidOnboard Ltd | Westferry Assignments |
+| Quiet Mandate Group | Halden Partners |
+| Generic Work Online | Alder Post |
+| Blank Card Jobs | Redwood Card Co |
+| Vague Role Board | Kestrel Board |
+| Shadow Desk Agency | Nerida Agency |
+| Hollow Brand Recruit | Sable Street Recruit |
+
+**Edits after the full read**
+
+- `scam_contact__elmwood_gmail`: removed the narrator line "No company domain."
+- `scam_compensation__goldpeak_weekly`: removed the narrator line "That is the whole job."
+- `scam_urgency__rapid_onboard_blur`: changed "Write this number" to "Call 8122 0091".
+
+No detector ran on the new texts before the F1 commit. `JobScamDetector`, `ScamFilter`, `main.py eval`, and the notebook were not run on the cases. `src/scoring/scam_detector.py`, the A3 report, and the A3 per-case tables were not opened during F1.
+
+### F2. Tests and mutations
+
+**New tests.** `test_run_emscad_suite_uses_the_requested_part` (T1), `test_run_eval_command_passes_part_only_to_emscad` (T2), `test_split_keeps_label_counts_on_uneven_classes` (T3), `test_sweep_flags_confidence_equal_to_threshold` (T4), and `test_emscad_part_is_in_run_name_and_tags`.
+
+**Failure before the production change.** T1 to T4 passed on the A2 code. The MLflow test failed:
+
+```
+tests/unit/test_evaluation_harness.py:436: in test_emscad_part_is_in_run_name_and_tags
+    report.tags = {"part": "tuning"}
+E   ValueError: "EvalReport" object has no field "tags"
+```
+
+1 failed, 4 passed. After `EvalReport.tags`, `run_emscad_suite` sets `tags={"part": part}`, and `log_report_to_mlflow` adds those tags and uses `emscad-<part>-<stamp>` when `part` is present. Scam and grounding run names stay `<suite>-<stamp>`.
+
+**Mutations.** Each edit was a fixed-string replace. Checksums changed. `grep -F` counted the new string (or, for M5, counted the old string as 0). The catching test failed. The file was restored and matched the backup.
+
+| Mutation | Checksum before | Checksum after | New-string count | Catching test |
+|----------|-----------------|----------------|------------------|---------------|
+| M1 `chosen = tuning` | `d8b29ef4…21609b` | `f0918407…3ba141` | 1 | T1: held-out IDs became the tuning IDs |
+| M2 `pass` | `6955d335…0b4835` | `da22d170…af9a546` | 1 | T2: `seen["emscad"] == {}` |
+| M3 `buckets[0].append(row)` | `d8b29ef4…21609b` | `2955b28d…176915` | 1 | T3: counts became (6, 1) not (5, 2) |
+| M4 `confidence > threshold` | `20849a51…58b34d` | `eafdc1b0…2522c0f` | 1 | T4: recall 0.0 at 0.70 |
+| M5 remove `**report.tags` | `a3ff79ec…fb83020` | `1c433c03…2724e3d` | old string 0 | MLflow test: `KeyError: 'part'` |
+
+The mutation lines match the handoff table. M5 is the `**report.tags` merge in `log_report_to_mlflow`.
+
+### F3. Baseline A3b
+
+One run after the F1 and F2 commits:
+
+```
+.venv/bin/python main.py eval scam
+```
+
+| Field | Value |
+|-------|-------|
+| Report | `apps/backend-py/data/eval/scam/20261024T184108374861Z.json` |
+| MLflow run | `a8e74c746db64427ad082a41f4408fdc` |
+| Dataset SHA-256 | `c80627b55a338198802555f5df36eb55f10a591cd8e475460db58b5bb524f448` |
+| Git SHA | `2be0e1f` (dirty: the 14 unstaged CRLF rewrites) |
+| Cases | 46 |
+| Precision | 0.2500 |
+| Recall | 0.0455 |
+| F1 | 0.0769 |
+| False-positive rate | 0.1250 |
+| `recall.payment` | 0.0000 (support 6) |
+| `recall.contact` | 0.0000 (support 8) |
+| `recall.urgency` | 0.0000 (support 5) |
+| `recall.compensation` | 0.2500 (support 4) |
+| `recall.listing_quality` | 0.0000 (support 7) |
+
+Confusion: TP 1, FP 3, FN 21, TN 21.
+
+**A3 and A3b side by side.** The texts changed. Do not compare per-case rows.
+
+| Metric | A3 | A3b |
+|--------|---:|----:|
+| Dataset SHA-256 | `ba3dad4f…dfda2e` | `c80627b5…24f448` |
+| Precision | 0.5000 | 0.2500 |
+| Recall | 0.2273 | 0.0455 |
+| F1 | 0.3125 | 0.0769 |
+| False-positive rate | 0.2083 | 0.1250 |
+| TP / FP / FN / TN | 5 / 5 / 17 / 19 | 1 / 3 / 21 / 21 |
+| `recall.payment` | 0.4000 | 0.0000 |
+| `recall.contact` | 0.1667 | 0.0000 |
+| `recall.urgency` | 0.4000 | 0.0000 |
+| `recall.compensation` | 0.2500 | 0.2500 |
+| `recall.listing_quality` | 0.0000 | 0.0000 |
+| Sweep 0.70 precision / recall / FPR | 0.500 / 0.182 / 0.167 | 0.333 / 0.045 / 0.083 |
+
+**False positives**
+
+| Case ID | Component | Reasons |
+|---------|-----------|---------|
+| `hard_negative__competitive_hearthline` | Detector 0.90 | `pay.*to.*work`; `no.*interview` |
+| `hard_negative__bitcoin_exchange` | Quick filter | Detector 0.10. No detector pattern. |
+| `hard_negative__antifraud_notice` | Quick filter and detector 0.90 | `buy.*equipment`; `no.*interview` |
+
+**True positive.** `scam_compensation__skyline_clicks`: detector 0.80 (`no.*interview`; unrealistic hourly rate `$250.0/hr`).
+
+**False negatives** (detector confidence; reasons when present)
+
+| Case ID | Confidence | Reasons |
+|---------|-----------:|---------|
+| `scam_payment__amberline_training_fee` | 0.10 | |
+| `scam_payment__quickpath_kit` | 0.40 | `start.*today` |
+| `scam_payment__crestvale_forward` | 0.00 | |
+| `scam_payment__brightnest_fee_chat` | 0.60 | `whatsapp`; `brightnest.jobs@gmail.com` |
+| `scam_contact__novachat_whatsapp` | 0.60 | `whatsapp`; `novachat.desk@yahoo.com` |
+| `scam_contact__elmwood_gmail` | 0.20 | `elmwood.talent@gmail.com` |
+| `scam_contact__shoreline_telegram` | 0.50 | `telegram` |
+| `scam_contact__maple_midnight_chat` | 0.60 | `telegram`; `mapleoffers@hotmail.com` |
+| `scam_urgency__instantseat_today` | 0.40 | `start.*today` |
+| `scam_urgency__sameday_no_interview` | 0.40 | `no.*interview` |
+| `scam_urgency__flashrole_midnight` | 0.10 | |
+| `scam_urgency__rapid_onboard_blur` | 0.40 | `start.*today` |
+| `scam_compensation__goldpeak_weekly` | 0.60 | `pay.*to.*work` |
+| `scam_compensation__apex_intern_salary` | 0.40 | high implied hourly rate `~$120/hr` |
+| `scam_compensation__wealthpath_kit_pay` | 0.10 | |
+| `scam_listing__quiet_mandate` | 0.10 | |
+| `scam_listing__generic_online` | 0.30 | description too short |
+| `scam_listing__blank_card` | 0.30 | description too short |
+| `scam_listing__vague_duties` | 0.10 | |
+| `scam_listing__shadow_telegram` | 0.65 | title too short or vague; `telegram` |
+| `scam_listing__hollow_brand` | 0.10 | |
+
+No case and no label changed after this run.
+
+**Detector-only sweep** (quick filter off)
+
+| Threshold | Precision | Recall | F1 | FPR |
+|----------:|----------:|-------:|---:|----:|
+| 0.00 | 0.478 | 1.000 | 0.647 | 1.000 |
+| 0.15 | 0.469 | 0.682 | 0.556 | 0.708 |
+| 0.35 | 0.632 | 0.545 | 0.585 | 0.292 |
+| 0.50 | 0.636 | 0.318 | 0.424 | 0.167 |
+| 0.55 | 0.750 | 0.273 | 0.400 | 0.083 |
+| 0.70 | 0.333 | 0.045 | 0.080 | 0.083 |
+| 0.90 | 0.000 | 0.000 | 0.000 | 0.083 |
+| 1.00 | n/a | 0.000 | n/a | 0.000 |
+
+The 0.70 sweep row is detector-only. Pipeline recall (0.0455) matches that row because no scam was a quick-filter hit.
+
+**EMSCAD.** Not run.
+
+### Checks
+
+| Check | Result |
+|-------|--------|
+| F1 new checks on the old set | 2 failed (S8 to S13) |
+| F1 dataset tests after rewrite | 2 passed |
+| F1 Black / ruff / mypy gate | pass (182 known, 0 new) |
+| F1 full pytest | 1221 passed |
+| F2 T1 to T4 before tags | 4 passed |
+| F2 MLflow test before tags | failed (`EvalReport` has no `tags`) |
+| F2 mutations M1 to M5 | each catching test failed; files restored; checksums matched |
+| F2 Black / ruff / mypy gate | pass (182 known, 0 new) |
+| F2 full pytest | 1226 passed |
+| F3 `main.py eval scam` | report and MLflow run above |
+| F3 Black / ruff / mypy / full pytest | run before this commit |
+
+**Not run.** EMSCAD tuning. EMSCAD held-out. Notebook cells. `JobScamDetector` / `ScamFilter` / `main.py eval` on the cases before the F1 commit. Any change in `src/scoring/`. `.env`, `.env.local`, and `user_settings.json`. Push.
