@@ -13,7 +13,7 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 
 ## Acceptance Criteria
 - [x] A1. Labeling guide and `apps/backend-py/tests/fixtures/eval/scam/cases.jsonl` with at least 40 postings (legitimate fixture postings, written legitimate postings, hard negatives, and written scams for each indicator group), with structure and diversity tests.
-- [ ] A2. `scam` suite (committed set) and `emscad` suite (local CSV, seeded tuning and held-out parts) in `python main.py eval`, with unit tests and a mutation proof.
+- [x] A2. `scam` suite (committed set) and `emscad` suite (local CSV, seeded tuning and held-out parts) in `python main.py eval`, with unit tests and a mutation proof.
 - [ ] A3. Baseline on the committed set, and on the EMSCAD tuning part when the CSV is present.
 - [ ] Review of Stage A (Claude).
 - [ ] B1. R3 fixes: word boundaries and phrase context for the `SUSPICIOUS_PATTERNS` and `ScamFilter.REJECT_PATTERNS` false positives, each measured.

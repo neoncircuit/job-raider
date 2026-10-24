@@ -529,8 +529,8 @@ def run_eval_command(args) -> int:
     Run an offline evaluation suite, write its report, and log it to MLflow.
 
     Args:
-        args: Parsed arguments with ``suite``, ``dataset``, ``out``, and
-            ``no_mlflow``.
+        args: Parsed arguments with ``suite``, ``dataset``, ``out``,
+            ``no_mlflow``, and ``part``.
 
     Returns:
         Exit code: 0 on success, 1 when the dataset is missing or invalid.
@@ -541,8 +541,11 @@ def run_eval_command(args) -> int:
     logger = get_logger(Components.SCRAPERS)
     runner, default_dataset = get_suite(args.suite)
     dataset = Path(args.dataset) if args.dataset else default_dataset
+    runner_kwargs = {}
+    if args.suite == "emscad":
+        runner_kwargs["part"] = args.part
     try:
-        report = runner(dataset)
+        report = runner(dataset, **runner_kwargs)
     except (FileNotFoundError, ValueError) as exc:
         logger.error(f"Eval suite {args.suite} failed: {exc}")
         return 1
@@ -776,6 +779,12 @@ Examples:
   # Score the cover-letter grounding validator on the committed labeled set
   python main.py eval grounding
 
+  # Score the scam pipeline on the committed labeled set
+  python main.py eval scam
+
+  # Score the EMSCAD tuning part (local CSV; held-out is Stage B)
+  python main.py eval emscad --part tuning
+
   # Use another dataset folder and write only the JSON report
   python main.py eval grounding --dataset path/to/set --no-mlflow
         """,
@@ -797,6 +806,12 @@ Examples:
         "--no-mlflow",
         action="store_true",
         help="Write the JSON report only; do not log an MLflow run",
+    )
+    eval_parser.add_argument(
+        "--part",
+        choices=("tuning", "heldout"),
+        default="tuning",
+        help="EMSCAD part (emscad only; default: tuning)",
     )
 
     return parser
