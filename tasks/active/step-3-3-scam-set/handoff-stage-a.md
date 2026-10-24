@@ -165,3 +165,160 @@ At the end of this file, add "Cursor results (date)" with:
 - A3: the baseline tables (section A3), or a statement that the CSV was not there.
 - False positives or misses that look like R3 items (for Stage B; do not fix them).
 - Every check you ran and its result. Say clearly what you did not run.
+
+## Cursor results (2026-10-24)
+
+Stop after this section. Stage B is not started. Nothing is pushed.
+
+### Commits
+
+| Step | Hash | Subject |
+|------|------|---------|
+| A1 | `26988ab` | feat(eval): add the labeled scam set and dataset tests |
+| A2 | `8615c3f` | feat(eval): add the scam and EMSCAD evaluation suites |
+| A3 | *(this commit)* | docs(tasks): record Stage A baselines for the scam set |
+
+### A1. Guide, cases, and dataset tests
+
+No detector ran before the A1 commit. Labels come from the guide only. `JobScamDetector`, `ScamFilter`, `main.py eval`, and the notebook were not run on the cases until A3.
+
+**Counts.** 46 cases. 24 legit, 22 scam.
+
+| Group | Count |
+|-------|------:|
+| `legit_fixture` | 12 |
+| `legit_written` | 6 |
+| `hard_negative` | 6 |
+| `scam_payment` | 4 |
+| `scam_contact` | 4 |
+| `scam_urgency` | 4 |
+| `scam_compensation` | 4 |
+| `scam_listing` | 6 |
+
+Scam indicator support (a case can list more than one group): payment 5, contact 6, urgency 5, compensation 4, listing_quality 7.
+
+**Dataset tests before the cases existed.** Both tests failed with:
+
+```
+FileNotFoundError: [Errno 2] No such file or directory:
+  .../tests/fixtures/eval/scam/cases.jsonl
+```
+
+**S1 to S8 stats** (written cases; 34 written, 12 fixtures):
+
+| Limit | Value | Floor |
+|-------|-------|-------|
+| S1 max cases for one long sentence | 1 | 2 |
+| S2 max shared long sentences | 0 | 1 |
+| S3 distinct / all long sentences | 208 / 208 (1.000) | 0.90 |
+| S4 max cases for one slot frame | 1 | 3 |
+| S5 max cases for one 4-word opening | 1 | 4 |
+| S6 distinct companies | 45 | 25 |
+| S6 max cases per company | 2 | 2 |
+| S7 Voice | pass | — |
+| S8 written word min / max | 55 / 248 | 30–450 |
+| S8 written postings over 200 words | 6 | 6 |
+
+After the tests passed, 10 cases were read from start to end (`legit_fixture__jobstreet_software`, `legit_written__harbor_kiln_planner`, the six hard negatives, `scam_payment__amberline_training_fee`, `scam_contact__novachat_whatsapp`, `scam_listing__quiet_mandate`). Each one reads as a posting, not as a filled slot.
+
+**Hard negatives**
+
+| Case ID | Form |
+|---------|------|
+| `hard_negative__signal_processing` | 1. Signal processing role (Tidewell Instruments) |
+| `hard_negative__competitive_hearthline` | 2. Competitive pay and the chance to work on Hearthline |
+| `hard_negative__whatsapp_business_api` | 3. WhatsApp Business API integration (Riverton Commerce) |
+| `hard_negative__bitcoin_exchange` | 4. Matching-engine role at a bitcoin exchange |
+| `hard_negative__antifraud_notice` | 5. Anti-fraud notice that uses "scam" and "fraud" |
+| `hard_negative__summit_ridge_revenue` | 6. Senior role, annual maximum 185000 |
+
+### A2. Suites, CLI, tests, mutations
+
+**Tests before the code.** `tests/unit/test_scam_suite.py` failed at collection:
+
+```
+ModuleNotFoundError: No module named 'src.evaluation.suites.emscad'
+```
+
+After the implementation, the 10 suite tests passed.
+
+**Mutation 1.** `predicted = filter_hit or report.is_scam` count 1. After the line became `predicted = report.is_scam`, the count was 0 and `test_quick_filter_hit_is_scam_when_detector_is_low` failed (`assert 'legit' == 'scam'`). Restored. SHA-256 of `scam.py` matched the backup: `20849a516fcf24820e03fed3f6f6af64e1ca9aa5daeb434340b08bed6a58b34d`.
+
+**Mutation 2.** `random.Random(seed)` count 1. After the line became `random.Random()`, the count was 0 and `test_split_is_seeded_stratified_and_disjoint` failed (the two splits differed). Restored. SHA-256 of `emscad.py` matched the backup: `5796c81ef35dbd50dedc4101f85d057c29a9f45ee42a198da5e959227bf50d14`.
+
+### A3. Baselines
+
+**Committed scam set** (one run after A1, command after A2).
+
+```
+.venv/bin/python main.py eval scam
+```
+
+| Field | Value |
+|-------|-------|
+| Report | `apps/backend-py/data/eval/scam/20261024T083147042694Z.json` |
+| MLflow run | `6be4c68d79414182a08f05ff09b184c7` |
+| Dataset SHA-256 | `ba3dad4f68c85cf42d23fc17dddc4c50b148393429e5ff88d6513413c9dfda2e` |
+| Git SHA | `8615c3f` (dirty: the 14 unstaged CRLF rewrites) |
+| Cases | 46 |
+| Precision | 0.5000 |
+| Recall | 0.2273 |
+| F1 | 0.3125 |
+| False-positive rate | 0.2083 |
+| `recall.payment` | 0.4000 |
+| `recall.contact` | 0.1667 |
+| `recall.urgency` | 0.4000 |
+| `recall.compensation` | 0.2500 |
+| `recall.listing_quality` | 0.0000 |
+
+Confusion: TP 5, FP 5, FN 17, TN 19.
+
+**False positives** (all five are hard negatives)
+
+| Case ID | Component | Reasons |
+|---------|-----------|---------|
+| `hard_negative__signal_processing` | Detector 0.80 | `signal`; `no.*interview` |
+| `hard_negative__competitive_hearthline` | Detector 0.90 | `pay.*to.*work`; `no.*interview` |
+| `hard_negative__whatsapp_business_api` | Detector 0.80 | `whatsapp`; `no.*interview` |
+| `hard_negative__bitcoin_exchange` | Quick filter | `bitcoin` substring. Detector 0.10 |
+| `hard_negative__antifraud_notice` | Quick filter and detector 0.90 | Filter: `gift cards`. Detector: `buy.*equipment`; `no.*interview` |
+
+`hard_negative__summit_ridge_revenue` stayed legit (detector 0.40, high implied hourly rate). Labels were not changed after this run.
+
+**Detector-only sweep** (quick filter off)
+
+| Threshold | Precision | Recall | F1 | FPR |
+|----------:|----------:|-------:|---:|----:|
+| 0.00 | 0.478 | 1.000 | 0.647 | 1.000 |
+| 0.15 | 0.452 | 0.636 | 0.528 | 0.708 |
+| 0.35 | 0.667 | 0.636 | 0.651 | 0.292 |
+| 0.50 | 0.733 | 0.500 | 0.595 | 0.167 |
+| 0.70 | 0.500 | 0.182 | 0.267 | 0.167 |
+| 0.90 | 0.500 | 0.091 | 0.154 | 0.083 |
+| 1.00 | n/a | 0.000 | n/a | 0.000 |
+
+The 0.70 sweep row is detector-only, so recall is lower than the pipeline recall (0.227), which includes the two quick-filter hits.
+
+**EMSCAD.** `apps/backend-py/data/kaggle/fake_job_postings.csv` was not present. The EMSCAD tuning baseline was skipped. The held-out part was not run.
+
+### R3 items for Stage B (not fixed)
+
+The five false positives above are the R3 forms: bare `signal` / `whatsapp` / `telegram`, `pay.*to.*work` across a legitimate product sentence, `no.*interview` across a later "interview" word, `buy.*equipment` in a warning, and the `ScamFilter` substrings `bitcoin` and `gift cards`. Do not change `src/scoring/` in this stage.
+
+### Checks
+
+| Check | Result |
+|-------|--------|
+| A1 dataset tests before cases | 2 failed (`FileNotFoundError`) |
+| A1 dataset tests after cases | 2 passed |
+| A1 Black / ruff / mypy gate | pass (182 known, 0 new) |
+| A1 full pytest | 1211 passed |
+| A2 suite tests before code | collection error (`emscad` missing) |
+| A2 suite tests after code | 10 passed |
+| A2 mutations | both required tests failed; files restored; checksums matched |
+| A2 Black / ruff / mypy gate | pass (182 known, 0 new) |
+| A2 full pytest | 1221 passed |
+| A3 `main.py eval scam` | report and MLflow run above |
+| A3 Black / ruff / mypy / full pytest | run before this commit |
+
+**Not run.** EMSCAD tuning (CSV missing). EMSCAD held-out (Stage B only). Notebook cells. `JobScamDetector` / `ScamFilter` / `main.py eval` on the cases before the A1 commit. Any change in `src/scoring/`. `.env`, `.env.local`, and `user_settings.json`. Push.
