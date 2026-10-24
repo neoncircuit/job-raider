@@ -210,6 +210,49 @@ Claude proposed these rules, and the user accepted them as written on 2026-10-25
 
 At every threshold today, the pipeline removes about 16 or more real postings for each fraud that it catches. The best case is 0.15: 89 frauds and 1,419 real postings, precision 0.059 against a base rate of 0.048. Unless B1 changes this a lot, the likely Stage B result is `flag`: the pipeline stops removing postings and only records the score.
 
+## Review of the Stage A fixes (2026-10-25, Claude)
+
+Commits `eaeeb8d` (F1), `2be0e1f` (F2), and `6f1b26f` (F3). Cursor's results are at the end of `handoff-stage-a-fixes.md`.
+
+**Verdict.** Accept the reworked set for Stage B. Do not run a third rewrite round. The set now does its job as a guard for the hard-negative forms and for regressions. It is not a measure of detector recall, and the limits below keep it from being used as one.
+
+### What I checked and found correct
+
+- **Commits.** Three commits, each with only the files of its step, all LF. `src/scoring/` did not change. No EMSCAD run: the only EMSCAD report is mine from 2026-10-25. The A3b report (02:41 local) is after the F2 commit (02:39).
+- **Voice.** I read all 34 written cases. The scams read as scam advertisements, and the legitimate postings read as employer postings. My narrator regex finds 0 of 22 scams (it was 20 of 22). The anti-scam sentence is in 2 legitimate postings: the bitcoin exchange and the anti-fraud notice (it was 12). No company name shows the label.
+- **Forms and labels.** The six hard-negative forms are present: 3 with line breaks and 3 on one line. Each case keeps its ID and label. The indicator groups that the Stage A review named as missing are now listed (`scam_contact__elmwood_gmail` has payment, and `scam_urgency__rapid_onboard_blur` has contact).
+- **Structure and length.** 15 of the 34 written postings have line breaks. Lengths overlap: scams have 8 to 211 words, and legitimate postings have 55 to 244.
+- **Encoding.** The non-ASCII characters are em dashes, an en dash, bullets, and middle dots, all valid UTF-8.
+- **F2 code.** `EvalReport.tags`, the part in the run name, and the `part` tag are correct. Minor: `**report.tags` comes after the core tags, so a report tag could replace `suite` or `git_sha`. Only EMSCAD sets tags today.
+- **Mutations (mine).** I ran the four Stage A review mutations again (M1 to M4), plus M5 (per-group recall), M6 (inverted label), and M7 (report tags not merged into the MLflow tags). The run used `test_scam_suite.py`, `test_cli.py`, and `test_evaluation_harness.py` (84 tests). Each file was restored and its checksum matched. Each mutation failed its intended test:
+
+    | Mutation | Test that failed |
+    |----------|------------------|
+    | M1 | `test_run_emscad_suite_uses_the_requested_part` |
+    | M2 | `test_run_eval_command_passes_part_only_to_emscad` |
+    | M3 | `test_split_keeps_label_counts_on_uneven_classes` |
+    | M4 | `test_sweep_flags_confidence_equal_to_threshold` |
+    | M5 | `test_per_group_recall` |
+    | M6 | `test_load_emscad_maps_notebook_fields` |
+    | M7 | `test_emscad_part_is_in_run_name_and_tags` |
+- **Reproduction.** `main.py eval scam --no-mlflow` gives the same dataset SHA-256, metrics, per-case rows, and sweep as the A3b report.
+
+### Limits of the reworked set (record; no third round)
+
+1. **The written classes separate on hype.** All 22 scams have "!" and "$". None of the 12 written legitimate postings has either. A rule on "!" alone would classify every written case correctly. This is the next slot after the Voice rule (`docs/lessons.md`), so another limit would only move it again. Two scams have "$" with no amount ("$ weekly", "today's $ pay"). **Rule:** do not tune or judge a new detector signal (punctuation, currency, capitals, or any learned model) on this set.
+2. **Committed-set recall does not measure detector recall.** A probe scored the A3 text, the A3b text, and the A3b text on one line for each changed case:
+    - Of the 4 A3 detections that A3b lost, line breaks explain 1 (`scam_payment__crestvale_forward` is still caught on one line).
+    - Word changes explain 3: "interview" left `scam_contact__maple_midnight_chat` ("No meeting") and `scam_urgency__instantseat_today`, and "wire" left `scam_payment__amberline_training_fee`.
+    - "No interview", the guide's own urgency sign, is now in 1 of the 5 urgency scams, down from 4 of 5. Most of the old mentions were narrator sentences, but `scam_urgency__flashrole_midnight` lost "no interview" from a sentence that otherwise stayed.
+
+    I cannot tell whether the writer avoided the patterns. The writer knew them from the A3 results. **Consequence for B1:** the committed set cannot show a B1 change that loses real detections (it has 1 true positive). B1 needs unit tests for each changed pattern: real scam wording that must still match, and hard-negative wording that must not.
+3. **Padding.** 4 of the 6 postings over 200 words, and the long scams, reach their length with text after the "How to apply" section or with repeated lines. My 200-word floor caused this.
+4. **Line breaks hide two R3 forms at 0.70.** `hard_negative__signal_processing` and `hard_negative__whatsapp_business_api` now score 0.50, not 0.80, because a line break stops `no.*interview`. `signal` and `whatsapp` still add 40 points each. A CI gate that pins only the decisions at one threshold would not see a regression in these patterns. **Consequence for B3:** pin the hard negatives' detector scores (or the counts at a lower check threshold), not only the decisions.
+
+### A3b baseline (Cursor, confirmed)
+
+Precision 0.25, recall 0.045, F1 0.077, FPR 0.125 (TP 1, FP 3, FN 21, TN 21). The false positives are `hard_negative__competitive_hearthline` (detector 0.90: `pay.*to.*work`, `no.*interview`), `hard_negative__bitcoin_exchange` (quick filter `bitcoin`), and `hard_negative__antifraud_notice` (quick filter `gift cards`, detector 0.90: `buy.*equipment`, `no.*interview`).
+
 ## Blockers / Questions
 
 - None. The CSV is in `apps/backend-py/data/kaggle/` (2026-10-25; ignored by git through `data/`).
