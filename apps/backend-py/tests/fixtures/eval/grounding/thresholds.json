@@ -1,0 +1,24 @@
+{
+  "suite": "grounding",
+  "dataset_sha256": "92cb028b34d4425070d40abbc075b4fe239f64d87751b35b3df3204f4e02c52f",
+  "baseline": "3b",
+  "mlflow_run": "7a5ebb3f22c940c888a548e0258b779e",
+  "labels": {
+    "fabricated_technology": {"max_false_positives": 2, "max_false_negatives": 0},
+    "inflated_duration": {"max_false_positives": 0, "max_false_negatives": 0},
+    "inconsistent_metric": {"max_false_positives": 0, "max_false_negatives": 0},
+    "fabricated_experience": {"max_false_positives": 1, "max_false_negatives": 2},
+    "analogical_claim": {"max_false_positives": 0, "max_false_negatives": 0},
+    "scope_inflation": {"max_false_positives": 0, "max_false_negatives": 0},
+    "technique_mismatch": {"max_false_positives": 1, "max_false_negatives": 0},
+    "ungrounded_claims": {"max_false_positives": null, "max_false_negatives": 0}
+  },
+  "sentence": {"max_false_positives": 242, "max_false_negatives": 25},
+  "changes": [
+    {
+      "date": "2026-10-24",
+      "reason": "First pins, from Baseline 3b. The case-level false positives of ungrounded_claims are not gated: the check is predicted on all 65 letters, so the sentence counts gate it.",
+      "mlflow_run": "7a5ebb3f22c940c888a548e0258b779e"
+    }
+  ]
+}

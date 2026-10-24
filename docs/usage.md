@@ -445,9 +445,15 @@ flowchart LR
     F -->|No| W[Warning; report kept]
 ```
 
-Suites available now: `grounding` (the deterministic cover-letter grounding validator). The labeled grounding set is added in Step 3.2 of `tasks/todo.md`; until then, pass `--dataset`.
+Suites available now: `grounding` (the deterministic cover-letter grounding validator). Its default dataset is the labeled main set in `tests/fixtures/eval/grounding`. The holdout set in `tests/fixtures/eval/grounding_holdout` is not for routine runs: it ran one time, and its README explains why.
 
-Run a suite on a dataset folder (from `apps/backend-py`):
+Run the grounding suite on the main set (from `apps/backend-py`):
+
+```bash
+python main.py eval grounding
+```
+
+Run a suite on another dataset folder (from `apps/backend-py`):
 
 ```bash
 python main.py eval grounding --dataset path/to/dataset
@@ -464,6 +470,32 @@ MLflow store: when `MLFLOW_TRACKING_URI` is set, runs go to that server (for exa
 ```bash
 mlflow ui --backend-store-uri sqlite:///data/mlflow.db
 ```
+
+### CI Gate for the Grounding Suite
+
+CI fails when a change makes the grounding checks worse on the main set. The suite is deterministic, so the gate pins counts, not ratios: for each label, the false positives and the false negatives must stay at or below the pins in `tests/fixtures/eval/grounding/thresholds.json`. The sentence-level counts of `ungrounded_claims` are pinned in the same way. The file also pins the SHA-256 of the main set, so a changed dataset fails before any count is compared.
+
+```mermaid
+flowchart LR
+    T[thresholds.json] --> S{Dataset SHA-256 equal?}
+    S -->|No| F1[Fail: pin a new baseline]
+    S -->|Yes| R[Run the suite on the main set]
+    R --> C{Each count at or below its pin?}
+    C -->|No| F2[Fail: worse counts and their cases]
+    C -->|Yes| P[Pass; counts below a pin are listed]
+```
+
+The CI backend job runs the gate as part of `pytest tests/`. Run only the gate (from `apps/backend-py`):
+
+```bash
+python -m pytest tests/unit/test_grounding_thresholds.py -q
+```
+
+Change a pin only in the same commit as the change that moves it:
+
+1. Run `python main.py eval grounding` and note the MLflow run.
+2. Edit the count in `thresholds.json`. When the main set changed, also set the new `dataset_sha256`.
+3. Add an entry to `changes` with the date, the reason, and the MLflow run. A pin that goes up accepts a worse count, so its reason must say why.
 
 ## Multi-Agent API
 
