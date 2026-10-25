@@ -20,4 +20,4 @@ Move CI, the frontend Docker image, and the local setup from Node 20 (end of lif
 - [x] The CI workflow passes on GitHub with the new actions: PR #1 (2026-10-26), 12 checks passed. The Docker job runs only on a `v*` tag or a manual run, so its three action bumps are checked at the next release.
 
 ## Status
-`review` (merged into `main` locally on 2026-10-26 as `75ac7d0`; move this folder to `tasks/archive/` after the push of `main` passes CI)
+`done` (merged as `75ac7d0` and pushed on 2026-10-26; CI run 40217912837 on `main` passed all 11 jobs, with no Node 20 warning)

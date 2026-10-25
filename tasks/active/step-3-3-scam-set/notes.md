@@ -476,7 +476,22 @@ Commits: B3 `569e4e5`, B4a `3a37e46`, B4b `5086f9e`, results `9aebf57`. Cursor's
 
 ### Merge of the Node 24 change
 
-PR #1 (`chore/ci-node-24`, `tasks/active/ci-node-24/`) passed CI on GitHub (12 checks passed; the Docker job is skipped on a pull request). `git merge-tree` shows no conflict with `main` at `9aebf57`. Both sides change `README.md` and `docs/index.md`, in different sections. The merge changes no file in `apps/backend-py/`, and part A changes no file in `apps/frontend-ts/`. So the backend result above and the frontend results of PR #1 hold for the merge.
+PR #1 (`chore/ci-node-24`, now `tasks/archive/ci-node-24/`) passed CI on GitHub (12 checks passed; the Docker job is skipped on a pull request). `git merge-tree` shows no conflict with `main` at `9aebf57`. Both sides change `README.md` and `docs/index.md`, in different sections. The merge changes no file in `apps/backend-py/`, and part A changes no file in `apps/frontend-ts/`. So the backend result above and the frontend results of PR #1 hold for the merge.
+
+## Check before B5 (2026-10-26, Claude)
+
+All four items of the check (recommendation 3 of the fix-round review) pass. B5 can start when the user says so.
+
+1. **Code.** `main` is pushed at `db11391` (the merge of PR #1 and the part A review). No file in `apps/backend-py/src/` or `apps/backend-py/main.py` changed since FR2 (`077c490`). The commits after FR2 change tests, the notebook, docs, task files, and the Node 24 move (no backend file).
+2. **Defaults.** `DEFAULT_SCAM_THRESHOLD` is 1.0 and `DEFAULT_SCAM_ACTION` is `flag`, the same as the FR2 selection.
+3. **Marker.** `data/eval/emscad/heldout_used.json` does not exist. `data/eval/emscad/` has only the four tuning reports.
+4. **CRLF rewrites (the user's decision: restore).** All 14 files were the same as HEAD byte for byte after the CR characters were removed. They were restored with `git checkout`. `git status --porcelain --untracked-files=no` is now empty. This is the check that sets `git_dirty` in the run metadata; untracked files do not count, so the two untracked Step 2 handoff files do not matter.
+5. **CI on `db11391`.** Run 40217912837 passed all 11 jobs, including the backend tests (with the B3 gate) and the frontend E2E tests, on Node 24. The Docker job is skipped on a push to `main`. The Node 20 warnings are gone.
+
+**Rules for B5:**
+
+- B5a runs at the commit that records this check, or at a later commit that changes only docs or task files. A change in `src/` or `main.py` needs a new check.
+- The IDE rewrote files with CRLF before. Right before B5a, `git status --porcelain --untracked-files=no` must print nothing. If it prints a file, stop and tell the user. Do not run B5a on a dirty tree.
 
 ## Observations for Stage B (2026-10-25, Claude)
 

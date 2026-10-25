@@ -156,6 +156,15 @@ The user then tells you to start B5.
 
 Only after the user says "start B5":
 
+- **First, check the tree** (added 2026-10-26 by the check before B5 in `notes.md`). The IDE rewrote files with CRLF before, and a dirty tree marks the held-out report as `git_dirty`. From the repository root, this command must print nothing:
+
+    Check for changes in tracked files:
+
+    ```bash
+    git status --porcelain --untracked-files=no
+    ```
+
+    If it prints a file, stop and tell the user. Do not run B5a on a dirty tree.
 - Run the held-out part one time, with MLflow:
 
     Run the EMSCAD held-out part (from `apps/backend-py`):
