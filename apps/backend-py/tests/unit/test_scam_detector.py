@@ -45,6 +45,9 @@ MUST_MATCH: Dict[str, List[str]] = {
         "Pay $50 to start work this week.",
         "You pay a small fee to work from home.",
         "Pay the kit cost to work with us.",
+        "You must pay $380 to start working",
+        "Pay the $90 kit to start working tonight",
+        "You pay a deposit to start working from home",
     ],
     "payment.*required": [
         "A training payment is required before day one.",
@@ -55,6 +58,10 @@ MUST_MATCH: Dict[str, List[str]] = {
         "Buy the equipment from our vendor before you start.",
         "You must buy equipment from the list we send.",
         "Candidates buy equipment and send the receipt.",
+        "Starter kit\n- You must buy equipment from our vendor before day one",
+        "Responsibilities\n- Answer calls from customers\n- Process orders in our system\n- Log each call in the sheet\n- You must buy the equipment from our approved vendor first",
+        "What you do\n* Open the shop\n* Count the till\n* Buy the equipment from the named shop",
+        "Day-one list\n1. Collect the badge\n2. Buy equipment at the stall we name",
     ],
     "wire.*transfer": [
         "Send a wire transfer to hold the seat.",
@@ -75,21 +82,31 @@ MUST_MATCH: Dict[str, List[str]] = {
         "Message us on Telegram to begin.",
         "Apply only through Telegram.",
         "Send your CV on Telegram @hiredesk.",
+        "Telegram: @hr_desk_sg",
+        "Add me on Telegram, handle hrfast",
     ],
     "whatsapp": [
         "WhatsApp the manager to start.",
         "Apply on WhatsApp only.",
         "Text the hiring desk on WhatsApp.",
+        "Interested candidates pls WhatsApp 9123 4567",
+        "WhatsApp: +65 8123 4567 for details",
+        "Kindly reach out to our HR on WhatsApp",
+        "WhatsApp - 65-9123-0000 after lunch",
     ],
     "signal": [
         "Contact us on Signal tonight.",
         "We hire only through Signal.",
         "Send the signed form on Signal.",
+        "Reach our desk on Signal tonight",
+        "Signal +1-415-555-0199 after 6pm",
     ],
     "kik": [
         "Message the recruiter on Kik.",
         "Kik us your availability tonight.",
         "Apply via Kik and wait for the kit list.",
+        "Add me on Kik after you send the form",
+        "Kik: user_id 44921",
     ],
     "discord.*only": [
         "Discord only for all hiring chat.",
@@ -105,32 +122,118 @@ MUST_MATCH: Dict[str, List[str]] = {
         "Immediate hire, start this week.",
         "This is an immediate hire role.",
         "Immediate hire after you pay the fee.",
+        "IMMEDIATE HIRING for warehouse packers, apply now",
+        "Immediate hiring! Start this week",
+        "We are immediately hiring store clerks this weekend",
     ],
     "start.*today": [
         "Start today after you message us.",
         "You can start today from home.",
         "Pay the fee and start today.",
+        "Starting today, slots are limited",
+        "Starting today if you message the desk",
     ],
     "no.*interview": [
         "No interview required, start tomorrow.",
         "No interview, we hire from the form.",
         "There is no interview for this role.",
+        "No interviews needed, just send your IC",
+        "no interview required, start tomorrow",
+        "No interviews whatsoever, send the form tonight",
     ],
     "skip.*interview": [
         "Skip the interview and begin today.",
         "You may skip interview and start.",
         "We skip interview for remote clerks.",
+        "Skip interviews and fill the seat tonight",
+        "You can skip interviews after the form",
     ],
     "bitcoin": [
         "Pay the deposit in bitcoin.",
         "Send bitcoin to this wallet.",
         "Fees are in bitcoin only.",
+        "Your first pay comes in bitcoin to a wallet we set up",
     ],
     "gift cards": [
         "Buy gift cards and send the codes.",
         "Pay with gift cards from the store.",
         "We accept gift cards as the starter fee.",
+        "Buy Google Play gift cards and keep the receipt",
+        "Purchase two $100 Steam gift cards for the client",
+        "Buy three $50 iTunes gift cards and photo the backs",
+        "Purchase a pair of $200 App Store gift cards before the call",
     ],
+}
+
+# Must-match phrases that fail on the current code (FR1 run).
+MUST_MATCH_XFAIL: Dict[Tuple[str, str], str] = {
+    ("pay.*to.*work", "You must pay $380 to start working"): "B1 fix round: class 3",
+    (
+        "pay.*to.*work",
+        "Pay the $90 kit to start working tonight",
+    ): "B1 fix round: class 3",
+    (
+        "pay.*to.*work",
+        "You pay a deposit to start working from home",
+    ): "B1 fix round: class 3",
+    (
+        "buy.*equipment",
+        "Responsibilities\n- Answer calls from customers\n- Process orders in our system\n- Log each call in the sheet\n- You must buy the equipment from our approved vendor first",
+    ): "B1 fix round: class 4",
+    ("telegram", "Telegram: @hr_desk_sg"): "B1 fix round: class 2",
+    (
+        "whatsapp",
+        "Interested candidates pls WhatsApp 9123 4567",
+    ): "B1 fix round: class 2",
+    ("whatsapp", "WhatsApp: +65 8123 4567 for details"): "B1 fix round: class 2",
+    ("whatsapp", "WhatsApp - 65-9123-0000 after lunch"): "B1 fix round: class 2",
+    ("signal", "Signal +1-415-555-0199 after 6pm"): "B1 fix round: class 2",
+    (
+        "immediate.*hire",
+        "IMMEDIATE HIRING for warehouse packers, apply now",
+    ): "B1 fix round: class 1",
+    ("immediate.*hire", "Immediate hiring! Start this week"): "B1 fix round: class 1",
+    (
+        "immediate.*hire",
+        "We are immediately hiring store clerks this weekend",
+    ): "B1 fix round: class 1",
+    ("start.*today", "Starting today, slots are limited"): "B1 fix round: class 1",
+    (
+        "start.*today",
+        "Starting today if you message the desk",
+    ): "B1 fix round: class 1",
+    (
+        "no.*interview",
+        "No interviews needed, just send your IC",
+    ): "B1 fix round: class 1",
+    (
+        "no.*interview",
+        "No interviews whatsoever, send the form tonight",
+    ): "B1 fix round: class 1",
+    (
+        "skip.*interview",
+        "Skip interviews and fill the seat tonight",
+    ): "B1 fix round: class 1",
+    (
+        "skip.*interview",
+        "You can skip interviews after the form",
+    ): "B1 fix round: class 1",
+    (
+        "gift cards",
+        "Buy Google Play gift cards and keep the receipt",
+    ): "B1 fix round: class 5",
+    (
+        "gift cards",
+        "Purchase two $100 Steam gift cards for the client",
+    ): "B1 fix round: class 5",
+    (
+        "gift cards",
+        "Buy three $50 iTunes gift cards and photo the backs",
+    ): "B1 fix round: class 5",
+    (
+        "gift cards",
+        "Purchase a pair of $200 App Store gift cards before the call",
+    ): "B1 fix round: class 5",
 }
 
 # Ordinary posting wording. xfail_reason is set when the current code matches.
@@ -146,6 +249,10 @@ MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
             "R3 pay.*to.*work",
         ),
         ("The role pays a monthly salary for office work.", None),
+        ("We never ask you to pay to start work", "B1 fix round: class 6"),
+        ("Pay is weekly. You start working after the walk-through.", None),
+        ("At no point do we ask you to pay to start work", "B1 fix round: class 6"),
+        ("No candidate is asked to pay to start work", "B1 fix round: class 6"),
     ],
     "payment.*required": [
         (
@@ -154,6 +261,7 @@ MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
         ),
         ("Direct deposit is the usual payment method.", None),
         ("Required documents are a resume and a work permit.", None),
+        ("Payment terms: net 30. A degree is required.", "P1"),
     ],
     "buy.*equipment": [
         (
@@ -165,6 +273,14 @@ MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
             "R3 buy.*equipment",
         ),
         ("The company supplies all tools on day one.", None),
+        (
+            "Kit list\n- The shop will buy from our store\n- Equipment arrives on day one",
+            "B1 fix round: class 4",
+        ),
+        (
+            "Onboarding\n* We never ask you to buy equipment\n* The bench is already stocked",
+            None,
+        ),
     ],
     "wire.*transfer": [
         (
@@ -194,21 +310,39 @@ MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
         ("We publish product alerts on the Telegram Bot API.", "R3 telegram"),
         ("Staff read the public Telegram channel for store hours.", "R3 telegram"),
         ("Write to the hiring desk at careers@example.com.", None),
+        ("You will work on Telegram bots for our customers", "B1 fix round: class 6"),
+        ("Build chat features on Telegram for shops", "B1 fix round: class 6"),
     ],
     "whatsapp": [
         ("WhatsApp Business API", "R3 whatsapp"),
         ("The team ships a WhatsApp Business API connector.", "R3 whatsapp"),
         ("Call the duty phone during office hours.", None),
+        (
+            "Build chat features on WhatsApp and Messenger for retail clients",
+            "B1 fix round: class 6",
+        ),
+        ("You will work on WhatsApp stickers for the brand", "B1 fix round: class 6"),
     ],
     "signal": [
         ("signal processing", "R3 signal"),
         ("We measure the signal-to-noise of the radar feed.", "R3 signal"),
         ("The radio desk handles inbound calls.", None),
+        ("A paper or a thesis on signal processing is useful", "B1 fix round: class 6"),
+        (
+            "Experience on signal integrity for high-speed boards",
+            "B1 fix round: class 6",
+        ),
+        ("Experience on signal chains for radio benches", "B1 fix round: class 6"),
+        ("We ship a Signal Desktop plugin for support teams", None),
     ],
     "kik": [
         ("The Nairobi desk needs a Kikuyu speaker.", "R3 kik"),
         ("The fabric is a cotton kikoi wrap for the shop floor.", "R3 kik"),
         ("Email the recruiter your availability.", None),
+        (
+            "The Kik Messenger SDK is used in the consumer app",
+            "B1 fix round: class 6",
+        ),
     ],
     "discord.*only": [
         (
@@ -233,6 +367,7 @@ MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
         ),
         ("We fill the seat after two interviews.", None),
         ("An immediate start is possible after the offer letter.", None),
+        ("Hiring is done after two on-site interviews", None),
     ],
     "start.*today": [
         (
@@ -241,6 +376,7 @@ MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
         ),
         ("The start date is the first Monday of next month.", None),
         ("Today the warehouse runs a safety drill.", None),
+        ("Today the clerk starts the safety walk after the offer", None),
     ],
     "no.*interview": [
         (
@@ -249,6 +385,15 @@ MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
         ),
         ("Interviews are on site.", None),
         ("The first meeting is a site walk.", None),
+        (
+            "There is no interview fee; interviews are free and on site",
+            "B1 fix round: class 6",
+        ),
+        (
+            "We know interviews can be stressful, so we share the questions",
+            "P1",
+        ),
+        ("There is no interview cost; the panel is free", "B1 fix round: class 6"),
     ],
     "skip.*interview": [
         (
@@ -262,6 +407,7 @@ MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
         ("a licensed bitcoin exchange", "R3 bitcoin"),
         ("The treasury team watches bitcoin prices for a research note.", "R3 bitcoin"),
         ("Salary is paid in Singapore dollars.", None),
+        ("Our team builds wallets for bitcoin and ether", "P1"),
     ],
     "gift cards": [
         (
@@ -270,6 +416,9 @@ MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
         ),
         ("Staff may receive gift cards at the year-end party.", "R3 gift cards"),
         ("We reimburse approved tool purchases.", None),
+        ("Staff get gift cards at the year-end party", "P1"),
+        ("We will never ask you to purchase gift cards", None),
+        ("The cafe sells gift cards at the counter for birthdays", None),
     ],
 }
 
@@ -368,6 +517,12 @@ def _match_params() -> List[Any]:
     for pattern, phrases in MUST_MATCH.items():
         source = _source_for(pattern)
         for index, phrase in enumerate(phrases):
+            xfail_reason = MUST_MATCH_XFAIL.get((pattern, phrase))
+            marks = (
+                [pytest.mark.xfail(strict=True, reason=xfail_reason)]
+                if xfail_reason
+                else []
+            )
             for layout, text in (
                 ("alone", phrase),
                 ("posting", _wrap_in_posting(phrase)),
@@ -377,6 +532,7 @@ def _match_params() -> List[Any]:
                         pattern,
                         source,
                         text,
+                        marks=marks,
                         id=f"{pattern}::match::{index}::{layout}",
                     )
                 )
@@ -393,7 +549,12 @@ def _must_not_params() -> List[Any]:
     rows: List[Any] = []
     for pattern, phrases in MUST_NOT.items():
         source = _source_for(pattern)
-        for index, (phrase, _reason) in enumerate(phrases):
+        for index, (phrase, reason) in enumerate(phrases):
+            marks = (
+                [pytest.mark.xfail(strict=True, reason=reason)]
+                if reason and reason.startswith("B1 fix round")
+                else []
+            )
             for layout, text in (
                 ("alone", phrase),
                 ("posting", _wrap_in_posting(phrase)),
@@ -403,6 +564,7 @@ def _must_not_params() -> List[Any]:
                         pattern,
                         source,
                         text,
+                        marks=marks,
                         id=f"{pattern}::not::{index}::{layout}",
                     )
                 )
