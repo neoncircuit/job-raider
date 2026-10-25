@@ -165,9 +165,6 @@ MUST_MATCH: Dict[str, List[str]] = {
     ],
 }
 
-# Must-match phrases that failed before FR2. Empty after the fix round.
-MUST_MATCH_XFAIL: Dict[Tuple[str, str], str] = {}
-
 # Ordinary posting wording. xfail_reason is set when the current code matches.
 # reason None means the current code already leaves the phrase alone.
 MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
@@ -449,12 +446,6 @@ def _match_params() -> List[Any]:
     for pattern, phrases in MUST_MATCH.items():
         source = _source_for(pattern)
         for index, phrase in enumerate(phrases):
-            xfail_reason = MUST_MATCH_XFAIL.get((pattern, phrase))
-            marks = (
-                [pytest.mark.xfail(strict=True, reason=xfail_reason)]
-                if xfail_reason
-                else []
-            )
             for layout, text in (
                 ("alone", phrase),
                 ("posting", _wrap_in_posting(phrase)),
@@ -464,7 +455,6 @@ def _match_params() -> List[Any]:
                         pattern,
                         source,
                         text,
-                        marks=marks,
                         id=f"{pattern}::match::{index}::{layout}",
                     )
                 )

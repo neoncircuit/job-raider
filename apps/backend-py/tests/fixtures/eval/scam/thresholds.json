@@ -1,0 +1,27 @@
+{
+  "suite": "scam",
+  "dataset_sha256": "c80627b55a338198802555f5df36eb55f10a591cd8e475460db58b5bb524f448",
+  "baseline": "FR2",
+  "mlflow_run": "b4794ddcd9a74eb5b7f2813bea9d4d78",
+  "threshold": 1.0,
+  "action": "flag",
+  "counts": {
+    "max_false_positives": 0,
+    "max_false_negatives": 22
+  },
+  "hard_negative_scores": {
+    "hard_negative__antifraud_notice": 0.1,
+    "hard_negative__bitcoin_exchange": 0.1,
+    "hard_negative__competitive_hearthline": 0.1,
+    "hard_negative__signal_processing": 0.1,
+    "hard_negative__summit_ridge_revenue": 0.4,
+    "hard_negative__whatsapp_business_api": 0.1
+  },
+  "changes": [
+    {
+      "date": "2026-10-25",
+      "reason": "First pins, from the FR2 committed-set run after the B1 fix round. Count pins are at t* = 1.00 and action flag. Hard-negative scores are pinned with no margin.",
+      "mlflow_run": "b4794ddcd9a74eb5b7f2813bea9d4d78"
+    }
+  ]
+}
