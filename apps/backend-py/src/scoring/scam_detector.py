@@ -16,8 +16,8 @@ from typing import Dict, List, Literal
 from ..models.job_listing import JobListing
 from ..utils.logger import Components, get_logger
 
-DEFAULT_SCAM_THRESHOLD = 0.7
-DEFAULT_SCAM_ACTION: Literal["drop", "flag"] = "drop"
+DEFAULT_SCAM_THRESHOLD = 1.0
+DEFAULT_SCAM_ACTION: Literal["drop", "flag"] = "flag"
 
 
 class ScamIndicator(str, Enum):

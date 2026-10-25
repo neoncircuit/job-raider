@@ -20,8 +20,8 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 - [x] AF2. Stage A fixes: tests that catch mutations M1 to M4, and the EMSCAD part in the MLflow run name and tags (decisions 2 and 3).
 - [x] AF3. Baseline A3b on the reworked committed set.
 - [x] Review of the Stage A fixes (Claude, 2026-10-25, in `notes.md`). Result: accept the set for Stage B, with four recorded limits.
-- [ ] B1. R3 fixes: word boundaries and phrase context for the `SUSPICIOUS_PATTERNS` and `ScamFilter.REJECT_PATTERNS` false positives, including `no.*interview` and `gift cards`, each measured, with unit tests per changed pattern written first (decision 7). One round over the fixed list of the B1 stop rule (decision 5), plus at most one fix round. (`handoff-stage-b.md`)
-- [ ] B2. Selection and settings, with no held-out run (`handoff-stage-b.md`):
+- [x] B1. R3 fixes: word boundaries and phrase context for the `SUSPICIOUS_PATTERNS` and `ScamFilter.REJECT_PATTERNS` false positives, including `no.*interview` and `gift cards`, each measured, with unit tests per changed pattern written first (decision 7). One round over the fixed list of the B1 stop rule (decision 5), plus at most one fix round. (`handoff-stage-b.md`)
+- [x] B2. Selection and settings, with no held-out run (`handoff-stage-b.md`):
     - a pipeline sweep, the S1 and S2 selection, and Wilson intervals;
     - the held-out guard;
     - the `scam_action` setting and one shared default for the threshold and the action (backend and Pipeline page);

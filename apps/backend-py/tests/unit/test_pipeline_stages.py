@@ -29,7 +29,6 @@ from src.generation.selector import SelectionOutput
 from src.generation.validator import ValidationResult
 from src.models.job_listing import JobListing, JobListingCollection, JobSource
 from src.pipeline.stages import PipelineContext, PipelineStages
-from src.scoring.scam_detector import DEFAULT_SCAM_ACTION, DEFAULT_SCAM_THRESHOLD
 from src.scrapers.base import SearchParams
 from src.scrapers.storage import JobListingStorage
 
@@ -595,6 +594,7 @@ class TestStageFilterScams:
         sample_user_profile,
         temp_data_dir: Path,
         action: str,
+        threshold: float = 0.7,
     ) -> PipelineStages:
         """
         Build stages with a chosen scam action.
@@ -603,6 +603,8 @@ class TestStageFilterScams:
             sample_user_profile: Shared profile fixture.
             temp_data_dir: Temporary data folder.
             action: ``drop`` or ``flag``.
+            threshold: Detector threshold. The shared default is 1.0, which
+                hides detector-only hits, so these action tests pin 0.7.
 
         Returns:
             A ``PipelineStages`` instance.
@@ -614,7 +616,7 @@ class TestStageFilterScams:
             config={
                 "dry_run": True,
                 "scam_action": action,
-                "scam_threshold": DEFAULT_SCAM_THRESHOLD,
+                "scam_threshold": threshold,
             },
         )
         return PipelineStages(context)
@@ -671,4 +673,3 @@ class TestStageFilterScams:
         clean = next(job for job in result.data if job.job_id == "c")
         assert flagged.metadata["scam_flag"]["quick_filter"] is True
         assert "scam_flag" not in clean.metadata
-        assert DEFAULT_SCAM_ACTION == "drop"

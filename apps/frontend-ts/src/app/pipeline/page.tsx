@@ -138,7 +138,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
       locations: "Singapore",
       minScore: 60,
       maxJobs: 50,
-      scamThreshold: 0.7, // DEFAULT_SCAM_THRESHOLD
+      scamThreshold: 1.0, // DEFAULT_SCAM_THRESHOLD
       mode: "discover",
       dryRun: true,
       skipSubmission: true,
@@ -324,7 +324,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
             {...register("scamThreshold", { valueAsNumber: true })}
           />
           <p className="text-xs text-muted-foreground">
-            Jobs at or above this score are removed.
+            Jobs at or above this score are flagged and kept.
           </p>
         </div>
         <div className="space-y-1">
