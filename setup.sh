@@ -16,6 +16,8 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/apps/backend-py"
 VENV_DIR="$BACKEND_DIR/.venv"
 REQUIREMENTS="$BACKEND_DIR/requirements.txt"
+# Node.js major version for the frontend; .nvmrc is the one source (CI reads it too)
+REQUIRED_NODE_MAJOR="$(tr -dc '0-9' < "$PROJECT_ROOT/.nvmrc")"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}    Job Raider - Setup Script${NC}"
@@ -154,11 +156,11 @@ check_gpu() {
     fi
 }
 
-# Check Node.js version (v20+ required for Next.js frontend)
+# Check Node.js version (the major in .nvmrc or later, for the Next.js frontend)
 check_node() {
     print_status "Checking Node.js..."
     if ! command -v node &> /dev/null; then
-        print_warning "Node.js not found. The Next.js frontend requires Node.js 20+."
+        print_warning "Node.js not found. The Next.js frontend requires Node.js ${REQUIRED_NODE_MAJOR}+."
         print_warning "Install via: https://nodejs.org/ or nvm (https://github.com/nvm-sh/nvm)"
         print_warning "Frontend setup will be skipped."
         record_check "FAIL" "Node.js"
@@ -166,9 +168,9 @@ check_node() {
     fi
 
     NODE_VERSION=$(node --version | cut -c2- | cut -d'.' -f1)
-    if [ "$NODE_VERSION" -lt 20 ] 2>/dev/null; then
-        print_warning "Node.js $(node --version) found but v20+ is required for Next.js."
-        print_warning "Upgrade via: nvm install 20"
+    if [ "$NODE_VERSION" -lt "$REQUIRED_NODE_MAJOR" ] 2>/dev/null; then
+        print_warning "Node.js $(node --version) found but v${REQUIRED_NODE_MAJOR}+ is required for Next.js."
+        print_warning "Upgrade via: nvm install ${REQUIRED_NODE_MAJOR}"
         print_warning "Frontend setup will be skipped."
         record_check "FAIL" "Node.js (version too old)"
         return
@@ -470,7 +472,7 @@ setup_frontend() {
         return
     fi
     NODE_VERSION=$(node --version | cut -c2- | cut -d'.' -f1)
-    if [ "$NODE_VERSION" -lt 20 ] 2>/dev/null; then
+    if [ "$NODE_VERSION" -lt "$REQUIRED_NODE_MAJOR" ] 2>/dev/null; then
         return
     fi
 

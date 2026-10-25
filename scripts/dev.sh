@@ -58,7 +58,7 @@ ensure_frontend() {
     fi
 
     if ! command -v node &> /dev/null; then
-        echo "Error: node not found. Install Node 20+ first."
+        echo "Error: node not found. Install the Node version in .nvmrc (24) first."
         exit 1
     fi
 

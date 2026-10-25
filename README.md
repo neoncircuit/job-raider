@@ -61,6 +61,7 @@ Job Raider is a Python-centric backend with a Next.js dashboard. The stack is ch
 ### Prerequisites
 
 - Python 3.11+
+- Node.js 24 (for the Next.js frontend; `.nvmrc` sets the version)
 - 8GB VRAM (for local models)
 - Ollama installed
 

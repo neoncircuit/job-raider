@@ -416,7 +416,7 @@ A comprehensive guide was added to address the critical Docker storage issue on 
 ### Minimum
 
 - Python 3.11+
-- Node.js 20+ (for Next.js frontend)
+- Node.js 24+ (for Next.js frontend; `.nvmrc` sets the version)
 - 16GB RAM
 - 8GB VRAM (for local models)
 - Ollama installed
