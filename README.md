@@ -1,6 +1,6 @@
 # Job Raider
 
-Local-first job search pipeline. It collects listings from several job boards, filters likely scams, scores each job against your resume, and writes tailored resumes and cover letters with local LLMs. You review and apply yourself; the pipeline does not submit applications.
+Local-first job search pipeline. It collects listings from several job boards, flags likely scams, scores each job against your resume, and writes tailored resumes and cover letters with local LLMs. You review and apply yourself; the pipeline does not submit applications.
 
 ## Features
 
@@ -174,7 +174,9 @@ run. Wilson 95% intervals:
 | Recall | 0.0000 | 0 of 433 | 0.0000 to 0.0088 |
 | False-positive rate | 0.0027 | 23 of 8507 | 0.0018 to 0.0041 |
 
-Confusion: TP 0, FP 23, FN 433, TN 8484.
+Confusion: TP 0, FP 23, FN 433, TN 8484. All 23 flags come from the
+quick filter. The highest detector score on the held-out part is 0.65,
+below the threshold.
 
 What the numbers mean: at this operating point the rule detector does
 not detect EMSCAD frauds. The pipeline does not remove a posting. The
@@ -195,7 +197,7 @@ Limits:
   before the first day of work, a passive sentence that says interviews
   are not needed).
 
-The tuning metrics are in
+A notebook shows the tuning-part metrics. How to run it is in
 [apps/backend-py/notebooks/README.md](apps/backend-py/notebooks/README.md).
 
 ```mermaid

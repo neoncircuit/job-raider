@@ -493,6 +493,51 @@ All four items of the check (recommendation 3 of the fix-round review) pass. B5 
 - B5a runs at the commit that records this check, or at a later commit that changes only docs or task files. A change in `src/` or `main.py` needs a new check.
 - The IDE rewrote files with CRLF before. Right before B5a, `git status --porcelain --untracked-files=no` must print nothing. If it prints a file, stop and tell the user. Do not run B5a on a dirty tree.
 
+## Final review: B5 and Step 3.3 (2026-10-26, Claude)
+
+Commits: B5b `63b02f2`, results `813973f`. B5a wrote only local files. Cursor's results are at the end of `handoff-stage-b-part-2.md`.
+
+**Verdict.** Accept B5. Step 3.3 is done: the README states precision and recall on the held-out EMSCAD part, and the committed set guards the false-positive cases in CI.
+
+### What I checked and found correct
+
+- **One held-out run.** `data/eval/emscad/` has the four tuning reports, one held-out report (`20261025T181616347561Z.json`), and the marker. The MLflow store has exactly one run with `part` = `heldout` (`895353fa8d7c41d29f7d1fc98e344526`, finished). The marker records the same git SHA, dataset SHA-256, threshold, action, and report path.
+- **The run conditions.** Git SHA `b3e23d4` (the commit after the check before B5), `git_dirty` false, threshold 1.0, action `flag`. No file in `apps/` changed after `b3e23d4`. The held-out report does not select (no `selection` key).
+- **The split.** The held-out and tuning parts share no case ID. Together they have all 17,880 rows. Each has 433 frauds. Both reports have the same dataset SHA-256 and seed (20261024).
+- **The numbers.** I recomputed the confusion counts from the 8,940 per-case rows (TP 0, FP 23, FN 433, TN 8,484), and the Wilson 95% intervals with my own formula. Both agree with the report and with the MLflow metrics to 4 decimal places.
+- **Where the flags come from.** All 23 flags are quick-filter hits on legitimate postings. The highest detector score on the held-out part is 0.65, so the detector flags nothing at 1.00.
+- **README.** The section states what is measured, the operating point and its rules, the table with counts and intervals, what the numbers mean, the EMSCAD limits, the role of the committed set, the B1 limits, and a diagram. It does not link to `tasks/`.
+
+### Changes in this review (Claude)
+
+- `README.md`, the first paragraph: "filters likely scams" became "flags likely scams" (the pipeline keeps flagged postings since B2c).
+- The Scam Detection section: one sentence on where the 23 flags come from, and the link to the notebooks README now says that it describes how to run the notebook (it does not list the metrics).
+
+### Result
+
+| Held-out EMSCAD (8,940 postings) | Value | Counts | Wilson 95% |
+|----------------------------------|-------|--------|------------|
+| Precision | 0.0000 | 0 of 23 | 0.0000 to 0.1431 |
+| Recall | 0.0000 | 0 of 433 | 0.0000 to 0.0088 |
+| False-positive rate | 0.0027 | 23 of 8,507 | 0.0018 to 0.0041 |
+
+The measured claim is the method and the decision: the rule detector does not detect EMSCAD frauds, so the pipeline flags and keeps postings instead of removing them. Before Step 3.3, at the old default (0.7, `drop`), the filter removed about 45 real postings for each fraud that it caught (134 to 3 on the EMSCAD tuning part, baseline A3).
+
+```mermaid
+flowchart LR
+    A[Stage A: labeled set and baselines] --> B1[B1: R3 pattern fixes and one fix round]
+    B1 --> B2[B2: selection rules, t* 1.00, action flag]
+    B2 --> B3[B3: CI gate on the committed set]
+    B3 --> B4[B4: notebook through the CLI]
+    B4 --> B5[B5: one held-out run and the README]
+```
+
+### Follow-ups (already recorded)
+
+- Show the scam flag to the user (decision 9, `tasks/backlog.md`).
+- A learned classifier on EMSCAD (option c, `tasks/backlog.md`). The held-out part of this split is used, so it needs a new split decision.
+- The known limits of B1, as input for a later rule change ("Scam detector refinement" in `tasks/backlog.md`).
+
 ## Observations for Stage B (2026-10-25, Claude)
 
 - **The 0.7 default is in eight places: seven in the backend and one in the frontend.**

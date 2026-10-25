@@ -474,7 +474,7 @@ Not the next mandatory sprint. Keep as a living backlog because scam tactics cha
 
 #### Learned classifier on EMSCAD (parked 2026-10-25, Step 3.3 option c)
 
-The EMSCAD tuning baseline of 2026-10-25 (`tasks/active/step-3-3-scam-set/notes.md`) shows that the rule detector does not detect EMSCAD frauds: recall 0.007 at 0.7, and no threshold beats flagging every row. Step 3.3 fixes only the false positives (option a). If a detection number is wanted later, open a separate step:
+The EMSCAD tuning baseline of 2026-10-25 (`tasks/archive/step-3-3-scam-set/notes.md`) shows that the rule detector does not detect EMSCAD frauds: recall 0.007 at 0.7, and no threshold beats flagging every row. Step 3.3 fixes only the false positives (option a). If a detection number is wanted later, open a separate step:
 
 - Train a simple classifier (for example TF-IDF and logistic regression) on the EMSCAD tuning part only, and judge it one time on a held-out part. The Step 3.3 held-out part is used up after Stage B, so this needs a new split decision.
 - State the limit: EMSCAD postings are from 2012 to 2014, mostly from the US, and their emails and links are masked, so the result does not transfer directly to current postings in Singapore.

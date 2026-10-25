@@ -34,7 +34,8 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 - [x] Review of Stage B part 2, part A (Claude, 2026-10-26, in `notes.md`). Result: accept B3 and B4; no fix round.
 - [x] Check before B5 (Claude, 2026-10-26, in `notes.md`; all four items pass): the reviewed commit, the defaults, no held-out marker, and the user's decision on the CRLF rewrites. Then the user starts B5.
 - [x] B5. The held-out part run one time, reported by rule S3, and the README numbers with the limits of EMSCAD and of B1. (`handoff-stage-b-part-2.md`)
-- [ ] Done when: the README states precision and recall on the held-out EMSCAD part, and the committed set guards the false-positive cases.
+- [x] Final review (Claude, 2026-10-26, in `notes.md`). Result: accept B5; the held-out numbers are confirmed from the per-case rows and in MLflow.
+- [x] Done when: the README states precision and recall on the held-out EMSCAD part, and the committed set guards the false-positive cases.
 
 ## Status
-`in-progress` (B5 done on 2026-10-26: one held-out run and the README numbers; waiting for the final review before archive)
+`done` (2026-10-26; archived)
