@@ -40,7 +40,7 @@ def wilson_interval(
         z: Normal quantile. The default 1.96 is a 95 percent interval.
 
     Returns:
-        ``(low, high)``, or None when ``trials`` is 0.
+        ``(low, high)`` clamped to ``[0, 1]``, or None when ``trials`` is 0.
     """
     if trials == 0:
         return None
@@ -51,7 +51,9 @@ def wilson_interval(
     spread = (z / denominator) * math.sqrt(
         proportion * (1.0 - proportion) / trials + z_squared / (4.0 * trials * trials)
     )
-    return (centre - spread, centre + spread)
+    low = max(0.0, centre - spread)
+    high = min(1.0, centre + spread)
+    return (low, high)
 
 
 def _ratio(numerator: int, denominator: int) -> Optional[float]:

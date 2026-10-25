@@ -568,3 +568,9 @@ B1a and B1b used the same backend gates (B1b: 1445 then the later full counts ab
 - Frontend E2E (CI)
 - Push
 - Part 2: B3 CI gate, B4 notebook, B5 held-out and README numbers
+
+### Follow-up while waiting for review (2026-10-25)
+
+- Wilson intervals are now clamped to `[0, 1]`. The B2c tuning report printed `recall.ci95_low: -0.0` from float error on 0 of 433. The 5-of-10 test still holds. A new test covers 0 of 433.
+- The Pipeline page was checked in the browser: default `1`, step `0.05`, help text "Jobs at or above this score are flagged and kept." The field accepts `0.95`.
+- Part 2 was not started. Held-out was not run. The real marker was not created.

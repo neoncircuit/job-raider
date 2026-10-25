@@ -242,6 +242,13 @@ class TestWilsonInterval:
         """Zero trials return None."""
         assert wilson_interval(0, 0) is None
 
+    def test_zero_of_many_stays_in_unit_interval(self) -> None:
+        """A zero rate does not go below 0."""
+        low, high = wilson_interval(0, 433)
+
+        assert low >= 0.0
+        assert high <= 1.0
+
 
 class TestPipelineSweep:
     """Pipeline decision sweep includes the quick filter."""
