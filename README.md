@@ -156,7 +156,57 @@ Rule-based scoring with 10 indicators in 5 groups:
 | Compensation | Unrealistic salary |
 | Listing quality | Suspicious company name, vague description, poor grammar, suspicious job title |
 
-These are heuristics. Their precision and recall are not measured yet.
+The number that is measured is the pipeline decision: the quick filter,
+or a detector score at or above the threshold.
+
+The operating point is threshold 1.00 and action `flag`. The rules that
+chose it on the EMSCAD tuning part are: a false-positive rate of at most
+0.005, and `drop` only when precision is at least 0.50 and at least 10
+frauds are flagged. Flagged postings are kept. The pipeline records the
+score and the reasons.
+
+Held-out EMSCAD part (8940 postings: 433 frauds, 8507 legitimate). One
+run. Wilson 95% intervals:
+
+| Metric | Value | Counts | Wilson 95% |
+|--------|-------|--------|------------|
+| Precision | 0.0000 | 0 of 23 | 0.0000 to 0.1431 |
+| Recall | 0.0000 | 0 of 433 | 0.0000 to 0.0088 |
+| False-positive rate | 0.0027 | 23 of 8507 | 0.0018 to 0.0041 |
+
+Confusion: TP 0, FP 23, FN 433, TN 8484.
+
+What the numbers mean: at this operating point the rule detector does
+not detect EMSCAD frauds. The pipeline does not remove a posting. The
+user judges each posting.
+
+Limits:
+
+- EMSCAD postings are from 2012 to 2014 and are mostly from the US.
+  Emails, links, and phone numbers are masked. There are no company
+  names and no line breaks.
+- The committed set (46 written and fixture postings) guards the six
+  hard negatives in CI. It does not measure recall.
+- Known limits of the rule patterns: a closed list of contact verbs; an
+  app name with an ID label and a handle without "@"; negation guards
+  only on some payment patterns, and two of those guards also look after
+  the sign; phrase anchors that miss a long sentence; and scam wording
+  that is outside the listed shapes (a deposit before training, a fee
+  before the first day of work, a passive sentence that says interviews
+  are not needed).
+
+The tuning metrics are in
+[apps/backend-py/notebooks/README.md](apps/backend-py/notebooks/README.md).
+
+```mermaid
+flowchart LR
+    P[Posting] --> Q{Quick filter}
+    Q -->|hit| F[Flag]
+    Q -->|miss| D[Detector score]
+    D -->|at or above 1.00| F
+    D -->|below 1.00| K[Posting kept]
+    F --> R[Posting kept with the flag]
+```
 
 ## Project Structure
 
