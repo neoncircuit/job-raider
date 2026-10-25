@@ -265,3 +265,100 @@ No frontend file changes in part 2, so the frontend checks are not needed. If yo
 - Never run `scripts/mypy_gate.py --update` to accept a new error.
 - Keep dry run as the default. Do not make auto-submit reachable.
 - Do not push. Push only from WSL, and only after the user approves.
+
+## Cursor results, part A (2026-10-26)
+
+```mermaid
+flowchart LR
+    B3[B3 569e4e5 CI gate] --> B4a[B4a 3a37e46 notebook CLI]
+    B4a --> B4b[B4b 5086f9e docs]
+    B4b --> S[Stop for the check before B5]
+```
+
+Part B has not started. The held-out part was not run. `heldout_used.json` was not created. This branch was not pushed.
+
+### Commits
+
+| Step | Hash | Subject |
+|------|------|---------|
+| B3 | `569e4e5` | `test(scam): CI gate with count pins and hard-negative score pins` |
+| B4a | `3a37e46` | `feat(notebook): run the scam evaluation through the eval CLI` |
+| B4b | `5086f9e` | `docs: state the scam default threshold and the flag action` |
+| This section | (this commit) | Results only |
+
+### B3
+
+`apps/backend-py/tests/fixtures/eval/scam/thresholds.json`:
+
+- `suite` `scam`; `dataset_sha256` `c80627b55a338198802555f5df36eb55f10a591cd8e475460db58b5bb524f448`; `baseline` `FR2`; `mlflow_run` `b4794ddcd9a74eb5b7f2813bea9d4d78`.
+- `threshold` 1.0; `action` `flag`.
+- `counts`: `max_false_positives` 0, `max_false_negatives` 22.
+- Hard-negative pins, no margin: `antifraud_notice` 0.10, `bitcoin_exchange` 0.10, `competitive_hearthline` 0.10, `signal_processing` 0.10, `summit_ridge_revenue` 0.40, `whatsapp_business_api` 0.10.
+- One `changes` entry (2026-10-25, FR2 pins, that MLflow run).
+
+After the new file, `dataset_sha256(cases.jsonl)` is still `c80627b55a338198802555f5df36eb55f10a591cd8e475460db58b5bb524f448`.
+
+`test_scam_thresholds.py`: `threshold_check` then the real-suite gate, the `changes` test, and the synthetic tests (count above names the cases; count below is tightenable; score above names the case and reasons; missing pin fails; changed dataset is the only violation; changed default fails). The eight tests were added with the function. The first run passed (8 passed). The failing proofs are the four mutations below.
+
+Removed the empty `MUST_MATCH_XFAIL` dict and the code that read it. No phrase changed.
+
+Mutation proofs (fixed-string replace, checksum changed, new-string count 1, test failed, file restored to the backup checksum):
+
+| Mutation | Test | Failure |
+|----------|------|---------|
+| 1. Bare `\b(?:on\|via\|through)\s+signal\b\|` after the opening `(?:` of the `signal` pattern | `test_scam_suite_meets_the_pinned_counts` | `hard_negative__signal_processing: score 0.5000 (pin 0.1000); reasons: Requires messaging app: ...` |
+| 2. Plain `"bitcoin"` added to `REJECT_PATTERNS` | `test_scam_suite_meets_the_pinned_counts` | `false_positives: 1 (pin 0); cases: hard_negative__bitcoin_exchange`; also predicted scam and quick filter hit |
+| 3. Dataset SHA-256 check changed to `if False and ...` | `test_a_changed_dataset_fails_before_any_count` | `assert (2 == 1)` (count and score violations, not `dataset changed`) |
+| 4. `DEFAULT_SCAM_THRESHOLD = 0.95` | `test_scam_suite_meets_the_pinned_counts` | `defaults changed; run a new baseline and pin new counts` |
+
+### B4a
+
+Notebook cells:
+
+1. Description: the logic is in `emscad.py`; the notebook calls the CLI; the CSV is local; the held-out part is not in the notebook.
+2. Setup: `BACKEND_DIR` and a stop if `data/kaggle/fake_job_postings.csv` is missing.
+3. CLI: `sys.executable main.py eval emscad --part tuning --out data/eval/notebook`.
+4. Load the newest report from `data/eval/notebook/emscad/`.
+5. Metrics with Wilson intervals, and `details["selection"]`.
+6. Plot of the pipeline sweep, with `t*` marked.
+7. Confusion counts at `t*`.
+8. Detector reason counts by class (counts only).
+9. Summary: what the numbers mean, the EMSCAD limits, and that the held-out part runs one time through the CLI.
+
+`test_scam_notebook.py` passed (3 tests). The committed notebook has `execution_count` null and no outputs.
+
+One nbconvert run, output in `/tmp/scam-notebook-run` (python3 kernel present). Report `data/eval/notebook/emscad/20261025T164604564297Z.json`. MLflow `35002c449fc24bc5b304fc91b553cbf4`. Git SHA `569e4e5` (dirty: the 14 CRLF rewrites). Same selection and metrics as FR2:
+
+- selection: `t*` 1.00, action `flag`, same reason as B2c/FR3.
+- precision 0.0 (CI 0.0000 to 0.1206); recall 0.0 (CI 0.0000 to 0.0088); FPR 0.0033 (CI 0.0023 to 0.0048).
+- confusion: TP 0, FP 28, FN 433, TN 8479.
+
+### B4b
+
+| File | Change |
+|------|--------|
+| `README.md` Pipeline Stages row 3 | "Flag likely scams; flagged postings are kept" |
+| `docs/api.md` | `scam_threshold` default `1.0`; new `scam_action` (`flag` or `drop`, default `flag`); example `JobScamDetector(threshold=1.0)` |
+| `docs/usage.md` | `--scam-threshold` default 1.0; Stage 3 says `flag` keeps postings |
+| `docs/index.md` | "Flags potential scams ... flagged postings are kept" |
+| `README.md`, `DOCKER.md`, `apps/backend-py/.env.example` Kaggle comments | The notebook does not download the dataset; the keys stay optional for a manual Kaggle CLI download |
+
+The README "Scam Detection" section was not changed.
+
+### Checks that ran
+
+Backend, from `apps/backend-py`, before B3, B4a, and B4b:
+
+- `black --check main.py scripts/mypy_gate.py src/ tests/` passed
+- `ruff check main.py scripts/mypy_gate.py src/ tests/` passed
+- `scripts/mypy_gate.py` passed (182 known errors, 0 new)
+- `pytest tests/ -q` passed: 1592 after B3, 1595 after B4a and B4b
+
+B4a also ran the one nbconvert command above.
+
+### Checks that did not run
+
+- `eval emscad --part heldout` (do not run)
+- Frontend lint, type-check, Prettier, and Vitest (no frontend file change)
+- Push
+- B5a and B5b

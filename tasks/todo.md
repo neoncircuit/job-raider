@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Step 3.3: Scam set, then the R3 fixes (`tasks/active/step-3-3-scam-set/`; B1 is closed; part 2 is with Cursor: `handoff-stage-b-part-2.md`, B3 and B4, then a stop for Claude's check before the held-out run in B5.)
+- [ ] Step 3.3: Scam set, then the R3 fixes (`tasks/active/step-3-3-scam-set/`; Cursor finished B3 and B4; waiting for Claude's check before B5.)
 - [ ] Step 3.2 remainder: about 15 real generated letters, labeled by the user and run locally (`tasks/active/step-3-measurable-claims/`)
 - [ ] Step 1 manual check: a full-mode dry run from the Pipeline page with Ollama running; needs the user (`tasks/active/step-1-core-flow/`)
 
