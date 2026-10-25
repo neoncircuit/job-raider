@@ -468,6 +468,8 @@ Not the next mandatory sprint. Keep as a living backlog because scam tactics cha
 
 **Existing hooks:** `apps/backend-py/src/scoring/scam_detector.py`; cover-letter `_scan_scam_flags` in `apps/backend-py/src/api/routes/cover_letter.py`; pipeline `filter_scams`; `notebooks/scam_detector_evaluation.ipynb`.
 
+**Input from Step 3.3 (2026-10-25):** the "Known limits of B1" and the findings in "Review of the B1 fix round" (Step 3.3 `notes.md`) list what the R3 patterns still miss or flag: the closed contact-verb list, the negation guards, the phrase anchors, and the shapes outside the B1 list. Start a later rule change from that list, with phrase tests first and a probe set that the fixer has not seen.
+
 **Do not start** until scam-detection work is explicitly opened. Prefer additive indicators and clearer seeker-facing copy over lowering the bar with noisy false positives.
 
 #### Learned classifier on EMSCAD (parked 2026-10-25, Step 3.3 option c)

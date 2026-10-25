@@ -177,6 +177,8 @@ The user accepted the four recommendations of the review (decisions 1 to 4), and
 10. **Part 2 notes (same time).**
     - **B4:** the notebook calls the CLI (`python main.py eval emscad --part tuning`), because the held-out guard is in the CLI only. The notebook never runs the held-out part.
     - **B3:** at `t*` = 1.00, the count pins only pin "0 flagged". The hard-negative score pins (decision 7) are the guard that matters. They use the scores after the fix round.
+11. **Close B1 with FR2 (accepted after the fix-round review).** FR2 is the last B1 round. The "Known limits of B1" in "Review of the B1 fix round" are recorded, and the README states them in B5. The "Scam detector refinement" entry in `tasks/backlog.md` points to them. Part 2 follows in `handoff-stage-b-part-2.md`: B3 and B4, a stop for Claude's check, then B5.
+    - **No pattern change in part 2.** Recommendation 3 of the fix-round review allowed B3 to remove the dead group (finding 5). That removal is not exactly neutral: with the group, a joined word such as "ontelegram" matches; without it, it does not. B1 is closed, so the group stays and is recorded as a code-quality limit. Only the empty `MUST_MATCH_XFAIL` dict in the test file is removed.
 
 ## Stage B selection rule and B1 stop rule (decision 5, 2026-10-25)
 
