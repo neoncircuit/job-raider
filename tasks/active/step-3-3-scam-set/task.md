@@ -31,9 +31,10 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 - [x] Review of the B1 fix round (Claude, 2026-10-25, in `notes.md`). Result: accept FR2 and close B1 with its known limits; P2 17 of 25 correct (B1b 10, old code 10); the selection stays 1.00 and `flag`.
 - [x] B3. CI gate on the committed set: count pins at `t*`, and detector-score pins for the hard negatives (decision 7). (`handoff-stage-b-part-2.md`)
 - [x] B4. The notebook calls `python main.py eval emscad` for the tuning part only, so the logic exists only once; the docs state the default threshold and the `flag` action. (`handoff-stage-b-part-2.md`)
+- [x] Review of Stage B part 2, part A (Claude, 2026-10-26, in `notes.md`). Result: accept B3 and B4; no fix round.
 - [ ] Check before B5 (Claude, in `notes.md`): the reviewed commit, the defaults, no held-out marker, and the user's decision on the CRLF rewrites. Then the user starts B5.
 - [ ] B5. The held-out part run one time, reported by rule S3, and the README numbers with the limits of EMSCAD and of B1. (`handoff-stage-b-part-2.md`)
 - [ ] Done when: the README states precision and recall on the held-out EMSCAD part, and the committed set guards the false-positive cases.
 
 ## Status
-`in-progress` (Cursor finished Stage B part 2 A, B3 and B4, on 2026-10-26; waiting for Claude's check before B5; the held-out run is not started)
+`in-progress` (Stage B part 2 A, B3 and B4, done and reviewed on 2026-10-26; the check before B5 waits for the user's decision on the CRLF rewrites and the push of `main`; the held-out run is not started)

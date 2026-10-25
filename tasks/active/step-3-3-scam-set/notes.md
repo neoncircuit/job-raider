@@ -444,6 +444,40 @@ The P2 errors that stay, by class (the P2 phrases stay private):
     - B4 calls the CLI for the tuning part only (decision 10).
     - Cursor stops after B4. Before B5, Claude checks four things: HEAD is the reviewed commit with no change in `src/` or `main.py`; the defaults match the selection; the held-out marker does not exist; and the user's decision on the 14 CRLF rewrites is applied (finding 6). Then the user starts B5.
 
+## Review of Stage B part 2, part A (2026-10-26, Claude)
+
+Commits: B3 `569e4e5`, B4a `3a37e46`, B4b `5086f9e`, results `9aebf57`. Cursor's results are at the end of `handoff-stage-b-part-2.md`.
+
+**Verdict.** Accept part A (B3 and B4). No fix round is needed. B5 can start after the check before B5, which waits for the user's decision on the CRLF rewrites and the push of `main`.
+
+### What I checked and found correct
+
+- **Commits.** Four commits, each with only the files of its step, all LF. No change in `apps/backend-py/src/` or `main.py` since FR2 (`077c490`). The defaults are 1.0 and `flag`. `data/eval/emscad/` has the same four tuning reports, and `heldout_used.json` does not exist.
+- **B3 pins.** `thresholds.json` has the full dataset SHA-256, the full FR2 MLflow run ID, the defaults (1.0 and `flag`), the counts (0 false positives, 22 false negatives), and the six hard-negative scores. These match my reproduction of the FR2 run. The new file does not change the dataset SHA-256 (the suite hashes only `cases.jsonl`).
+- **B3 gate order.** The SHA-256 first, then the defaults, then the counts, then the hard negatives (a pin for each case, `legit`, no quick-filter hit, and the score compared at 4 decimal places with no margin). It is the same form as the grounding gate.
+- **Mutations (mine), in addition to Cursor's four.** Each file was restored and its checksum matched. Each mutation failed the gate:
+
+    | Mutation | Result |
+    |----------|--------|
+    | The `summit_ridge_revenue` pin is lowered to 0.3 (below its score) | The real-set gate names the case, its score 0.4000, and its reasons |
+    | The suite runs the detector at 0.4, while the constants stay 1.0 | The real-set gate reports 1 false positive (`summit_ridge_revenue`), predicted `scam` |
+    | `DEFAULT_SCAM_ACTION` is `drop` | The real-set gate reports "defaults changed" |
+
+    The second mutation shows that the gate measures the suite's behaviour, not only the constants.
+- **B4a notebook.** It has no outputs and no execution counts. It does not read `.env`, does not download, does not run the detector, and has no `heldout` in a code cell. It runs the CLI for the tuning part with `sys.executable`, and shows only numbers from the report. The detector reasons that it counts carry pattern names or amounts, not posting text (53 distinct strings on the tuning part). The summary cell states the rules, the EMSCAD limits, and that the held-out part never runs from the notebook. Cursor's one notebook run gives the same selection and metrics as FR2.
+- **B4b docs.** The changes match the code. `scam_action` is an API field (`PipelineStartRequest`) and has no CLI flag, and the docs do not claim one. The default threshold is 1.0 everywhere.
+- **Full backend gate on `9aebf57`.** black, ruff, the mypy gate (182 known, 0 new), and 1595 tests passed.
+
+### Findings (minor; no fix round)
+
+1. **The synthetic gate tests use the real defaults.** `_PINS` sets `threshold` 1.0 and `action` `flag`, and `threshold_check` compares them with the module defaults. After a legitimate new selection, the five synthetic tests also fail, not only the real-set gate. A later change can build `_PINS` from the module defaults.
+2. **Two checks have no test of their own.** The quick-filter and `predicted` checks on hard negatives have no synthetic test. At `t*` = 1.00 they are covered by the false-positive pin of 0 (a quick-filter hit or a `scam` prediction is a false positive).
+3. **The false-negative pin is vacuous.** It is 22 of 22 at `t*` = 1.00 (decision 10). The hard-negative score pins and the phrase tests carry the gate.
+
+### Merge of the Node 24 change
+
+PR #1 (`chore/ci-node-24`, `tasks/active/ci-node-24/`) passed CI on GitHub (12 checks passed; the Docker job is skipped on a pull request). `git merge-tree` shows no conflict with `main` at `9aebf57`. Both sides change `README.md` and `docs/index.md`, in different sections. The merge changes no file in `apps/backend-py/`, and part A changes no file in `apps/frontend-ts/`. So the backend result above and the frontend results of PR #1 hold for the merge.
+
 ## Observations for Stage B (2026-10-25, Claude)
 
 - **The 0.7 default is in eight places: seven in the backend and one in the frontend.**
