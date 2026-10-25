@@ -17,7 +17,7 @@ Move CI, the frontend Docker image, and the local setup from Node 20 (end of lif
 - [x] `setup.sh` reads the required major from `.nvmrc`; `scripts/dev.sh`, `README.md`, `docs/index.md`, and `docs/architecture.md` say Node 24.
 - [x] The frontend gate passes on Node 24 locally: `npm ci`, lint, type check, Prettier, vitest with coverage, and `next build`. (2026-10-26; the lock file had to be rewritten by npm 11, see `notes.md`.)
 - [x] The frontend Docker image builds and starts on `node:24-alpine`. (2026-10-26; `--frozen-lockfile` removed.)
-- [ ] The CI workflow passes on GitHub with the new actions (needs a PR or a push to `main`; the user decides). The Docker job runs only on a `v*` tag or a manual run, so its three action bumps are checked at the next release.
+- [x] The CI workflow passes on GitHub with the new actions: PR #1 (2026-10-26), 12 checks passed. The Docker job runs only on a `v*` tag or a manual run, so its three action bumps are checked at the next release.
 
 ## Status
-`review` (local checks pass on 2026-10-26; the GitHub CI run waits for the user's decision on the PR)
+`review` (merged into `main` locally on 2026-10-26 as `75ac7d0`; move this folder to `tasks/archive/` after the push of `main` passes CI)
