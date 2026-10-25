@@ -3450,3 +3450,64 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - Before the baseline, look for features that separate the classes without the label's content: length, line structure, names, and a repeated move such as a disclaimer. Each one should overlap between the classes.
 - Check that each limit in a handoff allows the real forms of the class (short listings, long scams).
 - Read every written case, not a sample of 10. A writer's own read of its cases is not a review.
+
+### When a fix narrows a pattern, compare the old and the new code on wording the fixer has not seen
+
+**Lesson:** B1b (Step 3.3) narrowed 18 scam patterns to remove false positives. Its 108 must-match phrase tests passed, and the EMSCAD false positives at 0.70 fell from 134 to 28. But a probe set of 26 new phrases showed that the new code caught 5 of 16 real scam phrasings, against 14 for the old code. The misses were plurals ("No interviews"), "-ing" forms ("Starting today", "to start working"), an app name with a number ("WhatsApp 9123 4567"), and bullet lists. The fixer wrote the must-match phrases first, but in the exact forms that the new patterns then accepted, so the tests could not show the loss.
+
+**Why:**
+- A precision fix is measured on false positives. Its recall cost shows only on real positives that the tests do not contain.
+- The fixer writes the must-match phrases and the pattern in the same round, so the phrases follow the pattern's shape.
+
+**How to apply:**
+- Score the old code and the new code on the same unseen probe set. Each phrase that the old code caught and the new code misses is a regression to explain.
+- In the probes, use word forms (plural, "-ing", past), layouts (lists, line breaks, a colon before a number), and brand or count words between the key words.
+- Keep one probe set private for the fix round. In Step 3.3, P1 became test data after the first review, and the private set P2 measured the fix round (17 of 25 correct, against 10 for B1b).
+
+### A closed word list moves a false positive to a new form
+
+**Lesson:** The B1 fix round (FR2) replaced the bare "on <app>" contact rule with a closed list of 12 contact words within 40 characters before the app name. It fixed "on signal processing" and "work on Telegram bots". But the list had job words ("hiring", "apply", "send", "add"), so "We are hiring a signal processing engineer" now fired. The list also missed real contact verbs ("reply", "DM", "chat with", "join"), and the committed scam case with "Reply ... on Telegram" was lost.
+
+**Why:**
+- A word list is a guess about the next posting. Each word in it has ordinary uses, and each word that it leaves out is a miss.
+
+**How to apply:**
+- Before you add a word list to a pattern, write probes for the ordinary uses of each word (in job postings: "hiring", "apply", "send", "contact") and for contact forms that are not in the list.
+- Prefer a structural sign, such as a phone number or a handle after the app name, to a list of verbs.
+- When a list is the only option, stop after the agreed rounds and record what it misses (see "Set a stop rule for rule rounds on a long-tail check").
+
+### Scope each allowance in a handoff to the pattern it is for
+
+**Lesson:** The fix-round handoff listed the allowed word forms in one general rule: "hiring" for "hire", "working" for "work", and "purchase" for "buy". "purchase" was meant for the gift-card pattern. The fixer also added it to `buy … equipment`, and "Manage the purchase of lab equipment" became a false positive.
+
+**Why:**
+- A general list in a handoff is a rule for every pattern, so the fixer applies it everywhere it fits.
+
+**How to apply:**
+- Next to each allowance, name the pattern or the class that it is for ("purchase, for the gift-card pattern only").
+- In review, grep each allowed word in the changed patterns, and check that it is only where it was meant to be.
+
+### At a high threshold, pin scores in the CI gate, not only decisions
+
+**Lesson:** The Step 3.3 selection set the threshold to 1.00. At 1.00 the detector flags no committed case, so count pins alone pin "0 flagged" and miss a pattern regression. The B3 gate also pins the detector score of each hard negative, with no margin. A mutation that restored the bare "on signal" rule raised `hard_negative__signal_processing` from 0.10 to 0.50, and the gate failed while every decision stayed the same.
+
+**Why:**
+- A decision at a high threshold hides every score change below that threshold.
+
+**How to apply:**
+- Pin the scores of the cases that the gate guards (the hard negatives), with no margin. Warn when a score goes below its pin, so that the pin can be tightened.
+- Prove that the gate checks behaviour, not only constants: run the suite at a different threshold while the constants stay the same. The gate must fail.
+
+## Node and npm upgrades (2026-10-26)
+
+### Rebuild the lock file with the new npm when you move to a new Node major
+
+**Lesson:** The move from Node 20 to Node 24 (npm 10 to npm 11) failed in `npm ci` with "Missing: @tailwindcss/oxide-... from lock file". The committed lock left out 109 optional platform packages; for `@tailwindcss/oxide` it had only the Linux x64 builds. npm 10 accepted this, and npm 11 does not. `npm install` with npm 11 added the 109 entries and removed none.
+
+**Why:**
+- npm 10 can write a lock that leaves out optional packages for other platforms. `npm ci` on npm 11 checks for them.
+
+**How to apply:**
+- When you change the Node major, run `npm install` with the new npm, then `npm ci` from a clean state, before you push. In the lock diff, every added entry must be an optional platform package, and no package may be removed.
+- Run a Docker build after the install, not during it. The build reads its context when it starts, so a build that runs during the install can see a new `package.json` with the old lock.
+- npm 11.19 does not run dependency install scripts that are not approved (`npm install-scripts approve`). The warning is harmless when the optional platform packages already install the binaries; check the lint, the tests, and the build to confirm.
