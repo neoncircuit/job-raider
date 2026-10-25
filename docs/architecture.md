@@ -792,7 +792,7 @@ graph TB
 | Service | Image | Port | GPU | Purpose |
 |---------|-------|------|-----|---------|
 | backend | Custom (CUDA 12.4.0) | Dynamic (default 8000) | No | FastAPI REST API, pipeline orchestration |
-| frontend | Custom (Node 20 Alpine) | Dynamic (default 3000) | No | Next.js web dashboard |
+| frontend | Custom (Node 24 Alpine) | Dynamic (default 3000) | No | Next.js web dashboard |
 | **ollama** | **ollama/ollama:latest** | **Dynamic (default 11434)** | **Yes (NVIDIA)** | **Shared local LLM inference for all projects** |
 | **mlflow** | **ghcr.io/mlflow/mlflow:latest** | **5000** | **No** | **Shared experiment tracking for all projects** |
 
