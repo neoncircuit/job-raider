@@ -165,76 +165,8 @@ MUST_MATCH: Dict[str, List[str]] = {
     ],
 }
 
-# Must-match phrases that fail on the current code (FR1 run).
-MUST_MATCH_XFAIL: Dict[Tuple[str, str], str] = {
-    ("pay.*to.*work", "You must pay $380 to start working"): "B1 fix round: class 3",
-    (
-        "pay.*to.*work",
-        "Pay the $90 kit to start working tonight",
-    ): "B1 fix round: class 3",
-    (
-        "pay.*to.*work",
-        "You pay a deposit to start working from home",
-    ): "B1 fix round: class 3",
-    (
-        "buy.*equipment",
-        "Responsibilities\n- Answer calls from customers\n- Process orders in our system\n- Log each call in the sheet\n- You must buy the equipment from our approved vendor first",
-    ): "B1 fix round: class 4",
-    ("telegram", "Telegram: @hr_desk_sg"): "B1 fix round: class 2",
-    (
-        "whatsapp",
-        "Interested candidates pls WhatsApp 9123 4567",
-    ): "B1 fix round: class 2",
-    ("whatsapp", "WhatsApp: +65 8123 4567 for details"): "B1 fix round: class 2",
-    ("whatsapp", "WhatsApp - 65-9123-0000 after lunch"): "B1 fix round: class 2",
-    ("signal", "Signal +1-415-555-0199 after 6pm"): "B1 fix round: class 2",
-    (
-        "immediate.*hire",
-        "IMMEDIATE HIRING for warehouse packers, apply now",
-    ): "B1 fix round: class 1",
-    ("immediate.*hire", "Immediate hiring! Start this week"): "B1 fix round: class 1",
-    (
-        "immediate.*hire",
-        "We are immediately hiring store clerks this weekend",
-    ): "B1 fix round: class 1",
-    ("start.*today", "Starting today, slots are limited"): "B1 fix round: class 1",
-    (
-        "start.*today",
-        "Starting today if you message the desk",
-    ): "B1 fix round: class 1",
-    (
-        "no.*interview",
-        "No interviews needed, just send your IC",
-    ): "B1 fix round: class 1",
-    (
-        "no.*interview",
-        "No interviews whatsoever, send the form tonight",
-    ): "B1 fix round: class 1",
-    (
-        "skip.*interview",
-        "Skip interviews and fill the seat tonight",
-    ): "B1 fix round: class 1",
-    (
-        "skip.*interview",
-        "You can skip interviews after the form",
-    ): "B1 fix round: class 1",
-    (
-        "gift cards",
-        "Buy Google Play gift cards and keep the receipt",
-    ): "B1 fix round: class 5",
-    (
-        "gift cards",
-        "Purchase two $100 Steam gift cards for the client",
-    ): "B1 fix round: class 5",
-    (
-        "gift cards",
-        "Buy three $50 iTunes gift cards and photo the backs",
-    ): "B1 fix round: class 5",
-    (
-        "gift cards",
-        "Purchase a pair of $200 App Store gift cards before the call",
-    ): "B1 fix round: class 5",
-}
+# Must-match phrases that failed before FR2. Empty after the fix round.
+MUST_MATCH_XFAIL: Dict[Tuple[str, str], str] = {}
 
 # Ordinary posting wording. xfail_reason is set when the current code matches.
 # reason None means the current code already leaves the phrase alone.
@@ -549,12 +481,7 @@ def _must_not_params() -> List[Any]:
     rows: List[Any] = []
     for pattern, phrases in MUST_NOT.items():
         source = _source_for(pattern)
-        for index, (phrase, reason) in enumerate(phrases):
-            marks = (
-                [pytest.mark.xfail(strict=True, reason=reason)]
-                if reason and reason.startswith("B1 fix round")
-                else []
-            )
+        for index, (phrase, _reason) in enumerate(phrases):
             for layout, text in (
                 ("alone", phrase),
                 ("posting", _wrap_in_posting(phrase)),
@@ -564,7 +491,6 @@ def _must_not_params() -> List[Any]:
                         pattern,
                         source,
                         text,
-                        marks=marks,
                         id=f"{pattern}::not::{index}::{layout}",
                     )
                 )

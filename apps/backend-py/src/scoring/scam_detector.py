@@ -120,19 +120,19 @@ class JobScamDetector:
     # Suspicious patterns
     SUSPICIOUS_PATTERNS = {
         "payment": [
-            r"\bpay\b(?:[^.!?]{0,25}(?:fee|cost|kit|deposit|\$\s*\d+))?[^.!?]{0,10}\bto\s+(?:start\s+)?work\b",
-            r"\bpayment\b[^.!?]{0,30}\brequired\b",
-            r"(?:^|[.!?]\s)(?![^.!?]*\b(?:never|do not|don't|does not)\b[^.!?]*\bbuy\b)[^.!?]{0,80}\bbuy\b[^.!?]{0,30}\bequipment\b",
-            r"\bwire\b[^.!?]{0,20}\btransfer\b",
-            r"\bcryptocurrency\b[^.!?]{0,20}\bpayment\b",
-            r"\bbitcoin\b[^.!?]{0,20}\brequired\b",
+            r"(?:^|[.!?\n]\s*)(?![^.!?\n]*\b(?:never|do not|don't|does not|will never|at no point|no candidate)\b)[^.!?\n]{0,80}\bpay\b(?:[^.!?\n]{0,25}(?:fee|cost|kit|deposit|\$\s*\d+))?[^.!?\n]{0,15}\bto\s+(?:start\s+)?work(?:ing)?\b",
+            r"\bpayment\b[^.!?\n]{0,30}\brequired\b",
+            r"(?:^|[.!?\n]\s*)(?![^.!?\n]*\b(?:never|do not|don't|does not|will never|at no point)\b[^.!?\n]*\b(?:buy|purchase)\b)[^.!?\n]{0,80}\b(?:buy|purchase)\b[^.!?\n]{0,40}\bequipment\b",
+            r"\bwire\b[^.!?\n]{0,20}\btransfer\b",
+            r"\bcryptocurrency\b[^.!?\n]{0,20}\bpayment\b",
+            r"\bbitcoin\b[^.!?\n]{0,20}\brequired\b",
         ],
         "messaging": [
-            r"(?:\b(?:on|via|through)\s+telegram\b|\btelegram\s+only\b|\btelegram\s+@\w+|\b(?:message|msg|contact|apply|chat|send|text)\b[^.!?]{0,40}\btelegram\b)",
-            r"(?:\bwhatsapp\s+(?:the\s+)?(?:manager|recruiter|desk|us|me|only)\b|\b(?:on|via|through)\s+whatsapp\b|\bwhatsapp\s+only\b|\b(?:message|text|apply|contact|chat)\b[^.!?]{0,25}\bwhatsapp\b)",
-            r"(?:\b(?:on|via|through)\s+signal\b|\bsignal\s+only\b|\b(?:message|contact|text|apply|send|hire|chat)\b[^.!?]{0,25}\bsignal\b)",
-            r"\bkik\b",
-            r"\bdiscord\b[^.!?]{0,15}\bonly\b",
+            r"(?:\btelegram\s+(?:the\s+)?(?:manager|recruiter|desk|us|me|only)\b|\btelegram\s+only\b|\b(?:message|msg|contact|apply|send|text|reach|add|pls|kindly|hire|hiring)\b[^.!?\n]{0,40}\b(?:on|via|through\s+)?telegram\b|\btelegram\s*[:\-]?\s*(?:@\w+|[+]?\d[\d\s-]{3,}\d))",
+            r"(?:\bwhatsapp\s+(?:the\s+)?(?:manager|recruiter|desk|us|me|only)\b|\bwhatsapp\s+only\b|\b(?:message|msg|contact|apply|send|text|reach|add|pls|kindly|hire|hiring)\b[^.!?\n]{0,40}\b(?:on|via|through\s+)?whatsapp\b|\bwhatsapp\s*[:\-]?\s*(?:@\w+|[+]?\d[\d\s-]{3,}\d))",
+            r"(?:\bsignal\s+(?:the\s+)?(?:manager|recruiter|desk|us|me|only)\b|\bsignal\s+only\b|\b(?:message|msg|contact|apply|send|text|reach|add|pls|kindly|hire|hiring)\b[^.!?\n]{0,40}\b(?:on|via|through\s+)?signal\b|\bsignal\s*[:\-]?\s*(?:@\w+|[+]?\d[\d\s-]{3,}\d))",
+            r"(?:\bkik\s+(?:the\s+)?(?:manager|recruiter|desk|us|me|only)\b|\bkik\s+only\b|\b(?:message|msg|contact|apply|send|text|reach|add|pls|kindly|hire|hiring)\b[^.!?\n]{0,40}\b(?:on|via|through\s+)?kik\b|\bkik\s*[:\-]?\s*(?:@\w+|[+]?\d[\d\s-]{3,}\d|\w+\s+\d+))",
+            r"\bdiscord\b[^.!?\n]{0,15}\bonly\b",
             r"\btext\s+only\b",
         ],
         "email": [
@@ -143,10 +143,10 @@ class JobScamDetector:
             r"reply.*to.*personal",
         ],
         "immediate": [
-            r"\bimmediate\s+hire\b",
-            r"\bstart\s+today\b",
-            r"\bno\s+interview\b",
-            r"\bskip\b[^.!?]{0,15}\binterview\b",
+            r"\bimmediate(?:ly)?\s+hir(?:e|ing)\b",
+            r"\bstart(?:ing)?\s+today\b",
+            r"\bno\s+interviews?\b(?!\s+(?:fee|cost|charge|charges))",
+            r"\bskip\b[^.!?\n]{0,15}\binterviews?\b",
         ],
         "unrealistic": [
             r"\$\d{3,}\s*\+\s*per\s*hour",
@@ -594,8 +594,8 @@ class ScamFilter:
         "telegram interview",
         "whatsapp interview",
         "crypto payment",
-        r"(?:^|[.!?]\s)(?![^.!?]*\b(?:never|do not|don't|does not)\b[^.!?]*\bbitcoin\b)(?:[^.!?]{0,80}\b(?:pay|send|deposit|fees?)\b[^.!?]{0,25}\bbitcoin\b|[^.!?]{0,80}\bin bitcoin\b)",
-        r"(?:\b(?:buy|pay with|accept)\s+gift cards\b|\bgift cards\b[^.!?]{0,20}\b(?:codes|store|starter fee)\b)",
+        r"(?:^|[.!?\n]\s*)(?![^.!?\n]*\b(?:never|do not|don't|does not|will never|at no point|no candidate)\b[^.!?\n]*\bbitcoin\b)(?:[^.!?\n]{0,80}\b(?:pay|send|deposit|fees?)\b[^.!?\n]{0,25}\bbitcoin\b|[^.!?\n]{0,80}\bin bitcoin\b)",
+        r"(?:^|[.!?\n]\s*)(?![^.!?\n]*\b(?:never|do not|don't|does not|will never|at no point)\b)[^.!?\n]{0,40}\b(?:buy|purchase|pay with|accept)\b[^.!?\n]{0,40}\bgift cards\b",
         "direct deposit only",
     ]
 
