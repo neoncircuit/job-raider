@@ -26,7 +26,8 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
     - the held-out guard;
     - the `scam_action` setting and one shared default for the threshold and the action (backend and Pipeline page);
     - `t*` and the action chosen on the EMSCAD tuning part and set as the defaults.
-- [ ] Review of Stage B part 1 (Claude).
+- [x] Review of Stage B part 1 (Claude, 2026-10-25, in `notes.md`). Result: accept B2; B1 needs its one fix round.
+- [ ] B1 fix round (the one that the B1 stop rule allows), then the B2c selection again, and Claude's measure on probe set P2.
 - [ ] B3. CI gate on the committed set: count pins at `t*`, and detector-score pins for the hard negatives (decision 7).
 - [ ] B4. The notebook calls `python main.py eval emscad`, so the logic exists only once.
 - [ ] B5. The held-out part run one time, reported by rule S3, and the README numbers.

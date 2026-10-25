@@ -260,6 +260,83 @@ Commits `eaeeb8d` (F1), `2be0e1f` (F2), and `6f1b26f` (F3). Cursor's results are
 
 Precision 0.25, recall 0.045, F1 0.077, FPR 0.125 (TP 1, FP 3, FN 21, TN 21). The false positives are `hard_negative__competitive_hearthline` (detector 0.90: `pay.*to.*work`, `no.*interview`), `hard_negative__bitcoin_exchange` (quick filter `bitcoin`), and `hard_negative__antifraud_notice` (quick filter `gift cards`, detector 0.90: `buy.*equipment`, `no.*interview`).
 
+## Review of Stage B part 1 (2026-10-25, Claude)
+
+Commits:
+- B1a `04702c2`, B1b `d522b5f`;
+- B2a `c2254e1`, B2b `b1d8399`, B2c `1d13dca`;
+- results `ded64b2`;
+- Wilson clamp `e38410c`.
+
+Cursor's results are at the end of `handoff-stage-b.md`.
+
+**Verdict.** Accept B2. B1 needs the one fix round that the B1 stop rule allows (decision 5). The B1 changes removed most false positives on EMSCAD (134 to 28 at 0.70), but they also lost most of the real scam wording that the old patterns caught. Cursor's B1a must-match phrases test only the exact forms that the new patterns accept. Under `flag`, the detector score is what the user sees through the trust check, so these losses matter.
+
+### What I checked and found correct
+
+- **Commits and order.** Seven commits in the order of the handoff. All are LF.
+    - The held-out part did not run. `data/eval/emscad/` has three tuning reports and no marker.
+    - No committed case changed: the dataset SHA-256 is still `c80627b5…24f448`.
+- **B1a phrases kept.** Between B1a and HEAD, no phrase string in `test_scam_detector.py` changed. B1b removed the `xfail` markers and added a helper (`_live_pattern`) that maps each old pattern key to its new pattern.
+- **Selection.** I recomputed the pipeline sweep from the 8,940 per-case rows of the B2c tuning report. All 20 rows agree. Rules S1 and S2 then give `t*` = 1.00 and `flag`, as reported.
+    - At 1.00, the detector flags no row.
+    - The quick filter flags 28 rows, all legitimate.
+- **Flag mode.** `stage_filter_scams` keeps every posting under `flag`, writes `scam_flag`, and counts `original_count` before the quick filter.
+- **One shared default.** Every backend default reads `DEFAULT_SCAM_THRESHOLD` and `DEFAULT_SCAM_ACTION`. The Pipeline page default is 1.0, the step is 0.05, and the help text matches `flag`. The cross-check test reads `page.tsx`.
+- **Guard and Wilson.**
+    - The guard refuses a second held-out run and writes the marker after the first. It applies whatever `--out` is.
+    - The Wilson bounds are clamped to `[0, 1]` (`e38410c`).
+- **Mutations (mine).** Seven mutations, run on the scam test files (275 tests). Each file was restored and its checksum matched. Each mutation failed its intended test:
+
+    | Mutation | Test that failed |
+    |----------|------------------|
+    | `flag` drops flagged postings | `test_flag_keeps_a_quick_filter_hit` |
+    | The page default differs from the backend | `test_pipeline_page_matches_shared_defaults` |
+    | The FPR limit is strict (`<`) | `test_fpr_exactly_at_the_limit_qualifies` |
+    | 10 frauds do not qualify (`>`) | `test_precision_and_ten_frauds_select_drop` |
+    | The held-out marker is not written | `test_writes_the_marker_after_a_run` |
+    | The "never ... buy" guard is removed | the `buy.*equipment` must-not phrase (2 layouts) |
+    | `no.*interview` is restored | the `no.*interview` must-not phrase (2 layouts) |
+- **Full backend suite.** 1470 passed. I did not run the frontend checks; Cursor ran lint, the type check, and vitest (46 files, 252 tests).
+
+### Findings
+
+1. **B1 lost real scam wording (major).** Probe set P1 has 26 phrases that Cursor has not seen, scored on the old code (`e16988f`) and on the current code:
+
+    | | Old code | B1b |
+    |---|---:|---:|
+    | Real scam wording caught (16) | 14 | 5 |
+    | Ordinary wording left alone (10) | 0 | 4 |
+    | All correct (26) | 14 | 9 |
+
+    The 5 that B1b still catches were all caught before, so B1 lost 9 detections and gained none. These are the failure classes:
+    - **Word forms:** "No interviews needed" (plural), "Starting today". "Immediate hiring" was missed by the old code too.
+    - **App name followed by a number or handle, with no contact verb before it:** "pls WhatsApp 9123 4567", "WhatsApp: +65 …", "Telegram: @hr_desk".
+    - **"pay $380 to start working":** `\bwork\b` does not match "working".
+    - **Bullet lists:** the `buy … equipment` pattern needs a sentence start within 80 characters, and a list has no full stops.
+    - **Gift-card brands:** "Buy Google Play gift cards", "Purchase two $100 Steam gift cards".
+    - **Still flagged:** "a thesis on signal processing" (this is in `hard_negative__signal_processing`, which still scores 0.50), "on signal integrity", "work on Telegram bots", "chat features on WhatsApp", "no interview fee", "We never ask you to pay to start work". The `on|via|through <app>` part is too broad, and the pay-to-work pattern has no negation guard.
+
+    A second probe set (P2, private, 25 phrases) gives 10 of 25 correct on the current code. It stays out of the repository and measures the fix round.
+2. **The flag does not reach the user (moderate; my handoff gap).**
+    - `job.metadata["scam_flag"]` is stored, but `serialize_listing` (`src/pipeline/shortlist.py`) does not send metadata to the frontend.
+    - The job-detail badge (`job-detail.tsx:226`) reads `scam_score`, and nothing in the backend sets that field. It also has its own limits (0.5 "Review", 0.7 "High Risk").
+    - Under `flag`, a flagged posting looks like any other posting unless the user runs the trust check.
+    - On EMSCAD, all 28 quick-filter flags are on legitimate postings, so showing them as they are today would show only false warnings.
+    - Decide this after the fix round. It goes to the backlog, not into B1.
+3. **The guard is in the CLI only (minor).** A direct `run_emscad_suite(part="heldout")` call does not see the marker. B4 must call the CLI and run the tuning part only.
+4. **B3 at `t*` = 1.00 (note for part 2).** Count pins at 1.00 pin "0 flagged" on the committed set. The hard-negative score pins (decision 7) are the guard that matters.
+
+### Recommendations
+
+1. **One B1 fix round (Cursor), then stop.**
+    - Fix the six classes in finding 1, with the same phrase-first method: add the P1 phrases to `test_scam_detector.py` first.
+    - Keep the B1 list and option (a). "Immediate hiring" and the plural forms are word forms of signs already on the list, not new signals.
+    - Then repeat the B1b measures, the B2c tuning selection (the rules decide again), and the committed-set run.
+    - Claude measures the result on P2. What stays wrong then goes to the known limits.
+2. **Backlog the flag display** (finding 2).
+3. **Part 2 notes:** B4 calls the CLI for the tuning part only; B3 relies on the hard-negative score pins.
+
 ## Observations for Stage B (2026-10-25, Claude)
 
 - **The 0.7 default is in eight places: seven in the backend and one in the frontend.**
