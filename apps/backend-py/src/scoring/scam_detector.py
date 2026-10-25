@@ -117,20 +117,20 @@ class JobScamDetector:
     # Suspicious patterns
     SUSPICIOUS_PATTERNS = {
         "payment": [
-            r"pay.*to.*work",
-            r"payment.*required",
-            r"buy.*equipment",
-            r"wire.*transfer",
-            r"cryptocurrency.*payment",
-            r"bitcoin.*required",
+            r"\bpay\b(?:[^.!?]{0,25}(?:fee|cost|kit|deposit|\$\s*\d+))?[^.!?]{0,10}\bto\s+(?:start\s+)?work\b",
+            r"\bpayment\b[^.!?]{0,30}\brequired\b",
+            r"(?:^|[.!?]\s)(?![^.!?]*\b(?:never|do not|don't|does not)\b[^.!?]*\bbuy\b)[^.!?]{0,80}\bbuy\b[^.!?]{0,30}\bequipment\b",
+            r"\bwire\b[^.!?]{0,20}\btransfer\b",
+            r"\bcryptocurrency\b[^.!?]{0,20}\bpayment\b",
+            r"\bbitcoin\b[^.!?]{0,20}\brequired\b",
         ],
         "messaging": [
-            r"telegram",
-            r"whatsapp",
-            r"signal",
-            r"kik",
-            r"discord.*only",
-            r"text.*only",
+            r"(?:\b(?:on|via|through)\s+telegram\b|\btelegram\s+only\b|\btelegram\s+@\w+|\b(?:message|msg|contact|apply|chat|send|text)\b[^.!?]{0,40}\btelegram\b)",
+            r"(?:\bwhatsapp\s+(?:the\s+)?(?:manager|recruiter|desk|us|me|only)\b|\b(?:on|via|through)\s+whatsapp\b|\bwhatsapp\s+only\b|\b(?:message|text|apply|contact|chat)\b[^.!?]{0,25}\bwhatsapp\b)",
+            r"(?:\b(?:on|via|through)\s+signal\b|\bsignal\s+only\b|\b(?:message|contact|text|apply|send|hire|chat)\b[^.!?]{0,25}\bsignal\b)",
+            r"\bkik\b",
+            r"\bdiscord\b[^.!?]{0,15}\bonly\b",
+            r"\btext\s+only\b",
         ],
         "email": [
             r"@gmail\.com",
@@ -140,10 +140,10 @@ class JobScamDetector:
             r"reply.*to.*personal",
         ],
         "immediate": [
-            r"immediate.*hire",
-            r"start.*today",
-            r"no.*interview",
-            r"skip.*interview",
+            r"\bimmediate\s+hire\b",
+            r"\bstart\s+today\b",
+            r"\bno\s+interview\b",
+            r"\bskip\b[^.!?]{0,15}\binterview\b",
         ],
         "unrealistic": [
             r"\$\d{3,}\s*\+\s*per\s*hour",
@@ -591,10 +591,30 @@ class ScamFilter:
         "telegram interview",
         "whatsapp interview",
         "crypto payment",
-        "bitcoin",
-        "gift cards",
+        r"(?:^|[.!?]\s)(?![^.!?]*\b(?:never|do not|don't|does not)\b[^.!?]*\bbitcoin\b)(?:[^.!?]{0,80}\b(?:pay|send|deposit|fees?)\b[^.!?]{0,25}\bbitcoin\b|[^.!?]{0,80}\bin bitcoin\b)",
+        r"(?:\b(?:buy|pay with|accept)\s+gift cards\b|\bgift cards\b[^.!?]{0,20}\b(?:codes|store|starter fee)\b)",
         "direct deposit only",
     ]
+
+    @classmethod
+    def reject_pattern_hits(cls, pattern: str, text: str) -> bool:
+        """
+        Return whether one reject pattern hits ``text``.
+
+        A pattern that contains a regex metacharacter is searched as a
+        regular expression. Other patterns stay as a case-insensitive
+        substring, which is the original ``REJECT_PATTERNS`` check.
+
+        Args:
+            pattern: One entry from ``REJECT_PATTERNS``.
+            text: Title or description.
+
+        Returns:
+            True when the pattern hits.
+        """
+        if re.search(r"[\\.*+?^${}\[\]|()]", pattern):
+            return re.search(pattern, text, flags=re.IGNORECASE) is not None
+        return pattern.lower() in text.lower()
 
     @classmethod
     def is_potential_scam(cls, job: JobListing) -> bool:
@@ -607,17 +627,14 @@ class ScamFilter:
         Returns:
             True if potential scam
         """
-        # Check title
-        title_lower = job.title.lower()
+        title = job.title or ""
         for pattern in cls.REJECT_PATTERNS:
-            if pattern in title_lower:
+            if cls.reject_pattern_hits(pattern, title):
                 return True
 
-        # Check description if available
         if job.description:
-            desc_lower = job.description.lower()
             for pattern in cls.REJECT_PATTERNS:
-                if pattern in desc_lower:
+                if cls.reject_pattern_hits(pattern, job.description):
                     return True
 
         return False

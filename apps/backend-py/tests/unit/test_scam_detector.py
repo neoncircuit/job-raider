@@ -274,21 +274,53 @@ MUST_NOT: Dict[str, List[Tuple[str, Optional[str]]]] = {
 }
 
 
+def _live_pattern(key: str) -> str:
+    """
+    Return the production pattern that now stands in for a B1a key.
+
+    Args:
+        key: Original B1a pattern string.
+
+    Returns:
+        The live regex or reject pattern.
+    """
+    grouped = JobScamDetector.SUSPICIOUS_PATTERNS
+    detector_keys = [
+        pattern for pattern, source in LISTED_PATTERNS if source == "detector"
+    ]
+    order = {
+        "payment": detector_keys[:6],
+        "messaging": detector_keys[6:12],
+        "immediate": detector_keys[12:16],
+    }
+    for group, keys in order.items():
+        if key in keys:
+            return grouped[group][keys.index(key)]
+    reject_keys = [pattern for pattern, source in LISTED_PATTERNS if source == "reject"]
+    if key in reject_keys:
+        for pattern in ScamFilter.REJECT_PATTERNS:
+            token = key.split()[0]
+            if pattern == key or token in pattern:
+                return pattern
+    raise KeyError(key)
+
+
 def _pattern_hits(pattern: str, source: str, text: str) -> bool:
     """
     Return whether ``pattern`` hits ``text`` the same way production does.
 
     Args:
-        pattern: Detector regex or reject substring.
+        pattern: B1a key; the live production pattern is used.
         source: ``detector`` or ``reject``.
         text: Phrase or short posting.
 
     Returns:
         True when the current production check would fire.
     """
+    live = _live_pattern(pattern)
     if source == "reject":
-        return pattern.lower() in text.lower()
-    return re.search(pattern, text, flags=re.IGNORECASE) is not None
+        return ScamFilter.reject_pattern_hits(live, text)
+    return re.search(live, text, flags=re.IGNORECASE) is not None
 
 
 def _wrap_in_posting(phrase: str) -> str:
@@ -353,28 +385,24 @@ def _match_params() -> List[Any]:
 
 def _must_not_params() -> List[Any]:
     """
-    Build must-not cases, with a strict xfail when the current code hits.
+    Build must-not cases for each pattern and each layout.
 
     Returns:
         Pytest parameters.
     """
-    rows: List[pytest.ParameterSet] = []
+    rows: List[Any] = []
     for pattern, phrases in MUST_NOT.items():
         source = _source_for(pattern)
-        for index, (phrase, reason) in enumerate(phrases):
+        for index, (phrase, _reason) in enumerate(phrases):
             for layout, text in (
                 ("alone", phrase),
                 ("posting", _wrap_in_posting(phrase)),
             ):
-                marks = ()
-                if reason:
-                    marks = (pytest.mark.xfail(strict=True, reason=reason),)
                 rows.append(
                     pytest.param(
                         pattern,
                         source,
                         text,
-                        marks=marks,
                         id=f"{pattern}::not::{index}::{layout}",
                     )
                 )
@@ -385,21 +413,21 @@ class TestListedPatternsExist:
     """The B1 list is present on the detector and the filter."""
 
     def test_detector_list_contains_each_regex(self) -> None:
-        """Each detector pattern on the B1 list is in ``SUSPICIOUS_PATTERNS``."""
-        listed = {
+        """Each detector slot on the B1 list still has a live pattern."""
+        listed = [
             pattern for pattern, source in LISTED_PATTERNS if source == "detector"
-        }
-        found = {
-            pattern
-            for patterns in JobScamDetector.SUSPICIOUS_PATTERNS.values()
-            for pattern in patterns
-        }
-        assert listed <= found
+        ]
+        for key in listed:
+            live = _live_pattern(key)
+            token = key.split("*")[0].rstrip(".")
+            assert token in live.replace(r"\b", "").lower()
 
     def test_reject_list_contains_each_substring(self) -> None:
-        """Each reject substring on the B1 list is in ``REJECT_PATTERNS``."""
-        listed = {pattern for pattern, source in LISTED_PATTERNS if source == "reject"}
-        assert listed <= set(ScamFilter.REJECT_PATTERNS)
+        """Each reject slot on the B1 list still has a live pattern."""
+        listed = [pattern for pattern, source in LISTED_PATTERNS if source == "reject"]
+        for key in listed:
+            live = _live_pattern(key)
+            assert key.split()[0] in live.lower()
 
     def test_each_pattern_has_three_phrases_each_way(self) -> None:
         """Every listed pattern has at least three must-match and must-not phrases."""
