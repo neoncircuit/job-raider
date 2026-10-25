@@ -348,6 +348,100 @@ Cursor's results are at the end of `handoff-stage-b.md`.
 2. **Backlog the flag display** (finding 2).
 3. **Part 2 notes:** B4 calls the CLI for the tuning part only; B3 relies on the hard-negative score pins.
 
+## Review of the B1 fix round (2026-10-25, Claude)
+
+Commits: FR1 `951437a`, FR2 `077c490`, results `ea01a11`. FR3 has no commit, because the selection did not change. Cursor's results are at the end of `handoff-b1-fix-round.md`.
+
+**Verdict.** Accept FR2 as the last B1 round, and close B1. On the probe set that Cursor did not see (P2), FR2 is better than B1b and better than the old code. What stays wrong goes to the known limits (decisions 5 and 8). Do not start another pattern round. Probe set P3 shows that a closed word list moves a false positive to a new form; it does not remove it.
+
+### What I checked and found correct
+
+- **Commits.** Three commits, each with only the files of its step, all LF.
+    - The held-out part did not run. `data/eval/emscad/` has four tuning reports and no marker.
+    - No committed case changed: the dataset SHA-256 is still `c80627b5…24f448`.
+- **Phrases kept.** FR1 added 57 phrases (the 26 P1 phrases and 31 of Cursor's own) and removed none. FR2 and the results commit changed no phrase. FR2 removed only the `xfail` markers. (An empty `MUST_MATCH_XFAIL` dict stays in the test file. This is dead code.)
+- **Pattern rules.** One regex per key, with the same groups and order. No P1 word is in a pattern.
+- **Selection.** I recomputed the pipeline sweep from the 8,940 per-case rows of the FR2 tuning report. All 20 rows agree. Rules S1 and S2 give `t*` = 1.00 and `flag`, as reported.
+    - The highest detector confidence on the tuning part is 0.40 for a fraud and 0.60 for a legitimate row, so the detector flags no row at 1.00.
+    - The quick filter flags 28 rows, all legitimate, as before.
+- **Hard negatives.** All score 0.10, except `hard_negative__summit_ridge_revenue` (0.40). `hard_negative__signal_processing` went from 0.50 to 0.10.
+- **Reproduction.** I ran `eval scam` and `eval emscad --part tuning` again on HEAD `ea01a11` (`--no-mlflow`, output outside the repository). `src/scoring/`, `src/evaluation/`, and `main.py` had no changes.
+    - Both runs give the same per-case rows, metrics, detector sweep, and pipeline sweep as the two FR2 reports. The selection is again 1.00 and `flag`.
+    - The reproduction reports also record `git_dirty` true. The only other changes in the tree were my review notes and 14 files that the IDE rewrote with CRLF; those 14 files have no content change (`git diff --ignore-cr-at-eol` shows none).
+- **Mutations (mine).** Nine mutations of `scam_detector.py`, run on `test_scam_detector.py`. Each old string occurred once. The file was restored after each mutation, and its checksum matched. Each mutation failed its intended tests, in both layouts:
+
+    | Mutation | Phrase tests that failed |
+    |----------|--------------------------|
+    | The pay-to-work never-guard is removed | `pay.*to.*work` must-not 3 and 5, and more |
+    | "working" is dropped | `pay.*to.*work` must-match 3 and 4, and more |
+    | A line break does not start a phrase in `buy … equipment` | `buy.*equipment` must-match 3 and 4, and more |
+    | The "no interview fee" lookahead is removed | `no.*interview` must-not 3 and 5 |
+    | The bare "on Telegram" is restored | `telegram` must-not 3 and 4 |
+    | "purchase" is removed from the gift-card pattern | `gift cards` must-match 4 and 6 |
+    | The WhatsApp number and handle branch is removed | `whatsapp` must-match 4 and 6 |
+    | The plural "interviews" is dropped | `no.*interview` must-match 3 and 5 |
+    | The gift-card never-guard is removed | `gift cards` must-not 0 and 4 |
+
+    `pytest.ini` has `--maxfail=5`, so the first three runs stopped at the fifth failure ("and more").
+- **Full backend suite.** 1584 passed. I did not run the frontend checks: FR3 did not change the Pipeline page.
+
+### Measures
+
+A phrase counts as correct when the listed patterns fire on a scam phrase, or do not fire on an ordinary phrase.
+
+| Probe set | Seen by | Old code (`e16988f`) | B1b | FR2 |
+|-----------|---------|---------------------:|----:|----:|
+| P1 (26 phrases, in the tests since FR1) | Cursor | 14 | 9 | 26 |
+| P2 (25 phrases, private) | Claude only | 10 | 10 | 17 |
+| P3 (18 phrases, written after I read FR2) | Claude only | 10 | 9 | 0 |
+
+- **P1** is no longer a measure, because its phrases are in the tests.
+- **P2** is the fair measure. Must-fire: old 10 of 15, B1b 6, FR2 10. Must-not: old 0 of 10, B1b 4, FR2 7.
+- **P3** is not a rate. I wrote it after I read the FR2 patterns, to find their weak spots, so FR2 scores 0 on it by design. Its phrases are in the findings below.
+
+The P2 errors that stay, by class (the P2 phrases stay private):
+
+- **Must-fire, caught by the old code and lost since B1b (2):** "send" as the gift-card verb; an ID label and a handle without "@" after the app name.
+- **Must-fire, caught by no version (3):** a passive sentence that says interviews are not needed; a deposit that the candidate must pay before training; a fee that is due before the first day of work. These are outside the shapes of the listed patterns (option a).
+- **Must-not, fired by every version (3):** a conditional sentence about when an interview is scheduled; a sentence that says the job does not start on the same day; a sentence about the legal pay date, with "payment" and "required" close together.
+
+### Findings
+
+1. **The contact-verb list moved the false positive (moderate).** FR2 replaced the bare `on|via|through <app>` with a closed list of 12 words within 40 characters before the app name.
+    - The list misses common contact verbs: "reply", "chat with", "DM", and "join". B1b caught "Reply ... on Telegram", "Chat with our recruiter on WhatsApp", and "DM us on Telegram"; FR2 misses them.
+    - FR2 lost the committed case `scam_contact__maple_midnight_chat` ("Reply in the next 2 hours on Telegram"). The results say that the case has no contact verb. It has one: "Reply".
+    - The list has job words: "hiring", "hire", "apply", "send", "add", "reach", and "contact". FR2 now fires on "We are hiring a signal processing engineer for our radar team", "We are hiring developers to build our Telegram bot platform", and "Add WhatsApp as a new support channel in our CRM". B1b did not. "We are hiring" is in most job postings. The class 6 false positive moved from "on signal processing" to "hiring ... signal processing".
+    - EMSCAD does not show this (0 messaging hits; the postings are from 2012 to 2014), and the committed set does not have these forms.
+2. **Phrase anchors miss long sentences (minor).** The pay-to-work pattern needs "pay" within 80 characters of the phrase start, and the gift-card pattern needs its verb within 40. EMSCAD has no line breaks, so a sentence can be long. B1b caught "To secure your place in the next onboarding batch for the remote data entry role, you pay $75 to start work"; FR2 misses it.
+3. **Guard scope (minor).**
+    - The pay-to-work and gift-card guards turn off the sign when a negation word is anywhere in the phrase, also after the sign. FR2 misses "Pay $60 to start work today, don't miss this chance", which B1b caught. The `buy … equipment` guard needs the negation before "buy".
+    - An abbreviation such as "e.g." starts a new phrase, so a guard can be skipped: "We never ask (e.g. for a laptop) that you pay to start work" fires.
+4. **"purchase" in `buy … equipment` (minor; my handoff gap).** Section 2 of my handoff listed "purchase" for "buy" as a general word form. I meant class 5 (gift cards). FR2 also added it to `buy … equipment`, and "Manage the purchase of lab equipment and spare parts" now fires. It has 0 legitimate hits on EMSCAD.
+5. **Dead group (code quality).** In `(?:on|via|through\s+)?`, the `\s+` binds only to "through", so the group never matches "on " or "via ". It has no effect, because the 40-character window before it takes those words.
+6. **Reports from a dirty tree (process).** Both FR2 reports record git SHA `951437a` with `git_dirty` true: the evaluations ran before the FR2 commit. My reproduction on HEAD agrees (see above), so the committed code is the code that was measured.
+    - The held-out run in B5 must start at the reviewed commit, with no change in `src/` or `main.py`.
+    - The 14 CRLF rewrites also make `git_dirty` true. Before B5, the user decides whether to restore them, so that the held-out report records a clean tree.
+
+**The effect today is small.** At `t*` = 1.00 with `flag`, the patterns do not change the pipeline decision. The detector flags no EMSCAD row and no committed case, and the pipeline keeps every posting. The patterns change the trust-check score and, later, the flag display (backlog, decision 9). B3 pins the current scores, so a later change shows in CI.
+
+### Known limits of B1 (record; the README in B5 states them)
+
+- **Contact channel:** a closed list of contact verbs (finding 1); an app name with an ID label and a handle without "@".
+- **Negation:** only the payment patterns and the reject filter have guards, and two of the guards also look after the sign (finding 3). The `immediate` group and `payment.*required` have none.
+- **Shapes outside the list:** a deposit due before training, a fee due before the first day of work, and a passive sentence that says interviews are not needed.
+- **Anchors and word forms:** findings 2 and 4.
+- **EMSCAD tuning, legitimate hits that stay on listed patterns:** `payment.*required` 2, `wire.*transfer` 22, `immediate.*hire` 19, `start.*today` 18, and reject `bitcoin` 5.
+
+### Recommendations
+
+1. **Accept FR2 and close B1.** No further pattern round (decision 5). Record the known limits above.
+2. **Point the backlog at the limits.** Add one line to "Scam detector refinement" in `tasks/backlog.md` that names this section as the input for a later step.
+3. **Part 2 handoff (B3, B4, then a stop, then B5):**
+    - B3 pins the FR2 scores of the six hard negatives, with no margin.
+    - B3 may remove the dead group (finding 5) and the empty `MUST_MATCH_XFAIL` dict. Every phrase test and every committed-set score must stay the same.
+    - B4 calls the CLI for the tuning part only (decision 10).
+    - Cursor stops after B4. Before B5, Claude checks four things: HEAD is the reviewed commit with no change in `src/` or `main.py`; the defaults match the selection; the held-out marker does not exist; and the user's decision on the 14 CRLF rewrites is applied (finding 6). Then the user starts B5.
+
 ## Observations for Stage B (2026-10-25, Claude)
 
 - **The 0.7 default is in eight places: seven in the backend and one in the frontend.**
