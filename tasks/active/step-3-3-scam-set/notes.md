@@ -159,6 +159,13 @@ The user accepted the four recommendations of the review (decisions 1 to 4), and
     - B1 is one round over a fixed pattern list, plus at most one fix round.
 
     On today's code the rules pick `flag`.
+6. **Accept the reworked set (A3b) for Stage B (accepted after the fixes review).**
+    - The four limits in "Review of the Stage A fixes" are recorded.
+    - No third rewrite round.
+    - Rule: no new detector signal is tuned or judged on the committed set.
+7. **Two Stage B additions (same time).**
+    - **B1:** each changed pattern gets unit tests that are written before the change. They have real scam wording that must still match, and hard-negative wording that must not.
+    - **B3:** the CI gate pins the detector score of each hard negative with no margin, in addition to the count pins.
 
 ## Stage B selection rule and B1 stop rule (decision 5, 2026-10-25)
 
@@ -252,6 +259,21 @@ Commits `eaeeb8d` (F1), `2be0e1f` (F2), and `6f1b26f` (F3). Cursor's results are
 ### A3b baseline (Cursor, confirmed)
 
 Precision 0.25, recall 0.045, F1 0.077, FPR 0.125 (TP 1, FP 3, FN 21, TN 21). The false positives are `hard_negative__competitive_hearthline` (detector 0.90: `pay.*to.*work`, `no.*interview`), `hard_negative__bitcoin_exchange` (quick filter `bitcoin`), and `hard_negative__antifraud_notice` (quick filter `gift cards`, detector 0.90: `buy.*equipment`, `no.*interview`).
+
+## Observations for Stage B (2026-10-25, Claude)
+
+- **The 0.7 default is in eight places: seven in the backend and one in the frontend.**
+    - Backend: `JobScamDetector.__init__` (`scam_detector.py:175`), `TrustAnalyzer.__init__` (`trust_analyzer.py:98`), `PipelineConfig.scam_threshold` (`orchestrator.py:72`), the fallback in `stages.py:111`, `PipelineRequest.scam_threshold` (`api/models/requests.py`), and both suites.
+    - Frontend: the Pipeline page form (`apps/frontend-ts/src/app/pipeline/page.tsx:141`) sends `scam_threshold: 0.7` on every run, so a backend default alone would not change a run from the UI.
+    - The page's input has `step="0.1"`, so a value such as 0.85 fails the browser's form validation.
+    - Its help text says "Jobs above this score are filtered out", which is wrong for `flag`.
+- **No unit tests for `JobScamDetector` or `ScamFilter` exist.** Only the suites call them. B1 starts `tests/unit/test_scam_detector.py`.
+- **Not on the B1 list (decision 5), seen in passing:**
+    - `SUSPICIOUS_COMPANY_PATTERNS` has no word boundaries, and "Private" matches "Private Limited", a common company suffix in Singapore and India (30 points).
+    - The title patterns in `_check_title` use `.*`.
+    - `reply.*to.*personal` in the email list is matched against `recruiter_email` only, so it can never match.
+
+    These go to the known limits, not to B1.
 
 ## Blockers / Questions
 
