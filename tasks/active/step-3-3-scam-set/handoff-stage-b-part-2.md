@@ -371,3 +371,76 @@ B4a also ran the one nbconvert command above.
 - Frontend lint, type-check, Prettier, and Vitest (no frontend file change)
 - Push
 - B5a and B5b
+
+## Cursor results, part B (2026-10-26)
+
+```mermaid
+flowchart LR
+    B5a[B5a one held-out run] --> B5b[B5b 63b02f2 README]
+    B5b --> S[Stop for the final review]
+```
+
+The held-out part ran one time. The marker was not deleted or edited. The report and the marker are under `data/` and were not committed. No pattern, default, or rule number was changed after the result. This branch was not pushed.
+
+### Commits
+
+| Step | Hash | Subject |
+|------|------|---------|
+| B5a | none | Local report and marker only |
+| B5b | `63b02f2` | `docs(readme): state the held-out scam numbers and their limits` |
+| This section | (this commit) | Results only |
+
+### B5a
+
+Tree check: `git status --porcelain --untracked-files=no` printed nothing. Defaults were 1.0 and `flag`. The marker did not exist.
+
+One command: `.venv/bin/python main.py eval emscad --part heldout` from `apps/backend-py`.
+
+| Item | Value |
+|------|-------|
+| Report | `apps/backend-py/data/eval/emscad/20261025T181616347561Z.json` |
+| MLflow | `895353fa8d7c41d29f7d1fc98e344526` |
+| Git SHA | `b3e23d443b90b82c6395b3502e7d32b1659a05d2` |
+| `git_dirty` | false |
+| Dataset SHA-256 | `a771a4eae6078269a0e57a2c5bfadc1de57f1e917885deefb8012c0a06f641a4` |
+| Part | held-out; 8940 rows (433 frauds, 8507 legitimate) |
+| Threshold | 1.0 |
+| Action | `flag` |
+| Confusion | TP 0, FP 23, FN 433, TN 8484 |
+| Precision | 0.0000 (0 of 23); Wilson 0.0000 to 0.1431 |
+| Recall | 0.0000 (0 of 433); Wilson 0.0000 to 0.0088 |
+| False-positive rate | 0.0027 (23 of 8507); Wilson 0.0018 to 0.0041 |
+
+Marker `apps/backend-py/data/eval/emscad/heldout_used.json` (not committed):
+
+```
+used_at: 2026-10-25T18:16:16.565297Z
+git_sha: b3e23d443b90b82c6395b3502e7d32b1659a05d2
+dataset_sha256: a771a4eae6078269a0e57a2c5bfadc1de57f1e917885deefb8012c0a06f641a4
+threshold: 1.0
+action: flag
+report_path: /mnt/d/GitHub/job-raider/apps/backend-py/data/eval/emscad/20261025T181616347561Z.json
+```
+
+The tuning part was not run again. The notebook was not run.
+
+### B5b
+
+The last line of the README "Scam Detection" section was replaced with: what is measured, the operating point, the held-out table, what the numbers mean, the EMSCAD and B1 limits, a link to the notebook README, and a Mermaid diagram of the flag-and-keep decision. The indicator-group table stayed. No `tasks/` link.
+
+### Checks that ran
+
+Backend, from `apps/backend-py`, before B5b and again before this results commit:
+
+- `black --check main.py scripts/mypy_gate.py src/ tests/` passed
+- `ruff check main.py scripts/mypy_gate.py src/ tests/` passed
+- `scripts/mypy_gate.py` passed (182 known errors, 0 new)
+- `pytest tests/ -q` passed: 1595
+
+### Checks that did not run
+
+- A second held-out run
+- The tuning part
+- The notebook
+- Frontend checks
+- Push
