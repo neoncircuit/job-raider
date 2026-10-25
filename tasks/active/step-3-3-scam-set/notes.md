@@ -166,6 +166,17 @@ The user accepted the four recommendations of the review (decisions 1 to 4), and
 7. **Two Stage B additions (same time).**
     - **B1:** each changed pattern gets unit tests that are written before the change. They have real scam wording that must still match, and hard-negative wording that must not.
     - **B3:** the CI gate pins the detector score of each hard negative with no margin, in addition to the count pins.
+8. **One B1 fix round (accepted after the Stage B part 1 review).** Cursor does the one fix round that the B1 stop rule allows (`handoff-b1-fix-round.md`):
+    - It fixes the six failure classes of finding 1 in "Review of Stage B part 1".
+    - It adds the P1 phrases to `test_scam_detector.py` before it changes a pattern.
+    - It keeps the B1 list and option (a). The word forms ("immediate hiring", "no interviews", "starting today", "to start working") are forms of signs on the list, not new signals.
+    - It repeats the B1b measures, the B2c selection on the tuning part, and the committed-set run. Rules S1 and S2 decide again, and the defaults follow them.
+    - Claude measures the result on the private probe set P2.
+    - This is the last B1 round. What then stays wrong goes to the known limits.
+9. **The flag display goes to the backlog (same time).** `scam_flag` does not reach the frontend, and the job-detail badge reads a `scam_score` that nothing sets. This is not part of B1 or Step 3.3. The entry is "Show the scam flag to the user" in `tasks/backlog.md`.
+10. **Part 2 notes (same time).**
+    - **B4:** the notebook calls the CLI (`python main.py eval emscad --part tuning`), because the held-out guard is in the CLI only. The notebook never runs the held-out part.
+    - **B3:** at `t*` = 1.00, the count pins only pin "0 flagged". The hard-negative score pins (decision 7) are the guard that matters. They use the scores after the fix round.
 
 ## Stage B selection rule and B1 stop rule (decision 5, 2026-10-25)
 

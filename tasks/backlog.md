@@ -478,6 +478,27 @@ The EMSCAD tuning baseline of 2026-10-25 (`tasks/active/step-3-3-scam-set/notes.
 - State the limit: EMSCAD postings are from 2012 to 2014, mostly from the US, and their emails and links are masked, so the result does not transfer directly to current postings in Singapore.
 - Decide how a model output enters the pipeline (flag to review, not a silent drop) before any code.
 
+#### Show the scam flag to the user (parked 2026-10-25, Step 3.3 decision 9)
+
+Since Step 3.3 Stage B, the pipeline default is `flag`: it keeps every posting and writes `job.metadata["scam_flag"]` (`quick_filter`, `confidence`, `reasons`). The user does not see this flag:
+
+- `serialize_listing` in `apps/backend-py/src/pipeline/shortlist.py` does not send `metadata` to the frontend.
+- The job-detail badge (`apps/frontend-ts/src/components/jobs/job-detail.tsx`, near line 226) reads `scam_score`, and nothing in the backend sets that field. The badge also has its own limits (0.5 "Review", 0.7 "High Risk"), which differ from `DEFAULT_SCAM_THRESHOLD`.
+
+Before you show the flag, measure it. On the EMSCAD tuning part, all 28 quick-filter flags were on legitimate postings, so a badge on today's flags shows only false warnings. Steps when opened:
+
+- [ ] Measure the precision of the quick filter and of the detector at `DEFAULT_SCAM_THRESHOLD` on the EMSCAD tuning part. If the flags are mostly false, fix the flag source first.
+- [ ] Send `scam_flag` in the listing response, and remove the unused `scam_score` field or set it from `scam_flag`.
+- [ ] Show the badge text from the flag reasons ("Review" and the reasons), not a "High Risk" verdict. Read the limit from the shared default, not from a second number in the frontend.
+- [ ] Tests: the serializer sends the flag, and the badge shows only when the flag is present.
+
+```mermaid
+flowchart LR
+    S[stage_filter_scams flag mode] --> M[job.metadata scam_flag]
+    M --> SL[serialize_listing]
+    SL --> UI[job-detail badge]
+```
+
 #### Employer and recruiter verification (later)
 
 - [ ] **Deterministic checks first:** Recruiter email domain vs official company domain, lookalike-domain detection (for example `companyx-careers.com`), domain age via WHOIS, and role present on the official careers page. Small Python checks; same answer every run.
