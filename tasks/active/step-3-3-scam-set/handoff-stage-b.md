@@ -279,3 +279,292 @@ At the end of this file, add "Cursor results (date)" with:
     - the new defaults;
     - the committed-set run at the new default, with the hard negatives' scores.
 - Every check that you ran and its result. Say clearly what you did not run. The held-out part must be in the "not run" list.
+
+## Cursor results (2026-10-25)
+
+```mermaid
+flowchart LR
+    B1a[B1a 04702c2] --> B1b[B1b d522b5f]
+    B1b --> B2a[B2a c2254e1]
+    B2a --> B2b[B2b b1d8399]
+    B2b --> B2c[B2c 1d13dca]
+    B2c --> S[Stop after this section]
+```
+
+### Commits
+
+| Hash | Subject |
+|------|---------|
+| `04702c2` | `test(scam): add must-match and must-not phrases for the R3 patterns` |
+| `d522b5f` | `fix(scam): word boundaries and phrase context for the R3 patterns` |
+| `c2254e1` | `feat(pipeline): add scam_action and one shared scam default` |
+| `b1d8399` | `feat(eval): pipeline sweep, operating-point selection, and the held-out guard` |
+| `1d13dca` | `feat(scam): set the default threshold and action from the tuning selection` |
+| this commit | results section of this file |
+
+`main` is ahead of `origin/main`. This part did not push.
+
+### B1a
+
+`apps/backend-py/tests/unit/test_scam_detector.py`. 18 patterns. Each pattern has at least 3 must-match phrases and 3 must-not phrases. Each phrase is tested alone and in a 4-line posting. The helper `_pattern_hits` tests the compiled pattern or the reject substring, not `detect()`.
+
+Phrase counts:
+
+| Group | Must-match (x2 layouts) | Must-not (x2 layouts) |
+|-------|-------------------------|------------------------|
+| 18 patterns | 18 x 3 x 2 = 108 | 18 x 3 x 2 = 108 |
+| Structure tests | 3 | |
+
+On the old code: 167 passed, 52 strict xfails (26 must-not phrases x 2 layouts). Every must-match phrase passed. The first `kik` must-not draft used `kicking` and `kiosk`; those strings do not contain `kik`, so B1a replaced them with Kikuyu and kikoi before the B1a commit.
+
+Strict xfails on the old code:
+
+| Pattern | Must-not phrases that failed |
+|---------|------------------------------|
+| `pay.*to.*work` | competitive pay and the chance to work on; Pay is monthly. You get the chance to work on |
+| `payment.*required` | Payment is monthly. Overtime is required |
+| `buy.*equipment` | never asks ... buy equipment; You may buy from our store. Equipment is supplied |
+| `wire.*transfer` | We send the first week by wire. Transfer of knowledge |
+| `cryptocurrency.*payment` | We accept no cryptocurrency. Payment is by bank transfer |
+| `bitcoin.*required` | We do not use bitcoin. Experience is required |
+| `telegram` | Telegram Bot API; public Telegram channel |
+| `whatsapp` | WhatsApp Business API (two phrasings) |
+| `signal` | signal processing; signal-to-noise |
+| `kik` | Kikuyu; kikoi |
+| `discord.*only` | Join our Discord. Only full-time roles |
+| `text.*only` | The job text is on the site. Only applicants |
+| `immediate.*hire` | immediate need. Hire decisions come after |
+| `start.*today` | Applications start on Monday. Today the team |
+| `no.*interview` | No travel is needed. Interviews are on site |
+| `skip.*interview` | skip the online form. Interviews are required |
+| reject `bitcoin` | licensed bitcoin exchange; watches bitcoin prices |
+| reject `gift cards` | never asks ... gift cards; year-end gift cards |
+
+### B1b
+
+One round. No B1a phrase was changed. No pattern outside the B1 list was changed.
+
+| Pattern | Old | New |
+|---------|-----|-----|
+| `pay.*to.*work` | `pay.*to.*work` | `\bpay\b` then optional fee/cost/kit/deposit in the same sentence, then `\bto\s+(?:start\s+)?work\b` |
+| `payment.*required` | `payment.*required` | `\bpayment\b[^.!?]{0,30}\brequired\b` |
+| `buy.*equipment` | `buy.*equipment` | same-sentence `\bbuy\b` ... `\bequipment\b`, with a never/do-not guard |
+| `wire.*transfer` | `wire.*transfer` | `\bwire\b[^.!?]{0,20}\btransfer\b` |
+| `cryptocurrency.*payment` | `cryptocurrency.*payment` | `\bcryptocurrency\b[^.!?]{0,20}\bpayment\b` |
+| `bitcoin.*required` | `bitcoin.*required` | `\bbitcoin\b[^.!?]{0,20}\brequired\b` |
+| `telegram` | `telegram` | contact channel: on/via/through, "only", `@handle`, or message/contact/apply near the word |
+| `whatsapp` | `whatsapp` | contact channel; not WhatsApp Business API |
+| `signal` | `signal` | contact channel; not "signal processing" as a product, except when hire/message context is present |
+| `kik` | `kik` | `\bkik\b` |
+| `discord.*only` | `discord.*only` | `\bdiscord\b[^.!?]{0,15}\bonly\b` |
+| `text.*only` | `text.*only` | `\btext\s+only\b` |
+| `immediate.*hire` | `immediate.*hire` | `\bimmediate\s+hire\b` |
+| `start.*today` | `start.*today` | `\bstart\s+today\b` |
+| `no.*interview` | `no.*interview` | `\bno\s+interview\b` |
+| `skip.*interview` | `skip.*interview` | `\bskip\b[^.!?]{0,15}\binterview\b` |
+| reject `bitcoin` | substring `bitcoin` | pay/send/deposit/fee ... bitcoin, or "in bitcoin", with a never/do-not sentence guard |
+| reject `gift cards` | substring `gift cards` | `\bbuy\|pay with\|accept\s+gift cards\b` or gift cards plus codes/store/starter fee |
+
+`ScamFilter.reject_pattern_hits` now uses a regex when the pattern has metacharacters. All 219 B1a phrase tests pass.
+
+No B1a phrase is treated as wrong. All must-not phrases were kept.
+
+Overall metrics:
+
+| Set | When | P | R | FPR | TP | FP | FN | TN |
+|-----|------|---|---|-----|----|----|----|----|
+| Committed | A3b | 0.2500 | 0.0455 | 0.1250 | 1 | 3 | 21 | 21 |
+| Committed | after B1b (`20261025T035828897487Z.json`, MLflow `6a9ab3d7`) | 1.0000 | 0.0455 | 0.0000 | 1 | 0 | 21 | 24 |
+| EMSCAD tuning | 2026-10-25 | 0.0219 | 0.0069 | 0.0158 | 3 | 134 | 430 | 8373 |
+| EMSCAD tuning | after B1b (`20261025T040004954373Z.json`, MLflow `df5229a2`) | 0.0000 | 0.0000 | 0.0033 | 0 | 28 | 433 | 8479 |
+
+Committed-set dataset SHA stayed `c80627b5…24f448`. After B1b, no hard negative was flagged at 0.70. `hard_negative__signal_processing` still scores 0.50 (the live `signal` pattern still hits that posting). It is not flagged at 0.70.
+
+Per-pattern hits, committed set, legit/scam, before to after:
+
+| Pattern | Before | After |
+|---------|--------|-------|
+| `pay.*to.*work` | 1/1 | 0/0 |
+| `payment.*required` | 0/0 | 0/0 |
+| `buy.*equipment` | 1/0 | 0/0 |
+| `wire.*transfer` | 0/0 | 0/0 |
+| `cryptocurrency.*payment` | 0/0 | 0/0 |
+| `bitcoin.*required` | 0/0 | 0/0 |
+| `telegram` | 0/3 | 0/3 |
+| `whatsapp` | 1/2 | 0/2 |
+| `signal` | 1/0 | 1/0 |
+| `kik` | 0/0 | 0/0 |
+| `discord.*only` | 0/0 | 0/0 |
+| `text.*only` | 0/0 | 0/0 |
+| `immediate.*hire` | 0/0 | 0/0 |
+| `start.*today` | 0/3 | 0/1 |
+| `no.*interview` | 4/2 | 0/2 |
+| `skip.*interview` | 0/0 | 0/0 |
+| reject `bitcoin` | 1/0 | 0/0 |
+| reject `gift cards` | 1/0 | 0/0 |
+
+Per-pattern hits, EMSCAD tuning, legit/scam, before to after:
+
+| Pattern | Before | After |
+|---------|--------|-------|
+| `pay.*to.*work` | 360/10 | 0/0 |
+| `payment.*required` | 28/1 | 2/0 |
+| `buy.*equipment` | 2/0 | 0/0 |
+| `wire.*transfer` | 25/0 | 22/0 |
+| `cryptocurrency.*payment` | 0/0 | 0/0 |
+| `bitcoin.*required` | 0/0 | 0/0 |
+| `telegram` | 0/0 | 0/0 |
+| `whatsapp` | 29/0 | 0/0 |
+| `signal` | 32/3 | 0/0 |
+| `kik` | 0/0 | 0/0 |
+| `discord.*only` | 0/0 | 0/0 |
+| `text.*only` | 20/0 | 0/0 |
+| `immediate.*hire` | 23/0 | 15/0 |
+| `start.*today` | 89/5 | 18/1 |
+| `no.*interview` | 337/7 | 0/0 |
+| `skip.*interview` | 1/0 | 0/0 |
+| reject `bitcoin` | 12/0 | 5/0 |
+| reject `gift cards` | 0/0 | 0/0 |
+
+Remaining on-list legit hits on EMSCAD (known limits after one round): `payment.*required` 2, `wire.*transfer` 22, `immediate.*hire` 15, `start.*today` 18, reject `bitcoin` 5. No pattern outside the list was changed. Off-list limits from Stage A (email-domain patterns, title patterns, `_scan_scam_flags`) stay as recorded in `notes.md`.
+
+### B2a
+
+`DEFAULT_SCAM_THRESHOLD = 0.7` and `DEFAULT_SCAM_ACTION = "drop"` were added in `src/scoring/scam_detector.py`. Values did not change in B2a. Readers:
+
+- `JobScamDetector.__init__`
+- `TrustAnalyzer.__init__`
+- `PipelineConfig` and the fallback in `stages.py`
+- `PipelineStartRequest` (the request model; the handoff name `PipelineRequest` is this class)
+- `api/routes/pipeline.py`
+- `main.py --scam-threshold`
+- `run_scam_suite` and `run_emscad_suite` (no suite literal `0.7` remains)
+
+`scam_action` is on `PipelineConfig`, the pipeline context config, and `PipelineStartRequest`. `stage_filter_scams` counts `original_count` before the quick filter. `drop` removes flagged postings. `flag` keeps every posting and writes `job.metadata["scam_flag"]`. The Pipeline page default is the shared threshold, `step="0.05"`, help text "Jobs at or above this score are removed." The page does not send `scam_action`.
+
+Tests: `TestStageFilterScams` (drop, flag, `original_count`) and `tests/unit/test_scam_defaults.py` (request, config, TrustAnalyzer, page.tsx cross-check). `tests/app/pipeline/page.test.tsx` did not need a change.
+
+### B2b
+
+Tests are in `tests/unit/test_operating_point.py`. Before the code, collection failed:
+
+```
+ImportError: cannot import name 'wilson_interval' from 'src.evaluation.metrics'
+collected 0 items / 1 error
+```
+
+After the code, the new tests passed (18 in that file, plus the existing suite tests that now patch the marker).
+
+Selection (S1, S2): a recall tie goes to the higher threshold; when no row qualifies, `t*` is 1.00; FPR 0.005, precision 0.50, and 10 flagged frauds each qualify; `drop` against `flag`. Constants `MAX_FALSE_POSITIVE_RATE`, `MIN_DROP_PRECISION`, and `MIN_FLAGGED_FRAUDS` sit in `scam.py` with a comment that points to decision 5.
+
+Wilson: 5 of 10 is about (0.2366, 0.7634); 0 trials returns None. Both suites add `precision.ci95_*`, `recall.ci95_*`, and `false_positive_rate.ci95_*`.
+
+Pipeline sweep: 20 rows, 0.05 to 1.00, quick filter or detector at or above `t`, with TP, FP, FN, TN, precision, recall, and FPR. Detector-only `threshold_sweep` stays.
+
+Held-out guard: `HELDOUT_USED_MARKER` in `emscad.py` (tests replace it). `run_eval_command` with `emscad --part heldout` exits 1 when the marker exists, and writes the marker after a successful run, including when `--out` is set. Tests use `tmp_path` only. The real marker file was not created.
+
+The tuning report stores `details["selection"]`. The held-out report does not select.
+
+Mutation proofs (fixed-string replace, checksum changed, `grep -F` count of the new string is 1, test failed, file restored to the backup checksum):
+
+| Mutation | Test | Failure |
+|----------|------|---------|
+| 1. Selection without the tie rule (`max(...)` to `top[0]`) | `test_tie_goes_to_the_higher_threshold` | `assert 0.5 == 0.8` |
+| 2. Guard check removed (`if marker.is_file()` to `if False and ...`) | `test_refuses_when_the_marker_exists` | `assert 0 == 1` |
+| 3. Pipeline sweep without the quick filter | `test_counts_include_the_quick_filter` | `assert 0 == 1` (TP at 1.00) |
+| 4. Wilson `z` term removed (`z_squared = z * z` to `0.0`) | `test_five_of_ten` | low bound 0.1901, not 0.2366 |
+
+### B2c
+
+Tuning run (one time): `python main.py eval emscad --part tuning`. Report `data/eval/emscad/20261025T044101635146Z.json`. MLflow `6ce4f4b307cf4826be2a502e2a0eeaad`. Git SHA `b1d8399`. EMSCAD dataset SHA-256 `a771a4ea…06f641a4`. 8940 cases.
+
+`details["selection"]`:
+
+```
+threshold: 1.0
+action: flag
+reason: t* is 1.00 (highest recall among FPR at most 0.005; tie broke to the higher threshold); action is flag because precision is below 0.50 and flagged frauds are below 10.
+```
+
+From 0.45 to 1.00 every row has FPR at most 0.005 and recall 0. The tie rule picks 1.00. Precision is 0 and flagged frauds are 0, so the action is `flag`.
+
+Full `pipeline_sweep`:
+
+| t | TP | FP | FN | TN | P | R | FPR |
+|---|----|----|----|----|---|---|-----|
+| 0.05 | 433 | 8507 | 0 | 0 | 0.0484 | 1.0000 | 1.0000 |
+| 0.10 | 433 | 8507 | 0 | 0 | 0.0484 | 1.0000 | 1.0000 |
+| 0.15 | 67 | 658 | 366 | 7849 | 0.0924 | 0.1547 | 0.0773 |
+| 0.20 | 67 | 658 | 366 | 7849 | 0.0924 | 0.1547 | 0.0773 |
+| 0.25 | 26 | 294 | 407 | 8213 | 0.0813 | 0.0600 | 0.0346 |
+| 0.30 | 23 | 203 | 410 | 8304 | 0.1018 | 0.0531 | 0.0239 |
+| 0.35 | 21 | 179 | 412 | 8328 | 0.1050 | 0.0485 | 0.0210 |
+| 0.40 | 17 | 154 | 416 | 8353 | 0.0994 | 0.0393 | 0.0181 |
+| 0.45 | 0 | 38 | 433 | 8469 | 0.0000 | 0.0000 | 0.0045 |
+| 0.50 | 0 | 38 | 433 | 8469 | 0.0000 | 0.0000 | 0.0045 |
+| 0.55 | 0 | 30 | 433 | 8477 | 0.0000 | 0.0000 | 0.0035 |
+| 0.60 | 0 | 30 | 433 | 8477 | 0.0000 | 0.0000 | 0.0035 |
+| 0.65 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.70 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.75 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.80 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.85 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.90 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.95 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 1.00 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+
+New defaults: `DEFAULT_SCAM_THRESHOLD = 1.0`, `DEFAULT_SCAM_ACTION = "flag"`. The Pipeline page default is `1.0`. The help text is "Jobs at or above this score are flagged and kept." The B2a page cross-check passes. The `TestStageFilterScams` helper pins 0.7 so drop/flag behaviour stays visible at `t* = 1.0`.
+
+Committed-set run at the new default: `python main.py eval scam`. Report `data/eval/scam/20261025T044303583101Z.json`. MLflow `b539298d50694292a22e6a0295be71af`. Dataset SHA-256 `c80627b5…24f448`.
+
+| Metric | Value |
+|--------|-------|
+| cases | 46 |
+| precision | undefined (0 flags) |
+| recall | 0.0000 (CI 0.0000 to 0.1487) |
+| FPR | 0.0000 (CI 0.0000 to 0.1380) |
+| confusion | TP 0, FP 0, FN 22, TN 24 |
+
+No posting was flagged. `t*` does not flag a hard negative.
+
+Hard-negative scores at the new default:
+
+| Case | Predicted | Quick filter | Confidence |
+|------|-----------|--------------|------------|
+| `hard_negative__signal_processing` | legit | no | 0.50 |
+| `hard_negative__competitive_hearthline` | legit | no | 0.10 |
+| `hard_negative__whatsapp_business_api` | legit | no | 0.10 |
+| `hard_negative__bitcoin_exchange` | legit | no | 0.10 |
+| `hard_negative__antifraud_notice` | legit | no | 0.10 |
+| `hard_negative__summit_ridge_revenue` | legit | no | 0.40 |
+
+`hard_negative__signal_processing` still matches the live `signal` pattern (score 0.50). It is not flagged at 1.0. `t*` was not changed.
+
+### Checks that ran
+
+Backend, from `apps/backend-py`, before each of B2a, B2b, and B2c:
+
+- `black --check main.py scripts/mypy_gate.py src/ tests/` passed
+- `ruff check main.py scripts/mypy_gate.py src/ tests/` passed
+- `scripts/mypy_gate.py` passed (182 known errors, 0 new)
+- `pytest tests/ -q` passed: 1451 after B2a, 1469 after B2b, 1469 after B2c
+
+Frontend, from `apps/frontend-ts`, for B2a and B2c:
+
+- `npm run lint` passed
+- `npm run type-check` passed
+- `npx prettier --check src/app/pipeline/page.tsx` passed
+- `npx vitest run` passed: 46 files, 252 tests
+
+B1a and B1b used the same backend gates (B1b: 1445 then the later full counts above).
+
+`git ls-files --eol` was checked before each commit. Commits used LF files only. The 14 IDE CRLF rewrites were not committed. Scratch files and commit messages stayed outside the repository.
+
+### Checks that did not run
+
+- EMSCAD `--part heldout` (do not run in this part)
+- Creation of the real marker `apps/backend-py/data/eval/emscad/heldout_used.json`
+- Frontend `npm run format:check` on the whole tree (it fails on pre-existing CRLF files that this part did not touch)
+- Frontend E2E (CI)
+- Push
+- Part 2: B3 CI gate, B4 notebook, B5 held-out and README numbers
