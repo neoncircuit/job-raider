@@ -263,3 +263,276 @@ npx vitest run
 - Never run `scripts/mypy_gate.py --update` to accept a new error.
 - Keep dry run as the default. Do not make auto-submit reachable.
 - Do not push. Push only from WSL, and only after the user approves.
+
+## Cursor results (2026-10-25)
+
+```mermaid
+flowchart LR
+    FR1[FR1 951437a phrases and xfails] --> FR2[FR2 077c490 patterns]
+    FR2 --> FR3[FR3 selection still 1.00 and flag]
+    FR3 --> S[Stop for review and P2]
+```
+
+FR3 changed no code. The held-out part was not run. `heldout_used.json` was not created. This branch was not pushed.
+
+### Commits
+
+| Step | Hash | Subject |
+|------|------|---------|
+| FR1 | `951437a` | `test(scam): add the review probe phrases for the B1 fix round` |
+| FR2 | `077c490` | `fix(scam): word forms, contact forms, and guards in the R3 patterns` |
+| FR3 | none | Selection stayed `t*` = 1.00 and `flag` |
+| This section | (this commit) | Results only |
+
+### FR1
+
+Phrase tests: 333 collected (each phrase alone and inside the short posting). On HEAD `951437a` (patterns still B1b): 261 passed, 72 strict xfail. After FR2: 333 passed.
+
+Counts per key (B1a already in the file, then P1, then own phrases):
+
+| Key | Must-match total | P1 must-match | Own must-match | Must-not total | P1 must-not | Own must-not |
+|-----|------------------|---------------|----------------|----------------|-------------|--------------|
+| `pay.*to.*work` | 6 | 1 | 2 | 7 | 1 | 3 |
+| `payment.*required` | 3 | 0 | 0 | 4 | 1 | 0 |
+| `buy.*equipment` | 7 | 2 | 2 | 5 | 0 | 2 |
+| `wire.*transfer` | 3 | 0 | 0 | 3 | 0 | 0 |
+| `cryptocurrency.*payment` | 3 | 0 | 0 | 3 | 0 | 0 |
+| `bitcoin.*required` | 3 | 0 | 0 | 3 | 0 | 0 |
+| `telegram` | 5 | 2 | 0 | 5 | 1 | 1 |
+| `whatsapp` | 7 | 3 | 1 | 5 | 1 | 1 |
+| `signal` | 5 | 0 | 2 | 7 | 2 | 2 |
+| `kik` | 5 | 0 | 2 | 4 | 0 | 1 |
+| `discord.*only` | 3 | 0 | 0 | 3 | 0 | 0 |
+| `text.*only` | 3 | 0 | 0 | 3 | 0 | 0 |
+| `immediate.*hire` | 6 | 2 | 1 | 4 | 0 | 1 |
+| `start.*today` | 5 | 1 | 1 | 4 | 0 | 1 |
+| `no.*interview` | 6 | 2 | 1 | 6 | 2 | 1 |
+| `skip.*interview` | 5 | 0 | 2 | 3 | 0 | 0 |
+| `bitcoin` | 4 | 1 | 0 | 4 | 1 | 0 |
+| `gift cards` | 7 | 2 | 2 | 6 | 1 | 2 |
+
+Own must-match and must-not cover: other word forms; number and handle layouts (spaces, dashes, country code, `+`, `@`, an id after a colon); list layouts (dash, `*`, numbered); `signal` and `kik` as a contact channel and as a product; negation "will never", "at no point", and "no candidate is asked to".
+
+Strict xfails on the code before FR2 (72 tests = 36 phrases, each in two layouts):
+
+Must-match (22 phrases):
+
+| Class | Key | Phrase |
+|-------|-----|--------|
+| 1 | `immediate.*hire` | `IMMEDIATE HIRING for warehouse packers, apply now` |
+| 1 | `immediate.*hire` | `Immediate hiring! Start this week` |
+| 1 | `immediate.*hire` | `We are immediately hiring store clerks this weekend` |
+| 1 | `start.*today` | `Starting today, slots are limited` |
+| 1 | `start.*today` | `Starting today if you message the desk` |
+| 1 | `no.*interview` | `No interviews needed, just send your IC` |
+| 1 | `no.*interview` | `No interviews whatsoever, send the form tonight` |
+| 1 | `skip.*interview` | `Skip interviews and fill the seat tonight` |
+| 1 | `skip.*interview` | `You can skip interviews after the form` |
+| 2 | `telegram` | `Telegram: @hr_desk_sg` |
+| 2 | `whatsapp` | `Interested candidates pls WhatsApp 9123 4567` |
+| 2 | `whatsapp` | `WhatsApp: +65 8123 4567 for details` |
+| 2 | `whatsapp` | `WhatsApp - 65-9123-0000 after lunch` |
+| 2 | `signal` | `Signal +1-415-555-0199 after 6pm` |
+| 3 | `pay.*to.*work` | `You must pay $380 to start working` |
+| 3 | `pay.*to.*work` | `Pay the $90 kit to start working tonight` |
+| 3 | `pay.*to.*work` | `You pay a deposit to start working from home` |
+| 4 | `buy.*equipment` | the five-line "Responsibilities" list (P1 phrase 13) |
+| 5 | `gift cards` | `Buy Google Play gift cards and keep the receipt` |
+| 5 | `gift cards` | `Purchase two $100 Steam gift cards for the client` |
+| 5 | `gift cards` | `Buy three $50 iTunes gift cards and photo the backs` |
+| 5 | `gift cards` | `Purchase a pair of $200 App Store gift cards before the call` |
+
+Must-not (14 phrases):
+
+| Class | Key | Phrase |
+|-------|-----|--------|
+| 4 | `buy.*equipment` | `Kit list` then "buy" and "Equipment" on later lines |
+| 6 | `pay.*to.*work` | `We never ask you to pay to start work` |
+| 6 | `pay.*to.*work` | `At no point do we ask you to pay to start work` |
+| 6 | `pay.*to.*work` | `No candidate is asked to pay to start work` |
+| 6 | `telegram` | `You will work on Telegram bots for our customers` |
+| 6 | `telegram` | `Build chat features on Telegram for shops` |
+| 6 | `whatsapp` | `Build chat features on WhatsApp and Messenger for retail clients` |
+| 6 | `whatsapp` | `You will work on WhatsApp stickers for the brand` |
+| 6 | `signal` | `A paper or a thesis on signal processing is useful` |
+| 6 | `signal` | `Experience on signal integrity for high-speed boards` |
+| 6 | `signal` | `Experience on signal chains for radio benches` |
+| 6 | `kik` | `The Kik Messenger SDK is used in the consumer app` |
+| 6 | `no.*interview` | `There is no interview fee; interviews are free and on site` |
+| 6 | `no.*interview` | `There is no interview cost; the panel is free` |
+
+No B1a phrase and no FR1 phrase was changed.
+
+### FR2
+
+One regex per listed key. Groups and order stayed the same. No P1 word (`warehouse`, `IC`, `hr_desk`, `Google Play`, `Steam`) is in a pattern.
+
+| Pattern | Before FR2 (B1b) | After FR2 |
+|---------|------------------|-----------|
+| `pay.*to.*work` | `\bpay\b` then optional fee/cost/kit/deposit, then `\bto\s+(?:start\s+)?work\b` in one sentence | Same phrase, plus `work(?:ing)?`, a same-phrase never-guard (`never`, `do not`, `don't`, `does not`, `will never`, `at no point`, `no candidate`), and `\n` as a phrase start |
+| `payment.*required` | `\bpayment\b[^.!?]{0,30}\brequired\b` | Same, with `[^.!?\n]` so a line break ends the phrase |
+| `buy.*equipment` | same-sentence `\bbuy\b` ... `\bequipment\b`, never/do-not guard | `\n` as a phrase start; `purchase` as well as `buy`; guard also accepts `will never` and `at no point` |
+| `wire.*transfer` | `\bwire\b[^.!?]{0,20}\btransfer\b` | Same, with `[^.!?\n]` |
+| `cryptocurrency.*payment` | `\bcryptocurrency\b[^.!?]{0,20}\bpayment\b` | Same, with `[^.!?\n]` |
+| `bitcoin.*required` | `\bbitcoin\b[^.!?]{0,20}\brequired\b` | Same, with `[^.!?\n]` |
+| `telegram` | bare `on\|via\|through`, `telegram only`, `telegram @handle`, or message/contact/`chat` near the word | No bare `on\|via\|through`. Contact verbs (`message`, `msg`, `contact`, `apply`, `send`, `text`, `reach`, `add`, `pls`, `kindly`, `hire`, `hiring`) then optional `on\|via\|through`. Name then optional `:`/`-` then `@handle` or a phone. `chat` is not a contact verb |
+| `whatsapp` | `whatsapp the manager`, bare `on\|via\|through`, `only`, or message/`chat` near the word | Same contact-verb and number/handle form as `telegram` |
+| `signal` | bare `on\|via\|through`, `signal only`, or message/`chat`/`hire` near the word | Same contact-verb and number/handle form as `telegram` |
+| `kik` | `\bkik\b` | Same contact-verb and number/handle form as `telegram`, plus `\w+\s+\d+` after a colon (an id label) |
+| `discord.*only` | `\bdiscord\b[^.!?]{0,15}\bonly\b` | Same, with `[^.!?\n]` |
+| `text.*only` | `\btext\s+only\b` | Unchanged |
+| `immediate.*hire` | `\bimmediate\s+hire\b` | `\bimmediate(?:ly)?\s+hir(?:e|ing)\b` |
+| `start.*today` | `\bstart\s+today\b` | `\bstart(?:ing)?\s+today\b` |
+| `no.*interview` | `\bno\s+interview\b` | `\bno\s+interviews?\b` with a negative lookahead for `fee`, `cost`, `charge`, `charges` |
+| `skip.*interview` | `\bskip\b[^.!?]{0,15}\binterview\b` | `interviews?`, and `[^.!?\n]` |
+| reject `bitcoin` | pay/send/deposit/fee ... bitcoin, or "in bitcoin", never-guard | Same, with `\n` as a phrase start, and `will never` / `at no point` / `no candidate` in the guard |
+| reject `gift cards` | adjacent `buy\|pay with\|accept gift cards`, or gift cards plus codes/store/starter fee | `buy\|purchase\|pay with\|accept`, then up to 40 phrase characters, then `gift cards`; same-phrase never-guard; `\n` as a phrase start |
+
+#### Table 1. Per-pattern hits (legit / scam)
+
+Before = B1b after (same live patterns as the B2c reports). After = FR2.
+
+Committed set:
+
+| Pattern | Before | After |
+|---------|--------|-------|
+| `pay.*to.*work` | 0/0 | 0/0 |
+| `payment.*required` | 0/0 | 0/0 |
+| `buy.*equipment` | 0/0 | 0/0 |
+| `wire.*transfer` | 0/0 | 0/0 |
+| `cryptocurrency.*payment` | 0/0 | 0/0 |
+| `bitcoin.*required` | 0/0 | 0/0 |
+| `telegram` | 0/3 | 0/2 |
+| `whatsapp` | 0/2 | 0/2 |
+| `signal` | 1/0 | 0/0 |
+| `kik` | 0/0 | 0/0 |
+| `discord.*only` | 0/0 | 0/0 |
+| `text.*only` | 0/0 | 0/0 |
+| `immediate.*hire` | 0/0 | 0/0 |
+| `start.*today` | 0/1 | 0/1 |
+| `no.*interview` | 0/2 | 0/2 |
+| `skip.*interview` | 0/0 | 0/0 |
+| reject `bitcoin` | 0/0 | 0/0 |
+| reject `gift cards` | 0/0 | 0/0 |
+
+`telegram` lost one committed scam hit: `scam_contact__maple_midnight_chat` uses "on Telegram" with no contact verb. That is the class 6 trade. The case was not changed.
+
+EMSCAD tuning:
+
+| Pattern | Before | After |
+|---------|--------|-------|
+| `pay.*to.*work` | 0/0 | 0/0 |
+| `payment.*required` | 2/0 | 2/0 |
+| `buy.*equipment` | 0/0 | 0/0 |
+| `wire.*transfer` | 22/0 | 22/0 |
+| `cryptocurrency.*payment` | 0/0 | 0/0 |
+| `bitcoin.*required` | 0/0 | 0/0 |
+| `telegram` | 0/0 | 0/0 |
+| `whatsapp` | 0/0 | 0/0 |
+| `signal` | 0/0 | 0/0 |
+| `kik` | 0/0 | 0/0 |
+| `discord.*only` | 0/0 | 0/0 |
+| `text.*only` | 0/0 | 0/0 |
+| `immediate.*hire` | 15/0 | 19/0 |
+| `start.*today` | 18/1 | 18/1 |
+| `no.*interview` | 0/0 | 0/0 |
+| `skip.*interview` | 0/0 | 0/0 |
+| reject `bitcoin` | 5/0 | 5/0 |
+| reject `gift cards` | 0/0 | 0/0 |
+
+`immediate.*hire` gained four legitimate hits from the word forms `hiring` and `immediately`. No EMSCAD text is recorded here.
+
+#### Table 2. Overall metrics
+
+Before = B2c reports `20261025T044303583101Z.json` (scam) and `20261025T044101635146Z.json` (EMSCAD). After = FR2 reports `20261025T084037225944Z.json` (MLflow `b4794ddc…4d78`) and `20261025T084251760903Z.json` (MLflow `126a51c5…995a`). Dataset SHA-256 stayed `c80627b5…24f448` (committed) and `a771a4ea…06f641a4` (EMSCAD).
+
+| Set | When | t | P | R | FPR | TP | FP | FN | TN |
+|-----|------|---|---|---|-----|----|----|----|----|
+| Committed | B2c | 0.70 | 1.0000 | 0.0455 | 0.0000 | 1 | 0 | 21 | 24 |
+| Committed | FR2 | 0.70 | 1.0000 | 0.0455 | 0.0000 | 1 | 0 | 21 | 24 |
+| Committed | B2c | 1.00 (default) | n/a | 0.0000 | 0.0000 | 0 | 0 | 22 | 24 |
+| Committed | FR2 | 1.00 (default) | n/a | 0.0000 | 0.0000 | 0 | 0 | 22 | 24 |
+| EMSCAD tuning | B2c | 0.70 | 0.0000 | 0.0000 | 0.0033 | 0 | 28 | 433 | 8479 |
+| EMSCAD tuning | FR2 | 0.70 | 0.0000 | 0.0000 | 0.0033 | 0 | 28 | 433 | 8479 |
+| EMSCAD tuning | B2c | 1.00 (default) | 0.0000 | 0.0000 | 0.0033 | 0 | 28 | 433 | 8479 |
+| EMSCAD tuning | FR2 | 1.00 (default) | 0.0000 | 0.0000 | 0.0033 | 0 | 28 | 433 | 8479 |
+
+The 0.70 rows are the `pipeline_sweep` rows. At 0.15 to 0.40 the EMSCAD sweep has a few more false positives than B2c (word forms of `immediate.*hire`). From 0.45 to 1.00 the counts match B2c.
+
+#### Table 3. Hard-negative detector scores
+
+No hard negative is flagged at 0.70 or at the default 1.00.
+
+| Case | Before (B2c) | After (FR2) | Quick filter |
+|------|--------------|-------------|--------------|
+| `hard_negative__signal_processing` | 0.50 | 0.10 | no |
+| `hard_negative__competitive_hearthline` | 0.10 | 0.10 | no |
+| `hard_negative__whatsapp_business_api` | 0.10 | 0.10 | no |
+| `hard_negative__bitcoin_exchange` | 0.10 | 0.10 | no |
+| `hard_negative__antifraud_notice` | 0.10 | 0.10 | no |
+| `hard_negative__summit_ridge_revenue` | 0.40 | 0.40 | no |
+
+`hard_negative__signal_processing` no longer hits the live `signal` pattern.
+
+Phrases treated as wrong: none. Every B1a and FR1 phrase was kept.
+
+False positives outside the list: none new were changed. On-list legitimate hits that remain on EMSCAD: `payment.*required` 2, `wire.*transfer` 22, `immediate.*hire` 19, `start.*today` 18, reject `bitcoin` 5. Off-list limits from Stage A (email-domain patterns, title patterns, `_scan_scam_flags`) stay as recorded in `notes.md`.
+
+### FR3
+
+Tuning report: `data/eval/emscad/20261025T084251760903Z.json`. MLflow `126a51c53e3a4cf88e271c778270995a`. Git SHA `951437a` (dirty: the FR2 working tree). EMSCAD dataset SHA-256 `a771a4ea…06f641a4`. 8940 cases.
+
+`details["selection"]`:
+
+```
+threshold: 1.0
+action: flag
+reason: t* is 1.00 (highest recall among FPR at most 0.005; tie broke to the higher threshold); action is flag because precision is below 0.50 and flagged frauds are below 10.
+```
+
+From 0.45 to 1.00 every row has FPR at most 0.005 and recall 0. The tie rule picks 1.00. Precision is 0 and flagged frauds are 0, so the action is `flag`. Same as B2c.
+
+Full `pipeline_sweep`:
+
+| t | TP | FP | FN | TN | P | R | FPR |
+|---|----|----|----|----|---|---|-----|
+| 0.05 | 433 | 8507 | 0 | 0 | 0.0484 | 1.0000 | 1.0000 |
+| 0.10 | 433 | 8507 | 0 | 0 | 0.0484 | 1.0000 | 1.0000 |
+| 0.15 | 67 | 661 | 366 | 7846 | 0.0920 | 0.1547 | 0.0777 |
+| 0.20 | 67 | 661 | 366 | 7846 | 0.0920 | 0.1547 | 0.0777 |
+| 0.25 | 26 | 297 | 407 | 8210 | 0.0805 | 0.0600 | 0.0349 |
+| 0.30 | 23 | 206 | 410 | 8301 | 0.1004 | 0.0531 | 0.0242 |
+| 0.35 | 21 | 182 | 412 | 8325 | 0.1034 | 0.0485 | 0.0214 |
+| 0.40 | 17 | 157 | 416 | 8350 | 0.0977 | 0.0393 | 0.0185 |
+| 0.45 | 0 | 38 | 433 | 8469 | 0.0000 | 0.0000 | 0.0045 |
+| 0.50 | 0 | 38 | 433 | 8469 | 0.0000 | 0.0000 | 0.0045 |
+| 0.55 | 0 | 30 | 433 | 8477 | 0.0000 | 0.0000 | 0.0035 |
+| 0.60 | 0 | 30 | 433 | 8477 | 0.0000 | 0.0000 | 0.0035 |
+| 0.65 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.70 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.75 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.80 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.85 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.90 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 0.95 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+| 1.00 | 0 | 28 | 433 | 8479 | 0.0000 | 0.0000 | 0.0033 |
+
+Defaults: unchanged. `DEFAULT_SCAM_THRESHOLD` is 1.0. `DEFAULT_SCAM_ACTION` is `flag`. The Pipeline page was not edited. `t*` does not flag a hard negative.
+
+### Checks that ran
+
+Backend, from `apps/backend-py`, before FR2 and again before this results commit:
+
+- `black --check main.py scripts/mypy_gate.py src/ tests/` passed
+- `ruff check main.py scripts/mypy_gate.py src/ tests/` passed
+- `scripts/mypy_gate.py` passed (182 known errors, 0 new)
+- `pytest tests/ -q` passed: 1584 after FR2
+
+`eval scam` ran one time after FR2. `eval emscad --part tuning` ran one time after FR2.
+
+### Checks that did not run
+
+- `eval emscad --part heldout` (do not run)
+- Frontend lint, type-check, Prettier, and Vitest (FR3 did not change the Pipeline page)
+- Push
+- Probe set P2 (the reviewer scores that set)

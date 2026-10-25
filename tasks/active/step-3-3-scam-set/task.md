@@ -34,4 +34,4 @@ Measure the scam filter on a labeled set before any fix, then fix the false posi
 - [ ] Done when: the README states precision and recall on the held-out EMSCAD part, and the committed set guards the false-positive cases.
 
 ## Status
-`in-progress` (Stage A, its fixes, and Stage B part 1 done and reviewed on 2026-10-25; the B1 fix round is with Cursor: `handoff-b1-fix-round.md`; part 2, which is B3 to B5 with the held-out run, comes after the review of the fix round)
+`in-progress` (Stage A, its fixes, and Stage B part 1 done and reviewed on 2026-10-25; Cursor finished the B1 fix round FR1 to FR3 on 2026-10-25, `handoff-b1-fix-round.md`; waiting for the review and P2; part 2, which is B3 to B5 with the held-out run, comes after that)
