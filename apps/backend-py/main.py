@@ -537,9 +537,20 @@ def run_eval_command(args) -> int:
         Exit code: 0 on success, 1 when the dataset is missing or invalid.
     """
     from src.evaluation.report import log_report_to_mlflow, write_report
+    from src.evaluation.suites import emscad as emscad_suite
     from src.evaluation.suites import get_suite
 
     logger = get_logger(Components.SCRAPERS)
+    if args.suite == "emscad" and args.part == "heldout":
+        marker = emscad_suite.HELDOUT_USED_MARKER
+        if marker.is_file():
+            message = (
+                f"Held-out EMSCAD already ran. Marker exists at {marker}. "
+                "Do not run --part heldout again."
+            )
+            logger.error(message)
+            print(message)
+            return 1
     runner, default_dataset = get_suite(args.suite)
     dataset = Path(args.dataset) if args.dataset else default_dataset
     runner_kwargs = {}
@@ -559,6 +570,11 @@ def run_eval_command(args) -> int:
         value = report.metrics[key]
         print(f"  {key}: {'n/a' if value is None else round(value, 4)}")
     print(f"Report: {path}")
+
+    if args.suite == "emscad" and args.part == "heldout":
+        emscad_suite.write_heldout_used_marker(
+            report, path, marker=emscad_suite.HELDOUT_USED_MARKER
+        )
 
     if not args.no_mlflow:
         run_id = log_report_to_mlflow(report, path)

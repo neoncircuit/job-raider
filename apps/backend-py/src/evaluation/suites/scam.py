@@ -32,7 +32,11 @@ from ...scoring.scam_detector import (
     ScamFilter,
 )
 from ..datasets import load_jsonl
-from ..metrics import clean_case_false_positive_rate, multilabel_scores
+from ..metrics import (
+    clean_case_false_positive_rate,
+    multilabel_scores,
+    wilson_interval,
+)
 from ..report import EvalReport
 from ..run_metadata import BACKEND_DIR, build_run_metadata
 
@@ -68,6 +72,131 @@ SCAM_CASE_GROUPS: FrozenSet[str] = frozenset(
 LEGIT_CASE_GROUPS: FrozenSet[str] = CASE_GROUPS - SCAM_CASE_GROUPS
 
 ExpectedLabel = Literal["scam", "legit"]
+
+# Decision 5 (2026-10-25): S1 and S2. Do not change these numbers after a
+# tuning run (rule S4).
+MAX_FALSE_POSITIVE_RATE = 0.005
+MIN_DROP_PRECISION = 0.50
+MIN_FLAGGED_FRAUDS = 10
+
+
+def _wilson_bounds(
+    successes: int, trials: int
+) -> Tuple[Optional[float], Optional[float]]:
+    """
+    Split a Wilson interval into low and high bounds.
+
+    Args:
+        successes: Count of positive outcomes.
+        trials: Number of trials.
+
+    Returns:
+        ``(low, high)``, or ``(None, None)`` when the interval is undefined.
+    """
+    interval = wilson_interval(successes, trials)
+    if interval is None:
+        return None, None
+    return interval[0], interval[1]
+
+
+def _threshold_value(row: Dict[str, Any]) -> float:
+    """
+    Read a sweep-row threshold as a float.
+
+    Args:
+        row: Pipeline-sweep row.
+
+    Returns:
+        The threshold, or 0.0 when it is missing.
+    """
+    value = row.get("threshold")
+    if value is None:
+        return 0.0
+    return float(value)
+
+
+def select_operating_point(pipeline_sweep: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Pick ``t*`` and the action from a pipeline sweep (rules S1 and S2).
+
+    Args:
+        pipeline_sweep: Rows with threshold, recall, false-positive rate,
+            precision, and true_positives.
+
+    Returns:
+        ``threshold``, ``action``, and a one-line ``reason``.
+    """
+    qualifying: List[Dict[str, Any]] = []
+    for row in pipeline_sweep:
+        rate = row.get("false_positive_rate")
+        if rate is not None and rate <= MAX_FALSE_POSITIVE_RATE:
+            qualifying.append(row)
+
+    used_fallback = not qualifying
+    tied = False
+    if used_fallback:
+        chosen = next(
+            (row for row in pipeline_sweep if row.get("threshold") == 1.0),
+            {
+                "threshold": 1.0,
+                "precision": None,
+                "true_positives": 0,
+                "recall": None,
+            },
+        )
+    else:
+        best_recall = max(
+            (
+                row["recall"] if row.get("recall") is not None else -1.0
+                for row in qualifying
+            ),
+        )
+        top = [
+            row
+            for row in qualifying
+            if (row["recall"] if row.get("recall") is not None else -1.0) == best_recall
+        ]
+        tied = len(top) > 1
+        chosen = max(top, key=_threshold_value)
+
+    threshold = _threshold_value(chosen)
+    precision = chosen.get("precision")
+    flagged = int(chosen.get("true_positives") or 0)
+    may_drop = (
+        precision is not None
+        and precision >= MIN_DROP_PRECISION
+        and flagged >= MIN_FLAGGED_FRAUDS
+    )
+    action: Literal["drop", "flag"] = "drop" if may_drop else "flag"
+
+    if used_fallback:
+        thresh_part = (
+            "no threshold has false-positive rate at most 0.005, so t* is 1.00"
+        )
+    elif tied:
+        thresh_part = (
+            f"t* is {threshold:.2f} (highest recall among FPR at most 0.005; "
+            "tie broke to the higher threshold)"
+        )
+    else:
+        thresh_part = f"t* is {threshold:.2f} (highest recall among FPR at most 0.005)"
+    if action == "drop":
+        act_part = (
+            "action is drop because precision is at least 0.50 and flagged "
+            "frauds are at least 10"
+        )
+    else:
+        reasons: List[str] = []
+        if precision is None or precision < MIN_DROP_PRECISION:
+            reasons.append("precision is below 0.50")
+        if flagged < MIN_FLAGGED_FRAUDS:
+            reasons.append("flagged frauds are below 10")
+        act_part = "action is flag because " + " and ".join(reasons)
+    return {
+        "threshold": threshold,
+        "action": action,
+        "reason": f"{thresh_part}; {act_part}.",
+    }
 
 
 class ScamCase(BaseModel):
@@ -220,7 +349,7 @@ def evaluate_scam_listings(
     filter_hit_fn: Optional[Callable[[JobListing], bool]] = None,
 ) -> Tuple[Dict[str, Optional[float]], Dict[str, Any]]:
     """
-    Score the pipeline decision and the detector-only threshold sweep.
+    Score the pipeline decision, the detector sweep, and the pipeline sweep.
 
     Args:
         items: ``(case_id, job, expected, indicator_groups)`` rows.
@@ -228,7 +357,8 @@ def evaluate_scam_listings(
         filter_hit_fn: Quick-filter predicate. Defaults to ``ScamFilter``.
 
     Returns:
-        Metrics map and details (confusion, per-case rows, sweep).
+        Metrics map (including Wilson 95 percent bounds) and details
+        (confusion, per-case rows, detector sweep, pipeline sweep).
     """
     detector = detector or JobScamDetector(threshold=DEFAULT_SCAM_THRESHOLD)
     if filter_hit_fn is None:
@@ -237,6 +367,7 @@ def evaluate_scam_listings(
     expected_sets: List[Set[str]] = []
     predicted_sets: List[Set[str]] = []
     confidences: List[float] = []
+    filter_hits: List[bool] = []
     case_rows: List[Dict[str, Any]] = []
     group_hits: Dict[str, int] = {group: 0 for group in INDICATOR_GROUPS}
     group_support: Dict[str, int] = {group: 0 for group in INDICATOR_GROUPS}
@@ -250,6 +381,7 @@ def evaluate_scam_listings(
         expected_sets.append(want)
         predicted_sets.append(got)
         confidences.append(report.confidence)
+        filter_hits.append(filter_hit)
         case_rows.append(
             {
                 "case_id": case_id,
@@ -270,14 +402,29 @@ def evaluate_scam_listings(
     true_negatives = sum(
         1 for want, got in zip(expected_sets, predicted_sets) if not want and not got
     )
+    precision_low, precision_high = _wilson_bounds(
+        scores.true_positives, scores.true_positives + scores.false_positives
+    )
+    recall_low, recall_high = _wilson_bounds(
+        scores.true_positives, scores.true_positives + scores.false_negatives
+    )
+    fpr_low, fpr_high = _wilson_bounds(
+        scores.false_positives, scores.false_positives + true_negatives
+    )
     metrics: Dict[str, Optional[float]] = {
         "case_count": float(len(items)),
         "precision": scores.precision,
+        "precision.ci95_low": precision_low,
+        "precision.ci95_high": precision_high,
         "recall": scores.recall,
+        "recall.ci95_low": recall_low,
+        "recall.ci95_high": recall_high,
         "f1": scores.f1,
         "false_positive_rate": clean_case_false_positive_rate(
             expected_sets, predicted_sets
         ),
+        "false_positive_rate.ci95_low": fpr_low,
+        "false_positive_rate.ci95_high": fpr_high,
     }
     for group in sorted(INDICATOR_GROUPS):
         metrics[f"recall.{group}"] = _ratio(group_hits[group], group_support[group])
@@ -301,6 +448,34 @@ def evaluate_scam_listings(
             }
         )
 
+    pipeline_sweep: List[Dict[str, Any]] = []
+    for step in range(1, 21):
+        threshold = round(step / 20, 2)
+        pipeline_pred = [
+            {"scam"} if (hit or confidence >= threshold) else set()
+            for hit, confidence in zip(filter_hits, confidences)
+        ]
+        pipeline_scores = multilabel_scores(expected_sets, pipeline_pred, ["scam"])[
+            "scam"
+        ]
+        pipeline_true_negatives = sum(
+            1 for want, got in zip(expected_sets, pipeline_pred) if not want and not got
+        )
+        pipeline_sweep.append(
+            {
+                "threshold": threshold,
+                "true_positives": pipeline_scores.true_positives,
+                "false_positives": pipeline_scores.false_positives,
+                "false_negatives": pipeline_scores.false_negatives,
+                "true_negatives": pipeline_true_negatives,
+                "precision": pipeline_scores.precision,
+                "recall": pipeline_scores.recall,
+                "false_positive_rate": clean_case_false_positive_rate(
+                    expected_sets, pipeline_pred
+                ),
+            }
+        )
+
     details: Dict[str, Any] = {
         "confusion": {
             "true_positives": scores.true_positives,
@@ -310,6 +485,7 @@ def evaluate_scam_listings(
         },
         "cases": case_rows,
         "threshold_sweep": sweep,
+        "pipeline_sweep": pipeline_sweep,
     }
     return metrics, details
 

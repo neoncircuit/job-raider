@@ -711,8 +711,12 @@ class TestRegistryAndPart:
             monkeypatch: Suite registry replacement.
         """
         import main as cli
+        from src.evaluation.suites import emscad as emscad_suite
         from tests.unit.test_cli import parse
 
+        monkeypatch.setattr(
+            emscad_suite, "HELDOUT_USED_MARKER", tmp_path / "heldout_used.json"
+        )
         seen: Dict[str, Dict[str, Any]] = {}
 
         def _tiny(suite: str) -> EvalReport:

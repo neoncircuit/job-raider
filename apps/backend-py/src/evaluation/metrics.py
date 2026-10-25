@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, Iterable, Mapping, Optional, Sequence, Set
+from typing import Dict, Iterable, Mapping, Optional, Sequence, Set, Tuple
 
 
 @dataclass(frozen=True)
@@ -26,6 +26,32 @@ class LabelScores:
     precision: Optional[float]
     recall: Optional[float]
     f1: Optional[float]
+
+
+def wilson_interval(
+    successes: int, trials: int, z: float = 1.96
+) -> Optional[Tuple[float, float]]:
+    """
+    Wilson score interval for a binomial proportion.
+
+    Args:
+        successes: Count of positive outcomes.
+        trials: Number of trials.
+        z: Normal quantile. The default 1.96 is a 95 percent interval.
+
+    Returns:
+        ``(low, high)``, or None when ``trials`` is 0.
+    """
+    if trials == 0:
+        return None
+    proportion = successes / trials
+    z_squared = z * z
+    denominator = 1.0 + z_squared / trials
+    centre = (proportion + z_squared / (2.0 * trials)) / denominator
+    spread = (z / denominator) * math.sqrt(
+        proportion * (1.0 - proportion) / trials + z_squared / (4.0 * trials * trials)
+    )
+    return (centre - spread, centre + spread)
 
 
 def _ratio(numerator: int, denominator: int) -> Optional[float]:

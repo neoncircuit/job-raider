@@ -9,8 +9,10 @@ and stratified by ``fraudulent``. The held-out part runs one time in Stage B.
 from __future__ import annotations
 
 import csv
+import json
 import random
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -23,19 +25,53 @@ from ...models.job_listing import (
     SalaryRange,
 )
 from ...scoring.scam_detector import (
+    DEFAULT_SCAM_ACTION,
     DEFAULT_SCAM_THRESHOLD,
     JobScamDetector,
     ScamFilter,
 )
 from ..report import EvalReport
 from ..run_metadata import BACKEND_DIR, build_run_metadata
-from .scam import ExpectedLabel, evaluate_scam_listings
+from .scam import ExpectedLabel, evaluate_scam_listings, select_operating_point
 
 SUITE = "emscad"
 DEFAULT_DATASET_DIR = BACKEND_DIR / "data" / "kaggle"
 EMSCAD_CSV_NAME = "fake_job_postings.csv"
+HELDOUT_USED_MARKER = BACKEND_DIR / "data" / "eval" / "emscad" / "heldout_used.json"
 EMSCAD_SPLIT_SEED = 20261024
 EMSCAD_HELD_OUT_FRACTION = 0.5
+
+
+def write_heldout_used_marker(
+    report: EvalReport,
+    report_path: Path,
+    marker: Optional[Path] = None,
+) -> Path:
+    """
+    Record that the EMSCAD held-out part has run.
+
+    Args:
+        report: Held-out report (git SHA and dataset hash).
+        report_path: Path of the written JSON report.
+        marker: Marker path. Defaults to ``HELDOUT_USED_MARKER``. Tests
+            pass a path under ``tmp_path``.
+
+    Returns:
+        The written marker path.
+    """
+    path = marker if marker is not None else HELDOUT_USED_MARKER
+    payload = {
+        "used_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "git_sha": report.metadata.git_sha,
+        "dataset_sha256": report.metadata.dataset_sha256,
+        "threshold": DEFAULT_SCAM_THRESHOLD,
+        "action": DEFAULT_SCAM_ACTION,
+        "report_path": str(report_path),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return path
+
 
 EXPERIENCE_MAP: Dict[str, ExperienceLevel] = {
     "Internship": ExperienceLevel.INTERNSHIP,
@@ -276,6 +312,8 @@ def run_emscad_suite(
             "csv_name": EMSCAD_CSV_NAME,
         }
     )
+    if part == "tuning":
+        details["selection"] = select_operating_point(details["pipeline_sweep"])
     metadata = build_run_metadata(
         SUITE,
         [csv_path],
