@@ -175,7 +175,7 @@ Resume from a stage is not available. The pipeline does not save the output of e
 |--------|-------------|---------|
 | `--min-score` | Minimum relevance (0-100) | 60 |
 | `--fresh-grad` | Enable fresh graduate scoring mode | false |
-| `--scam-threshold` | Scam confidence (0-1) | 0.7 |
+| `--scam-threshold` | Scam confidence (0-1) | 1.0 |
 | `--max-jobs` | Jobs to present | 20 |
 
 **Fresh Graduate Mode:**
@@ -288,7 +288,9 @@ Removes duplicate listings across sources.
 
 ### Stage 3: Filter Scams
 
-Filters out potential scam listings using 10 indicators.
+Flags potential scam listings using 10 indicators. The default action is
+`flag`: the pipeline keeps every posting and records the score. Use
+`--scam-threshold` to set the score that counts as a flag (default 1.0).
 
 ### Stage 4: Filter by Profile
 

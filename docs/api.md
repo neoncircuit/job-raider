@@ -49,7 +49,8 @@ result = orchestrator.run()
 | `skip_submission` | `bool` | `False` | Skip submission stage |
 | `mode` | `str` | `"discover"` | `discover` = scrape through RAG only; `full` = include apply stages |
 | `min_score` | `int` | `60` | Minimum relevance score (0-100) |
-| `scam_threshold` | `float` | `0.7` | Scam detection threshold (0-1) |
+| `scam_threshold` | `float` | `1.0` | Scam detection threshold (0-1) |
+| `scam_action` | `str` | `"flag"` | `flag` keeps flagged postings; `drop` removes them |
 | `max_jobs_to_present` | `int` | `20` | Max jobs to present for selection |
 | `fresh_grad_mode` | `bool` | `False` | Use fresh graduate scoring weights |
 | `submission_delay` | `float` | `2.0` | Seconds between submissions |
@@ -434,7 +435,7 @@ Detects potential job scams.
 ```python
 from src.scoring.scam_detector import JobScamDetector, ScamReport
 
-detector = JobScamDetector(threshold=0.7)
+detector = JobScamDetector(threshold=1.0)
 report = detector.detect(job_listing)
 
 # Check result

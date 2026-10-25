@@ -392,7 +392,7 @@ A comprehensive guide was added to address the critical Docker storage issue on 
 
 1. **Scrape** - Aggregates listings from LinkedIn and JSearch API (50+ boards)
 2. **Deduplicate** - Removes duplicates across sources
-3. **Filter Scams** - Filters out potential scams (10 indicators)
+3. **Filter Scams** - Flags potential scams (10 indicators); flagged postings are kept
 4. **Filter by Profile** - Matches user preferences
 5. **Score & Rank** - Heuristic relevance scoring (0-100)
 6. **Semantic Re-Rank** - RAG-based similarity scoring with ChromaDB embeddings

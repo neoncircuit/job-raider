@@ -122,7 +122,7 @@ cp apps/backend-py/.env.example apps/backend-py/.env
 Key variables:
 - `ANTHROPIC_API_KEY`: For API fallback (optional)
 - `RAPIDAPI_KEY`: For JSearch job aggregation (recommended)
-- `KAGGLE_USERNAME`, `KAGGLE_KEY`: For dataset downloads (optional)
+- `KAGGLE_USERNAME`, `KAGGLE_KEY`: Optional. For a manual download with the Kaggle CLI. The notebook does not download the dataset.
 - `LINKEDIN_EMAIL`, `LINKEDIN_PASSWORD`: For Easy Apply (optional)
 - `SENTRY_DSN`: For error tracking (optional, disabled by default)
 - `MLFLOW_TRACKING_URI`: For experiment tracking (default: http://localhost:5000)

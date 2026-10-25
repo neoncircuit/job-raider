@@ -121,7 +121,7 @@ Each value after `--keywords` or `--locations` is one search term. Quote a term 
 |-------|-------------|--------|
 | 1. Scrape | Collect from LinkedIn, JSearch (50+ boards), and Singapore sources | Raw listings |
 | 2. Deduplicate | Remove duplicate listings (same job ID) | Unique listings |
-| 3. Filter Scams | Filter out likely scams | Remaining listings |
+| 3. Filter Scams | Flag likely scams; flagged postings are kept | Flagged listings |
 | 4. Filter by Profile | Match user preferences | Relevant listings |
 | 5. Score & Rank | Heuristic relevance scoring (0-100) | Ranked listings |
 | 6. Semantic Re-Rank | Embedding similarity with ChromaDB | Re-ranked listings |
@@ -280,7 +280,7 @@ ANTHROPIC_API_KEY=your_key_here
 # Required for JSearch API (job aggregation from 50+ boards)
 RAPIDAPI_KEY=your_rapidapi_key_here
 
-# Optional: Kaggle API (for scam detector evaluation notebook)
+# Optional: Kaggle API (manual CSV download only; the notebook does not download the dataset)
 KAGGLE_USERNAME=your_username
 KAGGLE_KEY=your_key
 
