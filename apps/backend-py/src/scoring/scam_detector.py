@@ -11,10 +11,13 @@ Date: 2026-04-20
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 from ..models.job_listing import JobListing
 from ..utils.logger import Components, get_logger
+
+DEFAULT_SCAM_THRESHOLD = 0.7
+DEFAULT_SCAM_ACTION: Literal["drop", "flag"] = "drop"
 
 
 class ScamIndicator(str, Enum):
@@ -172,7 +175,7 @@ class JobScamDetector:
         # Add more as needed
     }
 
-    def __init__(self, threshold: float = 0.7):
+    def __init__(self, threshold: float = DEFAULT_SCAM_THRESHOLD):
         """
         Initialize the scam detector.
 

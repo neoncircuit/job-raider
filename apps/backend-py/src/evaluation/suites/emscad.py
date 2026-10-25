@@ -22,7 +22,11 @@ from ...models.job_listing import (
     JobType,
     SalaryRange,
 )
-from ...scoring.scam_detector import JobScamDetector, ScamFilter
+from ...scoring.scam_detector import (
+    DEFAULT_SCAM_THRESHOLD,
+    JobScamDetector,
+    ScamFilter,
+)
 from ..report import EvalReport
 from ..run_metadata import BACKEND_DIR, build_run_metadata
 from .scam import ExpectedLabel, evaluate_scam_listings
@@ -256,7 +260,7 @@ def run_emscad_suite(
     ]
     metrics, details = evaluate_scam_listings(
         items,
-        detector=JobScamDetector(threshold=0.7),
+        detector=JobScamDetector(threshold=DEFAULT_SCAM_THRESHOLD),
         filter_hit_fn=ScamFilter.is_potential_scam,
     )
     details.update(

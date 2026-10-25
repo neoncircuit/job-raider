@@ -34,7 +34,12 @@ from ..rag.ranker import RAGMatchScore, RAGRanker
 from ..rag.vector_store import ChromaStore
 from ..scoring.filter import JobFilter, QuickFilter
 from ..scoring.matcher import JobMatcher, MatchScore
-from ..scoring.scam_detector import JobScamDetector, ScamFilter
+from ..scoring.scam_detector import (
+    DEFAULT_SCAM_ACTION,
+    DEFAULT_SCAM_THRESHOLD,
+    JobScamDetector,
+    ScamFilter,
+)
 from ..scrapers.base import SearchParams
 from ..scrapers.manager import ScraperManager
 from ..scrapers.storage import JobListingStorage
@@ -108,7 +113,7 @@ class PipelineStages:
             fresh_grad_mode=self.context.config.get("fresh_grad_mode", False)
         )
         self.scam_detector = JobScamDetector(
-            threshold=self.context.config.get("scam_threshold", 0.7)
+            threshold=self.context.config.get("scam_threshold", DEFAULT_SCAM_THRESHOLD)
         )
         self.submit_detector = AutoSubmitDetector()
         llm_router = create_router(prefer_local=True)
@@ -305,54 +310,64 @@ class PipelineStages:
         """
         stage_name = "filter_scams"
         start_time = datetime.now()
+        original_count = len(listings)
+        action = self.context.config.get("scam_action", DEFAULT_SCAM_ACTION)
 
         try:
-            self.logger.info(f"Filtering scams from {len(listings)} listings")
+            self.logger.info(
+                f"Filtering scams from {original_count} listings (action={action})"
+            )
 
-            if use_quick_filter:
-                # Quick filter for obvious scams
-                legitimate, scams = ScamFilter.filter_collection(listings)
-                self.logger.info(f"Quick filter: {len(scams)} obvious scams removed")
-                listings = legitimate
-
-            # Detailed scam detection
-            filtered = []
-            scam_reports = []
+            kept: List[JobListing] = []
+            scam_reports: List[Tuple[JobListing, Any, bool]] = []
 
             for job in listings:
+                quick_hit = bool(use_quick_filter and ScamFilter.is_potential_scam(job))
                 report = self.scam_detector.detect(job)
-                if not report.is_scam:
-                    filtered.append(job)
+                flagged = quick_hit or report.is_scam
+                if flagged:
+                    scam_reports.append((job, report, quick_hit))
+                    if action == "flag":
+                        job.metadata["scam_flag"] = {
+                            "quick_filter": quick_hit,
+                            "confidence": report.confidence,
+                            "reasons": list(report.reasons),
+                        }
+                        kept.append(job)
+                    else:
+                        self.logger.warning(
+                            f"Filtered scam: {job.title} at {job.company} "
+                            f"(confidence: {report.confidence:.2f})"
+                        )
                 else:
-                    scam_reports.append((job, report))
-                    self.logger.warning(
-                        f"Filtered scam: {job.title} at {job.company} "
-                        f"(confidence: {report.confidence:.2f})"
-                    )
+                    kept.append(job)
 
             metadata = {
-                "original_count": len(listings),
-                "filtered_count": len(filtered),
+                "original_count": original_count,
+                "filtered_count": len(kept),
                 "scam_count": len(scam_reports),
+                "scam_action": action,
                 "scam_reports": [
                     {
                         "title": job.title,
                         "company": job.company,
                         "confidence": report.confidence,
+                        "quick_filter": quick_hit,
                         "indicators": [i.value for i in report.indicators],
                     }
-                    for job, report in scam_reports[:10]  # First 10
+                    for job, report, quick_hit in scam_reports[:10]
                 ],
             }
 
             self.logger.info(
-                f"Scam filtering complete: {metadata['scam_count']} scams removed"
+                f"Scam filtering complete: {metadata['scam_count']} flagged, "
+                f"action={action}"
             )
 
             return StageResult(
                 stage_name=stage_name,
                 success=True,
-                data=filtered,
+                data=kept,
                 metadata=metadata,
                 timestamp=start_time,
             )

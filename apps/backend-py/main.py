@@ -198,6 +198,7 @@ from src.pipeline.orchestrator import (  # noqa: E402
     PipelineOrchestrator,
     PipelineStage,
 )
+from src.scoring.scam_detector import DEFAULT_SCAM_THRESHOLD  # noqa: E402
 from src.scrapers.manager import available_sources  # noqa: E402
 from src.utils.logger import Components, get_logger, setup_logging  # noqa: E402
 
@@ -703,8 +704,8 @@ term that contains spaces.
     pipeline_parser.add_argument(
         "--scam-threshold",
         type=float,
-        default=0.7,
-        help="Scam detection threshold (0-1, default: 0.7)",
+        default=DEFAULT_SCAM_THRESHOLD,
+        help="Scam detection threshold (0-1, default: shared DEFAULT_SCAM_THRESHOLD)",
     )
     pipeline_parser.add_argument(
         "--max-jobs",

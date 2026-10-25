@@ -27,8 +27,9 @@ from src.generation.formatter import FormattedResume
 from src.generation.resume_writer import GeneratedResume
 from src.generation.selector import SelectionOutput
 from src.generation.validator import ValidationResult
-from src.models.job_listing import JobListingCollection, JobSource
+from src.models.job_listing import JobListing, JobListingCollection, JobSource
 from src.pipeline.stages import PipelineContext, PipelineStages
+from src.scoring.scam_detector import DEFAULT_SCAM_ACTION, DEFAULT_SCAM_THRESHOLD
 from src.scrapers.base import SearchParams
 from src.scrapers.storage import JobListingStorage
 
@@ -564,3 +565,110 @@ class TestStageLinkedInAuth:
 
         assert result.success
         assert result.metadata["linkedin_credentials_available"] is False
+
+
+def _listing(job_id: str, description: str) -> JobListing:
+    """
+    Build a listing for the scam-filter stage tests.
+
+    Args:
+        job_id: Listing id.
+        description: Posting text.
+
+    Returns:
+        A ``JobListing``.
+    """
+    return JobListing(
+        title="Clerk",
+        company="Example Co",
+        job_id=job_id,
+        source=JobSource.MANUAL,
+        description=description,
+    )
+
+
+class TestStageFilterScams:
+    """drop, flag, and the original_count fix."""
+
+    def _stages(
+        self,
+        sample_user_profile,
+        temp_data_dir: Path,
+        action: str,
+    ) -> PipelineStages:
+        """
+        Build stages with a chosen scam action.
+
+        Args:
+            sample_user_profile: Shared profile fixture.
+            temp_data_dir: Temporary data folder.
+            action: ``drop`` or ``flag``.
+
+        Returns:
+            A ``PipelineStages`` instance.
+        """
+        context = PipelineContext(
+            user_profile=sample_user_profile,
+            storage=JobListingStorage(storage_dir=str(temp_data_dir / "listings")),
+            results_dir=temp_data_dir / "results",
+            config={
+                "dry_run": True,
+                "scam_action": action,
+                "scam_threshold": DEFAULT_SCAM_THRESHOLD,
+            },
+        )
+        return PipelineStages(context)
+
+    def test_drop_removes_quick_filter_and_detector_hits(
+        self, sample_user_profile, temp_data_dir: Path
+    ) -> None:
+        """
+        ``drop`` removes flagged postings. ``original_count`` is taken first.
+
+        Args:
+            sample_user_profile: Shared profile fixture.
+            temp_data_dir: Temporary data folder.
+        """
+        stages = self._stages(sample_user_profile, temp_data_dir, "drop")
+        jobs = [
+            _listing("q", "Pay the deposit in bitcoin."),
+            _listing("d", "No interview required, start tomorrow."),
+            _listing("c", "Keep the quay chart current."),
+        ]
+
+        result = stages.stage_filter_scams(jobs)
+
+        assert result.success
+        assert result.metadata["original_count"] == 3
+        assert result.metadata["scam_action"] == "drop"
+        assert result.metadata["scam_count"] == 2
+        assert [job.job_id for job in result.data] == ["c"]
+
+    def test_flag_keeps_a_quick_filter_hit(
+        self, sample_user_profile, temp_data_dir: Path
+    ) -> None:
+        """
+        ``flag`` keeps every posting and writes ``scam_flag``.
+
+        Args:
+            sample_user_profile: Shared profile fixture.
+            temp_data_dir: Temporary data folder.
+        """
+        stages = self._stages(sample_user_profile, temp_data_dir, "flag")
+        jobs = [
+            _listing("q", "Pay the deposit in bitcoin."),
+            _listing("c", "Keep the quay chart current."),
+        ]
+
+        result = stages.stage_filter_scams(jobs)
+
+        assert result.success
+        assert result.metadata["original_count"] == 2
+        assert result.metadata["scam_action"] == "flag"
+        assert result.metadata["filtered_count"] == 2
+        assert result.metadata["scam_count"] == 1
+        flagged = next(job for job in result.data if job.job_id == "q")
+        clean = next(job for job in result.data if job.job_id == "c")
+        assert flagged.metadata["scam_flag"]["quick_filter"] is True
+        assert "scam_flag" not in clean.metadata
+        assert DEFAULT_SCAM_ACTION == "drop"

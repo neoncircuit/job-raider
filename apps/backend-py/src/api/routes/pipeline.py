@@ -343,6 +343,7 @@ async def start_pipeline(
         mode=request.mode,
         min_score=request.min_score,
         scam_threshold=request.scam_threshold,
+        scam_action=request.scam_action,
         fresh_grad_mode=request.fresh_grad_mode,
         max_jobs_to_present=request.max_jobs,
         submission_delay=request.submission_delay,

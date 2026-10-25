@@ -19,11 +19,12 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional
 
 from ..llm.router import create_router
 from ..models.pipeline_stage import STAGE_ORDER, PipelineStage
 from ..models.user_profile import UserProfile
+from ..scoring.scam_detector import DEFAULT_SCAM_ACTION, DEFAULT_SCAM_THRESHOLD
 from ..scrapers.storage import JobListingStorage
 from ..utils.logger import Components, get_logger, setup_logging
 from .stages import PipelineContext, PipelineStages, StageResult
@@ -69,7 +70,8 @@ class PipelineConfig:
 
     # Scoring thresholds
     min_score: int = 60
-    scam_threshold: float = 0.7
+    scam_threshold: float = DEFAULT_SCAM_THRESHOLD
+    scam_action: Literal["drop", "flag"] = DEFAULT_SCAM_ACTION
     fresh_grad_mode: bool = False
 
     # Selection
@@ -207,6 +209,7 @@ class PipelineOrchestrator:
             config={
                 "dry_run": config.dry_run,
                 "scam_threshold": config.scam_threshold,
+                "scam_action": config.scam_action,
                 "fresh_grad_mode": config.fresh_grad_mode,
                 "submission_delay": config.submission_delay,
                 "max_submissions_per_hour": config.max_submissions_per_hour,

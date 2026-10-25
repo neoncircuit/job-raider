@@ -3,8 +3,8 @@ Scam suite: the pipeline scam decision on labeled postings.
 
 A dataset folder has ``cases.jsonl`` (one posting per line with its expected
 label and indicator groups). The runner scores the pipeline decision:
-``ScamFilter.is_potential_scam`` or ``JobScamDetector(threshold=0.7)``.
-``src/scoring/`` does not change in Stage A.
+``ScamFilter.is_potential_scam`` or
+``JobScamDetector(threshold=DEFAULT_SCAM_THRESHOLD)``.
 """
 
 from __future__ import annotations
@@ -26,7 +26,11 @@ from typing import (
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ...models.job_listing import JobListing
-from ...scoring.scam_detector import JobScamDetector, ScamFilter
+from ...scoring.scam_detector import (
+    DEFAULT_SCAM_THRESHOLD,
+    JobScamDetector,
+    ScamFilter,
+)
 from ..datasets import load_jsonl
 from ..metrics import clean_case_false_positive_rate, multilabel_scores
 from ..report import EvalReport
@@ -183,7 +187,7 @@ def decide_pipeline_scam(
 
     Args:
         job: Listing to score.
-        detector: ``JobScamDetector`` instance (threshold 0.7 in the suite).
+        detector: ``JobScamDetector`` instance (shared default threshold).
         filter_hit_fn: Quick-filter predicate.
 
     Returns:
@@ -220,13 +224,13 @@ def evaluate_scam_listings(
 
     Args:
         items: ``(case_id, job, expected, indicator_groups)`` rows.
-        detector: Detector instance. Defaults to threshold 0.7.
+        detector: Detector instance. Defaults to ``DEFAULT_SCAM_THRESHOLD``.
         filter_hit_fn: Quick-filter predicate. Defaults to ``ScamFilter``.
 
     Returns:
         Metrics map and details (confusion, per-case rows, sweep).
     """
-    detector = detector or JobScamDetector(threshold=0.7)
+    detector = detector or JobScamDetector(threshold=DEFAULT_SCAM_THRESHOLD)
     if filter_hit_fn is None:
         filter_hit_fn = ScamFilter.is_potential_scam
 

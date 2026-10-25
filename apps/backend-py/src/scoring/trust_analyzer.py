@@ -14,7 +14,13 @@ from typing import Any, Dict, List, Optional
 
 from ..models.job_listing import JobListing
 from ..utils.logger import Components, get_logger
-from .scam_detector import JobScamDetector, ScamIndicator, TrustAnalysis, TrustTier
+from .scam_detector import (
+    DEFAULT_SCAM_THRESHOLD,
+    JobScamDetector,
+    ScamIndicator,
+    TrustAnalysis,
+    TrustTier,
+)
 
 
 @dataclass
@@ -95,7 +101,7 @@ class TrustAnalyzer:
     def __init__(
         self,
         llm_router: Optional[Any] = None,
-        threshold: float = 0.7,
+        threshold: float = DEFAULT_SCAM_THRESHOLD,
     ) -> None:
         """
         Initialize the trust analyzer.

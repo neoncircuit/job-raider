@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ...models.pipeline_stage import DISCOVER_LAST_STAGE as _DISCOVER_LAST_STAGE
 from ...models.pipeline_stage import STAGE_ORDER
+from ...scoring.scam_detector import DEFAULT_SCAM_ACTION, DEFAULT_SCAM_THRESHOLD
 from ...utils.text_normalizer import normalize_user_prose
 
 # Stage values in execution order, from the single stage list in
@@ -93,10 +94,14 @@ class PipelineStartRequest(BaseModel):
         default=60, ge=0, le=100, description="Minimum relevance score"
     )
     scam_threshold: float = Field(
-        default=0.7,
+        default=DEFAULT_SCAM_THRESHOLD,
         ge=0.0,
         le=1.0,
         description="Scam detection threshold",
+    )
+    scam_action: Literal["drop", "flag"] = Field(
+        default=DEFAULT_SCAM_ACTION,
+        description="drop removes flagged postings; flag keeps them",
     )
     max_jobs: int = Field(
         default=20, ge=1, le=100, description="Maximum jobs to present"
