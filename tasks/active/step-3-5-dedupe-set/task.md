@@ -12,9 +12,9 @@ Measure the listing deduplication on a labeled set of listing pairs before any f
 - Two stages, each with a handoff in this folder and a review in `notes.md`: Stage A (set, suite, baseline), then Stage B (R2 fix, CI gate, docs). One fix round at most after the Stage B review (the stop rule in `notes.md`).
 
 ## Acceptance Criteria
-- [ ] A1. Labeling guide `apps/backend-py/tests/fixtures/eval/dedupe/README.md` and `cases.jsonl` with at least 30 labeled pairs (`same` or `different`) in the classes of `notes.md` (cross-source copies, reposts, URL variants, and the hard negatives), with structure and diversity tests.
-- [ ] A2. `dedupe` suite in `python main.py eval dedupe` (pair decision through `deduplicate`; precision, recall, false-merge rate, per-class counts, per-pair rows, Wilson 95% intervals; MLflow), with unit tests and a mutation proof.
-- [ ] A3. Baseline on the committed set (Cursor). The local catalog pairs file is written, the user labels its 20 pairs, and Claude runs the local-only baseline on them in the Stage A review (decision 3; not committed).
+- [x] A1. Labeling guide `apps/backend-py/tests/fixtures/eval/dedupe/README.md` and `cases.jsonl` with at least 30 labeled pairs (`same` or `different`) in the classes of `notes.md` (cross-source copies, reposts, URL variants, and the hard negatives), with structure and diversity tests.
+- [x] A2. `dedupe` suite in `python main.py eval dedupe` (pair decision through `deduplicate`; precision, recall, false-merge rate, per-class counts, per-pair rows, Wilson 95% intervals; MLflow), with unit tests and a mutation proof.
+- [x] A3. Baseline on the committed set (Cursor). The local catalog pairs file is written. The user still labels its 20 pairs; Claude runs the local-only baseline on them in the Stage A review (decision 3; not committed).
 - [ ] Review of Stage A (Claude, in `notes.md`), including a private probe set of pairs that Cursor has not seen.
 - [ ] B1. R2 fix in `deduplicate`: match on `job_id`, then the normalized URL, then normalized company, title, and location, under the precision rule of decision 2. Unit tests per rule, written first.
 - [ ] B2. CI gate on the committed set (`thresholds.json` with the dataset SHA-256 and the count pins), the same form as the scam gate.
@@ -23,4 +23,4 @@ Measure the listing deduplication on a labeled set of listing pairs before any f
 - [ ] Done when: the README states the dedupe precision and recall on N labeled pairs with the command that reproduces them, and CI fails when a hard negative is merged.
 
 ## Status
-`in-progress` (plan and decisions 1 to 5 accepted on 2026-10-26; Stage A is with Cursor: `handoff-stage-a.md`)
+`in-progress` (Stage A baseline is recorded in `handoff-stage-a.md`; user labels the 20 catalog pairs; Stage B waits for review)

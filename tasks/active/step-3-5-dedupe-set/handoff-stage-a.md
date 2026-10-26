@@ -219,3 +219,148 @@ Stage A changes no frontend file, so the frontend checks are not needed.
 - Never run `scripts/mypy_gate.py --update` to accept a new error.
 - Keep dry run as the default. Do not make auto-submit reachable.
 - Do not push. Push only from WSL, and only after the user approves.
+
+## Cursor results (2026-10-26)
+
+Stage A is complete on the committed set. Stop here. Do not start Stage B.
+Do not push. The user labels the 20 catalog pairs before anyone runs
+`eval dedupe` on `data/dedupe_catalog/`.
+
+### Commits
+
+| Hash | Subject |
+|------|---------|
+| `4c39c7a` | test(eval): add the labeled dedupe pairs and their guide |
+| `08b216c` | feat(eval): add the dedupe suite |
+| `6bf5f21` | feat(eval): add the local catalog pairs script for the dedupe check |
+| (this commit) | docs(tasks): record Stage A results |
+
+`deduplicate`, the normalizers, and `AppliedGuard` were not changed.
+
+### A1
+
+31 pairs. `same` 16 (51.6%). `different` 15 (48.4%).
+
+| Class | Label | Pairs |
+|-------|-------|-------|
+| C0 | same | 2 |
+| C1 | same | 4 |
+| C2 | same | 3 |
+| C3 | same | 4 |
+| C4 | same | 3 |
+| H1 | different | 3 |
+| H2 | different | 3 |
+| H3 | different | 3 |
+| H4 | different | 3 |
+| H5 | different | 3 |
+
+Diversity: 26 company names; one company is in at most 2 cases. 30 titles;
+one title is in at most 2 cases. C1 covers company suffix, title case,
+location format, HTML, a shortened description, and URL domain. C3 covers
+slash, letter case, `utm_`, and fragment.
+
+### A2
+
+New tests in `tests/unit/test_dedupe_suite.py`: metrics and per-class
+counts on a four-pair synthetic set; Wilson bounds; order-dependent count
+with a fake that merges in one order only; the `TODO` refusal; CLI route
+`eval dedupe`. `SUITE_NAMES` now includes `dedupe`.
+
+The suite tests were written with the suite. The failure proof is the
+four mutations on `src/evaluation/suites/dedupe.py`. Each mutation was a
+fixed-string replace. The file checksum changed. `grep` of the new string
+was 1 (the TODO mutation deleted the check, so the new-string count is
+not used). One named test failed. The file was restored and matched the
+backup checksum `d65312f44df9e73c6a52a3ac95fe5f51e43b0e92d27b6c8d0d6b844641f240ba`.
+
+| Mutation | New SHA-256 | Test | Failure |
+|----------|-------------|------|---------|
+| Reversed order not run (`merged_reversed = merged`) | `7af020fc…61bc3c1` | `test_order_dependent_count_uses_both_orders` | `assert 0 == 1` |
+| False-merge trials = `len(cases)` | `2b0f5393…b578660` | `test_metrics_and_per_class_on_a_known_small_set` | `assert 0.25 == 0.5` |
+| TODO check removed | `4de671fb…903ff95` | `test_todo_label_refuses_the_run` | `DID NOT RAISE ValueError` |
+| C0 left out of per-class counts | `19c71271…9cada79` | `test_metrics_and_per_class_on_a_known_small_set` | per-class map missing C0 |
+
+### A2c
+
+One real run of `scripts/prepare_dedupe_catalog_pairs.py`:
+
+```text
+groups=13
+pairs=20
+```
+
+The output file was not opened or printed. Recruiter fields stay out of
+the written rows. A labeled file is not overwritten.
+
+### A3
+
+Command: `python main.py eval dedupe` from `apps/backend-py`.
+
+| Item | Value |
+|------|-------|
+| Cases | 31 |
+| Git SHA | `6bf5f21361ad387930dfe8defbe4f19f293a8cf8` |
+| Git dirty | true (the 14 IDE CRLF files; not staged) |
+| Dataset SHA-256 | `8389742fb4b51ea175feb0a24a5bd97a2efe8a13c8adbb8349a86ef8692365d7` |
+| Report | `apps/backend-py/data/eval/dedupe/20261026T031746532576Z.json` |
+| MLflow run | `3a3741b8034647b0885464aa5a4857fa` |
+| Order-dependent | 0 |
+
+| Metric | Value | Counts | Wilson 95% |
+|--------|-------|--------|------------|
+| Precision | 1.0000 | 2 / 2 | 0.3424 to 1.0000 |
+| Recall | 0.1250 | 2 / 16 | 0.0350 to 0.3602 |
+| F1 | 0.2222 | — | 0.0350 to 0.3602 (same trials as recall) |
+| False-merge rate | 0.0000 | 0 / 15 | 0.0000 to 0.2039 |
+
+Confusion: TP 2, FP 0, FN 14, TN 15.
+
+| Class | Merged | Total |
+|-------|--------|-------|
+| C0 | 2 | 2 |
+| C1 | 0 | 4 |
+| C2 | 0 | 3 |
+| C3 | 0 | 4 |
+| C4 | 0 | 3 |
+| H1 | 0 | 3 |
+| H2 | 0 | 3 |
+| H3 | 0 | 3 |
+| H4 | 0 | 3 |
+| H5 | 0 | 3 |
+
+Only C0 merged. No other pair merged. No C0 pair failed to merge. No case
+was changed to fit this result.
+
+### Plan notes and an R2 idea (not applied)
+
+- The F1 Wilson interval uses the recall trial count. F1 is not a
+  binomial proportion. Precision, recall, and the false-merge rate are
+  the intervals that matter.
+- `normalize_match_url` lowercases and strips a trailing slash only. It
+  does not drop `utm_` parameters or fragments. A URL-only rule would
+  still miss C3 `utm_` and fragment pairs.
+- R2 idea for Stage B, not applied: keep `job_id`; then normalized URL;
+  then normalized company, title, and location together, and never on
+  placeholder labels. Precision first: no H1 to H5 pair in the committed
+  set may merge. C2 should merge on URL. C3 slash and case should merge
+  on normalized URL. C1, C4, and the remaining C3 pairs should merge only
+  when company, title, and location all match.
+
+### Checks
+
+Each of A1, A2, and A2c ran the section 5 backend checks before the
+commit. After this results section, the same checks run again.
+
+| Check | Result |
+|-------|--------|
+| black --check (CI paths plus the new script) | pass |
+| ruff check (CI paths plus the new script) | pass |
+| mypy_gate.py | pass (182 known, 0 new) |
+| pytest tests/ -q | pass (1599 after A1; 1604 after A2; 1606 after A2c) |
+
+Not run:
+
+- Frontend checks (no frontend file in Stage A).
+- `eval dedupe` on `data/dedupe_catalog/` (the user labels first).
+- Stage B. No change to `deduplicate`.
+- Push.
