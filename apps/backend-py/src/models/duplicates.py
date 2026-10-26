@@ -38,7 +38,7 @@ LEGAL_SUFFIXES: Tuple[str, ...] = (
     "co",
     "bhd",
 )
-_PUNCT = re.compile(r"[^\w\s]+", flags=re.UNICODE)
+_PUNCT = re.compile(r"[^\w\s+#]+", flags=re.UNICODE)
 
 FlagRow = Dict[str, str]
 FlagMap = Dict[str, List[FlagRow]]
@@ -48,6 +48,8 @@ GroupKey = Tuple[str, ...]
 def strip_punctuation(value: str) -> str:
     """
     Replace punctuation with spaces and collapse whitespace.
+
+    ``+`` and ``#`` stay, so titles such as C++ and C# stay distinct.
 
     Args:
         value: Already-lowercased text.
@@ -166,11 +168,13 @@ def find_possible_duplicates(listings: Sequence[JobListing]) -> FlagMap:
         url = clean_match_url(_listing_url(listing))
         if url and title and location:
             url_groups[(url, title, location)].append(listing)
-        if _usable_match_label(listing.company or "") and _usable_match_label(
-            listing.title or ""
+        if (
+            _usable_match_label(listing.company or "")
+            and _usable_match_label(listing.title or "")
+            and _usable_match_label(listing.location or "")
         ):
             company = normalize_company_name(listing.company)
-            if company and title and location:
+            if company and title and location and _usable_match_label(company):
                 company_groups[(company, title, location)].append(listing)
 
     reasons: Dict[str, Dict[str, str]] = defaultdict(dict)
@@ -229,7 +233,12 @@ def flag_possible_duplicates(listings: Sequence[JobListing]) -> List[JobListing]
     for listing in listings:
         rows = flags.get(listing.job_id)
         if not rows:
-            result.append(listing)
+            if "possible_duplicates" in listing.metadata:
+                metadata = dict(listing.metadata)
+                metadata.pop("possible_duplicates")
+                result.append(listing.model_copy(update={"metadata": metadata}))
+            else:
+                result.append(listing)
             continue
         metadata = dict(listing.metadata)
         metadata["possible_duplicates"] = rows

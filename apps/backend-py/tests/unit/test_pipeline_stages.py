@@ -88,6 +88,97 @@ class TestStageDeduplicate:
         saved = stages.context.storage.save_collection.call_args.args[0]
         assert isinstance(saved, JobListingCollection)
 
+    def test_reports_flag_counts_and_same_job_id_removals(
+        self, stages: PipelineStages
+    ) -> None:
+        """
+        Stage metadata counts flagged pairs and same-job-id removals.
+
+        Args:
+            stages: Pipeline stages fixture.
+
+        Returns:
+            None.
+        """
+        stages.context.storage.save_collection = MagicMock(return_value="path.json")
+        stages.context.storage.upsert_listings = MagicMock()
+
+        def _row(
+            job_id: str,
+            *,
+            title: str,
+            company: str,
+            location: str,
+            url: str,
+        ) -> JobListing:
+            """
+            Build one listing for the flag-count check.
+
+            Args:
+                job_id: Listing identifier.
+                title: Job title.
+                company: Company name.
+                location: Job location.
+                url: Source URL.
+
+            Returns:
+                A validated listing.
+            """
+            return JobListing(
+                job_id=job_id,
+                title=title,
+                company=company,
+                location=location,
+                source="jobstreet",
+                source_url=url,
+                description="Walk the site on Monday. File the sheet before noon.",
+            )
+
+        shared_url = "https://jobs.example.com/shared-role"
+        listings = [
+            _row(
+                "url-a",
+                title="Yard Clerk",
+                company="Fenwick Rails",
+                location="Woodlands, Singapore",
+                url=shared_url,
+            ),
+            _row(
+                "url-b",
+                title="Yard Clerk",
+                company="Fenwick Rails",
+                location="Woodlands, Singapore",
+                url=shared_url,
+            ),
+            _row(
+                "url-a",
+                title="Yard Clerk",
+                company="Fenwick Rails",
+                location="Woodlands, Singapore",
+                url=shared_url,
+            ),
+            _row(
+                "ctl-a",
+                title="Payroll Clerk",
+                company="Pine Kiln Pte Ltd",
+                location="Punggol, Singapore",
+                url="https://jobs.example.com/ctl-a",
+            ),
+            _row(
+                "ctl-b",
+                title="Payroll Clerk",
+                company="Pine Kiln Pte. Ltd.",
+                location="Punggol, Singapore",
+                url="https://jobs.example.com/ctl-b",
+            ),
+        ]
+        result = stages.stage_deduplicate(listings)
+        assert result.success
+        assert result.metadata["flagged_listings"] == 4
+        assert result.metadata["flagged_pairs_same_url"] == 1
+        assert result.metadata["flagged_pairs_same_company_title_location"] == 1
+        assert result.metadata["removed_count"] == 1
+
 
 class TestStageScoreAndRank:
     """stage_score_and_rank must call JobMatcher.score_job (not match_and_score)."""

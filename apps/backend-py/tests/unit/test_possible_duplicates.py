@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from src.models.duplicates import normalize_company_name
 from src.models.job_listing import JobListing, JobListingCollection
 
 
@@ -357,3 +358,157 @@ def test_deduplicate_does_not_mutate_input_listings() -> None:
     _dedupe([left, right])
     assert "possible_duplicates" not in left.metadata
     assert "possible_duplicates" not in right.metadata
+
+
+def test_plus_and_hash_keep_c_family_titles_apart() -> None:
+    """
+    C++, C#, and C stay distinct after punctuation is stripped.
+
+    Returns:
+        None.
+    """
+    shared = {"company": "North Desk", "location": "Tuas, Singapore"}
+    listings = [
+        _listing(
+            "cpp", title="C++ Developer", url="https://jobs.example.com/cpp", **shared
+        ),
+        _listing(
+            "csharp",
+            title="C# Developer",
+            url="https://jobs.example.com/csharp",
+            **shared,
+        ),
+        _listing(
+            "cplain", title="C Developer", url="https://jobs.example.com/c", **shared
+        ),
+    ]
+    flags = _flag_map(_dedupe(listings))
+    assert flags["cpp"] == []
+    assert flags["csharp"] == []
+    assert flags["cplain"] == []
+
+
+def test_sr_c_plus_plus_titles_still_flag() -> None:
+    """
+    A period in Sr. does not split two C++ titles.
+
+    Returns:
+        None.
+    """
+    left = _listing(
+        "sr-a",
+        title="Sr. C++ Developer",
+        company="North Desk",
+        location="Tuas, Singapore",
+        url="https://jobs.example.com/sr-a",
+    )
+    right = _listing(
+        "sr-b",
+        title="Sr C++ Developer",
+        company="North Desk",
+        location="Tuas, Singapore",
+        url="https://jobs.example.com/sr-b",
+    )
+    flags = _flag_map(_dedupe([left, right]))
+    assert {row["reason"] for row in flags["sr-a"]} == {"same_company_title_location"}
+    assert {row["job_id"] for row in flags["sr-a"]} == {"sr-b"}
+
+
+def test_placeholder_locations_do_not_flag() -> None:
+    """
+    The company-title-location rule skips a placeholder location.
+
+    Returns:
+        None.
+    """
+    left = _listing(
+        "na-a",
+        title="Records Clerk",
+        company="Amberline Press",
+        location="N/A",
+        url="https://jobs.example.com/na-a",
+    )
+    right = _listing(
+        "na-b",
+        title="Records Clerk",
+        company="Amberline Press",
+        location="n/a",
+        url="https://jobs.example.com/na-b",
+    )
+    flags = _flag_map(_dedupe([left, right]))
+    assert flags["na-a"] == []
+    assert flags["na-b"] == []
+
+
+def test_placeholder_company_after_suffix_does_not_flag() -> None:
+    """
+    A confidential company is skipped after the legal suffix is removed.
+
+    Returns:
+        None.
+    """
+    left = _listing(
+        "conf-a",
+        title="Payroll Clerk",
+        company="Confidential Pte Ltd",
+        location="Woodlands, Singapore",
+        url="https://jobs.example.com/conf-a",
+    )
+    right = _listing(
+        "conf-b",
+        title="Payroll Clerk",
+        company="Confidential Pte. Ltd.",
+        location="Woodlands, Singapore",
+        url="https://jobs.example.com/conf-b",
+    )
+    flags = _flag_map(_dedupe([left, right]))
+    assert flags["conf-a"] == []
+    assert flags["conf-b"] == []
+
+
+def test_old_flags_are_cleared_on_unflagged_listings() -> None:
+    """
+    An old possible_duplicates key is removed on a copy. The input stays.
+
+    Returns:
+        None.
+    """
+    stale = _listing(
+        "stale-a",
+        title="Alpha Clerk",
+        extra_metadata={
+            "kept": "yes",
+            "possible_duplicates": [{"job_id": "gone", "reason": "same_url"}],
+        },
+    )
+    other = _listing("fresh-b", title="Beta Clerk")
+    result = _dedupe([stale, other])
+    stale_out = next(item for item in result if item.job_id == "stale-a")
+    assert "possible_duplicates" not in stale_out.metadata
+    assert stale_out.metadata["kept"] == "yes"
+    assert stale.metadata["possible_duplicates"] == [
+        {"job_id": "gone", "reason": "same_url"}
+    ]
+
+
+def test_suffix_is_a_whole_word() -> None:
+    """
+    A suffix inside a word stays. Disco does not become Dis.
+
+    Returns:
+        None.
+    """
+    left = _listing(
+        "disco-a",
+        company="Disco",
+        url="https://jobs.example.com/disco-a",
+    )
+    right = _listing(
+        "disco-b",
+        company="Dis Co",
+        url="https://jobs.example.com/disco-b",
+    )
+    flags = _flag_map(_dedupe([left, right]))
+    assert flags["disco-a"] == []
+    assert flags["disco-b"] == []
+    assert normalize_company_name("Disco") == "disco"
