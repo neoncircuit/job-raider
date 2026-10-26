@@ -19,8 +19,8 @@ Measure the listing deduplication on a labeled set of listing pairs before any f
 - [x] B1. Flag and keep (decision 6, replaces the merge plan): `deduplicate` removes only a listing with the same `job_id`; possible duplicates stay and carry `metadata["possible_duplicates"]` (the other `job_id` and the reason: `same_url` or `same_company_title_location`). Unit tests per rule, written first. (`handoff-stage-b.md`)
 - [x] B2. The suite measures the flag (identified = merged or flagged) and reports merged pairs on their own; findings 4 and 5 fixed; CI gate on the committed set (`thresholds.json` with the dataset SHA-256, the count pins, and 0 merged `different` pairs).
 - [x] B3. The README pipeline table (stage 2), `docs/index.md`, and `docs/usage.md` state the rule and the measured numbers, with the command and the known limits.
-- [ ] Review of Stage B (Claude, in `notes.md`), with a new private probe set and the catalog check (no catalog pair merged).
+- [x] Review of Stage B (Claude, 2026-10-26, in `notes.md`), with a new private probe set and the catalog check (no catalog pair merged). Result: accept Stage B; 0 merged `different` pairs on the committed set, the probes, and the catalog; eight small findings; one fix round recommended (user decision).
 - [ ] Done when: the README states the duplicate-flag precision and recall on N labeled pairs with the command that reproduces them, CI fails when a `different` pair is merged, and the pipeline removes no listing other than a copy with the same `job_id`.
 
 ## Status
-`in-progress` (Stage B B1 to B3 done on 2026-10-26; waiting for the Stage B review)
+`in-progress` (Stage B done and reviewed on 2026-10-26; one fix round recommended, waiting for the user's decision)

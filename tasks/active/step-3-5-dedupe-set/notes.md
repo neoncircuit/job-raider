@@ -145,6 +145,74 @@ The catalog report records `git_dirty` true, because of the 14 CRLF rewrites; it
 2. **Fix findings 4 and 5 in Stage B**, and add "confidential" to the placeholders only if the flag rule uses company and title (finding 7).
 3. **Keep the set** with its limits: the description leak (finding 1) and the C4 assignment (finding 6). Do not rewrite it.
 
+## Review of Stage B (2026-10-26, Claude, code at `e458cb4`)
+
+Result: accept Stage B. The pipeline removes only a listing with a repeated `job_id`, and no `different` pair is merged on the committed set, the new probes, or the catalog. One fix round (the last one the stop rule permits) is recommended for the small findings below.
+
+### Order of the review
+
+1. I wrote a new private probe set (P-dedupe-B, 30 pairs: 14 `same`, 16 `different`) and a file of the result that decision 6 predicts for each pair. I did this before I read the Stage B code. SHA-256 at 12:03Z: `49098b0a…cac4e`.
+2. The first run refused two pairs: `source_url` is `HttpUrl`, so it cannot be empty or have no scheme. I changed those two pairs to a missing URL and to `http` against `https`. The cause is the schema, not the rule. New SHA-256: `7dc1b44c…478a3f1a`. The set stays outside the repository.
+3. Then I read the diffs, ran the gate, ran my mutations, and ran the probes and the catalog.
+
+### What I checked and found correct
+
+- `JobListingCollection.deduplicate` removes a listing only when its `job_id` matches an earlier one. Then it calls `flag_possible_duplicates`. `stage_deduplicate` and `ScraperManager` both call `deduplicate`, so both get the flags. The applied filter in stage 2 is not changed.
+- `src/models/duplicates.py` follows the handoff: the cleaned URL (`normalize_match_url`, then no fragment and no `utm_*`, `trk`, `trkInfo`, `refId`, `ref`), the company with whole-word legal suffixes removed, and titles and locations without punctuation. Grouping is by key. `same_url` wins over the other reason. There is no self entry. The rows are sorted. Flagged listings are `model_copy` results, and the input listings do not change.
+- A group of three (two with the same cleaned URL and one with only the same company, title, and location) gets the correct reason on each side.
+- The suite: "identified" is merged or flagged; `merged_same` and `merged_different` are separate; `f1.ci95_*` is removed (finding 4); the `DedupeCase` checks have bad-case tests (finding 5).
+- `"confidential"` is in `_PLACEHOLDER_LABELS`. `AppliedGuard` no longer matches a "Confidential" company on company and title, and a test covers this. This keeps more listings, which agrees with the user's policy.
+- Docs: the README stage 2 row and the "Duplicate Detection" section (numbers, command in its own labeled block, limits, Mermaid), `docs/index.md`, `docs/usage.md`, and the guide's limit sentence. I calculated the Wilson interval for 15 of 18 again (0.6078 to 0.9416), and it agrees.
+
+### Measures
+
+| Run | Pairs | Merged `different` | Identified precision | Identified recall | False identify | Order-dependent |
+|-----|------:|-------------------:|---------------------:|------------------:|---------------:|----------------:|
+| Committed set (MLflow `9c20f6b8…`, report `20261026T121502543508Z`) | 31 | 0 | 15 of 18 | 15 of 16 | 3 of 15 | 0 |
+| P-dedupe-B (private, in memory) | 30 | 0 | 11 of 14 | 11 of 14 | 3 of 16 | 0 |
+| Catalog, local only (MLflow `43273842…`) | 20 | 0 | not applicable | not applicable | 18 of 20 | 0 |
+
+- The committed-set run gives the same numbers as Cursor's B2a run. The gate: black, ruff, mypy gate (182 known, 0 new), and pytest (1625 passed).
+- P-dedupe-B: 29 of 30 pairs give the result that decision 6 predicts. The other pair is finding 4a. The three misses are a suffix that is not in the list ("Pvt"), a location format, and `http` against `https`. The three false identifies are two levels under one title, a shared careers page with one title for two clients, and a placeholder location.
+- Catalog: 0 of 20 pairs merged, so the check passes. 18 pairs are flagged (8 `same_url`, 10 `same_company_title_location`) and 2 are not. The user's labels are a policy (apply to each listing), not a statement that the jobs differ. Every listing stays, so the flag only adds a note.
+
+### Mutation proofs (Claude)
+
+Each mutation was a fixed-string replace with a count of 1. The file checksum changed, and the restore matched the original checksum.
+
+| Mutation | Result | Test that failed |
+|----------|--------|------------------|
+| M1 "confidential" not a placeholder | caught | placeholder flag test, `AppliedGuard` test, the gate |
+| M2 `ref` kept as a query parameter | caught | `test_same_url_flags_fragment_slash_case_and_tracking` |
+| M3 suffix matched inside a word ("Disco" becomes "dis") | **not caught** | none |
+| M4 flag written into the input metadata | caught | `test_deduplicate_does_not_mutate_input_listings` |
+| M5 `same_url` ignores the location | caught | `test_same_url_does_not_flag_other_title_or_location` |
+| M6 placeholder title permitted | caught | placeholder flag test, the gate |
+| M7 self entry permitted | caught | four flag tests |
+| M8 later reason overwrites `same_url` (both guards removed) | caught | `test_same_url_reason_wins_when_both_rules_match` |
+| M9 fragment kept | caught | the URL flag test |
+| M10 only `utm_source` removed | caught | the URL flag test |
+| M11 stage stops counting flagged listings | **not caught** | none |
+| G1 `max_merged_different` raised to 1 | **not caught** | none |
+
+My first M8 removed only one of the two guards. That result was the same code behavior, so I ran it again with both guards removed.
+
+### Findings
+
+1. **The zero pin can be raised (G1, medium).** `max_merged_different` is a number in `thresholds.json`. If it changes to 1, every test passes, so "CI fails when a `different` pair is merged" depends on nobody changing the pin. Fix: a test asserts that the pin is 0, with a message that it is a safety rule and not a measured pin.
+2. **`merged_different` reads one order only (low to medium).** The suite runs both orders, but `merged_different` and `threshold_check` read only `merged`. A future rule that removes a listing in one order only (for example "the description of b is in a") would pass the gate. Fix: a pair is merged when either order merges, in the suite and in `threshold_check`.
+3. **Title punctuation joins "C++", "C#", and "C" (low).** The title key removes punctuation, so "C++ Developer" and "C# Developer" at one company and location are flagged. This comes from my handoff text (title: remove punctuation), not from a Cursor change. The user looks for software jobs, so this case is likely. Fix: keep `+` and `#` in the keys.
+4. **Placeholder edges (low).** (a) A location of "N/A" becomes "n a" and matches. The handoff named placeholders for the company and title only, so this is my gap. (b) "Confidential Pte Ltd" passes the placeholder check, and then the suffix removal leaves "confidential", so two such listings are flagged. Fix: check the location, and the company after suffix removal, against `_PLACEHOLDER_LABELS`.
+5. **Old flags stay (low).** `flag_possible_duplicates` does not change a listing that it does not flag. If that listing already has `possible_duplicates` from an earlier run, the old rows stay and can name a listing that is not in this run. Fix: remove the key on a copy of an unflagged listing that has it.
+6. **Test gaps (low).** M3: there is no test that a suffix inside a word stays ("Disco"). M11: no test reads the three new stage metadata keys.
+7. **Unused function (information).** `default_dedupe` in `src/evaluation/suites/dedupe.py` is no longer called, and the `run_dedupe_suite` docstring still names it. Remove it, or say why it stays.
+8. **README limits (documentation).** Add two limits that the probes show: a shared careers page with the same title and location is flagged, and `http` and `https` URLs are not joined.
+
+### Recommendations
+
+1. **One fix round, the last one (needs the user's decision).** Findings 1 to 8 in one handoff. All are small. The committed set stays frozen. If a fix changes a count on the committed set, re-pin with a dated entry in `thresholds.json`. Then I check the fixes against these findings and close Step 3.5, whatever the result.
+2. **Cursor does the fix round.** Then the person who wrote the code is not the person who reviews it.
+
 ## Blockers / Questions
 
-- None. Stage B (flag and keep, decision 6) is with Cursor: `handoff-stage-b.md`.
+- The user decides on the Stage B fix round (recommendation 1).

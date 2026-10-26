@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Step 3.5: Dedupe set, then the R2 fix (`tasks/active/step-3-5-dedupe-set/`; Stage A done and reviewed; decision 6: flag and keep; Stage B is with Cursor: `handoff-stage-b.md`.)
+- [ ] Step 3.5: Dedupe set, then the R2 fix (`tasks/active/step-3-5-dedupe-set/`; Stage B done and reviewed; one fix round recommended, waiting for the user's decision.)
 - [ ] Step 3.2 remainder: about 15 real generated letters, labeled by the user and run locally (`tasks/active/step-3-measurable-claims/`)
 - [ ] Step 1 manual check: a full-mode dry run from the Pipeline page with Ollama running; needs the user (`tasks/active/step-1-core-flow/`)
 
