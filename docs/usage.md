@@ -284,7 +284,9 @@ python main.py \
 
 ### Stage 2: Deduplicate
 
-Removes duplicate listings across sources.
+Removes a listing only when it has the same job ID as an earlier
+listing. Other listings stay. Possible duplicates get a flag with a
+reason (the same cleaned URL, or the same company, title, and location).
 
 ### Stage 3: Filter Scams
 

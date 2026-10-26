@@ -391,7 +391,7 @@ A comprehensive guide was added to address the critical Docker storage issue on 
 ### Pipeline Stages
 
 1. **Scrape** - Aggregates listings from LinkedIn and JSearch API (50+ boards)
-2. **Deduplicate** - Removes duplicates across sources
+2. **Deduplicate** - Removes only a listing with the same job ID. Possible duplicates are flagged and kept.
 3. **Filter Scams** - Flags potential scams (10 indicators); flagged postings are kept
 4. **Filter by Profile** - Matches user preferences
 5. **Score & Rank** - Heuristic relevance scoring (0-100)

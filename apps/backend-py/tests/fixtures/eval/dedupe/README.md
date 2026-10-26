@@ -101,6 +101,9 @@ script writes `expected` as `TODO`.
 
 ## Limits of the Set
 
+- Every `same` pair has the same or a contained description, and every
+  `different` pair has a different one. Do not judge a description
+  signal on this set.
 - The constructed pairs are short board-style postings. They do not cove
   every board layout.
 - Lengths overlap between `same` and `different`, but the set is small.

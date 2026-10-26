@@ -121,7 +121,7 @@ Each value after `--keywords` or `--locations` is one search term. Quote a term 
 | Stage | Description | Output |
 |-------|-------------|--------|
 | 1. Scrape | Collect from LinkedIn, JSearch (50+ boards), and Singapore sources | Raw listings |
-| 2. Deduplicate | Remove duplicate listings (same job ID) | Unique listings |
+| 2. Deduplicate | Remove only exact copies (the same job ID). Flag possible duplicates and keep them. | Unique job IDs, flagged listings |
 | 3. Filter Scams | Flag likely scams; flagged postings are kept | Flagged listings |
 | 4. Filter by Profile | Match user preferences | Relevant listings |
 | 5. Score & Rank | Heuristic relevance scoring (0-100) | Ranked listings |
@@ -133,6 +133,47 @@ Each value after `--keywords` or `--locations` is one search term. Quote a term 
 | 11. Submit (dry run) | Report what would be submitted; nothing is sent | Run summary |
 
 The default "discover" mode stops after stage 6, so you review the shortlist on the Jobs page.
+
+## Duplicate Detection
+
+The stage removes a listing only when it has the same job ID as an
+earlier listing. Other listings stay. Two flag rules mark possible
+duplicates: the same cleaned URL with the same title and location, or
+the same company, title, and location. The suite measures
+"identified": merged or flagged.
+
+Committed set (31 labeled pairs). One run. Wilson 95% intervals:
+
+| Metric | Value | Counts | Wilson 95% |
+|--------|-------|--------|------------|
+| Precision | 0.8333 | 15 of 18 | 0.6078 to 0.9416 |
+| Recall | 0.9375 | 15 of 16 | 0.7167 to 0.9889 |
+| False-identify rate | 0.2000 | 3 of 15 | 0.0705 to 0.4519 |
+
+How to run the suite:
+
+```bash
+cd apps/backend-py
+.venv/bin/python main.py eval dedupe
+```
+
+Limits:
+
+- The set separates its labels on the description, so no description
+  signal is used.
+- Location formats ("Singapore" and "Central, Singapore") and title
+  abbreviations are not matched.
+- Two openings with the same company, title, and location are flagged.
+- The flag is not shown in the UI yet.
+
+```mermaid
+flowchart LR
+    L[Listings] --> J{Same job ID?}
+    J -->|yes| R[Remove the later copy]
+    J -->|no| F{Flag rule matches?}
+    F -->|same URL or same company, title, and location| K[Keep with the flag]
+    F -->|no| K2[Keep]
+```
 
 ## Scoring Heuristic
 

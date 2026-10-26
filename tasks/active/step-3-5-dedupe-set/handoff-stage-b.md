@@ -192,3 +192,183 @@ Stage B changes no frontend file, so the frontend checks are not needed.
 - Never run `scripts/mypy_gate.py --update` to accept a new error.
 - Keep dry run as the default. Do not make auto-submit reachable.
 - Do not push. Push only from WSL, and only after the user approves.
+
+## Cursor results (2026-10-26)
+
+Stage B is complete on the committed set. Stop here. Do not push. Do not
+open or run `data/dedupe_catalog/`.
+
+### Commits
+
+| Step | Hash | Subject |
+|------|------|---------|
+| B1a | `0b95cec` | `test(dedupe): add the flag-and-keep rule tests` |
+| B1b | `2a39bca` | `feat(dedupe): keep possible duplicates and flag them with a reason` |
+| B2a | `ea3ac55` | `feat(eval): measure the duplicate flag in the dedupe suite` |
+| B2b | `d5c226a` | `test(dedupe): CI gate with count pins and no merged different pair` |
+| B3 | (this commit) | `docs: state the duplicate flag and its measured numbers` |
+
+### B1a
+
+`tests/unit/test_possible_duplicates.py` has 10 tests written from
+decision 6, before the flag code. Before B1b, the four flag-positive
+tests failed and the six removal and not-flagged tests passed.
+
+Full suite at B1a: 4 failed, 1612 passed.
+
+| Failed test | Why |
+|-------------|-----|
+| `test_same_url_flags_fragment_slash_case_and_tracking` | No flag yet |
+| `test_company_title_location_flags_suffix_and_punctuation` | No flag yet |
+| `test_flag_payload_is_sorted_and_does_not_name_self` | No flag yet |
+| `test_same_url_reason_wins_when_both_rules_match` | No flag yet |
+
+### B1b
+
+New module `src/models/duplicates.py`. Grouping is by key, not every
+pair. Normalizers:
+
+- URL: `normalize_match_url`, then drop the fragment and tracking
+  parameters (`utm_*`, `trk`, `trkInfo`, `refId`, `ref`).
+- Company: `normalize_match_label`, strip punctuation, then drop legal
+  suffixes that are whole words at the end. `LEGAL_SUFFIXES` (longest
+  first): `private limited`, `sdn bhd`, `pte ltd`, `limited`, `pte`,
+  `ltd`, `inc`, `llc`, `llp`, `corp`, `co`, `bhd`. `Disco` keeps `co`.
+- Title and location: `normalize_match_label`, then strip punctuation.
+  Abbreviations are not expanded.
+
+`JobListingCollection.deduplicate` still removes only a repeated
+`job_id`, then flags copies with `model_copy`. Input listings do not
+change.
+
+`_PLACEHOLDER_LABELS` now includes `confidential`.
+`AppliedGuard` and `find_matching_application` read that set, so a
+company named Confidential no longer matches on company and title.
+New test: `test_confidential_company_does_not_match_on_company_title`.
+
+Stage metadata (added, existing keys kept): `flagged_listings`,
+`flagged_pairs_same_url`,
+`flagged_pairs_same_company_title_location`. `removed_count` still
+counts same-`job_id` removals and the applied filter.
+
+### B2a
+
+Command: `python main.py eval dedupe` from `apps/backend-py`.
+
+| Item | Value |
+|------|-------|
+| Cases | 31 |
+| Git SHA | `2a39bca` (dirty true: the 14 IDE CRLF files) |
+| Dataset SHA-256 | `8389742fb4b51ea175feb0a24a5bd97a2efe8a13c8adbb8349a86ef8692365d7` |
+| Report | `apps/backend-py/data/eval/dedupe/20261026T055112326321Z.json` |
+| MLflow run | `ee58fc58f04e48808d9a345e2b965818` |
+| Order-dependent | 0 |
+| Merged same | 2 |
+| Merged different | 0 |
+
+| Metric | Value | Counts | Wilson 95% |
+|--------|-------|--------|------------|
+| Precision | 0.8333 | 15 / 18 | 0.6078 to 0.9416 |
+| Recall | 0.9375 | 15 / 16 | 0.7167 to 0.9889 |
+| F1 | 0.8824 | — | none (finding 4) |
+| False-identify rate | 0.2000 | 3 / 15 | 0.0705 to 0.4519 |
+
+Against A3: merge is unchanged (only the two C0 pairs). Identify recall
+moved from 2 of 16 to 15 of 16. The miss is `c1__riverton_support`
+(location format: "Singapore" and "Central, Singapore").
+
+| Class | Merged | Flagged | Total | Reason |
+|-------|--------|---------|-------|--------|
+| C0 | 2 | 0 | 2 | same `job_id` |
+| C1 | 0 | 3 | 4 | `same_company_title_location` (one miss) |
+| C2 | 0 | 3 | 3 | `same_url` |
+| C3 | 0 | 4 | 4 | `same_url` |
+| C4 | 0 | 3 | 3 | `same_company_title_location` |
+| H1 | 0 | 0 | 3 | — |
+| H2 | 0 | 3 | 3 | `same_company_title_location` (known limit) |
+| H3 | 0 | 0 | 3 | — |
+| H4 | 0 | 0 | 3 | — |
+| H5 | 0 | 0 | 3 | — |
+
+Finding 4: F1 has no Wilson interval. Finding 5: `DedupeCase` checks
+are unit-tested (wrong prefix, H class labeled `same`, C class labeled
+`different`, `TODO` outside `catalog`).
+
+Backup SHA-256 of `src/evaluation/suites/dedupe.py`: `fc8b4486…852f1d93`.
+Each mutation was a fixed-string replace. The file checksum changed.
+The new string count was 1. One named test failed. Restore matched the
+backup.
+
+| Mutation | New SHA-256 | Test | Failure |
+|----------|-------------|------|---------|
+| Flag check removed from identified | `5db4adc3…4aa679` | `test_flag_without_merge` | `assert None == 1.0` |
+| `merged_different` counts merged same | `8ffeac9e…114230ae` | suite metrics test | `assert 2.0 == 1` |
+| `case_id` prefix check removed | `e1650554…414480` | prefix `DedupeCase` test | DID NOT RAISE |
+| H-class label check removed | `110237a5…283b2aa3` | H-class `DedupeCase` test | DID NOT RAISE |
+
+### B2b
+
+Pins in `tests/fixtures/eval/dedupe/thresholds.json`:
+
+| Pin | Value |
+|-----|------:|
+| `dataset_sha256` | `8389742fb4b51ea175feb0a24a5bd97a2efe8a13c8adbb8349a86ef8692365d7` |
+| `max_false_identified` | 3 |
+| `max_missed_same` | 1 |
+| `max_merged_different` | 0 |
+| Baseline / MLflow | B2a / `ee58fc58f04e48808d9a345e2b965818` |
+
+`threshold_check` compares the SHA-256 first, then each count. A count
+above its pin names the cases. A count below its pin is a warning.
+
+| Mutation | New SHA-256 | Test | Failure |
+|----------|-------------|------|---------|
+| `same_url` ignores title | `d4b5b4f7…713200f5` | `test_dedupe_suite_meets_the_pinned_counts` | `false_identified: 6 (pin 3)` (H3 added) |
+| `deduplicate` merges on cleaned URL | `b7437b44…ba22dd3f` | `test_dedupe_suite_meets_the_pinned_counts` | `merged_different: 3 (pin 0)` (the three H3 pairs) |
+| SHA-256 check removed | `fd2c8aa8…6e191ed8` | `test_a_changed_dataset_fails_before_any_count` | violation is `merged_different`, not `dataset changed` |
+
+Each mutation was a fixed-string replace. The checksum changed. The new
+string count was 1 (the SHA mutation deleted the check). Restore
+matched the backup.
+
+### B3
+
+- `README.md` pipeline table, row 2: the stage removes only exact
+  copies and flags possible duplicates.
+- `README.md` "Duplicate Detection": identified precision, recall, and
+  false-identify rate from B2a, the command, the four limits, and a
+  flow diagram.
+- `docs/index.md` stage 2: no longer says the stage removes duplicates
+  across sources.
+- `docs/usage.md` Stage 2: same rule in two sentences.
+- Guide "Limits of the Set": one sentence on the description
+  separation (finding 1). No labeling rule changed.
+
+### Plan notes
+
+- The C1 miss and the H2 false identifies are the known limits. They
+  are pinned, not tuned.
+- The `confidential` placeholder change also affects `AppliedGuard`.
+  The new unit test covers that case.
+- Nothing in this plan looked wrong after the run.
+
+### Checks
+
+Each of B1a, B1b, B2a, and B2b ran the section 5 backend checks before
+the commit. After this results section, the same checks run again.
+
+| Check | Result |
+|-------|--------|
+| black --check (CI paths plus the catalog script) | pass |
+| ruff check (CI paths plus the catalog script) | pass |
+| mypy_gate.py | pass (182 known, 0 new) |
+| pytest tests/ -q | pass (1612 at B1a red; 1619 after B2a; 1625 after B2b) |
+
+Not run:
+
+- Frontend checks (no frontend file in Stage B).
+- `eval dedupe` on `data/dedupe_catalog/` (Claude runs it in the review).
+- Catalog file was not opened or changed.
+- Stage B review / private probe set.
+- Push.
+
