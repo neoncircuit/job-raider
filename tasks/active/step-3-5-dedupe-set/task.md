@@ -16,11 +16,11 @@ Measure the listing deduplication on a labeled set of listing pairs before any f
 - [x] A2. `dedupe` suite in `python main.py eval dedupe` (pair decision through `deduplicate`; precision, recall, false-merge rate, per-class counts, per-pair rows, Wilson 95% intervals; MLflow), with unit tests and a mutation proof.
 - [x] A3. Baseline on the committed set (Cursor). The local catalog pairs file is written. The user still labels its 20 pairs; Claude runs the local-only baseline on them in the Stage A review (decision 3; not committed).
 - [x] Review of Stage A (Claude, 2026-10-26, in `notes.md`), including a private probe set of pairs that Cursor has not seen. Result: accept the Stage A code; the set leaks on the description, and the user's catalog labels (all `different`) contradict every merge rule; recommend "flag and keep" for Stage B (user decision).
-- [ ] B1. R2 fix in `deduplicate`: match on `job_id`, then the normalized URL, then normalized company, title, and location, under the precision rule of decision 2. Unit tests per rule, written first.
-- [ ] B2. CI gate on the committed set (`thresholds.json` with the dataset SHA-256 and the count pins), the same form as the scam gate.
-- [ ] B3. The README pipeline table (stage 2) and the docs state the new rule and the measured precision and recall, with the command.
-- [ ] Review of Stage B (Claude, in `notes.md`), with the private probe set.
-- [ ] Done when: the README states the dedupe precision and recall on N labeled pairs with the command that reproduces them, and CI fails when a hard negative is merged.
+- [ ] B1. Flag and keep (decision 6, replaces the merge plan): `deduplicate` removes only a listing with the same `job_id`; possible duplicates stay and carry `metadata["possible_duplicates"]` (the other `job_id` and the reason: `same_url` or `same_company_title_location`). Unit tests per rule, written first. (`handoff-stage-b.md`)
+- [ ] B2. The suite measures the flag (identified = merged or flagged) and reports merged pairs on their own; findings 4 and 5 fixed; CI gate on the committed set (`thresholds.json` with the dataset SHA-256, the count pins, and 0 merged `different` pairs).
+- [ ] B3. The README pipeline table (stage 2), `docs/index.md`, and `docs/usage.md` state the rule and the measured numbers, with the command and the known limits.
+- [ ] Review of Stage B (Claude, in `notes.md`), with a new private probe set and the catalog check (no catalog pair merged).
+- [ ] Done when: the README states the duplicate-flag precision and recall on N labeled pairs with the command that reproduces them, CI fails when a `different` pair is merged, and the pipeline removes no listing other than a copy with the same `job_id`.
 
 ## Status
-`in-progress` (Stage A done and reviewed on 2026-10-26; Stage B waits for the user's decision: flag and keep, or merge as planned)
+`in-progress` (Stage A done and reviewed on 2026-10-26; decision 6: flag and keep; Stage B is with Cursor: `handoff-stage-b.md`)

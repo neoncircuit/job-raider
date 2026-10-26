@@ -493,12 +493,15 @@ Before you show the flag, measure it. On the EMSCAD tuning part, all 28 quick-fi
 - [ ] Send `scam_flag` in the listing response, and remove the unused `scam_score` field or set it from `scam_flag`.
 - [ ] Show the badge text from the flag reasons ("Review" and the reasons), not a "High Risk" verdict. Read the limit from the shared default, not from a second number in the frontend.
 - [ ] Tests: the serializer sends the flag, and the badge shows only when the flag is present.
+- [ ] **Possible duplicates (added 2026-10-26, Step 3.5 decision 6).** After Step 3.5 Stage B, `deduplicate` keeps possible duplicates and writes `job.metadata["possible_duplicates"]` (the other `job_id` and the reason). Show it on the job card and the job-detail page ("Possibly the same as ..." with a link), through the same serializer change. The user applies to each listing, so the note informs and does not hide a listing.
 
 ```mermaid
 flowchart LR
     S[stage_filter_scams flag mode] --> M[job.metadata scam_flag]
+    D[deduplicate flag and keep] --> P[job.metadata possible_duplicates]
     M --> SL[serialize_listing]
-    SL --> UI[job-detail badge]
+    P --> SL
+    SL --> UI[job card and job-detail notes]
 ```
 
 #### Employer and recruiter verification (later)

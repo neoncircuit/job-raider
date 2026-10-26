@@ -65,6 +65,16 @@ The user accepted the plan and decisions 1 to 5 as written, including the option
     - Nothing from the catalog is committed.
 4. **Scope.** `deduplicate` keeps the first listing, as today. It does not merge fields from the other listing. The catalog file, which is keyed by `job_id`, is not changed. Stage metadata reports how many listings each rule merged.
 5. **Stop rule.** One Stage B round, plus at most one fix round after its review. What then stays wrong goes to the known limits in the README.
+6. **Flag and keep (accepted after the Stage A review, 2026-10-26).** This replaces decision 2 and the merge plan of B1. The user accepted recommendation 1 of the Stage A review and asked for findings 4 and 5 to be fixed.
+    - `deduplicate` removes only a listing with the same `job_id` as an earlier one. Every other listing stays.
+    - Possible duplicates get `metadata["possible_duplicates"]`: a list of `{"job_id": <the other listing>, "reason": <rule>}`, on both listings. Two flag rules, with no description signal (finding 1):
+        - `same_url`: the same cleaned URL, the same normalized title, and the same normalized location. The cleaned URL drops the fragment and the tracking parameters (`utm_*`, `trk`, `trkInfo`, `refId`, `ref`) and keeps the other query parameters. The title and location are part of this rule because a shared careers page or aggregator page has different jobs on one URL (finding 3).
+        - `same_company_title_location`: the same normalized company (legal suffixes such as "Pte Ltd" removed), title, and location, with no placeholder label ("confidential" is added to the placeholders, finding 7).
+    - The suite measures the flag: a pair is "identified" when it is merged or flagged. The suite also reports merged pairs on their own. A merged `different` pair is a safety failure; the CI gate allows 0.
+    - On the catalog, the check is that no pair is merged (the user's labels say to keep both). Flags are allowed there.
+    - Findings 4 (the F1 interval) and 5 (tests for the `DedupeCase` checks) are fixed in Stage B.
+    - Showing the flag in the UI goes to the backlog entry "Show the scam flag to the user".
+    - Claude saw how candidate rules scored on probe set P-dedupe before these rules were chosen. So the Stage B review uses a new private probe set, written before Claude reads the Stage B code.
 
 ## Review of Stage A (2026-10-26, Claude)
 
@@ -137,4 +147,4 @@ The catalog report records `git_dirty` true, because of the 14 CRLF rewrites; it
 
 ## Blockers / Questions
 
-- The user's decision on recommendation 1 (flag and keep, or merge as planned) before the Stage B handoff.
+- None. Stage B (flag and keep, decision 6) is with Cursor: `handoff-stage-b.md`.
