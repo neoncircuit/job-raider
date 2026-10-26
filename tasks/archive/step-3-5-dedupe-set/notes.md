@@ -218,6 +218,58 @@ My first M8 removed only one of the two guards. That result was the same code be
 1. **One fix round, the last one (needs the user's decision).** Findings 1 to 8 in one handoff. All are small. The committed set stays frozen. If a fix changes a count on the committed set, re-pin with a dated entry in `thresholds.json`. Then I check the fixes against these findings and close Step 3.5, whatever the result.
 2. **Cursor does the fix round.** Then the person who wrote the code is not the person who reviews it.
 
+## Check of the Stage B Fix Round (2026-10-27, Claude, code at `21db952`)
+
+Result: accept. Findings 1 to 8 are fixed, each with a test, and every mutation that I ran was caught. Step 3.5 is done.
+
+### What I checked
+
+- The diffs of `9f23505`, `f907f7b`, `59a1f66`, and `845c9bf`. Each change is small, and each change agrees with its finding. The two flag rules of decision 6 did not change. No case and no label in the committed set changed, and the pins did not change.
+- The gate: black, ruff, mypy gate (182 known, 0 new), and pytest (1635 passed).
+- The `deduplicate` rule did not change: it removes a listing only when its `job_id` matches an earlier one. The stage 2 filter for jobs that the user applied to already is older than this task, and it does not look for duplicates.
+
+### Measures
+
+| Run | Pairs | Merged `different` (either order) | Identified precision | Identified recall | False identify | Order-dependent |
+|-----|------:|----------------------------------:|---------------------:|------------------:|---------------:|----------------:|
+| Committed set (MLflow `88352c56…`, report `20261026T152356675039Z`) | 31 | 0 | 15 of 18 | 15 of 16 | 3 of 15 | 0 |
+| P-dedupe-B (private, in memory) | 30 | 0 | 11 of 13 | 11 of 14 | 2 of 16 | 0 |
+| Catalog, local only (MLflow `64d3ac3d…`) | 20 | 0 | not applicable | not applicable | 18 of 20 | 0 |
+
+- The committed-set numbers are the same as the B2a run and the README.
+- P-dedupe-B: all 30 pairs now give the result that decision 6 predicts. The placeholder location pair is no longer flagged. The three misses and the two false identifies that remain are in the README limits, or they are the known limit for two openings with the same company, title, and location.
+- My extra checks: "C++ Developer" and "C# Developer" at one company and location are not flagged. An old `possible_duplicates` key is removed. Two "Confidential Pte Ltd" listings and two "N/A" locations are not flagged. A group of three still gets the correct reason on each side.
+- Catalog: 0 of 20 pairs merged (8 `same_url`, 10 `same_company_title_location`, 2 not flagged). This is the same as in the Stage B review.
+
+### Mutation proofs (Claude)
+
+Each mutation was a fixed-string replace with a count of 1. The file checksum changed, and the restore matched the original checksum. Each mutation made exactly one test fail.
+
+| Mutation | Finding | Test that failed |
+|----------|---------|------------------|
+| R1 `max_merged_different` raised to 1 | 1 | `test_merged_different_pin_is_a_safety_rule_and_stays_at_zero` |
+| R2 the suite counts the first order only | 2 | `test_one_order_merge_on_a_different_pair_counts_as_merged_different` |
+| R3 `threshold_check` reads the first order only | 2 | `test_merged_reversed_on_a_different_pair_is_a_merged_different_violation` |
+| R4 the old `_PUNCT` | 3 | `test_plus_and_hash_keep_c_family_titles_apart` |
+| R4b `#` removed, `+` kept | 3 | `test_plus_and_hash_keep_c_family_titles_apart` |
+| R5 no location placeholder check | 4a | `test_placeholder_locations_do_not_flag` |
+| R6 no company check after the suffix | 4b | `test_placeholder_company_after_suffix_does_not_flag` |
+| R7 old flags kept | 5 | `test_old_flags_are_cleared_on_unflagged_listings` |
+| R8 the old-flag removal changes the input | 5 | `test_old_flags_are_cleared_on_unflagged_listings` |
+| R9 suffix matched inside a word (M3) | 6 | `test_suffix_is_a_whole_word` |
+| R10 the stage stops counting flagged listings (M11) | 6 | `test_reports_flag_counts_and_same_job_id_removals` |
+| R11 the stage stops counting `same_url` pairs | 6 | `test_reports_flag_counts_and_same_job_id_removals` |
+
+Findings 7 and 8 have no behavior to mutate. I read the diffs: `default_dedupe` is removed, nothing called it, and the README has the two new limits.
+
+### Result against "Done when"
+
+- The README states the identified precision (0.8333, 15 of 18) and recall (0.9375, 15 of 16) on 31 labeled pairs, with the command that reproduces them.
+- CI fails when a `different` pair is merged in either order, and a test keeps that pin at 0.
+- The pipeline removes no listing other than a copy with the same `job_id`.
+
+Not verified here: the CI run on GitHub, because `main` is not pushed.
+
 ## Blockers / Questions
 
-- None. The Stage B fix round (decision 7, the last round) is with Cursor: `handoff-stage-b-fix.md`.
+- None. Step 3.5 is done.

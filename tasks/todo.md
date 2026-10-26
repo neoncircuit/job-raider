@@ -1,12 +1,11 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Step 3.5: Dedupe set, then the R2 fix (`tasks/active/step-3-5-dedupe-set/`; Stage B fix round F1 to F4 done; waiting for the Claude check.)
 - [ ] Step 3.2 remainder: about 15 real generated letters, labeled by the user and run locally (`tasks/active/step-3-measurable-claims/`)
 - [ ] Step 1 manual check: a full-mode dry run from the Pipeline page with Ollama running; needs the user (`tasks/active/step-1-core-flow/`)
 
 ## Next Up
-- [ ] Steps 3.4 to 3.9 (`tasks/active/step-3-measurable-claims/`)
+- [ ] Steps 3.4 and 3.6 to 3.9 (`tasks/active/step-3-measurable-claims/`)
 - [ ] Step 4: Make it demo-able (`tasks/active/review-follow-up/`)
 - [ ] Step 5: Focus and prune (`tasks/active/review-follow-up/`)
 

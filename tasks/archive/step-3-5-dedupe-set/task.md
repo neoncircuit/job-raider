@@ -21,8 +21,8 @@ Measure the listing deduplication on a labeled set of listing pairs before any f
 - [x] B3. The README pipeline table (stage 2), `docs/index.md`, and `docs/usage.md` state the rule and the measured numbers, with the command and the known limits.
 - [x] Review of Stage B (Claude, 2026-10-26, in `notes.md`), with a new private probe set and the catalog check (no catalog pair merged). Result: accept Stage B; 0 merged `different` pairs on the committed set, the probes, and the catalog; eight small findings; one fix round recommended (user decision).
 - [x] B4. Fix round (decision 7, the last round): findings 1 to 8 of the Stage B review, each with a test and a mutation proof (`handoff-stage-b-fix.md`).
-- [ ] Check of the fix round (Claude, in `notes.md`), with the catalog check (no catalog pair merged). Then archive the task.
-- [ ] Done when: the README states the duplicate-flag precision and recall on N labeled pairs with the command that reproduces them, CI fails when a `different` pair is merged, and the pipeline removes no listing other than a copy with the same `job_id`.
+- [x] Check of the fix round (Claude, 2026-10-27, in `notes.md`), with the catalog check (no catalog pair merged). Result: accept; findings 1 to 8 fixed; 12 of 12 mutations caught. Then archive the task.
+- [x] Done when: the README states the duplicate-flag precision and recall on N labeled pairs with the command that reproduces them, CI fails when a `different` pair is merged, and the pipeline removes no listing other than a copy with the same `job_id`.
 
 ## Status
-`in-progress` (Stage B fix round F1 to F4 done on 2026-10-26; waiting for the Claude check)
+`done` (2026-10-27: flag and keep; identified precision and recall in the README; CI gate with 0 merged `different` pairs)

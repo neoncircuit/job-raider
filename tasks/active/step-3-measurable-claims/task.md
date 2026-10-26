@@ -16,7 +16,7 @@ Every number in the README and in the resume framing (review section 7) comes fr
 - [ ] 3.2 About 15 real generated letters, labeled by the user and run locally (decision 1 of 2026-10-22): the realistic false-positive measure.
 - [x] 3.3 Scam set, then the R3 fixes (`tasks/archive/step-3-3-scam-set/`; done 2026-10-26: held-out EMSCAD numbers in the README, CI gate on the committed set).
 - [ ] 3.4 Ranking set, then the R4 and R5 fixes.
-- [ ] 3.5 Dedupe set, then the R2 fix (`tasks/active/step-3-5-dedupe-set/`).
+- [x] 3.5 Dedupe set, then the R2 fix (`tasks/archive/step-3-5-dedupe-set/`; done 2026-10-27: flag and keep, identified precision and recall in the README, CI gate with 0 merged `different` pairs).
 - [ ] 3.6 Real cost and usage tracking.
 - [ ] 3.7 Schema-constrained output and context size.
 - [ ] 3.8 Model comparison on the grounding set.
