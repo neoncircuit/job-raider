@@ -24,6 +24,7 @@ from ..generation.selector import ResumeSelector
 from ..generation.validator import ResumeValidator
 from ..llm.embedding_client import EmbeddingClient
 from ..llm.router import create_router
+from ..models.duplicates import summarize_duplicate_flags
 from ..models.job_listing import JobListing, JobListingCollection, JobSource
 from ..models.user_profile import UserProfile
 from ..rag.bm25_retriever import BM25Retriever
@@ -214,13 +215,14 @@ class PipelineStages:
         listings: List[JobListing],
     ) -> StageResult:
         """
-        Stage 2: Deduplicate listings across sources.
+        Stage 2: Remove exact job-id copies and flag possible duplicates.
 
         Args:
             listings: Raw job listings
 
         Returns:
-            StageResult with deduplicated listings
+            StageResult with unique job-id listings. Possible duplicates
+            stay and carry flag metadata.
         """
         stage_name = "deduplicate"
         start_time = datetime.now()
@@ -232,6 +234,7 @@ class PipelineStages:
             collection = JobListingCollection(listings=listings)
             deduplicated_collection = collection.deduplicate()
             deduplicated = deduplicated_collection.listings
+            flag_stats = summarize_duplicate_flags(deduplicated)
 
             # Store in context and persistent storage
             self.context.deduplicated_listings = deduplicated
@@ -268,6 +271,11 @@ class PipelineStages:
                 "deduplicated_count": len(deduplicated),
                 "removed_count": len(listings) - len(deduplicated),
                 "already_applied_removed": applied_removed,
+                "flagged_listings": flag_stats["flagged_listings"],
+                "flagged_pairs_same_url": flag_stats["flagged_pairs_same_url"],
+                "flagged_pairs_same_company_title_location": flag_stats[
+                    "flagged_pairs_same_company_title_location"
+                ],
             }
 
             self.logger.info(

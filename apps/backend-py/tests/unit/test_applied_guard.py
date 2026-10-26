@@ -216,6 +216,33 @@ class TestAppliedGuard:
         assert len(kept) == 1
         assert kept[0].job_id == "fresh"
 
+    def test_confidential_company_does_not_match_on_company_title(
+        self, trackers: tuple[OutcomeTracker, AppliedJobsTracker]
+    ) -> None:
+        """
+        A Confidential company does not match another listing on company and title.
+
+        Args:
+            trackers: Isolated outcome and applied trackers.
+
+        Returns:
+            None.
+        """
+        outcomes, applied = trackers
+        outcomes.track_external_application(
+            job_id="conf_old",
+            job_title="Project Coordinator",
+            company="Confidential",
+            metadata={},
+        )
+        guard = AppliedGuard(outcome_tracker=outcomes, applied_tracker=applied)
+        assert not guard.is_applied(
+            job_id="conf_new",
+            title="Project Coordinator",
+            company="Confidential",
+            source_url=None,
+        )
+
     def test_not_interested_excluded(
         self, trackers: tuple[OutcomeTracker, AppliedJobsTracker]
     ) -> None:

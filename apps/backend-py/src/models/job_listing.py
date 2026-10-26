@@ -396,11 +396,17 @@ class JobListingCollection(BaseModel):
 
     def deduplicate(self) -> "JobListingCollection":
         """
-        Remove duplicate listings based on job_id.
+        Keep the first listing for each ``job_id`` and flag possible duplicates.
+
+        A listing is removed only when its ``job_id`` matches an earlier
+        listing. Other listings stay. Possible duplicates get
+        ``metadata["possible_duplicates"]`` on copies of those listings.
 
         Returns:
-            New JobListingCollection with duplicates removed
+            A new collection with unique ``job_id`` values and flags.
         """
+        from .duplicates import flag_possible_duplicates
+
         seen = set()
         unique_listings = []
 
@@ -410,7 +416,7 @@ class JobListingCollection(BaseModel):
                 unique_listings.append(listing)
 
         return JobListingCollection(
-            listings=unique_listings,
+            listings=flag_possible_duplicates(unique_listings),
             source=self.source,
             metadata=self.metadata,
         )

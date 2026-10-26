@@ -168,7 +168,9 @@ class ConversionMetrics:
 # Linux NAME_MAX is 255; keep a margin for ``.json`` and Windows MAX_PATH.
 _MAX_APPLICATION_FILENAME_STEM = 180
 _SAFE_FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
-_PLACEHOLDER_LABELS = frozenset({"", "unknown", "n/a", "none", "untitled listing"})
+_PLACEHOLDER_LABELS = frozenset(
+    {"", "unknown", "n/a", "none", "untitled listing", "confidential"}
+)
 INBOUND_APPLICATION_METHOD = "inbound/recruiter"
 _GENERIC_APPLICATION_METHODS = frozenset({"", "manual", "external site"})
 _MIN_PREP_DESCRIPTION_CHARS = 50

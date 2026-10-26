@@ -193,8 +193,16 @@ def test_same_url_keeps_non_tracking_query_parameters() -> None:
     Returns:
         None.
     """
-    left = _listing("req-a", url="https://jobs.example.com/role?req=4410")
-    right = _listing("req-b", url="https://jobs.example.com/role?req=4417")
+    left = _listing(
+        "req-a",
+        title="Planner",
+        url="https://jobs.example.com/role?req=4410",
+    )
+    right = _listing(
+        "req-b",
+        title="Recorder",
+        url="https://jobs.example.com/role?req=4417",
+    )
     flags = _flag_map(_dedupe([left, right]))
     assert flags["req-a"] == []
     assert flags["req-b"] == []
