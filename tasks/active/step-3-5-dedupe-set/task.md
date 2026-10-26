@@ -15,7 +15,7 @@ Measure the listing deduplication on a labeled set of listing pairs before any f
 - [x] A1. Labeling guide `apps/backend-py/tests/fixtures/eval/dedupe/README.md` and `cases.jsonl` with at least 30 labeled pairs (`same` or `different`) in the classes of `notes.md` (cross-source copies, reposts, URL variants, and the hard negatives), with structure and diversity tests.
 - [x] A2. `dedupe` suite in `python main.py eval dedupe` (pair decision through `deduplicate`; precision, recall, false-merge rate, per-class counts, per-pair rows, Wilson 95% intervals; MLflow), with unit tests and a mutation proof.
 - [x] A3. Baseline on the committed set (Cursor). The local catalog pairs file is written. The user still labels its 20 pairs; Claude runs the local-only baseline on them in the Stage A review (decision 3; not committed).
-- [ ] Review of Stage A (Claude, in `notes.md`), including a private probe set of pairs that Cursor has not seen.
+- [x] Review of Stage A (Claude, 2026-10-26, in `notes.md`), including a private probe set of pairs that Cursor has not seen. Result: accept the Stage A code; the set leaks on the description, and the user's catalog labels (all `different`) contradict every merge rule; recommend "flag and keep" for Stage B (user decision).
 - [ ] B1. R2 fix in `deduplicate`: match on `job_id`, then the normalized URL, then normalized company, title, and location, under the precision rule of decision 2. Unit tests per rule, written first.
 - [ ] B2. CI gate on the committed set (`thresholds.json` with the dataset SHA-256 and the count pins), the same form as the scam gate.
 - [ ] B3. The README pipeline table (stage 2) and the docs state the new rule and the measured precision and recall, with the command.
@@ -23,4 +23,4 @@ Measure the listing deduplication on a labeled set of listing pairs before any f
 - [ ] Done when: the README states the dedupe precision and recall on N labeled pairs with the command that reproduces them, and CI fails when a hard negative is merged.
 
 ## Status
-`in-progress` (Stage A baseline is recorded in `handoff-stage-a.md`; user labels the 20 catalog pairs; Stage B waits for review)
+`in-progress` (Stage A done and reviewed on 2026-10-26; Stage B waits for the user's decision: flag and keep, or merge as planned)

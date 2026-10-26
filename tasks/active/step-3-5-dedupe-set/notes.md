@@ -66,6 +66,75 @@ The user accepted the plan and decisions 1 to 5 as written, including the option
 4. **Scope.** `deduplicate` keeps the first listing, as today. It does not merge fields from the other listing. The catalog file, which is keyed by `job_id`, is not changed. Stage metadata reports how many listings each rule merged.
 5. **Stop rule.** One Stage B round, plus at most one fix round after its review. What then stays wrong goes to the known limits in the README.
 
+## Review of Stage A (2026-10-26, Claude)
+
+Commits: A1 `4c39c7a`, A2 `08b216c`, A2c `6bf5f21`, results `2bf2418`. Cursor's results are at the end of `handoff-stage-a.md`.
+
+**Verdict.** Accept the Stage A code: the suite, the script, and the baseline are correct. But do not start Stage B as planned. Two results change it:
+
+- The committed set separates its labels on the description (finding 1).
+- The user labeled all 20 catalog pairs `different`, so every merge rule beyond `job_id` contradicts the user's labels (finding 2).
+
+Recommendation 1 below proposes "flag and keep" for Stage B. This needs the user's decision.
+
+### What I checked and found correct
+
+- **Commits.** Four commits, each with only the files of its step, all LF. `deduplicate`, the normalizers in `outcome_tracker.py`, `AppliedGuard`, the pipeline stages, and the scrapers did not change. `test_scam_suite.py` changed one line, for the new suite name.
+- **The set.** 31 pairs: 16 `same` (C0 2, C1 4, C2 3, C3 4, C4 3) and 15 `different` (3 for each H class). The labels follow decision 1. C1 covers a company suffix, title case, a location format, and a shortened description. C3 covers a trailing slash, letter case, a `utm_` parameter, and a fragment. H2 and H3 are as specified. 26 companies, none in more than 2 cases.
+- **The script.** It keeps an allowlist of 8 fields, so no recruiter field and no `raw_html` reach the output. It refuses to overwrite a labeled file. The real run wrote 13 groups and 20 pairs.
+- **The suite.** It runs both orders, refuses `TODO`, and reports the Wilson bounds. My reproduction of the baseline gives the same per-pair rows, metrics, per-class counts, and dataset SHA-256 as Cursor's report.
+- **Mutations (mine).** Each file was restored and its checksum matched.
+
+    | Mutation | Result |
+    |----------|--------|
+    | The reversed order runs `[a, b]` again | Caught (`test_order_dependent_count_uses_both_orders`) |
+    | The H-class label check in `DedupeCase` is removed | **Not caught** |
+    | The `case_id` prefix check in `DedupeCase` is removed | **Not caught** |
+    | The script keeps `recruiter_email` | Caught (`test_pair_count_and_no_recruiter_fields`) |
+    | The script overwrite guard is off | Caught (`test_does_not_overwrite_a_labeled_file`) |
+
+### Measures
+
+| Set | Pairs | Merged by the baseline (`job_id` only) |
+|-----|------:|----------------------------------------|
+| Committed (A3, report `20261026T031746532576Z`) | 31 | 2 (the two C0 pairs): precision 2 of 2, recall 2 of 16, false merges 0 of 15 |
+| Catalog, the user's labels (local, report `20261026T043641282321Z`, MLflow `7d20d361…`) | 20 | 0: false merges 0 of 20 (all labels are `different`) |
+| Private probe set P-dedupe (7 `same`, 7 `different`; outside the repository) | 14 | 0 |
+
+The catalog report records `git_dirty` true, because of the 14 CRLF rewrites; it is a local measure only.
+
+**Candidate rules for Stage B, scored on the three sets** (counted with a scratch script; `url_clean` removes `utm_*`, `trk`, `ref`, `refId`, and the fragment, and keeps the other query parameters):
+
+| Rule | Committed: same merged / false merges | Catalog: false merges (of 20) | Probes: same merged / false merges |
+|------|--------------------------------------|-------------------------------|------------------------------------|
+| `job_id` (today) | 2 of 16 / 0 of 15 | 0 | 0 of 7 / 0 of 7 |
+| `job_id` or URL | 7 / 3 | 8 | 0 / 1 |
+| `job_id` or cleaned URL | 9 / 3 | 8 | 2 / 1 |
+| `job_id` or company, title, and location | 14 / 3 | 18 | 2 / 2 |
+| `job_id` or the same description | 15 / 0 | 12 | 3 / 3 |
+| `job_id`, cleaned URL, or company-title-location with the same description | 13 / 3 | 12 | 2 / 1 |
+
+### Findings
+
+1. **The committed set separates its labels on the description (major).** Every `same` pair has the same (or a contained) description, and every `different` pair has a different one. "Merge on the same description" scores 15 of 16 with 0 false merges on the committed set, but 3 of 7 with 3 false merges on the probes, where one employer uses one text for two sites, two titles, or two companies. This is the same kind of limit as the "!" in the Step 3.3 written scams. **Rule:** do not tune or judge a description signal on this set.
+2. **The user's catalog labels contradict every merge rule (decision needed).** The user labeled all 20 pairs `different`, also when two listings are at the same company. The reason the user gave: they apply to each listing, so that no application goes missing. This is a product choice: keep both listings. It is not the question of decision 1 (is it one opening?): 8 of the 20 pairs share one URL. Every rule beyond `job_id` merges 8 to 18 of these pairs.
+3. **Every URL rule merges the shared-URL hard negatives.** The H3 pairs (a careers home page, an aggregator page, a government portal) and one probe pair (one careers page for two countries) share a URL but are different jobs.
+4. **The F1 interval is wrong (minor).** `f1.ci95_low` and `f1.ci95_high` are the recall interval (`dedupe.py:283`). F1 has no binomial interval; report none.
+5. **The `DedupeCase` checks are not tested (minor).** No unit test sends a bad case to the model (mutations 2 and 3). The dataset tests check the committed file themselves, but the catalog and probe files rely on the model.
+6. **Class C4 (minor).** Two of the three C4 pairs are cross-source copies with no change in the text (C1 without a format change). Only `c4__shoreline_cook` is a same-source repost with a new URL.
+7. **"Confidential" is not a placeholder (note for Stage B).** `_PLACEHOLDER_LABELS` (`outcome_tracker.py:171`) has no "confidential", so a company-title rule would match two agency postings under "Confidential".
+
+### Recommendations
+
+1. **Stage B: flag and keep, not merge (needs the user's decision).** It is the same result as Step 3.3, and it follows the user's labels:
+    - `deduplicate` keeps the `job_id` merge (the same record twice, for example from two search queries).
+    - A flag step marks possible duplicates on each listing (the other `job_id` and the reason, such as "same cleaned URL" or "same company, title, and location") and keeps every listing.
+    - The suite measures the flag instead of the merge, on the committed set and on the probes. On the catalog, the check becomes "no listing is removed" (all 20 pairs stay).
+    - Showing the flag in the UI goes to the backlog, next to the scam flag display.
+    - The flag rule uses no description signal (finding 1).
+2. **Fix findings 4 and 5 in Stage B**, and add "confidential" to the placeholders only if the flag rule uses company and title (finding 7).
+3. **Keep the set** with its limits: the description leak (finding 1) and the C4 assignment (finding 6). Do not rewrite it.
+
 ## Blockers / Questions
 
-- None. Stage A is with Cursor (`handoff-stage-a.md`). The user labels the 20 catalog pairs after Cursor writes the file (A2c), before the Stage A review.
+- The user's decision on recommendation 1 (flag and keep, or merge as planned) before the Stage B handoff.
