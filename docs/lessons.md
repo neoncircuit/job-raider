@@ -3329,6 +3329,20 @@
 - Prove a gate in both directions: one run that must fail and one that must pass, and check both exit codes.
 - The local backend `.venv` is Python 3.12, but CI and Docker use 3.11. Compare tool output with the CI log before you trust a local-only result.
 
+### For a long background run through WSL, write the output to a log file in the script
+
+**Lesson:** The Step 3.5 fix-round check ran the gate, the mutations, the probes, and the catalog in one background command, after some Git Bash commands. The output file started with the Git Bash lines, then a Python `SyntaxError`, then a cut line. The black, ruff, mypy, and pytest lines were lost. The mutation script had a syntax error, but the command continued and gave exit code 0, so no mutation ran.
+
+**Why:**
+- When the output of more than one program goes to one background output file, lines can be lost or cut.
+- A script without a stop on error continues after a failed step. The exit code of the last step hides the failure.
+
+**How to apply:**
+- In the WSL script, send all output to a log file (`{ ...; } > "$LOG" 2>&1`), and read that log file when the run ends.
+- Do not put other commands in the same background call.
+- Before you use the result of a run, check that each step printed its result line. A step with no result line did not run.
+- Parse a generated script (for example with `python -c "import ast; ast.parse(...)"`) before a long run uses it.
+
 
 ## Reviewing security changes (2026-10-20)
 
@@ -3511,3 +3525,59 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - When you change the Node major, run `npm install` with the new npm, then `npm ci` from a clean state, before you push. In the lock diff, every added entry must be an optional platform package, and no package may be removed.
 - Run a Docker build after the install, not during it. The build reads its context when it starts, so a build that runs during the install can see a new `package.json` with the old lock.
 - npm 11.19 does not run dependency install scripts that are not approved (`npm install-scripts approve`). The warning is harmless when the optional platform packages already install the binaries; check the lint, the tests, and the build to confirm.
+
+## Dedupe evaluation set (2026-10-27)
+
+### A safety limit needs a test that checks the limit itself
+
+**Lesson:** The Step 3.5 CI gate compared `merged_different` with `max_merged_different` in `thresholds.json`, where the value was 0. A mutation that changed the value to 1 passed every test. So "CI fails when a `different` pair is merged" depended on nobody changing one number in a data file.
+
+**Why:**
+- A pin compares a count with a value. If the value can change without a failing test, the pin is not a safety rule.
+
+**How to apply:**
+- For a limit that is a rule and not a measurement (for example "0 merged `different` pairs"), add a test that asserts the value. Its failure message says that the value must not be raised.
+- In review, mutate the pins file as well as the code.
+
+### When the suite runs both orders, count a safety failure in either order
+
+**Lesson:** The dedupe suite ran each pair as `[a, b]` and as `[b, a]`, but `merged_different` and `threshold_check` read only the first order. A future rule that removes a listing in one order only (for example "the description of b is in a") would pass the gate.
+
+**Why:**
+- A rule that depends on order can fail in the order that the gate does not read.
+
+**How to apply:**
+- Count a safety failure when either order fails. Add a test with a fake that merges in one order only.
+
+### Before you call a mutation "not caught", prove that it changes behaviour
+
+**Lesson:** In the Stage B review, mutation M8 changed the condition that lets `same_url` win into `if True:`, and every test passed. A second guard (`if current == REASON_SAME_URL: continue`) still kept the same result, so the code did the same thing. With both guards removed, two tests failed. The first result was an equivalent mutant, not a test gap.
+
+**Why:**
+- A mutant that does not change the result for any input cannot make a test fail. Reporting it as a gap sends the fixer after a test that cannot exist.
+
+**How to apply:**
+- When a mutation is not caught, read the code path and find an input whose result the mutant changes. If no such input exists, change the mutant and run it again.
+- Record the equivalent mutant and the new one in the review.
+
+### Keep the characters that carry meaning when you normalize a key
+
+**Lesson:** The Stage B handoff said to remove punctuation from titles. "C++ Developer", "C# Developer", and "C Developer" all became "c developer", so three different jobs at one company and location were flagged as possible duplicates. The fix keeps `+` and `#` in the keys.
+
+**Why:**
+- In job titles, some punctuation is part of the name of a skill. The user looks for software jobs, so these titles are likely.
+
+**How to apply:**
+- Before a normalizer removes a character class, list the domain terms that use those characters (C++, C#, F#, .NET, A+), and write a test that keeps them apart.
+- Write the normalizer from that list, not from a general "remove punctuation" rule.
+
+### A label can record a decision, not a fact; match the check to the label
+
+**Lesson:** The user labeled all 20 catalog pairs `different`, also pairs for the same company and role, so that no application is lost. Every merge rule then had false merges on the catalog. The plan changed to "flag and keep", and the catalog check became "no pair is merged". 18 of 20 catalog pairs are flagged; that is not a precision failure, because every listing stays.
+
+**Why:**
+- A decision label ("keep both") and a fact label ("these are different jobs") give different measures. Precision on a decision label scores the wrong thing.
+
+**How to apply:**
+- Before you score a labeled set from the user, ask what the label means: a fact about the items or a decision about what to do with them.
+- When it is a decision, make the check that decision (for example "nothing is removed"), and do not report precision or recall from it.
