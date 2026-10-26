@@ -180,7 +180,7 @@ open or run `data/dedupe_catalog/`.
 | F1 | `9f23505` | `test(dedupe): keep the merged-different pin at 0 and read both orders` |
 | F2 | `f907f7b` | `fix(dedupe): keep + and #, skip placeholder locations and companies, and clear old flags` |
 | F3 | `59a1f66` | `refactor(eval): remove the unused default_dedupe` |
-| F4 | (this commit) | `docs: add two duplicate-flag limits` |
+| F4 | `845c9bf` | `docs: add two duplicate-flag limits` |
 
 ### Finding 1 (zero pin)
 
