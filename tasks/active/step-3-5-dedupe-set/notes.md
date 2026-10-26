@@ -75,6 +75,11 @@ The user accepted the plan and decisions 1 to 5 as written, including the option
     - Findings 4 (the F1 interval) and 5 (tests for the `DedupeCase` checks) are fixed in Stage B.
     - Showing the flag in the UI goes to the backlog entry "Show the scam flag to the user".
     - Claude saw how candidate rules scored on probe set P-dedupe before these rules were chosen. So the Stage B review uses a new private probe set, written before Claude reads the Stage B code.
+7. **The Stage B fix round (accepted after the Stage B review, 2026-10-26).** The user accepted the Stage B review and its recommendations 1 and 2.
+    - Cursor fixes findings 1 to 8 of the Stage B review in one round: `handoff-stage-b-fix.md`. This is the last round that decision 5 permits.
+    - The two flag rules of decision 6 stay. Findings 3 and 4 change only how the keys are normalized. They add no new rule, no title word list, and no similarity score.
+    - The committed set stays frozen. If a fix changes a count on it, the pins change with a dated entry in `thresholds.json`, and the README numbers change with them.
+    - Claude checks the fixes against the findings, with mutation proofs and the catalog check (no pair merged). Then Step 3.5 closes. What is still wrong goes to the README limits.
 
 ## Review of Stage A (2026-10-26, Claude)
 
@@ -215,4 +220,4 @@ My first M8 removed only one of the two guards. That result was the same code be
 
 ## Blockers / Questions
 
-- The user decides on the Stage B fix round (recommendation 1).
+- None. The Stage B fix round (decision 7, the last round) is with Cursor: `handoff-stage-b-fix.md`.
