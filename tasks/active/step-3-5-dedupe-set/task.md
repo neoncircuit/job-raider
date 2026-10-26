@@ -20,9 +20,9 @@ Measure the listing deduplication on a labeled set of listing pairs before any f
 - [x] B2. The suite measures the flag (identified = merged or flagged) and reports merged pairs on their own; findings 4 and 5 fixed; CI gate on the committed set (`thresholds.json` with the dataset SHA-256, the count pins, and 0 merged `different` pairs).
 - [x] B3. The README pipeline table (stage 2), `docs/index.md`, and `docs/usage.md` state the rule and the measured numbers, with the command and the known limits.
 - [x] Review of Stage B (Claude, 2026-10-26, in `notes.md`), with a new private probe set and the catalog check (no catalog pair merged). Result: accept Stage B; 0 merged `different` pairs on the committed set, the probes, and the catalog; eight small findings; one fix round recommended (user decision).
-- [ ] B4. Fix round (decision 7, the last round): findings 1 to 8 of the Stage B review, each with a test and a mutation proof (`handoff-stage-b-fix.md`).
+- [x] B4. Fix round (decision 7, the last round): findings 1 to 8 of the Stage B review, each with a test and a mutation proof (`handoff-stage-b-fix.md`).
 - [ ] Check of the fix round (Claude, in `notes.md`), with the catalog check (no catalog pair merged). Then archive the task.
 - [ ] Done when: the README states the duplicate-flag precision and recall on N labeled pairs with the command that reproduces them, CI fails when a `different` pair is merged, and the pipeline removes no listing other than a copy with the same `job_id`.
 
 ## Status
-`in-progress` (Stage B done and reviewed on 2026-10-26; decision 7: the last fix round is with Cursor: `handoff-stage-b-fix.md`)
+`in-progress` (Stage B fix round F1 to F4 done on 2026-10-26; waiting for the Claude check)

@@ -167,3 +167,181 @@ This round changes no frontend file, so the frontend checks are not needed.
 - Never run `scripts/mypy_gate.py --update` to accept a new error.
 - Keep dry run as the default. Do not make auto-submit reachable.
 - Do not push. Push only from WSL, and only after the user approves.
+
+## Cursor results (2026-10-26)
+
+The last Stage B fix round is complete. Stop here. Do not push. Do not
+open or run `data/dedupe_catalog/`.
+
+### Commits
+
+| Step | Hash | Subject |
+|------|------|---------|
+| F1 | `9f23505` | `test(dedupe): keep the merged-different pin at 0 and read both orders` |
+| F2 | `f907f7b` | `fix(dedupe): keep + and #, skip placeholder locations and companies, and clear old flags` |
+| F3 | `59a1f66` | `refactor(eval): remove the unused default_dedupe` |
+| F4 | (this commit) | `docs: add two duplicate-flag limits` |
+
+### Finding 1 (zero pin)
+
+`test_merged_different_pin_is_a_safety_rule_and_stays_at_zero` asserts
+that `max_merged_different` is 0. The message says it is a safety rule
+and not a measured pin. The test passed before the mutation (the pin
+was already 0). Raising the pin to 1 fails it.
+
+### Finding 2 (both orders)
+
+`evaluate_dedupe_pairs` now counts `merged_same`, `merged_different`,
+and per-class `merged` from `merged or merged_reversed`.
+`threshold_check` treats a `different` row as merged when `merged` or
+`merged_reversed` is true. Per-pair rows still store both orders.
+
+New tests, red before the code:
+
+| Test | Failure before the code |
+|------|-------------------------|
+| `test_one_order_merge_on_a_different_pair_counts_as_merged_different` | `assert 0.0 == 1` |
+| `test_merged_reversed_on_a_different_pair_is_a_merged_different_violation` | `assert [] == ['merged_different: 1 (pin 0); cases: h3__reversed']` |
+
+### Finding 3 (`+` and `#`)
+
+`_PUNCT` is now `[^\w\s+#]+`. Tests:
+
+| Test | Before the code |
+|------|-----------------|
+| `test_plus_and_hash_keep_c_family_titles_apart` | failed: C++, C#, and C flagged as `same_company_title_location` |
+| `test_sr_c_plus_plus_titles_still_flag` | passed (already flagged) |
+
+### Finding 4 (placeholders)
+
+`same_company_title_location` now requires `_usable_match_label` on the
+location, and again on the company after suffix removal. `same_url` is
+unchanged.
+
+| Test | Failure before the code |
+|------|-------------------------|
+| `test_placeholder_locations_do_not_flag` | N/A and n/a flagged |
+| `test_placeholder_company_after_suffix_does_not_flag` | Confidential Pte Ltd flagged |
+
+### Finding 5 (old flags)
+
+`flag_possible_duplicates` returns a copy without `possible_duplicates`
+when this call does not flag the listing. Other metadata keys stay. The
+input listing is not changed.
+
+| Test | Failure before the code |
+|------|-------------------------|
+| `test_old_flags_are_cleared_on_unflagged_listings` | old key stayed on the result |
+
+### Finding 6 (test gaps)
+
+| Test | Before the code |
+|------|-----------------|
+| `test_suffix_is_a_whole_word` | passed; `normalize_company_name("Disco")` is `"disco"` |
+| `test_reports_flag_counts_and_same_job_id_removals` | passed: flagged_listings 4, same_url 1, CTL 1, removed_count 1 |
+
+### Finding 7 (`default_dedupe`)
+
+Searched `src/`, `tests/`, `main.py`, and `scripts/`. Nothing called
+`default_dedupe`. Removed the function and the name from the
+`run_dedupe_suite` docstring.
+
+### Finding 8 (README limits)
+
+Added two limits under Duplicate Detection. The metric table is
+unchanged (F2 did not change a count).
+
+### Mutations
+
+Each mutation was a fixed-string replace. The file checksum changed.
+The new-string count was 1. One named test failed. Restore matched the
+backup checksum.
+
+F1, backup SHA-256:
+
+- `thresholds.json`: `fcb8acef…4250fa`
+- `dedupe.py` (suite): `2483df32…b60232`
+- `test_dedupe_thresholds.py`: `fc95a2eb…0cf785`
+
+| Mutation | Fixed string | New SHA-256 | Test | Failure |
+|----------|--------------|-------------|------|---------|
+| Pin raised to 1 | `"max_merged_different": 0` to `1` | `bab5ea97…69b3f1` | zero-pin test | `assert 1 == 0` (safety-rule message) |
+| Suite counts `merged` only | `either_merged = merged or merged_reversed` to `merged` | `0f2702d3…b336dc` | one-order suite test | `assert 0.0 == 1` |
+| Gate reads `merged` only | drop `merged_reversed` | `c4767902…d79feb` | one-order gate test | `assert [] == [...]` |
+
+F2, backup SHA-256:
+
+- `duplicates.py`: `1fccb1c4…51dda8`
+- `stages.py`: `c4d3ce67…475737`
+
+| Mutation | Fixed string | New SHA-256 | Test | Failure |
+|----------|--------------|-------------|------|---------|
+| Old `_PUNCT` | `[^\w\s+#]+` to `[^\w\s]+` | `d26d7ec5…549943` | plus-and-hash | C family flagged |
+| No location check | drop location `_usable_match_label` | `299f744b…c44e95` | placeholder location | N/A flagged |
+| No second company check | drop `_usable_match_label(company)` | `29ed8103…c65db9` | confidential suffix | flagged |
+| Old flags kept | skip the clear copy | `ba0f3f25…79ca4a` | old-flags test | key stayed |
+| M3 suffix inside a word | `ending = f" {suffix}"` to `ending = suffix` | `b8b20126…af9099` | Disco test | Disco flagged with Dis Co |
+| M11 flagged listings | `flag_stats["flagged_listings"]` to `0` | `cf0b6b79…b5cc6e` | stage metadata | `assert 0 == 4` |
+
+### Eval run (after F2, before F3)
+
+Command: `python main.py eval dedupe` from `apps/backend-py`.
+
+| Item | Value |
+|------|-------|
+| Cases | 31 |
+| Git SHA | `9f23505` (dirty true: the 14 IDE CRLF files) |
+| Dataset SHA-256 | `8389742fb4b51ea175feb0a24a5bd97a2efe8a13c8adbb8349a86ef8692365d7` |
+| Report | `apps/backend-py/data/eval/dedupe/20261026T141827386112Z.json` |
+| MLflow run | `26bc47eafe5b4e27a322f692c3853c07` |
+| Pins | unchanged |
+
+| Metric | Value | Counts | Wilson 95% |
+|--------|-------|--------|------------|
+| Precision | 0.8333 | 15 / 18 | 0.6078 to 0.9416 |
+| Recall | 0.9375 | 15 / 16 | 0.7167 to 0.9889 |
+| F1 | 0.8824 | — | none |
+| False-identify rate | 0.2000 | 3 / 15 | 0.0705 to 0.4519 |
+| Merged same | 2 | 2 | — |
+| Merged different | 0 | 0 | — |
+| Order-dependent | 0 | 0 | — |
+
+| Class | Merged | Flagged | Total |
+|-------|--------|---------|-------|
+| C0 | 2 | 0 | 2 |
+| C1 | 0 | 3 | 4 |
+| C2 | 0 | 3 | 3 |
+| C3 | 0 | 4 | 4 |
+| C4 | 0 | 3 | 3 |
+| H1 | 0 | 0 | 3 |
+| H2 | 0 | 3 | 3 |
+| H3 | 0 | 0 | 3 |
+| H4 | 0 | 0 | 3 |
+| H5 | 0 | 0 | 3 |
+
+### Plan notes
+
+- Nothing in this plan looked wrong after the run.
+- Keeping `+` and `#` in `_PUNCT` did not change the committed-set
+  counts.
+
+### Checks
+
+Each of F1, F2, and F3 ran the section 5 backend checks before the
+commit. After this results section, the same checks run again.
+
+| Check | Result |
+|-------|--------|
+| black --check | pass |
+| ruff check | pass |
+| mypy_gate.py | pass (182 known, 0 new) |
+| pytest tests/ -q | pass (1628 after F1; 1635 after F2 and F3) |
+
+Not run:
+
+- Frontend checks (no frontend file in this round).
+- `eval dedupe` on `data/dedupe_catalog/` (Claude runs it in the check).
+- Catalog file was not opened or changed.
+- Claude check of the fix round.
+- Push.
+

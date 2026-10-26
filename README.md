@@ -164,6 +164,9 @@ Limits:
 - Location formats ("Singapore" and "Central, Singapore") and title
   abbreviations are not matched.
 - Two openings with the same company, title, and location are flagged.
+- A shared careers page that shows one title at one location for two
+  jobs is flagged.
+- The URL rule does not join http and https URLs.
 - The flag is not shown in the UI yet.
 
 ```mermaid
