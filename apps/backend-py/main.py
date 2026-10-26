@@ -802,6 +802,9 @@ Examples:
   # Score the EMSCAD tuning part (local CSV; held-out is Stage B)
   python main.py eval emscad --part tuning
 
+  # Score listing-pair dedupe on the committed labeled set
+  python main.py eval dedupe
+
   # Use another dataset folder and write only the JSON report
   python main.py eval grounding --dataset path/to/set --no-mlflow
         """,
