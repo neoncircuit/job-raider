@@ -92,7 +92,8 @@ def threshold_check(
     merged_different = [
         str(row["case_id"])
         for row in rows
-        if row.get("expected") == "different" and row.get("merged")
+        if row.get("expected") == "different"
+        and (row.get("merged") or row.get("merged_reversed"))
     ]
     pins = thresholds["counts"]
     violations: List[str] = []
@@ -139,6 +140,15 @@ def test_thresholds_file_records_each_change() -> None:
     assert thresholds["changes"]
     for entry in thresholds["changes"]:
         assert entry["date"] and entry["reason"] and entry["mlflow_run"], entry
+
+
+def test_merged_different_pin_is_a_safety_rule_and_stays_at_zero() -> None:
+    """The merged-different pin is 0. Raising it is not a measured change."""
+    thresholds = json.loads(THRESHOLDS_PATH.read_text(encoding="utf-8"))
+    assert thresholds["counts"]["max_merged_different"] == 0, (
+        "max_merged_different is a safety rule and not a measured pin; "
+        "it must not be raised"
+    )
 
 
 def _report(
@@ -236,6 +246,23 @@ def test_merged_different_above_zero_is_a_safety_failure() -> None:
     )
     violations, _ = threshold_check(report, _PINS)
     assert violations == ["merged_different: 1 (pin 0); cases: h3__shared"]
+
+
+def test_merged_reversed_on_a_different_pair_is_a_merged_different_violation() -> None:
+    """A different pair that merges only in reverse order fails the zero pin."""
+    report = _report(
+        cases=[
+            {
+                "case_id": "h3__reversed",
+                "expected": "different",
+                "merged": False,
+                "merged_reversed": True,
+                "flagged": False,
+            }
+        ]
+    )
+    violations, _ = threshold_check(report, _PINS)
+    assert violations == ["merged_different: 1 (pin 0); cases: h3__reversed"]
 
 
 def test_a_changed_dataset_fails_before_any_count() -> None:

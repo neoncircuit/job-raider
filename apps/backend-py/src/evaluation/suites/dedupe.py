@@ -311,12 +311,13 @@ def evaluate_dedupe_pairs(
             false_positives += 1
         else:
             true_negatives += 1
-        if merged and case.expected == "same":
+        either_merged = merged or merged_reversed
+        if either_merged and case.expected == "same":
             merged_same += 1
-        if merged and case.expected == "different":
+        if either_merged and case.expected == "different":
             merged_different += 1
         class_counts[case.pair_class]["total"] += 1
-        if merged:
+        if either_merged:
             class_counts[case.pair_class]["merged"] += 1
         if flagged:
             class_counts[case.pair_class]["flagged"] += 1

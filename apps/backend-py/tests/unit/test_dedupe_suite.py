@@ -252,6 +252,28 @@ def test_order_dependent_count_uses_both_orders(tmp_path: Path) -> None:
     assert report.details["confusion"]["true_positives"] == 1
 
 
+def test_one_order_merge_on_a_different_pair_counts_as_merged_different(
+    tmp_path: Path,
+) -> None:
+    """
+    A different pair that merges in reverse order only is merged_different.
+
+    Args:
+        tmp_path: Temporary dataset folder.
+
+    Returns:
+        None.
+    """
+    rows = [_case("h3__one_order", "H3", "different", "left", "right")]
+    _write_cases(tmp_path, rows)
+    report = run_dedupe_suite(tmp_path, dedupe_fn=_merge_ids("right", "left"))
+    assert report.metrics["merged_different"] == 1
+    assert report.details["merged_different"] == 1
+    assert report.details["per_class"]["H3"]["merged"] == 1
+    assert report.details["cases"][0]["merged"] is False
+    assert report.details["cases"][0]["merged_reversed"] is True
+
+
 def test_todo_label_refuses_the_run(tmp_path: Path) -> None:
     """
     Stop when a catalog pair is still unlabeled.
