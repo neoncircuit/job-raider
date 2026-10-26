@@ -203,13 +203,17 @@ def test_metrics_and_per_class_on_a_known_small_set(tmp_path: Path) -> None:
     assert report.metrics["precision"] == 0.5
     assert report.metrics["recall"] == 0.5
     assert report.metrics["f1"] == 0.5
-    assert report.metrics["false_merge_rate"] == 0.5
+    assert report.metrics["false_identify_rate"] == 0.5
+    assert "f1.ci95_low" not in report.metrics
+    assert "f1.ci95_high" not in report.metrics
     assert report.metrics["precision.ci95_low"] == precision_ci[0]
     assert report.metrics["precision.ci95_high"] == precision_ci[1]
     assert report.metrics["recall.ci95_low"] == recall_ci[0]
     assert report.metrics["recall.ci95_high"] == recall_ci[1]
-    assert report.metrics["false_merge_rate.ci95_low"] == false_merge_ci[0]
-    assert report.metrics["false_merge_rate.ci95_high"] == false_merge_ci[1]
+    assert report.metrics["false_identify_rate.ci95_low"] == false_merge_ci[0]
+    assert report.metrics["false_identify_rate.ci95_high"] == false_merge_ci[1]
+    assert report.metrics["merged_same"] == 1
+    assert report.metrics["merged_different"] == 1
     assert report.details["confusion"] == {
         "true_positives": 1,
         "false_positives": 1,
@@ -217,10 +221,10 @@ def test_metrics_and_per_class_on_a_known_small_set(tmp_path: Path) -> None:
         "true_negatives": 1,
     }
     assert report.details["per_class"] == {
-        "C0": {"merged": 1, "total": 1},
-        "C1": {"merged": 0, "total": 1},
-        "H1": {"merged": 1, "total": 1},
-        "H2": {"merged": 0, "total": 1},
+        "C0": {"merged": 1, "flagged": 0, "total": 1},
+        "C1": {"merged": 0, "flagged": 0, "total": 1},
+        "H1": {"merged": 1, "flagged": 0, "total": 1},
+        "H2": {"merged": 0, "flagged": 0, "total": 1},
     }
     assert report.details["order_dependent"] == 0
     assert report.metrics["order_dependent"] == 0
@@ -355,4 +359,42 @@ def test_evaluate_accepts_a_validated_case() -> None:
         [case], dedupe_fn=_merge_either("lab-a", "lab-b")
     )
     assert metrics["precision"] == 1.0
-    assert details["per_class"]["catalog"] == {"merged": 1, "total": 1}
+    assert details["per_class"]["catalog"] == {"merged": 1, "flagged": 0, "total": 1}
+
+
+def test_flag_without_merge_is_identified() -> None:
+    """
+    A kept pair that carries a flag counts as identified.
+
+    Returns:
+        None.
+    """
+    case = DedupeCase.model_validate(
+        _case("c4__flag", "C4", "same", "flag-a", "flag-b")
+    )
+    metrics, details = evaluate_dedupe_pairs([case])
+    row = details["cases"][0]
+    assert row["merged"] is False
+    assert row["flagged"] is True
+    assert row["reason"] == "same_company_title_location"
+    assert metrics["precision"] == 1.0
+    assert metrics["recall"] == 1.0
+    assert metrics["merged_same"] == 0
+    assert details["per_class"]["C4"] == {"merged": 0, "flagged": 1, "total": 1}
+
+
+def test_dedupe_case_rejects_bad_prefix_and_labels() -> None:
+    """
+    ``DedupeCase`` refuses a bad prefix, a swapped label, and a non-catalog TODO.
+
+    Returns:
+        None.
+    """
+    with pytest.raises(ValueError, match="prefix must match class"):
+        DedupeCase.model_validate(_case("h1__wrong", "C1", "same", "p-a", "p-b"))
+    with pytest.raises(ValueError, match="H classes must have expected=different"):
+        DedupeCase.model_validate(_case("h1__bad", "H1", "same", "h-a", "h-b"))
+    with pytest.raises(ValueError, match="C classes must have expected=same"):
+        DedupeCase.model_validate(_case("c1__bad", "C1", "different", "c-a", "c-b"))
+    with pytest.raises(ValueError, match="TODO is only valid for catalog pairs"):
+        DedupeCase.model_validate(_case("c1__todo", "C1", "TODO", "t-a", "t-b"))

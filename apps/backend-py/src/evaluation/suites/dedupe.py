@@ -93,6 +93,54 @@ def _wilson_bounds(
     return interval[0], interval[1]
 
 
+def _flag_between(
+    listings: Sequence[JobListing], left_id: str, right_id: str
+) -> Tuple[bool, Optional[str]]:
+    """
+    Return whether two kept listings flag each other, and the reason.
+
+    Args:
+        listings: Result of ``deduplicate``.
+        left_id: First job id.
+        right_id: Second job id.
+
+    Returns:
+        ``(flagged, reason)``. Reason is None when the pair is not flagged.
+    """
+    by_id = {item.job_id: item for item in listings}
+    if left_id not in by_id or right_id not in by_id:
+        return False, None
+    rows = by_id[left_id].metadata.get("possible_duplicates") or []
+    for row in rows:
+        if row.get("job_id") == right_id:
+            return True, str(row.get("reason") or "") or None
+    return False, None
+
+
+def _pair_outcome(
+    first: JobListing,
+    second: JobListing,
+    dedupe_fn: Optional[DedupeFn],
+) -> Tuple[bool, bool, Optional[str]]:
+    """
+    Decide merge and flag for one order of a pair.
+
+    Args:
+        first: First listing.
+        second: Second listing.
+        dedupe_fn: Optional fake that returns the remaining count.
+
+    Returns:
+        ``(merged, flagged, reason)``.
+    """
+    if dedupe_fn is not None:
+        return dedupe_fn(first, second) == 1, False, None
+    collection = JobListingCollection(listings=[first, second]).deduplicate()
+    merged = len(collection.listings) == 1
+    flagged, reason = _flag_between(collection.listings, first.job_id, second.job_id)
+    return merged, flagged, reason
+
+
 def default_dedupe(first: JobListing, second: JobListing) -> int:
     """
     Return the listing count after ``deduplicate`` on ``[first, second]``.
@@ -196,9 +244,7 @@ class DedupeCase(BaseModel):
         """
         prefix = self.case_id.split("__", 1)[0]
         if prefix != self.pair_class.lower():
-            raise ValueError(
-                f"{self.case_id}: prefix must be {self.pair_class.lower()}"
-            )
+            raise ValueError(f"{self.case_id}: prefix must match class")
         if self.expected == "TODO" and self.pair_class != "catalog":
             raise ValueError(f"{self.case_id}: TODO is only valid for catalog pairs")
         if self.pair_class in SAME_CLASSES and self.expected != "same":
@@ -216,28 +262,31 @@ def evaluate_dedupe_pairs(
     dedupe_fn: Optional[DedupeFn] = None,
 ) -> Tuple[Dict[str, Optional[float]], Dict[str, Any]]:
     """
-    Score the merge decision on labeled pairs.
+    Score the identify decision (merged or flagged) on labeled pairs.
 
     Args:
         cases: Validated pairs. A ``TODO`` label is refused.
-        dedupe_fn: Function that returns the listing count after a merge
-            attempt on two listings. Defaults to ``default_dedupe``.
+        dedupe_fn: Optional fake that returns the listing count after a
+            merge attempt. Tests pass a fake. The default reads merge and
+            flag from ``deduplicate``.
 
     Returns:
-        Metrics map (including Wilson 95 percent bounds) and details
-        (confusion, per-class counts, per-pair rows).
+        Metrics map (Wilson 95 percent bounds on identify rates) and
+        details (confusion, merged counts, per-class counts, per-pair
+        rows).
 
     Raises:
         ValueError: When a case still has ``expected=TODO``.
     """
-    merge_fn = dedupe_fn or default_dedupe
     true_positives = 0
     false_positives = 0
     false_negatives = 0
     true_negatives = 0
+    merged_same = 0
+    merged_different = 0
     order_dependent = 0
     class_counts: DefaultDict[str, Dict[str, int]] = defaultdict(
-        lambda: {"merged": 0, "total": 0}
+        lambda: {"merged": 0, "flagged": 0, "total": 0}
     )
     case_rows: List[Dict[str, Any]] = []
 
@@ -246,21 +295,31 @@ def evaluate_dedupe_pairs(
             raise ValueError("label the pairs first")
         listing_a = JobListing.model_validate(case.a)
         listing_b = JobListing.model_validate(case.b)
-        merged = merge_fn(listing_a, listing_b) == 1
-        merged_reversed = merge_fn(listing_b, listing_a) == 1
-        if merged != merged_reversed:
+        merged, flagged, reason = _pair_outcome(listing_a, listing_b, dedupe_fn)
+        merged_reversed, flagged_reversed, _ = _pair_outcome(
+            listing_b, listing_a, dedupe_fn
+        )
+        identified = merged or flagged
+        identified_reversed = merged_reversed or flagged_reversed
+        if identified != identified_reversed:
             order_dependent += 1
-        if case.expected == "same" and merged:
+        if case.expected == "same" and identified:
             true_positives += 1
         elif case.expected == "same":
             false_negatives += 1
-        elif merged:
+        elif identified:
             false_positives += 1
         else:
             true_negatives += 1
+        if merged and case.expected == "same":
+            merged_same += 1
+        if merged and case.expected == "different":
+            merged_different += 1
         class_counts[case.pair_class]["total"] += 1
         if merged:
             class_counts[case.pair_class]["merged"] += 1
+        if flagged:
+            class_counts[case.pair_class]["flagged"] += 1
         case_rows.append(
             {
                 "case_id": case.case_id,
@@ -268,21 +327,22 @@ def evaluate_dedupe_pairs(
                 "expected": case.expected,
                 "merged": merged,
                 "merged_reversed": merged_reversed,
+                "flagged": flagged,
+                "reason": reason,
             }
         )
 
     precision_trials = true_positives + false_positives
     recall_trials = true_positives + false_negatives
-    false_merge_trials = false_positives + true_negatives
+    false_identify_trials = false_positives + true_negatives
     precision = _ratio(true_positives, precision_trials)
     recall = _ratio(true_positives, recall_trials)
-    false_merge_rate = _ratio(false_positives, false_merge_trials)
+    false_identify_rate = _ratio(false_positives, false_identify_trials)
     precision_low, precision_high = _wilson_bounds(true_positives, precision_trials)
     recall_low, recall_high = _wilson_bounds(true_positives, recall_trials)
     f1 = _f1(precision, recall)
-    f1_low, f1_high = _wilson_bounds(true_positives, recall_trials)
-    false_merge_low, false_merge_high = _wilson_bounds(
-        false_positives, false_merge_trials
+    false_identify_low, false_identify_high = _wilson_bounds(
+        false_positives, false_identify_trials
     )
     metrics: Dict[str, Optional[float]] = {
         "case_count": float(len(cases)),
@@ -293,11 +353,11 @@ def evaluate_dedupe_pairs(
         "recall.ci95_low": recall_low,
         "recall.ci95_high": recall_high,
         "f1": f1,
-        "f1.ci95_low": f1_low,
-        "f1.ci95_high": f1_high,
-        "false_merge_rate": false_merge_rate,
-        "false_merge_rate.ci95_low": false_merge_low,
-        "false_merge_rate.ci95_high": false_merge_high,
+        "false_identify_rate": false_identify_rate,
+        "false_identify_rate.ci95_low": false_identify_low,
+        "false_identify_rate.ci95_high": false_identify_high,
+        "merged_same": float(merged_same),
+        "merged_different": float(merged_different),
         "order_dependent": float(order_dependent),
     }
     details: Dict[str, Any] = {
@@ -307,6 +367,8 @@ def evaluate_dedupe_pairs(
             "false_negatives": false_negatives,
             "true_negatives": true_negatives,
         },
+        "merged_same": merged_same,
+        "merged_different": merged_different,
         "per_class": {
             name: dict(counts) for name, counts in sorted(class_counts.items())
         },
@@ -330,8 +392,8 @@ def run_dedupe_suite(
             fake. The dataset SHA-256 covers ``cases.jsonl`` only.
 
     Returns:
-        Report with precision, recall, F1, the false-merge rate, confusion
-        counts, per-class counts, and per-pair rows.
+        Report with identify precision, recall, F1, the false-identify
+        rate, merged counts, per-class counts, and per-pair rows.
 
     Raises:
         FileNotFoundError: When ``cases.jsonl`` is missing.
