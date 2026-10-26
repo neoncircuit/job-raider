@@ -1,0 +1,18 @@
+{
+  "suite": "dedupe",
+  "dataset_sha256": "8389742fb4b51ea175feb0a24a5bd97a2efe8a13c8adbb8349a86ef8692365d7",
+  "baseline": "B2a",
+  "mlflow_run": "ee58fc58f04e48808d9a345e2b965818",
+  "counts": {
+    "max_false_identified": 3,
+    "max_missed_same": 1,
+    "max_merged_different": 0
+  },
+  "changes": [
+    {
+      "date": "2026-10-26",
+      "reason": "First pins, from the B2a committed-set run after flag-and-keep. Identify pins are 3 false identifies (H2) and 1 missed same (C1 location format). Merged different pairs stay at 0.",
+      "mlflow_run": "ee58fc58f04e48808d9a345e2b965818"
+    }
+  ]
+}
