@@ -206,7 +206,7 @@ open or run `data/dedupe_catalog/`.
 | B1b | `2a39bca` | `feat(dedupe): keep possible duplicates and flag them with a reason` |
 | B2a | `ea3ac55` | `feat(eval): measure the duplicate flag in the dedupe suite` |
 | B2b | `d5c226a` | `test(dedupe): CI gate with count pins and no merged different pair` |
-| B3 | (this commit) | `docs: state the duplicate flag and its measured numbers` |
+| B3 | `8eae830` | `docs: state the duplicate flag and its measured numbers` |
 
 ### B1a
 
