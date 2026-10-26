@@ -141,21 +141,6 @@ def _pair_outcome(
     return merged, flagged, reason
 
 
-def default_dedupe(first: JobListing, second: JobListing) -> int:
-    """
-    Return the listing count after ``deduplicate`` on ``[first, second]``.
-
-    Args:
-        first: First listing in the collection.
-        second: Second listing in the collection.
-
-    Returns:
-        Length of the deduplicated collection.
-    """
-    merged = JobListingCollection(listings=[first, second]).deduplicate()
-    return len(merged.listings)
-
-
 class DedupeCase(BaseModel):
     """One labeled listing pair for the dedupe evaluation set."""
 
@@ -389,8 +374,9 @@ def run_dedupe_suite(
 
     Args:
         dataset_dir: Folder with ``cases.jsonl``.
-        dedupe_fn: Optional replacement for ``default_dedupe``. Tests pass a
-            fake. The dataset SHA-256 covers ``cases.jsonl`` only.
+        dedupe_fn: Optional fake that returns the listing count after a
+            merge attempt. Tests pass a fake. The dataset SHA-256 covers
+            ``cases.jsonl`` only.
 
     Returns:
         Report with identify precision, recall, F1, the false-identify
