@@ -680,6 +680,8 @@ class LLMRouter:
         """
         Record one cache hit, success, or failed attempt.
 
+        A price or tracker error is logged. This method never raises.
+
         Args:
             task_type: Router task type.
             provider: Provider that served or was attempted.
@@ -693,59 +695,62 @@ class LLMRouter:
         Returns:
             None.
         """
-        if cache_hit or error:
+        try:
+            if cache_hit or error:
+                self._safe_record(
+                    task_type=task_type.value,
+                    provider=provider,
+                    model=model,
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                    total_tokens=0,
+                    tokens_estimated=False,
+                    latency_ms=0 if cache_hit else latency_ms,
+                    cache_hit=cache_hit,
+                    fallback=fallback,
+                    error=error,
+                    cost_usd=0.0,
+                )
+                return
+            prompt = int(response.prompt_tokens or 0) if response else 0
+            completion = int(response.completion_tokens or 0) if response else 0
+            total = (
+                int(response.tokens_used)
+                if response and response.tokens_used is not None
+                else prompt + completion
+            )
+            estimated = bool(response.tokens_estimated) if response else False
+            price = get_model_price(provider, model)
+            if price is None:
+                cost: Optional[float] = None
+            else:
+                cost = calculate_usage_cost(
+                    price,
+                    prompt,
+                    completion,
+                    cache_write_tokens=int(
+                        (response.cache_write_tokens if response else 0) or 0
+                    ),
+                    cache_read_tokens=int(
+                        (response.cache_read_tokens if response else 0) or 0
+                    ),
+                )
             self._safe_record(
                 task_type=task_type.value,
                 provider=provider,
                 model=model,
-                prompt_tokens=0,
-                completion_tokens=0,
-                total_tokens=0,
-                tokens_estimated=False,
-                latency_ms=0 if cache_hit else latency_ms,
-                cache_hit=cache_hit,
+                prompt_tokens=prompt,
+                completion_tokens=completion,
+                total_tokens=total,
+                tokens_estimated=estimated,
+                latency_ms=latency_ms,
+                cache_hit=False,
                 fallback=fallback,
-                error=error,
-                cost_usd=0.0,
+                error=False,
+                cost_usd=cost,
             )
-            return
-        prompt = int(response.prompt_tokens or 0) if response else 0
-        completion = int(response.completion_tokens or 0) if response else 0
-        total = (
-            int(response.tokens_used)
-            if response and response.tokens_used is not None
-            else prompt + completion
-        )
-        estimated = bool(response.tokens_estimated) if response else False
-        price = get_model_price(provider, model)
-        if price is None:
-            cost: Optional[float] = None
-        else:
-            cost = calculate_usage_cost(
-                price,
-                prompt,
-                completion,
-                cache_write_tokens=int(
-                    (response.cache_write_tokens if response else 0) or 0
-                ),
-                cache_read_tokens=int(
-                    (response.cache_read_tokens if response else 0) or 0
-                ),
-            )
-        self._safe_record(
-            task_type=task_type.value,
-            provider=provider,
-            model=model,
-            prompt_tokens=prompt,
-            completion_tokens=completion,
-            total_tokens=total,
-            tokens_estimated=estimated,
-            latency_ms=latency_ms,
-            cache_hit=False,
-            fallback=fallback,
-            error=False,
-            cost_usd=cost,
-        )
+        except Exception:
+            logger.warning("Cost recording failed", exc_info=True)
 
     def generate(
         self,

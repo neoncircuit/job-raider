@@ -85,14 +85,14 @@ def get_model_price(provider: str, model: str) -> Optional[ModelPrice]:
     Read the catalog price for one provider and model.
 
     Ollama always has cost 0. A cloud model that is not in the table
-    returns ``None``.
+    or a catalog row that has no price fields returns ``None``.
 
     Args:
         provider: Provider name (``anthropic``, ``gemini``, or ``ollama``).
         model: Model identifier.
 
     Returns:
-        The price, or ``None`` when a cloud model has no row.
+        The price, or ``None`` when a cloud model has no row or no price.
     """
     if provider == ModelProvider.OLLAMA.value or provider == "ollama":
         return ModelPrice(input_per_million=0.0, output_per_million=0.0)
@@ -100,6 +100,17 @@ def get_model_price(provider: str, model: str) -> Optional[ModelPrice]:
     provider_cfg = (config.get("models") or {}).get(provider) or {}
     model_cfg = (provider_cfg.get("models") or {}).get(model)
     if not model_cfg:
+        return None
+    if (
+        model_cfg.get("cost_per_input") is None
+        or model_cfg.get("cost_per_output") is None
+    ):
+        get_logger(Components.SCRAPERS).warning(
+            "Catalog model %s/%s has no cost_per_input or cost_per_output; "
+            "cost is unknown",
+            provider,
+            model,
+        )
         return None
     write_mult = float(provider_cfg.get("cache_write_multiplier") or 1.0)
     read_mult = float(provider_cfg.get("cache_read_multiplier") or 0.0)

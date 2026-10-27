@@ -11,7 +11,11 @@ import pytest
 
 from src.llm.base import LLMResponse, Message, MessageType
 from src.llm.router import LLMRouter, RouteConfig, TaskType
-from src.metrics.cost_tracker import get_cost_tracker, reset_cost_tracker
+from src.metrics.cost_tracker import (
+    get_cost_tracker,
+    reset_cost_tracker,
+    reset_price_config_cache,
+)
 
 
 def _messages() -> list[Message]:
@@ -100,10 +104,67 @@ def _router(
 
 @pytest.fixture(autouse=True)
 def _empty_tracker() -> None:
-    """Each test starts from an empty process-wide tracker."""
+    """Each test starts from an empty process-wide tracker and price cache."""
     reset_cost_tracker()
+    reset_price_config_cache()
     yield
     reset_cost_tracker()
+    reset_price_config_cache()
+
+
+def _anthropic_primary_router(
+    *,
+    fallback: bool = True,
+) -> tuple[LLMRouter, MagicMock, MagicMock]:
+    """
+    Build a router with an Anthropic primary and an optional Ollama fallback.
+
+    Args:
+        fallback: When True, configure an Ollama fallback.
+
+    Returns:
+        The router, the primary mock, and the fallback mock.
+    """
+    routes = {
+        TaskType.SELECTION: RouteConfig(
+            task_type=TaskType.SELECTION,
+            primary_provider="anthropic",
+            primary_model="claude-sonnet-4-6",
+            fallback_provider="ollama" if fallback else None,
+            fallback_model="qwen2.5:3b" if fallback else None,
+        ),
+    }
+    router = LLMRouter(routes=routes)
+    primary = MagicMock()
+    primary.generate.return_value = _response(
+        content="PRIMARY_ANSWER",
+        model="claude-sonnet-4-6",
+        provider="anthropic",
+        prompt_tokens=10,
+        completion_tokens=4,
+        cost=0.0,
+    )
+    primary.generate_async = AsyncMock(
+        return_value=_response(
+            content="PRIMARY_ANSWER",
+            model="claude-sonnet-4-6",
+            provider="anthropic",
+            prompt_tokens=10,
+            completion_tokens=4,
+            cost=0.0,
+        )
+    )
+    fallback_client = MagicMock()
+    fallback_client.generate.return_value = _response(content="FALLBACK_ANSWER")
+    fallback_client.generate_async = AsyncMock(
+        return_value=_response(content="FALLBACK_ANSWER")
+    )
+
+    def _client(provider: str, _model: str) -> MagicMock:
+        return primary if provider == "anthropic" else fallback_client
+
+    router._get_client = MagicMock(side_effect=_client)  # type: ignore[method-assign]
+    return router, primary, fallback_client
 
 
 def test_primary_call_is_recorded_once() -> None:
@@ -247,3 +308,77 @@ def test_recent_call_limit_is_1000_and_totals_count_every_call() -> None:
     assert totals["prompt_tokens"] == 1001
     assert totals["completion_tokens"] == 1001
     assert totals["total_tokens"] == 2002
+
+
+def test_price_lookup_error_does_not_change_generate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A price lookup that raises still returns the primary answer."""
+    monkeypatch.setattr(
+        "src.llm.router.get_model_price",
+        MagicMock(side_effect=RuntimeError("price down")),
+    )
+    router, _primary, fallback_client = _anthropic_primary_router()
+    result = router.generate(_messages(), task_type=TaskType.SELECTION)
+    assert result.content == "PRIMARY_ANSWER"
+    fallback_client.generate.assert_not_called()
+    assert not any(record.error for record in get_cost_tracker().recent_calls())
+
+
+@pytest.mark.asyncio
+async def test_price_lookup_error_does_not_change_generate_async(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A price lookup that raises still returns the primary async answer."""
+    monkeypatch.setattr(
+        "src.llm.router.get_model_price",
+        MagicMock(side_effect=RuntimeError("price down")),
+    )
+    router, _primary, fallback_client = _anthropic_primary_router()
+    result = await router.generate_async(_messages(), task_type=TaskType.SELECTION)
+    assert result.content == "PRIMARY_ANSWER"
+    fallback_client.generate_async.assert_not_called()
+    assert not any(record.error for record in get_cost_tracker().recent_calls())
+
+
+def test_price_lookup_error_does_not_raise_without_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no fallback, a price lookup that raises does not raise from generate."""
+    monkeypatch.setattr(
+        "src.llm.router.get_model_price",
+        MagicMock(side_effect=RuntimeError("price down")),
+    )
+    router, _primary, _fallback = _anthropic_primary_router(fallback=False)
+    result = router.generate(_messages(), task_type=TaskType.SELECTION)
+    assert result.content == "PRIMARY_ANSWER"
+
+
+def test_catalog_row_without_price_keeps_primary_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A catalog row with no price fields records cost None and keeps the primary."""
+    import src.metrics.cost_tracker as cost_mod
+
+    monkeypatch.setattr(
+        cost_mod,
+        "_PRICE_CONFIG",
+        {
+            "models": {
+                "anthropic": {
+                    "models": {
+                        "claude-sonnet-4-6": {"max_tokens": 8192},
+                    }
+                }
+            }
+        },
+    )
+    router, _primary, fallback_client = _anthropic_primary_router()
+    result = router.generate(_messages(), task_type=TaskType.SELECTION)
+    assert result.content == "PRIMARY_ANSWER"
+    fallback_client.generate.assert_not_called()
+    records = get_cost_tracker().recent_calls()
+    assert len(records) == 1
+    assert records[0].error is False
+    assert records[0].cost_usd is None
+    assert records[0].provider == "anthropic"

@@ -7,9 +7,15 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src.llm.base import LLMConfig, Message, MessageType
 from src.llm.claude_client import ClaudeClient
-from src.metrics.cost_tracker import calculate_usage_cost, get_model_price
+from src.metrics.cost_tracker import (
+    calculate_usage_cost,
+    get_model_price,
+    reset_price_config_cache,
+)
 
 
 def test_yaml_prices_for_each_catalog_model() -> None:
@@ -74,6 +80,30 @@ def test_anthropic_cache_multipliers() -> None:
         cache_read_tokens=1_000_000,
     )
     assert round(cost, 6) == round(3.0 + 3.0 * 1.25 + 3.0 * 0.1, 6)
+
+
+def test_catalog_row_without_price_fields_returns_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A catalog row without cost_per_input or cost_per_output is unknown."""
+    import src.metrics.cost_tracker as cost_mod
+
+    reset_price_config_cache()
+    monkeypatch.setattr(
+        cost_mod,
+        "_PRICE_CONFIG",
+        {
+            "models": {
+                "anthropic": {
+                    "models": {
+                        "claude-new-model": {"max_tokens": 8192},
+                    }
+                }
+            }
+        },
+    )
+    assert get_model_price("anthropic", "claude-new-model") is None
+    reset_price_config_cache()
 
 
 def test_unknown_cloud_model_has_no_price() -> None:
