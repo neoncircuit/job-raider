@@ -162,6 +162,48 @@ Each mutation that was not caught changes behaviour: K7 keeps every finished run
 1. **One fix round, the last one (needs the user's decision).** Findings 1 to 7 in one handoff for Cursor. Finding 1 first, with its test before the code.
 2. **Then one full-mode dry run from the Pipeline page, by the user, with Ollama running.** It closes the "Done when" item of this step and the open Step 1 manual check together. Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.
 
+## Check of the Fix Round (2026-10-28, Claude, code at `da9409a`)
+
+Result: accept. Findings 1 to 7 are fixed, each with a test. One residual of finding 1 is in the cloud clients (finding R1 below); it is small and needs the user's decision, because the stop rule permits no further Cursor round.
+
+### What I checked
+
+- The diffs of `e7eebfb`, `1791712`, `974d07d`, and `da9409a`. `_record_attempt` has one `try` around all of its work. `get_model_price` returns `None` for a row without `cost_per_input` or `cost_per_output`. Run IDs are UUIDs. A record goes into a run bucket only while the run is open. The `PYTEST_CURRENT_TEST` checks are gone, and an autouse fixture in `tests/conftest.py` isolates the run files and MLflow. `api_usd` is the cost of the non-Ollama calls. The README has the two limits.
+- The gate: black, ruff, mypy gate (180 known, 0 new), and pytest (1673 passed).
+- `data/metrics/` and `data/mlflow.db`: the file list and the modification times are the same before and after the full test run.
+- My probes from the review, again:
+    - a price lookup that raises: the answer comes from the primary, and the fallback is not called (before the fix: the fallback answer);
+    - a catalog model without price fields: the primary answer, and one record with `cost_usd` `None` (before the fix: an error record and the fallback answer).
+- Two small points, accepted as they are:
+    - The fixture's `kwargs.setdefault("tracking_uri", uri)` does nothing, because `write_cost_run_summary` always passes `tracking_uri` (as `None`). The fake factory still stops every MLflow write, as the data check shows.
+    - The first new README limit leaves out the sentence on cover letters and profile pages (they call the LLM outside a pipeline run). Cursor said why in the results; the process totals show those calls.
+
+### Mutation proofs (Claude)
+
+Each mutation was a fixed-string replace with a count of 1. The file checksum changed, and the restore matched the original checksum.
+
+| Mutation | Result | Test that failed |
+|----------|--------|------------------|
+| J1 `_record_attempt` raises again after it logs | caught | the three price-lookup-error tests |
+| J2 `get_model_price` checks only `cost_per_output` | **not caught** | none |
+| J3 a late record makes a run bucket again | caught | `test_late_record_does_not_make_a_run_bucket` |
+| J4 an unknown API cost is not counted | caught | `test_api_usd_is_none_when_a_cloud_call_has_no_price` |
+| J5 the run ID is a timestamp again | caught | `test_default_run_id_is_a_uuid` |
+| J6 `/metrics/summary` `pipeline_runs` is the call count | caught | `test_pipeline_runs_counts_run_files` |
+| K7 `close_run` is not called | caught | `test_run_frees_its_records` |
+| K9 an unknown cost is not counted in the totals | caught | `test_process_cost_is_unknown_when_one_call_has_no_price` |
+| K10 `/metrics/costs` `pipeline_runs` is the call count | caught | `test_pipeline_runs_counts_run_files` |
+| K11 the last run file is chosen by name | caught | `test_last_run_is_newest_file_by_time` |
+
+J2 changes behaviour: a row with only `cost_per_output` raises `KeyError` again. The tests cover a row without both fields only.
+
+### Finding R1: a bad price value can still repeat a paid cloud call (medium)
+
+`get_model_price` converts the prices with `float()`. A value that is not a number raises `ValueError`; I checked this with `cost_per_input: "3,0"` (a YAML value with a comma is a string). The Claude client builds its response, with the cost, inside its retry `try` block (`claude_client.py:253-263` calls `_build_response`, which calls `get_model_price` at `:204`). So the client takes the price error for an API error, sends the paid call again up to `max_retries + 1` times, then raises, and the router calls the fallback. The Gemini client calls `get_model_price` in its response code too (`gemini_client.py:352`). The router fix does not cover this, because the error happens in the client, before the router records.
+
+Fix (small): `get_model_price` never raises. A value that is not a number, or a row without one of the two prices, gives `None` and a warning. Tests: a row without only `cost_per_input`; a value that is not a number; the Claude client response with such a row has `cost` `None`, and the API is called one time.
+
 ## Blockers / Questions
 
-- None. The fix round (decision 9, the last round) is with Cursor: `handoff-fix.md`. After it, the user does one full-mode dry run.
+- The user decides on finding R1: a small fix by Claude here, or a README limit (the stop rule permits no further Cursor round).
+- Then the user does one full-mode dry run from the Pipeline page with Ollama running (decision 9).

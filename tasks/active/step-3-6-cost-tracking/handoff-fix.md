@@ -174,3 +174,116 @@ This round changes no frontend file, so the frontend checks are not needed. If F
 - Never run `scripts/mypy_gate.py --update` to accept a new error.
 - Keep dry run as the default. Do not make auto-submit reachable.
 - Do not push. Push only from WSL, and only after the user approves.
+
+## Cursor results (2026-10-27)
+
+### Commits
+
+| Hash | Subject |
+|------|---------|
+| `e7eebfb` | fix(llm): keep a recording error from changing a router call |
+| `1791712` | test(metrics): catch close_run, unknown cost, run-file count, and last-run time |
+| `974d07d` | fix(pipeline): use a UUID run ID and isolate cost I/O in tests |
+| `da9409a` | docs: add two cost-tracking limits |
+
+Not pushed.
+
+### F1. Recording never changes a call
+
+Tests first, then the code. New tests (5) failed on the committed router and price lookup:
+
+```
+FAILED test_price_lookup_error_does_not_change_generate
+FAILED test_price_lookup_error_does_not_change_generate_async
+FAILED test_price_lookup_error_does_not_raise_without_fallback
+FAILED test_catalog_row_without_price_keeps_primary_answer
+FAILED test_catalog_row_without_price_fields_returns_none
+5 failed in 76.02s
+```
+
+What changed: `_record_attempt` wraps its whole body in one `try` / `except` that logs a warning and never raises. Call sites stay inside the primary `try`. `get_model_price` returns `None` and logs a warning when a catalog row has no `cost_per_input` or `cost_per_output`.
+
+Files: `src/llm/router.py`, `src/metrics/cost_tracker.py`, `tests/unit/test_cost_recording.py`, `tests/unit/test_model_pricing.py`.
+
+Tests after the fix: 19 passed (`test_cost_recording.py` and `test_model_pricing.py`). Backend gate: 1664 passed.
+
+### F2. Four missing tests
+
+What changed: tests only. No production code.
+
+- `test_run_frees_its_records`: after `run`, `run_calls(run_id)` is empty.
+- `test_process_cost_is_unknown_when_one_call_has_no_price`: process `cost_usd` is `None` when one call has no price.
+- `test_pipeline_runs_counts_run_files`: `pipeline_runs` is 2 files, not 5 calls.
+- `test_last_run_is_newest_file_by_time`: names `cost_run_zzz.json` (older) and `cost_run_aaa.json` (newer, `os.utime`); last run is `aaa`.
+
+Files: `tests/unit/test_cost_run_scope.py`, `tests/unit/test_cost_recording.py`, `tests/unit/test_metrics_api.py`.
+
+Backend gate: 1668 passed.
+
+### F3. UUID, open-run buckets, no test-only branches, `api_usd`
+
+What changed:
+
+- Default run IDs use `_new_run_id()` (`uuid.uuid4()`) in `run` and `run_with_agents`.
+- `record_call` appends to a run bucket only when that run is open (`resolved_run in self._run_calls`). No `setdefault` after `close_run`.
+- Both `PYTEST_CURRENT_TEST` checks are removed from `src/`. Grep count in `src/` is 0.
+- Autouse fixture `_isolate_cost_run_io` in `tests/conftest.py` points `_default_metrics_dir` to a temporary folder and wraps `log_cost_run_to_mlflow` so the default path uses a fake factory and a temporary SQLite URI. Tests that pass a tracker factory still call the real `log_cost_run_to_mlflow`. Evaluation report helpers are not patched (an earlier draft that patched `resolve_tracking_uri` and `create_mlflow_tracker` failed three `TestReport` tests; that draft was not committed).
+- `api_usd` / `api_costs_usd` is the cost of non-Ollama calls, or `None` when any of those has no price.
+
+Files: `src/pipeline/orchestrator.py`, `src/metrics/cost_tracker.py`, `src/api/routes/metrics.py`, `tests/conftest.py`, `tests/unit/test_cost_run_scope.py`, `tests/unit/test_metrics_api.py`.
+
+The frontend does not read `api_usd` or `api_costs_usd`. No frontend file changed.
+
+Data after the full pytest (file list and mtime of `data/metrics/` and `data/mlflow.db`): unchanged. Before and after: only `data/mlflow.db` (mtime `1793028563395125300`, size 1400832). No `cost_run_*.json` under `data/metrics/`.
+
+Backend gate: 1673 passed.
+
+### F4. README limits
+
+What changed: two limits under Cost and usage tracking.
+
+- In a pipeline run, only resume generation (full mode) calls the LLM. A discover-mode run records 0 calls.
+- Process totals start at 0 when the backend starts again. The last run comes from its file.
+
+File: `README.md`.
+
+### Mutation proofs
+
+Each mutation was a fixed-string replace. The file checksum changed. The restore matched the checksum from before the mutation.
+
+| Mutation | File | String changed (grep -F count) | SHA-256 after | Test that failed |
+|----------|------|--------------------------------|---------------|------------------|
+| F1-1 unwrap `_record_attempt` (`except` logs → `raise`) | `src/llm/router.py` | `cost_usd=cost,` (1); except body unique to this method | `23bb65cd8d2a0d6ba6bb538a82117b623a8045eca0a2043c00e3096b8255c0a5` | the three price-lookup-error tests |
+| F1-2 missing-price returns zero | `src/metrics/cost_tracker.py` | `has no cost_per_input or cost_per_output` (1); zero-price `return` 1 → 2 | `7f1fbd00bffd1e7c1581dfb18b0807fd4a75529054665de4ede08c7a8fa2f41c` | `test_catalog_row_without_price_fields_returns_none`, `test_catalog_row_without_price_keeps_primary_answer` |
+| K7 `close_run` → `pass` | `src/pipeline/orchestrator.py` | `get_cost_tracker().close_run(run_id)` 1 → 0 | `a59f61e5051a1236ea6656b0c161143f57cb96dd804e24a9a7852863c792a6f1` | `test_run_frees_its_records` |
+| K9 `cost_unknown` increment → `pass` | `src/metrics/cost_tracker.py` | `self._totals["cost_unknown"] += 1` (1) | `05e4ecac1b668296f4e79e1fe702c708cde3536ae0cf43965ac772914c4e2a3a` | `test_process_cost_is_unknown_when_one_call_has_no_price` (`0 == 1`) |
+| K10 `pipeline_runs` = call count | `src/api/routes/metrics.py` | `pipeline_runs=len(list_cost_run_files())` (1) | `51132f90af47b286ea0a0ed71eb661d22cd36c74f321a52d8c8b89e0e618e9eb` | `test_pipeline_runs_counts_run_files` (`5 == 2`) |
+| K11 last run by name | `src/metrics/cost_tracker.py` | `key=lambda p: p.stat().st_mtime` (1) → `p.name` | `01742659ace5b7751fe452a70620d568de85e032891b43eaa1ed28477304df44` | `test_last_run_is_newest_file_by_time` (`zzz` == `aaa`) |
+| F3-1 UUID → timestamp | `src/pipeline/orchestrator.py` | `str(uuid.uuid4())` (1) | `1a41572c9a0d9ba92d1de6695971967059fa043bc4471082092b6f100e041902` | `test_default_run_id_is_a_uuid` |
+| F3-2 restore `setdefault` | `src/metrics/cost_tracker.py` | `if resolved_run in self._run_calls` (1) | `57061132e6cdfdadd789aada003fbb105c517a2bec7e41753039633d72a57c93` | `test_late_record_does_not_make_a_run_bucket` |
+| F3-3 put `PYTEST_CURRENT_TEST` back | `src/metrics/cost_tracker.py` | `PYTEST_CURRENT_TEST` 0 → 1 | `c23babb4d70766b7d37414abd6f17c3dee2e37b1ce01ae7efe3e583fa1c651b1` | `test_default_write_uses_isolated_metrics_dir` (file not written) |
+| F3-4 `api_usd` always `None` | `src/api/routes/metrics.py` | `api_costs_usd=process["api_usd"]` (1) | SHA-256 changed; restore matched `b8f1c5de7344fc44639dcabc9b751acf04caea3cdaad3982a4a69b9045bdf39b` | `test_api_usd_is_cost_of_non_ollama_calls` (`None == 3.0`) |
+
+### Plan notes
+
+- F1 keeps `_record_attempt` inside the primary `try`. The new wrapper is enough, so a price error does not start the fallback.
+- The first F3 fixture draft patched `resolve_tracking_uri`, `tracking_server_reachable`, and `create_mlflow_tracker`. That broke three `TestReport` tests. The committed fixture wraps only `log_cost_run_to_mlflow` in `cost_tracker` and points `_default_metrics_dir` at a temporary folder.
+- F2 commit subject is `test(metrics): catch close_run, unknown cost, run-file count, and last-run time` (the handoff draft used a longer subject).
+- F3 commit subject is `fix(pipeline): use a UUID run ID and isolate cost I/O in tests` (the handoff draft used `fix(metrics): ...`).
+- F4 README limits match the review wording. Cover letters and profile pages that call the LLM outside a pipeline run stay in the process totals, as today.
+
+### Checks
+
+Ran (WSL, `apps/backend-py` unless noted):
+
+- `black --check` and `ruff check` on the CI paths, before each backend commit: pass.
+- `scripts/mypy_gate.py` before each backend commit: pass (180 known, 0 new).
+- `pytest tests/ -q` before each backend commit: 1664 (F1), 1668 (F2), 1673 (F3).
+- F3 data proof: `data/metrics/` and `data/mlflow.db` file list and mtimes unchanged after 1673 tests.
+
+Not run:
+
+- A real pipeline run with Ollama (the user does this after this round).
+- Frontend lint, type check, vitest, Prettier, and Playwright (no frontend file changed; the frontend does not read `api_usd`).
+- No read of `.env`, `.env.local`, or `user_settings.json`.
+- `data/dedupe_catalog/` was not opened.
