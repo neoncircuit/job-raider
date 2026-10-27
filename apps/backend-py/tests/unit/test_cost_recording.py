@@ -382,3 +382,27 @@ def test_catalog_row_without_price_keeps_primary_answer(
     assert records[0].error is False
     assert records[0].cost_usd is None
     assert records[0].provider == "anthropic"
+
+
+def test_process_cost_is_unknown_when_one_call_has_no_price() -> None:
+    """Process cost is unknown when one recorded call has no price."""
+    tracker = get_cost_tracker()
+    tracker.record_call(
+        task_type="selection",
+        provider="anthropic",
+        model="claude-not-in-catalog",
+        prompt_tokens=10,
+        completion_tokens=4,
+        latency_ms=1,
+    )
+    tracker.record_call(
+        task_type="selection",
+        provider="ollama",
+        model="qwen2.5:3b",
+        prompt_tokens=1,
+        completion_tokens=1,
+        latency_ms=1,
+    )
+    totals = tracker.process_totals()
+    assert totals["cost_unknown"] == 1
+    assert totals["cost_usd"] is None

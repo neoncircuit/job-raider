@@ -196,3 +196,39 @@ def test_orchestrator_mlflow_error_does_not_change_result(
     )
     assert result.success is True
     assert result.metadata["cost"]["total_calls"] >= 0
+
+
+def test_run_frees_its_records(
+    tmp_path: Path, sample_user_profile: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The run's records are freed after the pipeline run finishes."""
+    orchestrator = PipelineOrchestrator(
+        config=PipelineConfig(
+            keywords=["python"],
+            locations=["Remote"],
+            data_dir=str(tmp_path / "data"),
+            results_dir=str(tmp_path / "results"),
+            skip_submission=True,
+        ),
+        user_profile=sample_user_profile,
+    )
+
+    def fake(*_args: Any, **_kwargs: Any) -> StageResult:
+        get_cost_tracker().record_call(
+            task_type="selection",
+            provider="ollama",
+            model="qwen2.5:3b",
+            prompt_tokens=1,
+            completion_tokens=1,
+            latency_ms=1,
+        )
+        return _ok(PipelineStage.SCRAPE)
+
+    monkeypatch.setattr(orchestrator.stages, "stage_scrape", fake)
+    orchestrator.run(
+        run_id="free-1",
+        stop_at=PipelineStage.SCRAPE,
+        cost_storage_dir=tmp_path,
+        cost_mlflow_factory=MagicMock(),
+    )
+    assert get_cost_tracker().run_calls("free-1") == []

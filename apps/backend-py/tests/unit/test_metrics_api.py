@@ -5,9 +5,17 @@ Tests for the metrics API endpoints. These exercise the real routes
 (/api/metrics/costs, /outcomes, /health, /summary) via the shared TestClient.
 """
 
+import json
+import os
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
-from src.metrics.cost_tracker import get_cost_tracker, reset_cost_tracker
+from src.metrics.cost_tracker import (
+    get_cost_tracker,
+    load_latest_cost_run,
+    reset_cost_tracker,
+)
 
 
 class TestMetricsAPI:
@@ -79,3 +87,60 @@ class TestMetricsAPI:
         data = response.json()
         assert "status" in data
         assert "checks" in data
+
+    def test_pipeline_runs_counts_run_files(
+        self, client: TestClient, tmp_path: Path, monkeypatch
+    ) -> None:
+        """pipeline_runs is the number of saved run files, not the call count."""
+        (tmp_path / "cost_run_a.json").write_text("{}", encoding="utf-8")
+        (tmp_path / "cost_run_b.json").write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(
+            "src.metrics.cost_tracker._default_metrics_dir",
+            lambda: tmp_path,
+        )
+        reset_cost_tracker()
+        for _ in range(5):
+            get_cost_tracker().record_call(
+                task_type="selection",
+                provider="ollama",
+                model="qwen2.5:3b",
+                prompt_tokens=1,
+                completion_tokens=1,
+                latency_ms=1,
+            )
+        costs = client.get("/api/metrics/costs")
+        assert costs.status_code == 200
+        assert costs.json()["pipeline_runs"] == 2
+        summary = client.get("/api/metrics/summary")
+        assert summary.status_code == 200
+        assert summary.json()["cost"]["pipeline_runs"] == 2
+        reset_cost_tracker()
+
+    def test_last_run_is_newest_file_by_time(
+        self, client: TestClient, tmp_path: Path, monkeypatch
+    ) -> None:
+        """The last run is the newest file by mtime, not by name."""
+        older = tmp_path / "cost_run_zzz.json"
+        newer = tmp_path / "cost_run_aaa.json"
+        older.write_text(
+            json.dumps({"run_id": "zzz", "summary": {"total_calls": 0}, "calls": []}),
+            encoding="utf-8",
+        )
+        newer.write_text(
+            json.dumps({"run_id": "aaa", "summary": {"total_calls": 0}, "calls": []}),
+            encoding="utf-8",
+        )
+        os.utime(older, (1_000, 1_000))
+        os.utime(newer, (2_000, 2_000))
+        monkeypatch.setattr(
+            "src.metrics.cost_tracker._default_metrics_dir",
+            lambda: tmp_path,
+        )
+        latest = load_latest_cost_run(tmp_path)
+        assert latest is not None
+        assert latest["run_id"] == "aaa"
+        response = client.get("/api/metrics/costs")
+        assert response.status_code == 200
+        last_run = response.json()["last_run"]
+        assert last_run is not None
+        assert last_run["run_id"] == "aaa"
