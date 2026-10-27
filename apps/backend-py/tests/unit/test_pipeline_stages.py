@@ -657,6 +657,36 @@ class TestStageLinkedInAuth:
         assert result.metadata["linkedin_credentials_available"] is False
 
 
+class TestStagePresentSelection:
+    """stage_present_selection selects real listings from the ranking stages."""
+
+    def test_selects_a_validated_listing(
+        self, stages: PipelineStages, sample_job_listing
+    ):
+        """
+        A validated listing stores ``source`` as a string, and it is selected.
+
+        ``JobListing`` uses ``use_enum_values``, so ``source`` is not a
+        ``JobSource`` after validation. The stage must log it without
+        calling ``.value`` on the string.
+
+        Args:
+            stages: Pipeline stages with a temporary data folder.
+            sample_job_listing: A validated job listing.
+
+        Returns:
+            None.
+        """
+        assert isinstance(sample_job_listing.source, str)
+        infos = [_submission_info(sample_job_listing, False)]
+
+        result = stages.stage_present_selection([sample_job_listing], infos, top_n=1)
+
+        assert result.success, result.error_message
+        assert result.metadata["selected_count"] == 1
+        assert stages.context.selected_listings == [sample_job_listing]
+
+
 def _listing(job_id: str, description: str) -> JobListing:
     """
     Build a listing for the scam-filter stage tests.

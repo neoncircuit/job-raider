@@ -702,7 +702,11 @@ class PipelineStages:
                 self.logger.info(f"   Location: {job.location}")
                 if job.salary_range:
                     self.logger.info(f"   Salary: {job.salary_range}")
-                self.logger.info(f"   Source: {job.source.value}")
+                # ``JobListing`` stores enum values, so ``source`` is a string.
+                source = (
+                    job.source.value if hasattr(job.source, "value") else job.source
+                )
+                self.logger.info(f"   Source: {source}")
                 if info and info.apply_method:
                     self.logger.info(f"   Apply: {info.apply_method.value}")
                 self.logger.info("")
