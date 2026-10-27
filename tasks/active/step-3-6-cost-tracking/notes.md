@@ -89,6 +89,74 @@ Results for the handoff (part of decision 1):
     - The Claude client reads only `input_tokens` and `output_tokens` (`claude_client.py:164-170`). With the prompt cache on, the API also returns `cache_creation_input_tokens` and `cache_read_input_tokens`. Record them and price them at 1.25 and 0.1 times the input price.
     - The Gemini client reads `prompt_token_count` and `candidates_token_count` (`gemini_client.py:170-189`). The 2.5 models also return `thoughts_token_count`, which Google bills as output. Count it in the completion tokens.
 
+## Review of the Step 3.6 Round (2026-10-27, Claude, code at `d8b2f84`)
+
+Result: accept the round with one fix round (the last one, decision 8). The recording, the run files, MLflow, the API, and the page work with real Ollama. One defect breaks the main rule of the handoff ("recording never breaks a call"), and four tests are missing.
+
+### What I checked and found correct
+
+- A1: `config/model_config.yaml` has the checked prices, `price_source`, and `price_checked`. The 200k tier for `gemini-2.5-pro` and the cache multipliers for Anthropic are there. `gemini-2.0-flash` is removed. The three Python price tables are gone; the clients keep their context sizes (`MODEL_CONTEXT`). The Claude client reads the cache tokens, and the Gemini client counts the thinking tokens.
+- A2: the Ollama client reads `prompt_eval_count` and `eval_count`, and it makes no extra HTTP request.
+- A3: the router records cache hits, primary calls, failed attempts, and fallback calls in one process-wide tracker with a lock. A record has no prompt or response text.
+- A4: `cost_run_scope` uses a context variable. `run` writes the summary in a `finally` block, so a cancelled or failed run also writes it. The API passes its run ID, and the CLI passes a UUID. `close_run` frees the run's records.
+- A5 and A6: the routes and the page show tokens, the share of estimated counts, the last run, and "unknown" for a cost with no price.
+- A7: the README section, its Mermaid diagram, and its limits; the "no per-token API cost" sentences now say "by default".
+- The gate: black, ruff, mypy gate (180 known, 0 new), pytest (1659 passed); frontend lint, type check, vitest (47 files, 253 tests), and Prettier on the changed files. Playwright did not start in WSL (Chromium missing), as Cursor said; CI runs it.
+
+### Real check with Ollama (local, not a pipeline run)
+
+Two calls through `LLMRouter` to `qwen2.5:3b` on the WSL Ollama (0.33.1), inside `cost_run_scope`. The run file and MLflow went to a scratch folder and a scratch MLflow store, not to `data/`.
+
+| Item | Result |
+|------|--------|
+| Token counts | 41 prompt and 26 completion tokens for each call, from Ollama (`tokens_estimated` false). The old length estimate gave 13 prompt tokens for the same prompt, about one third of the real count. |
+| Same prompt again | 41 prompt tokens again: on this Ollama version, the prompt cache does not lower `prompt_eval_count`. |
+| Run file | `cost_run_review-real-check.json` with the 2 calls. |
+| MLflow | One run in `pipeline-runs` with calls 2, prompt 82, completion 52, total 134, cost 0, and the run ID and mode tags. |
+| API blocks | The process block and the last-run block show the same counts. |
+
+A real pipeline run (the "Done when" item) is still to do. Only `stage_generate_resumes` calls the router in a pipeline run, so a discover-mode run records 0 calls. The run must be a full-mode dry run, which is also the open Step 1 manual check.
+
+### Mutation proofs (Claude)
+
+Each mutation was a fixed-string replace with a count of 1. The file checksum changed, and the restore matched the original checksum.
+
+| Mutation | Result | Test that failed |
+|----------|--------|------------------|
+| K1 Ollama `prompt_eval_count` ignored | caught | `test_chat_response_counts_are_used` |
+| K2 Claude cache read tokens ignored | caught | `test_claude_cache_tokens_are_priced` |
+| K3 Gemini thinking tokens ignored | caught | `test_thinking_tokens_count_as_output` |
+| K4 the 200k tier ignored | caught | `test_gemini_pro_uses_the_200k_tier` |
+| K5 a fallback success is not flagged | caught | `test_primary_failure_and_fallback_success_are_two_records` |
+| K6 the run scope is not reset | caught | `test_scope_sets_run_id_and_outside_has_none` |
+| K7 the run's records are not freed (`close_run` not called) | **not caught** | none |
+| K8 the recent-call limit is 10 | caught | `test_recent_call_limit_is_1000_and_totals_count_every_call` |
+| K9 an unknown cost is not counted in the process totals | **not caught** | none |
+| K10 `pipeline_runs` is the call count again | **not caught** | none |
+| K11 the last run file is chosen by name, not by time | **not caught** | none |
+| K12 an Ollama call has an unknown cost | caught | three tests |
+
+Each mutation that was not caught changes behaviour: K7 keeps every finished run in memory; K9 shows a dollar total instead of "unknown"; K10 brings back the bug of observation 2; K11 shows a random run as the last run (the run IDs are UUIDs).
+
+### Findings
+
+1. **A price error breaks a call and repeats it on the fallback (high).** `_record_attempt` computes the price outside `_safe_record`, inside the `try` block of the primary call (`router.py:798` and the async copy). `get_model_price` raises `KeyError` when a catalog model has no `cost_per_input` or `cost_per_output` (`cost_tracker.py:108`). I proved it with fake clients: for a catalog model `claude-new-model` with no price fields, the primary call succeeded, the router recorded it as an error, called the Ollama fallback, and returned the fallback answer. A paid answer is lost, its cost is not recorded, and with no fallback the call raises. The test "a tracker that raises does not change the router result" passed because it makes `record_call` raise, which is inside `_safe_record`. Fix:
+    - record after the client call, outside its `try` block, so that no recording error can start the fallback path;
+    - put the price lookup and the cost calculation inside the safe wrapper;
+    - `get_model_price` returns `None` (unknown cost) for a row with no price, and logs a warning.
+    - Test: a price lookup that raises does not change the router result and does not call the fallback, in `generate` and in `generate_async`.
+2. **Four test gaps (medium).** K7, K9, K10, and K11 above. Add a test for each: the run's records are freed after `run`; the process cost is unknown when one call has no price; `pipeline_runs` counts run files; the last run is the newest file by time, with names that sort the other way.
+3. **The default run ID has 1-second resolution (low).** `run` and `run_with_agents` use `datetime.now().strftime("%Y%m%d_%H%M%S")` when no run ID is given. Two such runs in one second share their records and their file. The API and the CLI pass UUIDs, so only other callers are affected. Fix: a UUID.
+4. **A late record makes a new run bucket (low).** `record_call` uses `setdefault` for the run ID, so a record that comes after `close_run` (for example from an asyncio task that the run started) makes a bucket that nothing frees. Fix: add a record to a run bucket only while the run is open.
+5. **Test-only branches in production code (low).** `write_cost_run_summary` reads `PYTEST_CURRENT_TEST` to skip the file and MLflow. The default path is then not tested, and production code changes with a test runner variable. Fix: an autouse fixture in `tests/conftest.py` that points `_default_metrics_dir` to a temporary folder and replaces the MLflow logger, and no `PYTEST_CURRENT_TEST` check in `src/`.
+6. **`api_usd` and `api_costs_usd` are always `None` (low).** The frontend does not read them. Compute them (the cost of the non-Ollama calls) or remove them.
+7. **README limits (documentation).** Add: in a pipeline run, only resume generation (full mode) calls the LLM, so a discover-mode run records 0 calls; the process totals start at 0 when the backend starts again, and the last run comes from its file.
+
+### Recommendations
+
+1. **One fix round, the last one (needs the user's decision).** Findings 1 to 7 in one handoff for Cursor. Finding 1 first, with its test before the code.
+2. **Then one full-mode dry run from the Pipeline page, by the user, with Ollama running.** It closes the "Done when" item of this step and the open Step 1 manual check together. Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.
+
 ## Blockers / Questions
 
-- None. The Step 3.6 round is with Cursor: `handoff.md`.
+- The user decides on the fix round (recommendation 1).

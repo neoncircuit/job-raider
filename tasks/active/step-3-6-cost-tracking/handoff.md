@@ -272,3 +272,154 @@ npm run test:e2e
 - Never run `scripts/mypy_gate.py --update` to accept a new error.
 - Keep dry run as the default. Do not make auto-submit reachable.
 - Do not push. Push only from WSL, and only after the user approves.
+
+## Cursor results (2026-10-27)
+
+### Commits
+
+| Hash | Subject |
+|------|---------|
+| `b242e4a` | fix(llm): one dated price table and complete cloud usage counts |
+| `4c96736` | fix(llm): read Ollama token counts from the chat response |
+| `d48a0c7` | feat(metrics): record every router call in one process-wide tracker |
+| `81afe6b` | feat(pipeline): write a cost summary for each run to a file and MLflow |
+| `4a06765` | feat(api): report real tokens and the last run on the metrics routes |
+| `3c20add` | feat(frontend): show real token counts on the Metrics page |
+| `d8b2f84` | docs: state what the cost tracker records and its limits |
+
+Not pushed.
+
+### A1. One price table
+
+What changed: `config/model_config.yaml` is the only price table. Anthropic and Gemini rows have `price_source` and `price_checked` `2026-10-27`. Opus is 5.0/25.0, Haiku is 1.0/5.0, Sonnet stays 3.0/15.0. Flash is 0.30/2.50. Pro is 1.25/10.0 and 2.50/15.0 above 200,000 prompt tokens. Anthropic cache write 1.25x and cache read 0.1x. `gemini-2.0-flash` is removed. `get_model_price` / `calculate_usage_cost` read the YAML through `ConfigLoader` (lazy import, to avoid a load-time cycle with settings). Ollama is always 0. An unknown cloud model returns `None`. Claude reads cache write/read tokens. Gemini adds `thoughts_token_count` to completion tokens. `LLMResponse` has `cache_read_tokens`, `cache_write_tokens`, and `tokens_estimated`. Client `MODEL_PRICING` tables are now `MODEL_CONTEXT` (context windows only). `ModelProvider.GEMINI` exists.
+
+Price table now (USD per million tokens):
+
+| Model | Input | Output |
+|-------|------:|-------:|
+| `claude-sonnet-4-6` | 3.0 | 15.0 |
+| `claude-opus-4-7` | 5.0 | 25.0 |
+| `claude-haiku-4-5-20251001` | 1.0 | 5.0 |
+| `gemini-2.5-flash` | 0.30 | 2.50 |
+| `gemini-2.5-pro` | 1.25 (prompt 200k or less), 2.50 (more) | 10.0 / 15.0 |
+
+Places that read the old Python tables: `cost_tracker.MODEL_PRICING` (removed), `claude_client.MODEL_PRICING` (moved to `MODEL_CONTEXT`), `gemini_client.MODEL_PRICING` (moved to `MODEL_CONTEXT`). Client `estimate_cost` and the tracker use `get_model_price`.
+
+Files: `apps/backend-py/config/model_config.yaml`, `src/metrics/cost_tracker.py`, `src/metrics/__init__.py`, `src/llm/base.py`, `src/llm/claude_client.py`, `src/llm/gemini_client.py`, `tests/unit/test_model_pricing.py`, `tests/unit/test_gemini_client.py`.
+
+Tests: `test_yaml_prices_for_each_catalog_model`, `test_gemini_pro_uses_the_200k_tier`, `test_anthropic_cache_multipliers`, `test_unknown_cloud_model_has_no_price`, `test_ollama_model_has_zero_cost`, `test_claude_cache_tokens_are_priced`, `test_thinking_tokens_count_as_output`, `test_estimate_cost_known_model`. Backend gate: 1641 passed.
+
+### A2. Ollama token counts
+
+What changed: generation reads `prompt_eval_count` and `eval_count` from `/api/chat`. A missing value uses characters / 4 and sets `tokens_estimated`. Generation does not call `/api/tokenize`. `count_tokens` still may.
+
+Files: `src/llm/ollama_client.py`, `tests/unit/test_ollama_token_counts.py`.
+
+Tests: `test_chat_response_counts_are_used`, `test_missing_counts_use_length_estimate`, `test_one_generation_makes_one_http_request`. Backend gate: 1644 passed.
+
+### A3. Process-wide recorder
+
+What changed: `get_cost_tracker()` is one process-wide, thread-safe tracker. It keeps the last 1000 records, process totals, and per-run lists until `close_run`. `CallRecord` has the fields from the notes (no prompt or response text). The router records cache hits (0 tokens, cost 0), primary success, primary failure (error, 0 tokens), fallback success (`fallback` true), and fallback failure. Latency is measured around the client call. `_safe_record` swallows tracker errors. `CostTracker.start_run` no longer clears `_calls`.
+
+`get_cost_estimate` / 6-value `TaskType`: searched first. The only caller is `tests/unit/test_metrics.py` (plus the package export). There is no production caller. Both stay, because decision 7 keeps them when `get_cost_estimate` has a caller.
+
+Files: `src/metrics/cost_tracker.py`, `src/metrics/__init__.py`, `src/llm/router.py`, `tests/unit/test_cost_recording.py`.
+
+Tests (written first): `test_primary_call_is_recorded_once`, `test_cache_hit_is_recorded_with_zero_tokens`, `test_primary_failure_and_fallback_success_are_two_records`, `test_two_router_instances_share_one_tracker`, `test_generate_async_records_the_same`, `test_recording_error_does_not_change_router_result`, `test_record_has_no_prompt_or_response_text`, `test_recent_call_limit_is_1000_and_totals_count_every_call`.
+
+A3 tests before the code (collection error):
+
+```
+ImportError: cannot import name 'get_cost_tracker' from 'src.metrics.cost_tracker'
+ERROR tests/unit/test_cost_recording.py
+```
+
+Backend gate: 1652 passed.
+
+### A4. Run scope, file, MLflow
+
+What changed: `cost_run_scope(run_id)` sets a `ContextVar`. The tracker reads it on each record. `PipelineOrchestrator.run` and `run_with_agents` take optional `run_id`. The stage loop runs inside the scope. A cancelled or failed run still writes the summary. The API passes its pipeline run ID. The CLI generates a UUID. The file is `apps/backend-py/data/metrics/cost_run_<id>.json` (absolute default). `PipelineResult.metadata["cost"]` holds the summary. MLflow experiment `pipeline-runs` uses the same fail-open path as `log_report_to_mlflow`. Tests do not write `data/mlflow.db` (no factory and `PYTEST_CURRENT_TEST` skips file and MLflow unless the test passes a folder or factory).
+
+Files: `src/metrics/cost_tracker.py`, `src/pipeline/orchestrator.py`, `src/api/routes/pipeline.py`, `main.py`, `tests/unit/test_cost_run_scope.py`, `tests/unit/test_cli.py`, `tests/unit/test_pipeline_run_async.py`.
+
+Tests (written first): `test_scope_sets_run_id_and_outside_has_none`, `test_two_threads_keep_run_ids_apart`, `test_run_file_contains_only_that_run`, `test_cancelled_run_writes_its_file`, `test_mlflow_called_once_and_error_is_fail_open`, `test_orchestrator_mlflow_error_does_not_change_result`.
+
+A4 tests before the code (collection error):
+
+```
+ImportError: cannot import name 'cost_run_scope' from 'src.metrics.cost_tracker'
+ERROR tests/unit/test_cost_run_scope.py
+```
+
+Backend gate: 1658 passed.
+
+### A5. Metrics API
+
+What changed: `/metrics/costs` and `/metrics/summary` use `get_cost_tracker()` and the last saved run file. They report process totals and last-run tokens, estimated counts, cache hits, fallbacks, errors, cost (`None` when unknown), and local share. `pipeline_runs` is the number of `cost_run_*.json` files. `recent_calls` includes token counts and flags.
+
+`cost_per_application`: computed from the last run (last-run cost divided by `resumes_generated` / `documents` on that run). It is `None` when the last run has no document count or an unknown cost. Not removed, because the last-run file already stores `documents`.
+
+Files: `src/api/routes/metrics.py`, `src/api/models/responses.py`, `src/metrics/cost_tracker.py`, `src/metrics/__init__.py`, `tests/unit/test_metrics_api.py`.
+
+Tests: existing route tests plus `test_summary_recent_calls_include_token_flags`. Backend gate: 1659 passed.
+
+### A6. Metrics page
+
+What changed: the Metrics page shows total tokens, prompt/completion, estimated share, and the last run (run ID, time, calls, tokens). The recent-calls table has a tokens column and marks cache hits, fallbacks, errors, and estimates. Unknown cost renders as "unknown". Dashboard cost tiles use the same rule so types stay valid. No new chart.
+
+Files: `apps/frontend-ts/src/app/metrics/page.tsx`, `src/lib/types/api.ts`, `src/app/dashboard/page.tsx`, `tests/e2e/support/mock-api.ts`, `tests/app/metrics/page.test.tsx`.
+
+Tests: `tests/app/metrics/page.test.tsx` ("shows token counts, last run, and unknown cost"). Frontend: lint pass, `tsc --noEmit` pass, vitest 47 files / 253 passed.
+
+### A7. Docs
+
+What changed: README has a Cost and usage tracking section (what is recorded, where to see it, limits, mermaid). The "no per-token API cost" sentence in README, `docs/index.md`, and `docs/architecture.md` now applies only to default local routes, and says the Metrics page shows the recorded cost. No cost number. No link to `tasks/`.
+
+Files: `README.md`, `docs/index.md`, `docs/architecture.md`.
+
+### start_run, TaskType, cost_per_application
+
+- **`start_run`:** left on the old `CostTracker` for existing unit tests. It no longer clears `_calls`. The process tracker uses `open_run` / `close_run` and does not clear the shared recent list.
+- **6-value `TaskType`:** kept, because `get_cost_estimate` still has a caller (`test_metrics.py`). Router records use the router task type string.
+- **`cost_per_application`:** computed from last-run cost / documents (`resumes_generated`). `None` when that ratio cannot be formed. Not a constant 0.
+
+### Mutation proofs
+
+Each proof used an exact-string replacement, SHA-256 before and after, a fixed-string count, the named test, and `git checkout -- <file>` so the restore hash matched HEAD.
+
+1. **Router does not record a cache hit.** File `src/llm/router.py`. Removed both `self._record_attempt(..., cache_hit=True)` blocks (2). `cache_hit=True` count 2 → 0. SHA-256 before `32330c5b39cdb78552df8925e9f8c96e6e1794a21f234adab5e02c6542d5410e`, after `70d89b5c2bbbf4c6b61078d9b4ffe7ae3301f2104ef5615e7181ab3cf91e5256`. Failed `test_cache_hit_is_recorded_with_zero_tokens` (`assert 1 == 2`). Restore matched before.
+
+2. **Router does not record a failed primary.** File `src/llm/router.py`. Replaced both `self._record_attempt(..., error=True)` primary lines (2) with `pass`. That string count 2 → 0. SHA-256 after `7b1f557230472ae2b2494bae925d033ab999492170d70d1c684acd0ff26d946e`. Failed `test_primary_failure_and_fallback_success_are_two_records` (`assert 1 == 2`). Restore `32330c5b...`.
+
+3. **Tracker clears shared records at the start of a run.** File `src/metrics/cost_tracker.py`. In `open_run`, added `_recent.clear()` and `_run_calls.clear()`. SHA-256 HEAD `81a4fb4527eb26bf3f16d4801c472d0df97dbd356e22d8731257fe0e3052b178`, after `99f9c15c0b0eb294b8af1ec67086f3a8645a51f7c95ddc57aa688a0b1e6ff2f0`. Failed `test_run_file_contains_only_that_run` (`len([]) == 0` vs 1). Restore matched HEAD.
+
+4. **Run ID is not read from the context variable.** File `src/metrics/cost_tracker.py`. Replaced `resolved_run = run_id if run_id is not None else (_cost_run_id.get() or "")` with `resolved_run = run_id or ""`. SHA-256 after `760e6cbf4f3a6f39c6994c204920f519c21e6a3acd85c5ce8f964eff90199f09`. Failed `test_scope_sets_run_id_and_outside_has_none` (`'' == 'run-inside'`). Restore matched HEAD.
+
+5. **Unknown cloud model gets cost 0.** File `src/metrics/cost_tracker.py`. `if not model_cfg: return None` became `return ModelPrice(0.0, 0.0)`. New string count 2 (Ollama already returned a zero price). SHA-256 after `0aa1c9aa35c337ee2b07909dcef0d60add8eb7174af61e222db9cfbce72303eb`. Failed `test_unknown_cloud_model_has_no_price` (got a `ModelPrice`, not `None`). Restore matched HEAD.
+
+6. **Ollama client ignores `eval_count`.** File `src/llm/ollama_client.py`. `eval_raw = data.get("eval_count")` → `eval_raw = None`. New string count 1. SHA-256 HEAD `76ef79caa9d9836803eaf3adee777c58fd2aac5d5832f902c502ff1455e7a1ae`, after `8ea3c3535b4a4e1715aeb7fad4b895fe762fcd38ed731d76e194a715eba73252`. Failed `test_chat_response_counts_are_used` (`completion_tokens` 0 == 7). Restore matched HEAD.
+
+7. **A recording error is not caught.** File `src/llm/router.py`. Removed the `try` / `except` around `record_call`. SHA-256 after `2aa4a969cdd25d27ec057f26ed452cd5ca6349378085ff1ff55fd71e1d6bad34`. Failed `test_recording_error_does_not_change_router_result` (`RuntimeError: tracker down`). Restore `32330c5b...`.
+
+### Plan notes
+
+- `get_model_price` uses `ConfigLoader.load_model_config` via a lazy import. A top-level import of `ConfigLoader` would pull `UserSettings` at tracker import time.
+- Tests skip the default metrics file and default MLflow log when `PYTEST_CURRENT_TEST` is set and the caller did not pass a folder or factory. That keeps `data/mlflow.db` clean. Production still writes the absolute metrics folder and logs to the SQLite default store.
+- A3/A4 "tests first" failed at collection (`ImportError`) before the symbols existed. That is a fail, but it is not an assertion failure.
+- `cost_per_application` uses `resumes_generated` only. Cover letters that are not counted there will not enter the ratio.
+
+### Checks
+
+Ran (WSL, `apps/backend-py` unless noted):
+
+- `black --check` and `ruff check` on the CI paths, before each backend commit: pass.
+- `scripts/mypy_gate.py` before each backend commit: pass (A1 needed `response.text or ""` in the Gemini client).
+- `pytest tests/ -q` before each backend commit: 1641 (A1), 1644 (A2), 1652 (A3), 1658 (A4), 1659 (A5).
+- Frontend A6 (`nvm use 24`): `npm run lint` pass, `npm run type-check` pass, `npx vitest run` 253 passed, `npx prettier --check` on the changed files pass.
+
+Not run:
+
+- A real pipeline run with Ollama (Claude does this in the review).
+- Playwright E2E: `npm run test:e2e` started the Next server, then failed because Chromium is not installed at `/home/jamestjy/.cache/ms-playwright/chromium_headless_shell-1223/...`. CI runs these.
+- No read of `.env`, `.env.local`, or `user_settings.json`.
+- `data/dedupe_catalog/` was not opened.
