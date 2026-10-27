@@ -9,6 +9,9 @@ Date: 2026-04-21
 """
 
 import json
+import threading
+from collections import deque
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -16,6 +19,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..utils.logger import Components, get_logger
+
+_UNSET = object()
+_cost_run_id: ContextVar[Optional[str]] = ContextVar("cost_run_id", default=None)
+_PROCESS_TRACKER: Optional["ProcessCostTracker"] = None
+_PROCESS_TRACKER_LOCK = threading.Lock()
 
 _PRICE_CONFIG: Optional[Dict[str, Any]] = None
 
@@ -192,6 +200,272 @@ def _price_for_named_model(model_name: str) -> Optional[ModelPrice]:
     return get_model_price(provider, model_name)
 
 
+@dataclass
+class CallRecord:
+    """One router call: counts, names, flags, and time. No prompt or reply text."""
+
+    timestamp: datetime
+    run_id: str
+    task_type: str
+    provider: str
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    tokens_estimated: bool
+    latency_ms: int
+    cache_hit: bool
+    fallback: bool
+    error: bool
+    cost_usd: Optional[float]
+
+
+class ProcessCostTracker:
+    """
+    Process-wide, thread-safe recorder for router calls.
+
+    Keeps the last 1000 records, totals since the process started, and
+    every call of each open run until that run's summary is written.
+    """
+
+    def __init__(self) -> None:
+        """Create empty totals and an empty recent-call buffer."""
+        self._lock = threading.Lock()
+        self._recent: deque[CallRecord] = deque(maxlen=1000)
+        self._run_calls: Dict[str, List[CallRecord]] = {}
+        self._totals: Dict[str, Any] = {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "estimated_counts": 0,
+            "cache_hits": 0,
+            "fallbacks": 0,
+            "errors": 0,
+            "cost_usd": 0.0,
+            "cost_unknown": 0,
+        }
+
+    def reset(self) -> None:
+        """
+        Clear records and totals. Tests call this between cases.
+
+        Returns:
+            None.
+        """
+        with self._lock:
+            self._recent.clear()
+            self._run_calls.clear()
+            self._totals = {
+                "calls": 0,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+                "estimated_counts": 0,
+                "cache_hits": 0,
+                "fallbacks": 0,
+                "errors": 0,
+                "cost_usd": 0.0,
+                "cost_unknown": 0,
+            }
+
+    def open_run(self, run_id: str) -> None:
+        """
+        Start a run bucket. Does not clear shared recent records.
+
+        Args:
+            run_id: Pipeline run identifier.
+
+        Returns:
+            None.
+        """
+        with self._lock:
+            self._run_calls.setdefault(run_id, [])
+
+    def close_run(self, run_id: str) -> List[CallRecord]:
+        """
+        Remove and return the records of one run.
+
+        Args:
+            run_id: Pipeline run identifier.
+
+        Returns:
+            The run's records, in order.
+        """
+        with self._lock:
+            return self._run_calls.pop(run_id, [])
+
+    def run_calls(self, run_id: str) -> List[CallRecord]:
+        """
+        Return a copy of one run's records.
+
+        Args:
+            run_id: Pipeline run identifier.
+
+        Returns:
+            The run's records.
+        """
+        with self._lock:
+            return list(self._run_calls.get(run_id, []))
+
+    def recent_calls(self) -> List[CallRecord]:
+        """
+        Return the last 1000 records.
+
+        Returns:
+            Recent records, oldest first.
+        """
+        with self._lock:
+            return list(self._recent)
+
+    def process_totals(self) -> Dict[str, Any]:
+        """
+        Return totals since the process started (or since the last reset).
+
+        Returns:
+            Counts, tokens, flags, and cost. ``cost_usd`` is ``None`` when
+            any call had an unknown price.
+        """
+        with self._lock:
+            totals: Dict[str, Any] = dict(self._totals)
+        if totals["cost_unknown"]:
+            totals["cost_usd"] = None
+        return totals
+
+    def record_call(
+        self,
+        *,
+        task_type: str,
+        provider: str,
+        model: str,
+        prompt_tokens: int = 0,
+        completion_tokens: int = 0,
+        total_tokens: Optional[int] = None,
+        tokens_estimated: bool = False,
+        latency_ms: int = 0,
+        cache_hit: bool = False,
+        fallback: bool = False,
+        error: bool = False,
+        cost_usd: Any = _UNSET,
+        run_id: Optional[str] = None,
+    ) -> CallRecord:
+        """
+        Append one call record.
+
+        Args:
+            task_type: Router task type value.
+            provider: Provider that served or was attempted.
+            model: Model that served or was attempted.
+            prompt_tokens: Prompt tokens.
+            completion_tokens: Completion tokens.
+            total_tokens: Total tokens, or ``None`` to sum prompt and completion.
+            tokens_estimated: True when counts are a length estimate.
+            latency_ms: Client-call time in milliseconds.
+            cache_hit: True for a response-cache hit.
+            fallback: True when the fallback served the call.
+            error: True for a failed attempt.
+            cost_usd: Cost, or ``_UNSET`` to compute from the price table.
+            run_id: Pipeline run ID. Defaults to the current scope.
+
+        Returns:
+            The stored record.
+        """
+        if cache_hit or error:
+            prompt_tokens = 0
+            completion_tokens = 0
+            total_tokens = 0
+            tokens_estimated = False
+            if cost_usd is _UNSET:
+                cost_usd = 0.0
+        else:
+            if total_tokens is None:
+                total_tokens = prompt_tokens + completion_tokens
+            if cost_usd is _UNSET:
+                price = get_model_price(provider, model)
+                cost_usd = (
+                    None
+                    if price is None
+                    else calculate_usage_cost(price, prompt_tokens, completion_tokens)
+                )
+        resolved_run = run_id if run_id is not None else (_cost_run_id.get() or "")
+        record = CallRecord(
+            timestamp=datetime.now(),
+            run_id=resolved_run,
+            task_type=task_type,
+            provider=provider,
+            model=model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=int(total_tokens),
+            tokens_estimated=tokens_estimated,
+            latency_ms=latency_ms,
+            cache_hit=cache_hit,
+            fallback=fallback,
+            error=error,
+            cost_usd=cost_usd if cost_usd is not _UNSET else None,
+        )
+        with self._lock:
+            self._recent.append(record)
+            if resolved_run:
+                self._run_calls.setdefault(resolved_run, []).append(record)
+            self._totals["calls"] += 1
+            self._totals["prompt_tokens"] += record.prompt_tokens
+            self._totals["completion_tokens"] += record.completion_tokens
+            self._totals["total_tokens"] += record.total_tokens
+            if record.tokens_estimated:
+                self._totals["estimated_counts"] += 1
+            if record.cache_hit:
+                self._totals["cache_hits"] += 1
+            if record.fallback:
+                self._totals["fallbacks"] += 1
+            if record.error:
+                self._totals["errors"] += 1
+            if record.cost_usd is None:
+                self._totals["cost_unknown"] += 1
+            else:
+                self._totals["cost_usd"] += record.cost_usd
+        return record
+
+
+def get_cost_tracker() -> ProcessCostTracker:
+    """
+    Return the process-wide cost tracker.
+
+    Returns:
+        The singleton tracker.
+    """
+    global _PROCESS_TRACKER
+    if _PROCESS_TRACKER is None:
+        with _PROCESS_TRACKER_LOCK:
+            if _PROCESS_TRACKER is None:
+                _PROCESS_TRACKER = ProcessCostTracker()
+    return _PROCESS_TRACKER
+
+
+def reset_cost_tracker() -> None:
+    """
+    Replace the process-wide tracker with an empty instance.
+
+    Tests call this so a patched method cannot leak into the next case.
+
+    Returns:
+        None.
+    """
+    global _PROCESS_TRACKER
+    with _PROCESS_TRACKER_LOCK:
+        _PROCESS_TRACKER = ProcessCostTracker()
+
+
+def current_cost_run_id() -> Optional[str]:
+    """
+    Return the run ID from the current cost-run scope, if any.
+
+    Returns:
+        The run ID, or ``None`` outside a scope.
+    """
+    return _cost_run_id.get()
+
+
 class TaskType(str, Enum):
     """Types of LLM tasks."""
 
@@ -308,7 +582,6 @@ class CostTracker:
         """
         self._pipeline_start_time = datetime.now()
         self._current_run_id = run_id or self._generate_run_id()
-        self._calls = []
 
         self.logger.info(f"Cost tracking started for run: {self._current_run_id}")
 

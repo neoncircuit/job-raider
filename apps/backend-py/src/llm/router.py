@@ -11,10 +11,16 @@ Date: 2026-04-20
 
 import logging
 import threading
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from ..metrics.cost_tracker import (
+    calculate_usage_cost,
+    get_cost_tracker,
+    get_model_price,
+)
 from ..utils.cache import ResponseCache
 from .base import BaseLLMClient, LLMConfig, LLMResponse, Message
 from .claude_client import ClaudeClient
@@ -644,6 +650,103 @@ class LLMRouter:
         self._clients[cache_key] = client
         return client
 
+    def _safe_record(self, **kwargs: Any) -> None:
+        """
+        Write one call record. A tracker error does not change the call.
+
+        Args:
+            **kwargs: Fields for ``ProcessCostTracker.record_call``.
+
+        Returns:
+            None.
+        """
+        try:
+            get_cost_tracker().record_call(**kwargs)
+        except Exception:
+            logger.warning("Cost recording failed", exc_info=True)
+
+    def _record_attempt(
+        self,
+        task_type: TaskType,
+        provider: str,
+        model: str,
+        *,
+        response: Optional[LLMResponse] = None,
+        latency_ms: int = 0,
+        cache_hit: bool = False,
+        fallback: bool = False,
+        error: bool = False,
+    ) -> None:
+        """
+        Record one cache hit, success, or failed attempt.
+
+        Args:
+            task_type: Router task type.
+            provider: Provider that served or was attempted.
+            model: Model that served or was attempted.
+            response: Client response on success.
+            latency_ms: Measured client-call time.
+            cache_hit: True for a response-cache hit.
+            fallback: True when the fallback served the call.
+            error: True for a failed attempt.
+
+        Returns:
+            None.
+        """
+        if cache_hit or error:
+            self._safe_record(
+                task_type=task_type.value,
+                provider=provider,
+                model=model,
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+                tokens_estimated=False,
+                latency_ms=0 if cache_hit else latency_ms,
+                cache_hit=cache_hit,
+                fallback=fallback,
+                error=error,
+                cost_usd=0.0,
+            )
+            return
+        prompt = int(response.prompt_tokens or 0) if response else 0
+        completion = int(response.completion_tokens or 0) if response else 0
+        total = (
+            int(response.tokens_used)
+            if response and response.tokens_used is not None
+            else prompt + completion
+        )
+        estimated = bool(response.tokens_estimated) if response else False
+        price = get_model_price(provider, model)
+        if price is None:
+            cost: Optional[float] = None
+        else:
+            cost = calculate_usage_cost(
+                price,
+                prompt,
+                completion,
+                cache_write_tokens=int(
+                    (response.cache_write_tokens if response else 0) or 0
+                ),
+                cache_read_tokens=int(
+                    (response.cache_read_tokens if response else 0) or 0
+                ),
+            )
+        self._safe_record(
+            task_type=task_type.value,
+            provider=provider,
+            model=model,
+            prompt_tokens=prompt,
+            completion_tokens=completion,
+            total_tokens=total,
+            tokens_estimated=estimated,
+            latency_ms=latency_ms,
+            cache_hit=False,
+            fallback=fallback,
+            error=False,
+            cost_usd=cost,
+        )
+
     def generate(
         self,
         messages: List[Message],
@@ -683,13 +786,25 @@ class LLMRouter:
             kwargs,
         )
         if cached is not None:
+            self._record_attempt(
+                task_type, provider, primary_model, response=cached, cache_hit=True
+            )
             return cached
 
         # Try primary provider
         try:
             client = self._get_client(provider, primary_model)
+            started = time.perf_counter()
             response = client.generate(messages, **kwargs)
+            latency_ms = int((time.perf_counter() - started) * 1000)
             response = self._stamp_provider(response, provider)
+            self._record_attempt(
+                task_type,
+                provider,
+                primary_model,
+                response=response,
+                latency_ms=latency_ms,
+            )
             self._primary_used += 1
             self._total_cost += response.cost or 0.0
             self._try_cache_set(
@@ -703,6 +818,7 @@ class LLMRouter:
             return response
 
         except Exception as e:
+            self._record_attempt(task_type, provider, primary_model, error=True)
             fallback_provider, fallback_model = self._effective_fallback(route)
             if fallback_provider and fallback_model:
                 logger.warning(
@@ -716,8 +832,18 @@ class LLMRouter:
                 )
                 try:
                     client = self._get_client(fallback_provider, fallback_model)
+                    started = time.perf_counter()
                     response = client.generate(messages, **kwargs)
+                    latency_ms = int((time.perf_counter() - started) * 1000)
                     response = self._stamp_provider(response, fallback_provider)
+                    self._record_attempt(
+                        task_type,
+                        fallback_provider,
+                        fallback_model,
+                        response=response,
+                        latency_ms=latency_ms,
+                        fallback=True,
+                    )
                     self._fallback_used += 1
                     self._total_cost += response.cost or 0.0
                     self._try_cache_set(
@@ -730,6 +856,13 @@ class LLMRouter:
                     )
                     return response
                 except Exception as fallback_error:
+                    self._record_attempt(
+                        task_type,
+                        fallback_provider,
+                        fallback_model,
+                        error=True,
+                        fallback=True,
+                    )
                     raise Exception(
                         f"Primary failed: {e}. Fallback also failed: {fallback_error}"
                     ) from fallback_error
@@ -781,13 +914,25 @@ class LLMRouter:
             kwargs,
         )
         if cached is not None:
+            self._record_attempt(
+                task_type, provider, primary_model, response=cached, cache_hit=True
+            )
             return cached
 
         # Try primary provider
         try:
             client = self._get_client(provider, primary_model)
+            started = time.perf_counter()
             response = await client.generate_async(messages, **kwargs)
+            latency_ms = int((time.perf_counter() - started) * 1000)
             response = self._stamp_provider(response, provider)
+            self._record_attempt(
+                task_type,
+                provider,
+                primary_model,
+                response=response,
+                latency_ms=latency_ms,
+            )
             self._primary_used += 1
             self._total_cost += response.cost or 0.0
             self._try_cache_set(
@@ -801,6 +946,7 @@ class LLMRouter:
             return response
 
         except Exception as e:
+            self._record_attempt(task_type, provider, primary_model, error=True)
             fallback_provider, fallback_model = self._effective_fallback(route)
             if fallback_provider and fallback_model:
                 logger.warning(
@@ -814,8 +960,18 @@ class LLMRouter:
                 )
                 try:
                     client = self._get_client(fallback_provider, fallback_model)
+                    started = time.perf_counter()
                     response = await client.generate_async(messages, **kwargs)
+                    latency_ms = int((time.perf_counter() - started) * 1000)
                     response = self._stamp_provider(response, fallback_provider)
+                    self._record_attempt(
+                        task_type,
+                        fallback_provider,
+                        fallback_model,
+                        response=response,
+                        latency_ms=latency_ms,
+                        fallback=True,
+                    )
                     self._fallback_used += 1
                     self._total_cost += response.cost or 0.0
                     self._try_cache_set(
@@ -828,6 +984,13 @@ class LLMRouter:
                     )
                     return response
                 except Exception as fallback_error:
+                    self._record_attempt(
+                        task_type,
+                        fallback_provider,
+                        fallback_model,
+                        error=True,
+                        fallback=True,
+                    )
                     raise Exception(
                         f"Primary failed: {e}. Fallback also failed: {fallback_error}"
                     ) from fallback_error
