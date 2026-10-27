@@ -258,7 +258,7 @@ sequenceDiagram
 ```
 
 **Benefits:**
-- **Cost:** Both models run locally on Ollama, so a run has no per-token API cost
+- **Cost:** Both models run locally on Ollama by default, so a default local route has no per-token API cost. The Metrics page shows the recorded cost.
 - **Quality:** Large model ensures high-quality writing
 - **Context Control:** Small model extracts signal, reduces hallucination
 - **Validation:** Deterministic checks prevent fabrication

@@ -39,7 +39,37 @@ graph LR
 1. **Small Model (qwen2.5:3b)** - Selects relevant projects and keywords
 2. **Large Model (qwen2.5:7b)** - Writes tailored resumes
 
-The small model does the selection step, so the large model gets a short, focused prompt. Both run locally on Ollama, so a pipeline run has no per-token API cost.
+The small model does the selection step, so the large model gets a short, focused prompt. Both run locally on Ollama by default, so a default local route has no per-token API cost. The Metrics page shows the recorded cost when a cloud fallback or a cloud route is used.
+
+## Cost and usage tracking
+
+Each call through the LLM router is recorded: token counts, latency, cache hit, fallback, error, and cost. There is no prompt text and no response text in a record.
+
+You can see the records in three places:
+
+- the Metrics page
+- `apps/backend-py/data/metrics/cost_run_<id>.json` for each pipeline run
+- the MLflow experiment `pipeline-runs`
+
+```mermaid
+flowchart LR
+    C[Caller: stage, route, or CLI] --> R[LLMRouter.generate]
+    R -->|cache hit| T[Shared cost tracker]
+    R -->|primary call| T
+    R -->|primary failed, fallback call| T
+    O[Orchestrator run scope] -.->|run ID in a context variable| T
+    T --> F["data/metrics/cost_run_ID.json"]
+    T --> M[MLflow run for the pipeline run]
+    T --> A["/metrics/costs and /metrics/summary"]
+    F --> A
+    A --> P[Metrics page]
+```
+
+Limits:
+
+- Embeddings are not recorded. They use the embedding client, not the router.
+- Ollama counts come from the Ollama chat response. The Metrics page marks a count that is a length estimate.
+- Cloud prices come from the official Anthropic and Google pages on 2026-10-27. The prices can change.
 
 ## Tech Stack
 
