@@ -10,7 +10,7 @@ Date: 2026-04-20
 
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
@@ -239,9 +239,9 @@ class OllamaClient(BaseLLMClient):
                         f" thinking_chars={thinking_len})"
                     )
 
-                # Count tokens (Ollama doesn't return token count)
-                prompt_tokens = sum(self.count_tokens(msg.content) for msg in messages)
-                completion_tokens = self.count_tokens(content)
+                prompt_tokens, completion_tokens, tokens_estimated = (
+                    self._tokens_from_chat(data, messages, content)
+                )
 
                 # Update stats
                 self._total_tokens_used += prompt_tokens + completion_tokens
@@ -249,12 +249,14 @@ class OllamaClient(BaseLLMClient):
                 return LLMResponse(
                     content=content,
                     model=self.config.model,
+                    provider="ollama",
                     tokens_used=prompt_tokens + completion_tokens,
                     prompt_tokens=prompt_tokens,
                     completion_tokens=completion_tokens,
                     cost=0.0,  # Local models are free
                     latency_ms=latency_ms,
                     cached=False,
+                    tokens_estimated=tokens_estimated,
                 )
 
             except requests.Timeout:
@@ -311,6 +313,43 @@ class OllamaClient(BaseLLMClient):
         return await loop.run_in_executor(
             None, functools.partial(self.generate, messages, **kwargs)
         )
+
+    def _tokens_from_chat(
+        self,
+        data: Dict[str, Any],
+        messages: List[Message],
+        content: str,
+    ) -> Tuple[int, int, bool]:
+        """
+        Read token counts from an Ollama ``/api/chat`` response.
+
+        When ``prompt_eval_count`` or ``eval_count`` is missing, that value
+        uses the length estimate (characters / 4) and the result is marked
+        estimated.
+
+        Args:
+            data: Parsed ``/api/chat`` JSON body.
+            messages: Prompt messages.
+            content: Assistant text.
+
+        Returns:
+            Prompt tokens, completion tokens, and whether any count is an
+            estimate.
+        """
+        estimated = False
+        prompt_raw = data.get("prompt_eval_count")
+        if prompt_raw is None:
+            prompt_tokens = sum(len(msg.content) // 4 for msg in messages)
+            estimated = True
+        else:
+            prompt_tokens = int(prompt_raw)
+        eval_raw = data.get("eval_count")
+        if eval_raw is None:
+            completion_tokens = len(content) // 4
+            estimated = True
+        else:
+            completion_tokens = int(eval_raw)
+        return prompt_tokens, completion_tokens, estimated
 
     def count_tokens(self, text: str) -> int:
         """
