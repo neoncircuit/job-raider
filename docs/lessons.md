@@ -3581,3 +3581,38 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 **How to apply:**
 - Before you score a labeled set from the user, ask what the label means: a fact about the items or a decision about what to do with them.
 - When it is a decision, make the check that decision (for example "nothing is removed"), and do not report precision or recall from it.
+
+## Cost tracking and real runs (2026-10-28)
+
+### Find out what wrote a result file before you treat it as a user's run
+
+**Lesson:** In the Step 3.6 real-run check, three `pipeline_run_*.json` files in `data/results/` were taken for the user's first run, and the missing cost file was blamed on an old backend. The same files came again during the next test run. Three integration tests run `orchestrator.run` with no `results_dir`, so they write into the real data folder. The stage lists (deduplicate to score, and `filter_by_profile` only), the run times of 2 to 3 seconds, and the time zone in the file names (local time, not the container's UTC) all matched the tests.
+
+**Why:**
+- A file in the data folder shows what ran, not who ran it. Tests, CLI runs, and API runs write files with the same names.
+
+**How to apply:**
+- Before you draw a conclusion from a result file, match it to its writer: the run ID in the backend log, the time zone in the file name, the stage list, and the time of the last test run.
+- Make tests write to temporary folders, and check the whole data folder after a test run, not only the files of the current task.
+
+### Before a real-run check, prove that the running server has the new code
+
+**Lesson:** The Step 3.6 check needed a server with the cost-tracking code. The Docker images were two weeks old, and the image copies `src/` at build time. The WSL backend took about 7 minutes to start on `/mnt/d`. Two attempts gave no useful result before the image was rebuilt and the new code was found inside the container.
+
+**Why:**
+- A server that started before the commit, or an image that was built before it, runs the old code, and its output looks normal.
+
+**How to apply:**
+- Rebuild or restart the server, then find the new code in the running server before the run, for example with `docker exec <container> grep -c "<new function name>" <file>`, or check that the server started after the commit.
+- In Docker, run `docker compose up -d --build` after a code change, because the image does not mount `src/`.
+
+### Check that the models fit in GPU memory together before you judge generation speed
+
+**Lesson:** Resume writing took about 2 to 7 minutes for each job. Settings used `qwen2.5:14b` (9.0 GB) for writing and `gemma3:4b` (3.3 GB) for selection on an 8 GB GPU, so Ollama changed models in the GPU for each call, and the first call also downloaded the 14b model. With `qwen2.5:3b` and `qwen2.5:7b` (6.6 GB together), the second resume took about 18 seconds of model time.
+
+**Why:**
+- When the models of one job do not fit in GPU memory together, each call can load a model again, and part of a large model runs on the CPU.
+
+**How to apply:**
+- Before you call a run slow, read the model sizes (`/api/tags`) and what is loaded (`/api/ps`: `size` against `size_vram`), and compare them with the GPU memory. Look for "Pulling model" in the backend log.
+- Measure with the `latency_ms` of each call in the cost run file, not with the time that the page seems to take.
