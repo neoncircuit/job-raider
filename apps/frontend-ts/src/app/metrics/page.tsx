@@ -42,6 +42,39 @@ function Tile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+/**
+ * Format a USD cost. Unknown prices render as "unknown", not $0.00.
+ *
+ * @param value - Cost in USD, or null when the model has no price.
+ * @returns A currency string or "unknown".
+ */
+function formatCost(value: number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return "unknown";
+  }
+  return formatCurrency(value);
+}
+
+/**
+ * Short marks for cache hits, fallbacks, errors, and estimated counts.
+ *
+ * @param call - One recent-call row.
+ * @returns Comma-separated marks, or an empty string.
+ */
+function callFlags(call: {
+  cache_hit?: boolean;
+  fallback?: boolean;
+  error?: boolean;
+  tokens_estimated?: boolean;
+}): string {
+  const flags: string[] = [];
+  if (call.cache_hit) flags.push("cache");
+  if (call.fallback) flags.push("fallback");
+  if (call.error) flags.push("error");
+  if (call.tokens_estimated) flags.push("est.");
+  return flags.join(", ");
+}
+
 export default function MetricsPage() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["metrics-summary"],
@@ -121,11 +154,11 @@ export default function MetricsPage() {
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <Tile
                       label="Total Spent"
-                      value={formatCurrency(cost.total_usd)}
+                      value={formatCost(cost.total_usd)}
                     />
                     <Tile
                       label="Per Application"
-                      value={formatCurrency(cost.per_application)}
+                      value={formatCost(cost.per_application)}
                     />
                     <Tile
                       label="Total LLM Calls"
@@ -135,8 +168,57 @@ export default function MetricsPage() {
                       label="Local Usage"
                       value={formatPercentage(cost.local_usage_percent)}
                     />
+                    <Tile
+                      label="Total Tokens"
+                      value={(cost.total_tokens ?? 0).toLocaleString()}
+                    />
+                    <Tile
+                      label="Prompt / Completion"
+                      value={`${(cost.prompt_tokens ?? 0).toLocaleString()} / ${(cost.completion_tokens ?? 0).toLocaleString()}`}
+                    />
+                    <Tile
+                      label="Estimated Share"
+                      value={formatPercentage(
+                        cost.total_calls > 0
+                          ? ((cost.estimated_counts ?? 0) / cost.total_calls) *
+                              100
+                          : 0,
+                      )}
+                    />
+                    <Tile
+                      label="Last Run"
+                      value={
+                        cost.last_run ? `${cost.last_run.calls} calls` : "none"
+                      }
+                    />
                   </div>
                 </section>
+                {cost.last_run && (
+                  <section>
+                    <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-foreground">
+                      Last Run
+                    </h2>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <Tile label="Run ID" value={cost.last_run.run_id} />
+                      <Tile
+                        label="Time"
+                        value={
+                          cost.last_run.end_time
+                            ? formatDatetime(cost.last_run.end_time)
+                            : "—"
+                        }
+                      />
+                      <Tile
+                        label="Calls"
+                        value={cost.last_run.calls.toLocaleString()}
+                      />
+                      <Tile
+                        label="Tokens"
+                        value={cost.last_run.total_tokens.toLocaleString()}
+                      />
+                    </div>
+                  </section>
+                )}
 
                 <section>
                   <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-foreground">
@@ -223,6 +305,7 @@ export default function MetricsPage() {
                             <th className="pb-2 pr-4">Task</th>
                             <th className="pb-2 pr-4">Provider</th>
                             <th className="pb-2 pr-4">Model</th>
+                            <th className="pb-2 pr-4">Tokens</th>
                             <th className="pb-2 pr-4">Cost</th>
                             <th className="pb-2">Time</th>
                           </tr>
@@ -238,9 +321,17 @@ export default function MetricsPage() {
                               </td>
                               <td className="py-2 pr-4 text-muted-foreground">
                                 {c.model}
+                                {callFlags(c) ? (
+                                  <span className="ml-2 text-xs text-muted-foreground">
+                                    {callFlags(c)}
+                                  </span>
+                                ) : null}
+                              </td>
+                              <td className="py-2 pr-4 text-muted-foreground">
+                                {(c.total_tokens ?? 0).toLocaleString()}
                               </td>
                               <td className="py-2 pr-4 text-foreground">
-                                {formatCurrency(c.cost_usd)}
+                                {formatCost(c.cost_usd)}
                               </td>
                               <td className="py-2 text-xs text-muted-foreground">
                                 {formatDatetime(c.timestamp)}

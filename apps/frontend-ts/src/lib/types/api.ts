@@ -629,11 +629,25 @@ export interface ApplicationDashboardResponse {
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
+export interface CostLastRun {
+  run_id: string;
+  end_time?: string | null;
+  calls: number;
+  total_tokens: number;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+}
+
 export interface CostMetrics {
-  total_usd: number;
-  per_application: number;
+  total_usd: number | null;
+  per_application: number | null;
   total_calls: number;
   local_usage_percent: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  estimated_counts: number;
+  last_run?: CostLastRun | null;
 }
 
 export interface OutcomeMetrics {
@@ -657,8 +671,15 @@ export interface LLMCall {
   task_type: string;
   provider: string;
   model: string;
-  cost_usd: number;
+  cost_usd: number | null;
   timestamp: string;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  tokens_estimated?: boolean;
+  cache_hit?: boolean;
+  fallback?: boolean;
+  error?: boolean;
 }
 
 export interface MetricsSummaryResponse {

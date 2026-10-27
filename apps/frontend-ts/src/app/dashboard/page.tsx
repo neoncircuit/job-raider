@@ -215,10 +215,18 @@ export default function DashboardPage() {
         />
         <StatCard
           title="API Cost"
-          value={ready && m ? formatCurrency(m.cost.total_usd) : "—"}
+          value={
+            ready && m
+              ? m.cost.total_usd === null
+                ? "unknown"
+                : formatCurrency(m.cost.total_usd)
+              : "—"
+          }
           sub={
             ready && m
-              ? `${formatCurrency(m.cost.per_application)} / app`
+              ? m.cost.per_application === null
+                ? "unknown / app"
+                : `${formatCurrency(m.cost.per_application)} / app`
               : undefined
           }
           icon={<DollarSign className="h-4 w-4" />}
