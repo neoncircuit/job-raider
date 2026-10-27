@@ -249,6 +249,30 @@ The user rebuilt the Docker images (`docker compose up -d --build`) and did a fu
 
 Run `run_5569137a4264` on the rebuilt backend (with the selection fix): all 10 stages completed, but with Min Score 60 (the form default; the form does not keep the values of the last run). 60 listings scraped, 37 after the profile filter, 0 at or above 60, so `present_selection` had 0 jobs and `generate_resumes` made no LLM call. The cost file `cost_run_run_5569137a4264.json` (0 calls) and the MLflow run `f042a63e6ebb4ae681997c671b41f962` (FINISHED) were written. The run before had Min Score 30 and 20 jobs at or above it.
 
+### Fourth attempt: the real run check passes (2026-10-28, Claude)
+
+Before this run:
+- The 20-job run and a 2-job run were cancelled, but `generate_resumes` kept running, because cancel takes effect only between stages. Three runs used one GPU at the same time.
+- The writing model in Settings was `qwen2.5:14b` (9.0 GB, more than the 8 GB of the RTX 3070 Ti), with `gemma3:4b` (3.3 GB) for selection. Ollama had to change models in the GPU for each call. The first call also downloaded `qwen2.5:14b`.
+- Claude restarted the backend container at the user's request. The user set the models to `qwen2.5:3b` and `qwen2.5:7b` (6.6 GB together).
+
+Run `run_9743c03ff714` (Docker, full mode, dry run, MyCareersFuture, Min Score 30, Max Jobs 2): 60 scraped, 20 scored, 2 selected, 9 of 10 stages completed in 99 s. Both resumes were generated and then rejected by the resume validator (`MISSING_PROJECT`, `HALLUCINATED_SKILL`), so `generate_resumes` reported "No resume was generated for the 2 selected jobs". That is a Step 1 quality item, not a cost-tracking item.
+
+| Check | Result |
+|-------|--------|
+| Run file `cost_run_run_9743c03ff714.json` | 4 calls: 2 `selection` (`qwen2.5:3b`) and 2 `resume_writing` (`qwen2.5:7b`). Prompt 3,913, completion 1,751, total 5,664 tokens. 0 estimated counts, 0 errors, 0 fallbacks, cost 0. Call times 28.5 s, 32.3 s (the first calls load the models), 9.2 s, 9.3 s. |
+| MLflow (server `http://localhost:5000`, experiment `pipeline-runs`) | Run `683b0974e2ed4e90bc5a81a19dff15d1`, FINISHED, with the same counts, and the tags `run_id`, `mode: full`, and `git_sha: unknown` (the Docker image has no `.git` folder). |
+| Metrics page (`http://127.0.0.1:3000/metrics`) | Total LLM calls 4; total tokens 5,664 (3,913 and 1,751); estimated share 0.0%; local usage 100%; total spent $0.00; per application "unknown" (no document); last run `run_9743c03ff714` with 4 calls and 5,664 tokens; the 4 recent calls with their tokens. |
+| README | No cost number. "A default local route has no per-token API cost" now agrees with a recorded run (cost 0, 100% local). |
+
+Result: the "Done when" item of Step 3.6 is met. Step 3.6 is done.
+
+Found during the real runs, for other steps (in `tasks/backlog.md`):
+- cancel does not stop `generate_resumes`;
+- with `qwen2.5:14b`, resume generation failed with `'dict' object has no attribute 'lower'`;
+- with `qwen2.5:7b`, the validator rejected both drafts (Step 1 manual check);
+- three integration tests write into the real `data/` folder (recorded earlier).
+
 ## Blockers / Questions
 
-- The real run must be done again with Min Score 30 and Max Jobs 2, so that jobs reach `generate_resumes`. Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.
+- None. Step 3.6 is done.

@@ -38,6 +38,14 @@ The items below moved here from the Backlog section of `tasks/todo.md` on 2026-1
 - [ ] `tests/unit/agents/test_task_store.py::test_records_expire_after_ttl` flaked once in a full run. `TaskStore` (`src/agents/task_store.py`) measures age with `datetime.now()`, the wall clock, which can jump in WSL2, and the test leaves a 50 ms margin (TTL 1.05 s, sleep 1.1 s). Use `time.monotonic()` for the TTL check.
 - [ ] Run Playwright against a production build (`next build` and `next start`) instead of `next dev`, so tests do not wait for on-demand compiles. Then set the navigation timeouts in `tests/e2e/smoke.spec.ts` and `basic.spec.ts` back to 15 s.
 
+### Full-mode resume generation (2026-10-28)
+
+Found in the Step 3.6 real runs (Docker, dry run, MyCareersFuture). They belong to the Step 1 manual check.
+
+- [ ] With `qwen2.5:14b` as the writing model, resume generation failed with `'dict' object has no attribute 'lower'` (run `run_4a13f7167ed1`, first job). Find where a dict reaches a string method, and add a test with that model's output shape.
+- [ ] With `qwen2.5:3b` and `qwen2.5:7b`, the resume validator rejected both drafts (`MISSING_PROJECT`, `HALLUCINATED_SKILL`; run `run_9743c03ff714`), so the run generated 0 resumes. Find out whether the drafts or the checks are wrong before changing either.
+- [ ] Settings allow a writing model (`qwen2.5:14b`, 9.0 GB) that does not fit in an 8 GB GPU next to the selection model, so Ollama changes models for each call (about 2 to 4 minutes for each resume). Show a warning in Settings when the two models do not fit in the GPU memory together.
+
 ### Tests write into the real data folder (2026-10-28)
 
 - [ ] Three tests in `apps/backend-py/tests/integration/test_pipeline.py` (`test_pipeline_with_mock_scraping`, `test_pipeline_hooks`, `test_pipeline_result_summary`) run `PipelineOrchestrator.run` with no `results_dir`, so each test run writes `pipeline_run_*.json` into the real `apps/backend-py/data/results/` and empty `all_*.json` files into `data/listings/`. Give them temporary folders, and add a check like the Step 3.6 data proof that covers all of `data/` (not only `data/metrics/` and `data/mlflow.db`). *(Source: Step 3.6 real run, 2026-10-28; these files were first taken for a user run)*
@@ -49,7 +57,7 @@ These items were still open inside completed sections. Each line names its sourc
 - [ ] mypy reports pre-existing typing issues across the backend. *(Source: Phase 47; 195 mypy errors on 2026-10-18; review Step 1 covers this)*
 - [ ] Test DISC assessment end-to-end *(Source: Phase 36 backlog; no E2E spec covers DISC on 2026-10-18)*
 - [ ] Expand fixtures from real pastes during job hunt (keep PII out) *(Source: Paste-JD unstructured to structured (2026-08-07))*
-- [ ] Metrics: cache hit rate already sketched on cost tracker — make real *(Source: LLM caching strategy; `CostTracker.track_call` is never called on 2026-10-18)*
+- [x] Metrics: cache hit rate already sketched on cost tracker — make real *(Source: LLM caching strategy; `CostTracker.track_call` is never called on 2026-10-18. Done in Step 3.6, 2026-10-28: the router records each cache hit, and the run files and MLflow have the cache hit rate.)*
 - [ ] Prefer YAML single source where Python duplicates templates *(Source: LLM caching strategy)*
 - [ ] Document minimum token thresholds / providers that no-op below size *(Source: LLM caching strategy)*
 - [ ] Gemini CachedContent only if fallback volume justifies it *(Source: LLM caching strategy)*
@@ -68,6 +76,7 @@ These items were still open inside completed sections. Each line names its sourc
 
 **Idea:** Improve scrape/run feedback beyond the existing stage progress bar.
 
+- [ ] Cancel does not stop `generate_resumes`: the cancel check runs only between stages, so a cancelled 20-job run kept generating for about an hour and shared the GPU with the next runs. Check the cancel flag between jobs in the resume loop, and say on the page that the run stops after the current job. *(Source: Step 3.6 real runs, 2026-10-28)*
 - [ ] Elapsed timer on live monitor while a run is active
 - [ ] Final `duration_seconds` surfaced clearly on complete + history rows
 - [ ] Optional: per-stage timings (scrape usually dominates)
