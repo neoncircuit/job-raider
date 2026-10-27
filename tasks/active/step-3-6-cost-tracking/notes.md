@@ -203,7 +203,25 @@ J2 changes behaviour: a row with only `cost_per_output` raises `KeyError` again.
 
 Fix (small): `get_model_price` never raises. A value that is not a number, or a row without one of the two prices, gives `None` and a warning. Tests: a row without only `cost_per_input`; a value that is not a number; the Claude client response with such a row has `cost` `None`, and the API is called one time.
 
+### Fix of finding R1 (2026-10-28, Claude, at the user's request)
+
+The user asked Claude to make the R1 fix here, with three tests and a mutation proof.
+
+- `get_model_price` (`src/metrics/cost_tracker.py`) keeps the Ollama shortcut and calls a new `_read_catalog_price` inside one `try`. An error from the catalog (a value that is not a number, a wrong type, or a file that cannot be read) is logged, and the cost is unknown (`None`).
+- New tests in `tests/unit/test_model_pricing.py`, written before the fix:
+    - `test_catalog_row_without_cost_per_input_returns_none` (it passed before the fix too; it guards mutation J2);
+    - `test_price_value_that_is_not_a_number_returns_none` (before the fix: `ValueError: could not convert string to float: '3,0'`);
+    - `test_claude_client_calls_the_api_once_when_a_price_is_bad` (before the fix: `LLMClientError: Failed after 2 retries`, so the paid call was sent 3 times).
+- Mutation proofs (fixed-string replace, count 1, checksum changed, restore matched):
+
+| Mutation | Result | Tests that failed |
+|----------|--------|-------------------|
+| R1-M1 the `except` in `get_model_price` raises again | caught | the two new behaviour tests |
+| R1-M2 `get_model_price` calls `_read_catalog_price` outside the `try` | caught | the two new behaviour tests |
+| J2 only `cost_per_output` is checked | not caught: an equivalent mutant now, because the `try` returns `None` for the `KeyError` too; only the log text differs | none |
+
+- The gate: black, ruff, mypy gate (180 known, 0 new), and pytest (1676 passed). The probe: `cost_per_input: "3,0"` gives `None`.
+
 ## Blockers / Questions
 
-- The user decides on finding R1: a small fix by Claude here, or a README limit (the stop rule permits no further Cursor round).
-- Then the user does one full-mode dry run from the Pipeline page with Ollama running (decision 9).
+- None in the code. The user does one full-mode dry run from the Pipeline page with Ollama running (decision 9). Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.

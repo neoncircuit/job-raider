@@ -22,9 +22,9 @@ Record every LLM call that goes through `LLMRouter` (task, provider, model, toke
 - [x] A7. Docs: the README and `docs/` say what is recorded, with the command or the page to see it, and the limits (for example, embeddings are not recorded). No cost claim without a recorded run.
 - [x] Review (Claude, 2026-10-27, in `notes.md`): diffs, mutation proofs, the local gate (backend and frontend), and a real check with Ollama through the router (run file and MLflow in a scratch store). Result: accept with one fix round for findings 1 to 7; A3 and A5 stay open for findings 1 and 2. A discover run makes no LLM calls, so the real pipeline run moves to "Done when": a full-mode dry run by the user.
 - [x] Fix round (decision 9, the last round): findings 1 to 7 of the review, each with a test, and the mutation proofs (`handoff-fix.md`).
-- [x] Check of the fix round (Claude, 2026-10-28, in `notes.md`). Result: accept; findings 1 to 7 fixed; 9 of 10 mutations caught. One residual (finding R1: a price value that is not a number can repeat a paid cloud call in the client) waits for the user's decision.
+- [x] Check of the fix round (Claude, 2026-10-28, in `notes.md`). Result: accept; findings 1 to 7 fixed; 9 of 10 mutations caught. One residual (finding R1: a price value that is not a number repeated a paid cloud call in the client) is fixed by Claude at the user's request, with three tests and two mutation proofs.
 - [ ] Real pipeline run: one full-mode dry run from the Pipeline page by the user, with Ollama running. Claude checks the Metrics page, the run file, and the MLflow run. This also closes the Step 1 manual check.
 - [ ] Done when: after a real pipeline run, the Metrics page shows real token counts, the run's cost summary is in MLflow, and no cost claim in the README is without recorded data.
 
 ## Status
-`in-progress` (fix round checked on 2026-10-28; waiting for the user's decision on finding R1, then the user's full-mode dry run)
+`in-progress` (fix round checked and finding R1 fixed on 2026-10-28; waiting for the user's full-mode dry run)
