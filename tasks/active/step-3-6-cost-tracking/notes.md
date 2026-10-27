@@ -222,6 +222,15 @@ The user asked Claude to make the R1 fix here, with three tests and a mutation p
 
 - The gate: black, ruff, mypy gate (180 known, 0 new), and pytest (1676 passed). The probe: `cost_per_input: "3,0"` gives `None`.
 
+### First attempt at the real run (2026-10-28, Claude)
+
+The user did a dry run from the Pipeline page. The check did not pass, so Step 3.6 stays open:
+
+- `data/results/` has three new files from 00:58 (`pipeline_run_20261028_005812.json`, `_005816`, and `_005818`). Each run took 2 to 3 seconds and has `dry_run` true. The saved stages end at `score_and_rank` (the first file) or `filter_by_profile` (the other two). No run reached `generate_resumes`, the only pipeline stage that calls the LLM.
+- `data/metrics/` has no `cost_run_*.json` file. In the code at `858d03f`, `orchestrator.run` writes the cost file in a `finally` block before it saves the results file (`orchestrator.py:588-599`), also for a run with 0 calls. So the backend process that did these runs did not run this code. Probably it started before the cost-tracking commits of 2026-10-27 and did not load them. `scripts/dev.sh` starts uvicorn with `--reload`, but that is not proof: the reload may not see every change on `/mnt/d`.
+- MLflow: no `pipeline-runs` experiment on the MLflow server (`localhost:5000`), and `data/mlflow.db` has not changed since 2026-10-26.
+- At the time of the check, no backend and no frontend were running.
+
 ## Blockers / Questions
 
-- None in the code. The user does one full-mode dry run from the Pipeline page with Ollama running (decision 9). Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.
+- The real run must be done again: start the backend again so that it loads the current code, then do a full-mode dry run that goes through the job selection, so that at least one resume is generated. Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.
