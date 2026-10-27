@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from anthropic import Anthropic, AsyncAnthropic
 from anthropic.types import Message as AnthropicMessage
 
+from ..metrics.cost_tracker import calculate_usage_cost, get_model_price
 from .base import (
     AuthenticationError,
     BaseLLMClient,
@@ -28,23 +29,10 @@ from .base import (
     TokenUsage,
 )
 
-# Claude model pricing (per 1M tokens)
-MODEL_PRICING = {
-    "claude-opus-4-7": {
-        "input": 15.0,
-        "output": 75.0,
-        "context": 200000,
-    },
-    "claude-sonnet-4-6": {
-        "input": 3.0,
-        "output": 15.0,
-        "context": 200000,
-    },
-    "claude-haiku-4-5-20251001": {
-        "input": 0.8,
-        "output": 4.0,
-        "context": 200000,
-    },
+MODEL_CONTEXT = {
+    "claude-opus-4-7": 200000,
+    "claude-sonnet-4-6": 200000,
+    "claude-haiku-4-5-20251001": 200000,
 }
 
 
@@ -56,12 +44,7 @@ class ClaudeClient(BaseLLMClient):
     automatic retry logic and cost tracking.
     """
 
-    # Available Claude models
-    AVAILABLE_MODELS = [
-        "claude-opus-4-7",
-        "claude-sonnet-4-6",
-        "claude-haiku-4-5-20251001",
-    ]
+    AVAILABLE_MODELS = list(MODEL_CONTEXT)
 
     def __init__(self, config: LLMConfig, api_key: Optional[str] = None, **kwargs):
         """
@@ -161,13 +144,77 @@ class ClaudeClient(BaseLLMClient):
         """Extract text content from Anthropic response."""
         return response.content[0].text
 
-    def _extract_usage(self, response: AnthropicMessage) -> TokenUsage:
-        """Extract token usage from Anthropic response."""
+    def _extract_usage(self, response: AnthropicMessage) -> Tuple[TokenUsage, int, int]:
+        """
+        Extract token usage and cache counts from an Anthropic response.
+
+        Args:
+            response: Anthropic message.
+
+        Returns:
+            Token usage, cache-write tokens, and cache-read tokens.
+        """
         usage = response.usage
-        return TokenUsage(
-            prompt_tokens=usage.input_tokens,
-            completion_tokens=usage.output_tokens,
-            total_tokens=usage.input_tokens + usage.output_tokens,
+        prompt_tokens = int(usage.input_tokens or 0)
+        completion_tokens = int(usage.output_tokens or 0)
+        cache_write = int(getattr(usage, "cache_creation_input_tokens", 0) or 0)
+        cache_read = int(getattr(usage, "cache_read_input_tokens", 0) or 0)
+        return (
+            TokenUsage(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens
+                + completion_tokens
+                + cache_write
+                + cache_read,
+            ),
+            cache_write,
+            cache_read,
+        )
+
+    def _build_response(
+        self,
+        content: str,
+        usage: TokenUsage,
+        cache_write: int,
+        cache_read: int,
+        latency_ms: int,
+    ) -> LLMResponse:
+        """
+        Build an LLMResponse and apply the catalog price.
+
+        Args:
+            content: Generated text.
+            usage: Token counts.
+            cache_write: Cache-write tokens.
+            cache_read: Cache-read tokens.
+            latency_ms: Call latency.
+
+        Returns:
+            The response with cost and cache fields.
+        """
+        cost = self.estimate_cost(
+            usage.prompt_tokens,
+            usage.completion_tokens,
+            cache_write_tokens=cache_write,
+            cache_read_tokens=cache_read,
+        )
+        self._total_tokens_used += usage.total_tokens
+        self._total_cost += cost.total_cost
+        price = get_model_price("anthropic", self.config.model)
+        return LLMResponse(
+            content=content,
+            model=self.config.model,
+            provider="anthropic",
+            tokens_used=usage.total_tokens,
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            cost=None if price is None else cost.total_cost,
+            latency_ms=latency_ms,
+            cached=False,
+            cache_write_tokens=cache_write,
+            cache_read_tokens=cache_read,
+            tokens_estimated=False,
         )
 
     def generate(self, messages: List[Message], **kwargs) -> LLMResponse:
@@ -210,22 +257,9 @@ class ClaudeClient(BaseLLMClient):
 
                 latency_ms = int((time.time() - start_time) * 1000)
                 content = self._extract_content(response)
-                usage = self._extract_usage(response)
-                cost = self.estimate_cost(usage.prompt_tokens, usage.completion_tokens)
-
-                # Update stats
-                self._total_tokens_used += usage.total_tokens
-                self._total_cost += cost.total_cost
-
-                return LLMResponse(
-                    content=content,
-                    model=self.config.model,
-                    tokens_used=usage.total_tokens,
-                    prompt_tokens=usage.prompt_tokens,
-                    completion_tokens=usage.completion_tokens,
-                    cost=cost.total_cost,
-                    latency_ms=latency_ms,
-                    cached=False,
+                usage, cache_write, cache_read = self._extract_usage(response)
+                return self._build_response(
+                    content, usage, cache_write, cache_read, latency_ms
                 )
 
             except Exception as e:
@@ -296,22 +330,9 @@ class ClaudeClient(BaseLLMClient):
 
                 latency_ms = int((time.time() - start_time) * 1000)
                 content = self._extract_content(response)
-                usage = self._extract_usage(response)
-                cost = self.estimate_cost(usage.prompt_tokens, usage.completion_tokens)
-
-                # Update stats
-                self._total_tokens_used += usage.total_tokens
-                self._total_cost += cost.total_cost
-
-                return LLMResponse(
-                    content=content,
-                    model=self.config.model,
-                    tokens_used=usage.total_tokens,
-                    prompt_tokens=usage.prompt_tokens,
-                    completion_tokens=usage.completion_tokens,
-                    cost=cost.total_cost,
-                    latency_ms=latency_ms,
-                    cached=False,
+                usage, cache_write, cache_read = self._extract_usage(response)
+                return self._build_response(
+                    content, usage, cache_write, cache_read, latency_ms
                 )
 
             except Exception as e:
@@ -354,31 +375,42 @@ class ClaudeClient(BaseLLMClient):
         # Simple approximation: ~4 characters per token for English
         return len(text) // 4
 
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> CostEstimate:
+    def estimate_cost(
+        self,
+        prompt_tokens: int,
+        completion_tokens: int,
+        cache_write_tokens: int = 0,
+        cache_read_tokens: int = 0,
+    ) -> CostEstimate:
         """
         Estimate the cost for a given number of tokens.
 
         Args:
             prompt_tokens: Number of tokens in the prompt
             completion_tokens: Number of tokens in the completion
+            cache_write_tokens: Prompt-cache write tokens
+            cache_read_tokens: Prompt-cache read tokens
 
         Returns:
-            CostEstimate with cost breakdown
+            CostEstimate with cost breakdown. Unknown models cost 0.
         """
-        if self.config.model not in MODEL_PRICING:
-            # Default to Sonnet pricing if model not found
-            pricing = MODEL_PRICING.get(
-                "claude-sonnet-4-6", {"input": 3.0, "output": 15.0}
+        price = get_model_price("anthropic", self.config.model)
+        if price is None:
+            return CostEstimate(
+                input_cost=0.0, output_cost=0.0, total_cost=0.0, currency="USD"
             )
-        else:
-            pricing = MODEL_PRICING[self.config.model]
-
-        input_cost = (prompt_tokens / 1_000_000) * pricing["input"]
-        output_cost = (completion_tokens / 1_000_000) * pricing["output"]
-
+        input_cost = (prompt_tokens / 1_000_000) * price.input_per_million
+        output_cost = (completion_tokens / 1_000_000) * price.output_per_million
+        total = calculate_usage_cost(
+            price,
+            prompt_tokens,
+            completion_tokens,
+            cache_write_tokens=cache_write_tokens,
+            cache_read_tokens=cache_read_tokens,
+        )
         return CostEstimate(
             input_cost=round(input_cost, 6),
             output_cost=round(output_cost, 6),
-            total_cost=round(input_cost + output_cost, 6),
+            total_cost=round(total, 6),
             currency="USD",
         )

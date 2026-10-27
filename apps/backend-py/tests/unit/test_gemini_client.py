@@ -83,7 +83,7 @@ class TestGeminiClientInit:
         client = GeminiClient(config=mock_config, api_key="test-key")
         assert "gemini-2.5-flash" in client.available_models
         assert "gemini-2.5-pro" in client.available_models
-        assert "gemini-2.0-flash" in client.available_models
+        assert "gemini-2.0-flash" not in client.available_models
 
 
 class TestGeminiClientGenerate:
@@ -267,21 +267,30 @@ class TestGeminiClientCostEstimation:
         cost = client.estimate_cost(1_000_000, 1_000_000)
 
         assert isinstance(cost, CostEstimate)
-        assert cost.input_cost == 0.15
-        assert cost.output_cost == 0.60
-        assert cost.total_cost == 0.75
+        assert cost.input_cost == 0.30
+        assert cost.output_cost == 2.50
+        assert cost.total_cost == 2.80
         assert cost.currency == "USD"
 
     @patch("src.llm.gemini_client.genai.Client")
-    def test_estimate_cost_unknown_model(self, mock_client_cls):
-        """Test cost estimation for gemini-2.0-flash."""
-        config = LLMConfig(model="gemini-2.0-flash")
-        client = GeminiClient(config=config, api_key="test-key")
-        cost = client.estimate_cost(1_000_000, 1_000_000)
-
-        assert cost.input_cost == 0.10
-        assert cost.output_cost == 0.40
-        assert cost.total_cost == 0.50
+    def test_thinking_tokens_count_as_output(
+        self, mock_client_cls, mock_config, messages
+    ):
+        """Google bills thoughts_token_count as completion tokens."""
+        mock_client = MagicMock()
+        usage = SimpleNamespace(
+            prompt_token_count=10,
+            candidates_token_count=20,
+            thoughts_token_count=5,
+        )
+        mock_client.models.generate_content.return_value = SimpleNamespace(
+            text="ok", usage_metadata=usage
+        )
+        mock_client_cls.return_value = mock_client
+        client = GeminiClient(config=mock_config, api_key="test-key")
+        response = client.generate(messages)
+        assert response.completion_tokens == 25
+        assert response.tokens_used == 35
 
     @patch("src.llm.gemini_client.genai.Client")
     def test_estimate_cost_zero_tokens(self, mock_client_cls, mock_config):

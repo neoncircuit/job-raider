@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 from google import genai
 from google.genai import types
 
+from ..metrics.cost_tracker import calculate_usage_cost, get_model_price
 from .base import (
     AuthenticationError,
     BaseLLMClient,
@@ -31,23 +32,9 @@ from .base import (
     TokenUsage,
 )
 
-# Gemini model pricing (per 1M tokens, USD)
-MODEL_PRICING = {
-    "gemini-2.5-flash": {
-        "input": 0.15,
-        "output": 0.60,
-        "context": 1048576,
-    },
-    "gemini-2.5-pro": {
-        "input": 1.25,
-        "output": 10.00,
-        "context": 1048576,
-    },
-    "gemini-2.0-flash": {
-        "input": 0.10,
-        "output": 0.40,
-        "context": 1048576,
-    },
+MODEL_CONTEXT = {
+    "gemini-2.5-flash": 1048576,
+    "gemini-2.5-pro": 1048576,
 }
 
 
@@ -59,11 +46,7 @@ class GeminiClient(BaseLLMClient):
     the google-genai SDK with automatic retry logic and cost tracking.
     """
 
-    AVAILABLE_MODELS = [
-        "gemini-2.5-flash",
-        "gemini-2.5-pro",
-        "gemini-2.0-flash",
-    ]
+    AVAILABLE_MODELS = list(MODEL_CONTEXT)
 
     def __init__(
         self,
@@ -181,6 +164,8 @@ class GeminiClient(BaseLLMClient):
         if usage:
             prompt_tokens = usage.prompt_token_count or 0
             completion_tokens = usage.candidates_token_count or 0
+            thoughts = int(getattr(usage, "thoughts_token_count", 0) or 0)
+            completion_tokens += thoughts
             return TokenUsage(
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
@@ -222,23 +207,9 @@ class GeminiClient(BaseLLMClient):
                 )
 
                 latency_ms = int((time.time() - start_time) * 1000)
-                content = response.text
+                content = response.text or ""
                 usage = self._extract_usage(response)
-                cost = self.estimate_cost(usage.prompt_tokens, usage.completion_tokens)
-
-                self._total_tokens_used += usage.total_tokens
-                self._total_cost += cost.total_cost
-
-                return LLMResponse(
-                    content=content,
-                    model=self.config.model,
-                    tokens_used=usage.total_tokens,
-                    prompt_tokens=usage.prompt_tokens,
-                    completion_tokens=usage.completion_tokens,
-                    cost=cost.total_cost,
-                    latency_ms=latency_ms,
-                    cached=False,
-                )
+                return self._build_response(content, usage, latency_ms)
 
             except Exception as e:
                 last_error = e
@@ -305,23 +276,9 @@ class GeminiClient(BaseLLMClient):
                 )
 
                 latency_ms = int((time.time() - start_time) * 1000)
-                content = response.text
+                content = response.text or ""
                 usage = self._extract_usage(response)
-                cost = self.estimate_cost(usage.prompt_tokens, usage.completion_tokens)
-
-                self._total_tokens_used += usage.total_tokens
-                self._total_cost += cost.total_cost
-
-                return LLMResponse(
-                    content=content,
-                    model=self.config.model,
-                    tokens_used=usage.total_tokens,
-                    prompt_tokens=usage.prompt_tokens,
-                    completion_tokens=usage.completion_tokens,
-                    cost=cost.total_cost,
-                    latency_ms=latency_ms,
-                    cached=False,
-                )
+                return self._build_response(content, usage, latency_ms)
 
             except Exception as e:
                 last_error = e
@@ -375,6 +332,37 @@ class GeminiClient(BaseLLMClient):
         except Exception:
             return len(text) // 4
 
+    def _build_response(
+        self, content: str, usage: TokenUsage, latency_ms: int
+    ) -> LLMResponse:
+        """
+        Build an LLMResponse and apply the catalog price.
+
+        Args:
+            content: Generated text.
+            usage: Token counts.
+            latency_ms: Call latency.
+
+        Returns:
+            The response with cost fields.
+        """
+        cost = self.estimate_cost(usage.prompt_tokens, usage.completion_tokens)
+        self._total_tokens_used += usage.total_tokens
+        self._total_cost += cost.total_cost
+        price = get_model_price("gemini", self.config.model)
+        return LLMResponse(
+            content=content,
+            model=self.config.model,
+            provider="gemini",
+            tokens_used=usage.total_tokens,
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            cost=None if price is None else cost.total_cost,
+            latency_ms=latency_ms,
+            cached=False,
+            tokens_estimated=False,
+        )
+
     def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> CostEstimate:
         """
         Estimate the cost for a given number of tokens.
@@ -384,19 +372,29 @@ class GeminiClient(BaseLLMClient):
             completion_tokens: Number of tokens in the completion
 
         Returns:
-            CostEstimate with cost breakdown
+            CostEstimate with cost breakdown. Unknown models cost 0.
         """
-        pricing = MODEL_PRICING.get(
-            self.config.model,
-            {"input": 0.15, "output": 0.60},
-        )
-
-        input_cost = (prompt_tokens / 1_000_000) * pricing["input"]
-        output_cost = (completion_tokens / 1_000_000) * pricing["output"]
-
+        price = get_model_price("gemini", self.config.model)
+        if price is None:
+            return CostEstimate(
+                input_cost=0.0, output_cost=0.0, total_cost=0.0, currency="USD"
+            )
+        total = calculate_usage_cost(price, prompt_tokens, completion_tokens)
+        input_rate = price.input_per_million
+        output_rate = price.output_per_million
+        if (
+            price.long_prompt_tokens is not None
+            and prompt_tokens > price.long_prompt_tokens
+            and price.long_input_per_million is not None
+            and price.long_output_per_million is not None
+        ):
+            input_rate = price.long_input_per_million
+            output_rate = price.long_output_per_million
+        input_cost = (prompt_tokens / 1_000_000) * input_rate
+        output_cost = (completion_tokens / 1_000_000) * output_rate
         return CostEstimate(
             input_cost=round(input_cost, 6),
             output_cost=round(output_cost, 6),
-            total_cost=round(input_cost + output_cost, 6),
+            total_cost=round(total, 6),
             currency="USD",
         )

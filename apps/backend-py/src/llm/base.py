@@ -55,6 +55,16 @@ class LLMResponse(BaseModel):
         default=None, description="Request latency in milliseconds"
     )
     cached: bool = Field(default=False, description="Whether response was from cache")
+    cache_read_tokens: Optional[int] = Field(
+        default=None, description="Prompt-cache read tokens"
+    )
+    cache_write_tokens: Optional[int] = Field(
+        default=None, description="Prompt-cache write tokens"
+    )
+    tokens_estimated: bool = Field(
+        default=False,
+        description="True when token counts are a length estimate",
+    )
 
 
 class LLMConfig(BaseModel):

@@ -17,13 +17,179 @@ from typing import Any, Dict, List, Optional
 
 from ..utils.logger import Components, get_logger
 
+_PRICE_CONFIG: Optional[Dict[str, Any]] = None
+
 
 class ModelProvider(str, Enum):
     """LLM model providers."""
 
     ANTHROPIC = "anthropic"
+    GEMINI = "gemini"
     OLLAMA = "ollama"
     OPENAI = "openai"
+
+
+@dataclass
+class ModelPrice:
+    """Prices for one catalog model, in USD per million tokens."""
+
+    input_per_million: float
+    output_per_million: float
+    cache_write_multiplier: float = 1.0
+    cache_read_multiplier: float = 0.0
+    long_prompt_tokens: Optional[int] = None
+    long_input_per_million: Optional[float] = None
+    long_output_per_million: Optional[float] = None
+
+
+def reset_price_config_cache() -> None:
+    """
+    Clear the loaded price table.
+
+    Tests call this when they replace the YAML.
+
+    Returns:
+        None.
+    """
+    global _PRICE_CONFIG
+    _PRICE_CONFIG = None
+
+
+def _price_config() -> Dict[str, Any]:
+    """
+    Load ``model_config.yaml`` once.
+
+    Returns:
+        The parsed model configuration.
+    """
+    global _PRICE_CONFIG
+    if _PRICE_CONFIG is None:
+        from ..config.loader import ConfigLoader
+
+        _PRICE_CONFIG = ConfigLoader().load_model_config() or {}
+    return _PRICE_CONFIG
+
+
+def get_model_price(provider: str, model: str) -> Optional[ModelPrice]:
+    """
+    Read the catalog price for one provider and model.
+
+    Ollama always has cost 0. A cloud model that is not in the table
+    returns ``None``.
+
+    Args:
+        provider: Provider name (``anthropic``, ``gemini``, or ``ollama``).
+        model: Model identifier.
+
+    Returns:
+        The price, or ``None`` when a cloud model has no row.
+    """
+    if provider == ModelProvider.OLLAMA.value or provider == "ollama":
+        return ModelPrice(input_per_million=0.0, output_per_million=0.0)
+    config = _price_config()
+    provider_cfg = (config.get("models") or {}).get(provider) or {}
+    model_cfg = (provider_cfg.get("models") or {}).get(model)
+    if not model_cfg:
+        return None
+    write_mult = float(provider_cfg.get("cache_write_multiplier") or 1.0)
+    read_mult = float(provider_cfg.get("cache_read_multiplier") or 0.0)
+    long_threshold = model_cfg.get("long_prompt_tokens")
+    return ModelPrice(
+        input_per_million=float(model_cfg["cost_per_input"]),
+        output_per_million=float(model_cfg["cost_per_output"]),
+        cache_write_multiplier=write_mult,
+        cache_read_multiplier=read_mult,
+        long_prompt_tokens=int(long_threshold) if long_threshold else None,
+        long_input_per_million=(
+            float(model_cfg["long_cost_per_input"])
+            if model_cfg.get("long_cost_per_input") is not None
+            else None
+        ),
+        long_output_per_million=(
+            float(model_cfg["long_cost_per_output"])
+            if model_cfg.get("long_cost_per_output") is not None
+            else None
+        ),
+    )
+
+
+def calculate_usage_cost(
+    price: ModelPrice,
+    prompt_tokens: int,
+    completion_tokens: int,
+    cache_write_tokens: int = 0,
+    cache_read_tokens: int = 0,
+) -> float:
+    """
+    Compute USD cost from a price row and token counts.
+
+    Args:
+        price: Catalog price.
+        prompt_tokens: Uncached prompt tokens.
+        completion_tokens: Completion tokens (including thinking tokens).
+        cache_write_tokens: Prompt-cache write tokens.
+        cache_read_tokens: Prompt-cache read tokens.
+
+    Returns:
+        Cost in USD.
+    """
+    input_rate = price.input_per_million
+    output_rate = price.output_per_million
+    if (
+        price.long_prompt_tokens is not None
+        and prompt_tokens > price.long_prompt_tokens
+        and price.long_input_per_million is not None
+        and price.long_output_per_million is not None
+    ):
+        input_rate = price.long_input_per_million
+        output_rate = price.long_output_per_million
+    input_cost = (prompt_tokens / 1_000_000) * input_rate
+    output_cost = (completion_tokens / 1_000_000) * output_rate
+    write_cost = (
+        (cache_write_tokens / 1_000_000) * input_rate * price.cache_write_multiplier
+    )
+    read_cost = (
+        (cache_read_tokens / 1_000_000) * input_rate * price.cache_read_multiplier
+    )
+    return input_cost + output_cost + write_cost + read_cost
+
+
+def _catalog_provider(model_name: str) -> Optional[str]:
+    """
+    Return the catalog provider that lists ``model_name``.
+
+    Args:
+        model_name: Model identifier.
+
+    Returns:
+        Provider name, or ``None``.
+    """
+    models_root = _price_config().get("models") or {}
+    for provider in (
+        ModelProvider.ANTHROPIC.value,
+        ModelProvider.GEMINI.value,
+        ModelProvider.OLLAMA.value,
+    ):
+        listed = (models_root.get(provider) or {}).get("models") or {}
+        if model_name in listed:
+            return provider
+    return None
+
+
+def _price_for_named_model(model_name: str) -> Optional[ModelPrice]:
+    """
+    Find a catalog price by model name.
+
+    Args:
+        model_name: Model identifier.
+
+    Returns:
+        The matching price, or ``None``.
+    """
+    provider = _catalog_provider(model_name)
+    if provider is None:
+        return None
+    return get_model_price(provider, model_name)
 
 
 class TaskType(str, Enum):
@@ -75,55 +241,6 @@ class ModelCost:
             usage.completion_tokens / 1_000_000
         ) * self.output_cost_per_million
         return input_cost + output_cost
-
-
-# Model pricing (as of 2026)
-MODEL_PRICING = {
-    # Anthropic models
-    "claude-haiku-4-5-20251001": ModelCost(
-        provider=ModelProvider.ANTHROPIC,
-        model_name="claude-haiku-4-5-20251001",
-        input_cost_per_million=1.0,
-        output_cost_per_million=5.0,
-    ),
-    "claude-sonnet-4-6": ModelCost(
-        provider=ModelProvider.ANTHROPIC,
-        model_name="claude-sonnet-4-6",
-        input_cost_per_million=3.0,
-        output_cost_per_million=15.0,
-    ),
-    "claude-opus-4-7": ModelCost(
-        provider=ModelProvider.ANTHROPIC,
-        model_name="claude-opus-4-7",
-        input_cost_per_million=15.0,
-        output_cost_per_million=75.0,
-    ),
-    # Ollama models (free, local)
-    "qwen2.5:3b": ModelCost(
-        provider=ModelProvider.OLLAMA,
-        model_name="qwen2.5:3b",
-        input_cost_per_million=0.0,
-        output_cost_per_million=0.0,
-    ),
-    "qwen2.5:7b": ModelCost(
-        provider=ModelProvider.OLLAMA,
-        model_name="qwen2.5:7b",
-        input_cost_per_million=0.0,
-        output_cost_per_million=0.0,
-    ),
-    "gemma3:4b": ModelCost(
-        provider=ModelProvider.OLLAMA,
-        model_name="gemma3:4b",
-        input_cost_per_million=0.0,
-        output_cost_per_million=0.0,
-    ),
-    "gemma3:12b": ModelCost(
-        provider=ModelProvider.OLLAMA,
-        model_name="gemma3:12b",
-        input_cost_per_million=0.0,
-        output_cost_per_million=0.0,
-    ),
-}
 
 
 @dataclass
@@ -217,26 +334,24 @@ class CostTracker:
             cache_hit: Whether this was a cache hit
             metadata: Additional metadata
         """
-        # Get model pricing
-        model_cost = MODEL_PRICING.get(model_name)
-        if not model_cost:
-            self.logger.warning(f"Unknown model: {model_name}, assuming zero cost")
-            model_cost = ModelCost(
-                provider=ModelProvider.OLLAMA,
-                model_name=model_name,
-                input_cost_per_million=0.0,
-                output_cost_per_million=0.0,
+        provider_name = _catalog_provider(model_name)
+        price = get_model_price(provider_name, model_name) if provider_name else None
+        if price is None:
+            self.logger.warning("Unknown model %s: cost is unknown", model_name)
+            cost_usd = 0.0
+            provider = ModelProvider.OLLAMA
+        else:
+            cost_usd = calculate_usage_cost(
+                price, token_usage.prompt_tokens, token_usage.completion_tokens
             )
-
-        # Calculate cost
-        cost_usd = model_cost.calculate_cost(token_usage)
+            provider = ModelProvider(provider_name)
 
         # Create call record
         call = LLMApiCall(
             timestamp=datetime.now(),
             task_type=task_type,
             model_name=model_name,
-            provider=model_cost.provider,
+            provider=provider,
             token_usage=token_usage,
             cost_usd=cost_usd,
             duration_seconds=duration_seconds,
@@ -412,21 +527,17 @@ class CostTracker:
             else:
                 model_name = selection_model
 
-            model_cost = MODEL_PRICING.get(model_name)
-            if not model_cost:
+            price = _price_for_named_model(model_name)
+            if price is None:
                 continue
 
             # Estimate 50/50 split input/output
             prompt_tokens = int(tokens * 0.5)
             completion_tokens = int(tokens * 0.5)
-
-            usage = TokenUsage(
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=tokens,
+            task_cost = (
+                calculate_usage_cost(price, prompt_tokens, completion_tokens)
+                * total_calls
             )
-
-            task_cost = model_cost.calculate_cost(usage) * total_calls
             total_cost += task_cost
 
             task_breakdown[task_type.value] = {

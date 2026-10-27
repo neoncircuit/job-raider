@@ -7,6 +7,10 @@ models:
     provider: anthropic
     api_key_env: ANTHROPIC_API_KEY
     default_model: claude-sonnet-4-6
+    price_source: https://platform.claude.com/docs/en/about-claude/pricing
+    price_checked: "2026-10-27"
+    cache_write_multiplier: 1.25
+    cache_read_multiplier: 0.1
     fallback_models:
       - claude-opus-4-7
       - claude-haiku-4-5-20251001
@@ -26,16 +30,16 @@ models:
         max_tokens: 8192
         temperature: 0.7
         context_window: 200000
-        cost_per_input: 15.0
-        cost_per_output: 75.0
+        cost_per_input: 5.0
+        cost_per_output: 25.0
         use_case: ["complex_reasoning", "fallback"]
 
       claude-haiku-4-5-20251001:
         max_tokens: 8192
         temperature: 0.7
         context_window: 200000
-        cost_per_input: 0.8
-        cost_per_output: 4.0
+        cost_per_input: 1.0
+        cost_per_output: 5.0
         use_case: ["simple_tasks", "scoring"]
 
   # === Google Gemini API (Cost-effective cloud fallback) ===
@@ -43,14 +47,16 @@ models:
     provider: gemini
     api_key_env: GEMINI_API_KEY
     default_model: gemini-2.5-flash
+    price_source: https://ai.google.dev/gemini-api/docs/pricing
+    price_checked: "2026-10-27"
 
     models:
       gemini-2.5-flash:
         max_tokens: 8192
         temperature: 0.7
         context_window: 1048576
-        cost_per_input: 0.15
-        cost_per_output: 0.60
+        cost_per_input: 0.30
+        cost_per_output: 2.50
         use_case: ["selection", "scoring", "classification", "question_answering"]
 
       gemini-2.5-pro:
@@ -59,15 +65,10 @@ models:
         context_window: 1048576
         cost_per_input: 1.25
         cost_per_output: 10.0
+        long_prompt_tokens: 200000
+        long_cost_per_input: 2.50
+        long_cost_per_output: 15.0
         use_case: ["resume_writing", "jd_extraction", "complex_reasoning"]
-
-      gemini-2.0-flash:
-        max_tokens: 8192
-        temperature: 0.7
-        context_window: 1048576
-        cost_per_input: 0.10
-        cost_per_output: 0.40
-        use_case: ["simple_tasks", "scoring"]
 
   # === Ollama Local Models (Production) ===
   ollama:

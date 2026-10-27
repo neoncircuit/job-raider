@@ -12,10 +12,13 @@ from .cost_tracker import (
     CostTracker,
     LLMApiCall,
     ModelCost,
+    ModelPrice,
     ModelProvider,
     PipelineCostSummary,
     TaskType,
     TokenUsage,
+    calculate_usage_cost,
+    get_model_price,
 )
 from .mlflow_tracker import (
     ExperimentConfig,
@@ -41,6 +44,9 @@ __all__ = [
     "TaskType",
     "TokenUsage",
     "ModelCost",
+    "ModelPrice",
+    "get_model_price",
+    "calculate_usage_cost",
     "LLMApiCall",
     "PipelineCostSummary",
     # Outcome Tracker
