@@ -231,6 +231,19 @@ The user did a dry run from the Pipeline page. The check did not pass, so Step 3
 - MLflow: no `pipeline-runs` experiment on the MLflow server (`localhost:5000`), and `data/mlflow.db` has not changed since 2026-10-26.
 - At the time of the check, no backend and no frontend were running.
 
+### Second attempt at the real run (2026-10-28, Claude)
+
+The user rebuilt the Docker images (`docker compose up -d --build`) and did a full-mode dry run (MyCareersFuture, Max Jobs 2, Min Score 30, Dry Run and Skip Submission on). Run `run_eef6917d15ee`:
+
+- 60 listings scraped, 20 scored, 20 shortlisted. 8 of 10 stages completed. The run failed in `present_selection`: `'str' object has no attribute 'value'`.
+- **The cause (a Step 1 bug, not a Step 3.6 bug):** `JobListing` has `use_enum_values=True` (`src/models/job_listing.py:315`, since the first commit), so `source` is a string after validation. `stage_present_selection` logged `job.source.value` (`src/pipeline/stages.py:705`), so full mode failed for every real listing. No test covered this stage.
+- **The fix (Claude, here):** the stage reads `source` with the same `hasattr(..., "value")` guard as `stages.py:258`. New test `TestStagePresentSelection::test_selects_a_validated_listing` in `tests/unit/test_pipeline_stages.py`: it failed before the fix with the same error, and it passes after. Mutation: `job.source.value` again makes it fail; the restore matched the checksum. The gate: black, ruff, mypy gate (180 known, 0 new), pytest (1677 passed).
+- **The same bug, not fixed:** `src/submission/submitter.py:201` and `:210`. Only the real auto-submit path reaches them (a dry run returns at `:113`), so they go to the backlog with the Easy Apply decision (review Step 5).
+- **The cost tracking worked for this failed run:**
+    - `data/metrics/cost_run_run_eef6917d15ee.json` exists (mode `full`, 0 calls, because the run stopped before `generate_resumes`).
+    - The MLflow server has the experiment `pipeline-runs` and the run `5add01079522461788889ba4d11af15f` (status FINISHED, all metrics 0, tags `run_id`, `mode: full`).
+    - The `git_sha` tag is `unknown`, because the Docker image has no `.git` folder. This is a limit of Docker runs.
+
 ## Blockers / Questions
 
-- The real run must be done again: start the backend again so that it loads the current code, then do a full-mode dry run that goes through the job selection, so that at least one resume is generated. Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.
+- The real run must be done again on a backend image with the selection fix. Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.

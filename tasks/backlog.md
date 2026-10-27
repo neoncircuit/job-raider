@@ -54,6 +54,7 @@ These items were still open inside completed sections. Each line names its sourc
 - [ ] Handle non-Easy Apply jobs (external site redirect) — flag, surface in UI, pre-fill clipboard *(Source: Phase 31 backlog; decide on Easy Apply first; see review Step 5)*
 - [ ] Add resume upload handling in form filler *(Source: Phase 31 backlog; decide on Easy Apply first; see review Step 5)*
 - [ ] Add frontend UI for LinkedIn auto-apply configuration and monitoring *(Source: Phase 31 backlog; decide on Easy Apply first; see review Step 5)*
+- [ ] `src/submission/submitter.py:201` and `:210` call `info.job.source.value`, but `JobListing` stores enum values (`use_enum_values=True`), so `source` is a string and these lines raise `AttributeError`. Only the real auto-submit path reaches them; a dry run returns earlier (`submitter.py:113`). Fix them with the Easy Apply decision. *(Source: Step 3.6 real run, 2026-10-28; the same bug in `stage_present_selection` is fixed; see review Step 5)*
 - [ ] DISC: Extra results visualizations (radar on results, bars toggle, match-gap charts, view toggle) *(Source: DISC assessment improvements, standby ideas)*
 - [ ] DISC: Richer role recommendations aligned to AI Eng / SWE+AI / DA ladder with trait-driven explanations *(Source: DISC assessment improvements, standby ideas)*
 
