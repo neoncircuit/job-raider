@@ -48,6 +48,7 @@ def _process_usage() -> Dict[str, Any]:
         "fallbacks": int(totals.get("fallbacks") or 0),
         "errors": int(totals.get("errors") or 0),
         "cost_usd": totals.get("cost_usd"),
+        "api_usd": totals.get("api_usd"),
         "local_share": (local / calls) if calls else 0.0,
     }
 
@@ -134,7 +135,7 @@ async def get_cost_metrics() -> MetricsResponse:
     return MetricsResponse(
         total_cost_usd=process["cost_usd"],
         cost_per_application=per_app,
-        api_costs_usd=None,
+        api_costs_usd=process["api_usd"],
         local_model_usage=process["local_share"] * 100,
         pipeline_runs=len(list_cost_run_files()),
         prompt_tokens=process["prompt_tokens"],
@@ -202,7 +203,7 @@ async def get_metrics_summary() -> Dict[str, Any]:
         "cost": {
             "total_usd": process["cost_usd"],
             "per_application": per_app,
-            "api_usd": None,
+            "api_usd": process["api_usd"],
             "local_usage_percent": process["local_share"] * 100,
             "total_calls": process["calls"],
             "prompt_tokens": process["prompt_tokens"],

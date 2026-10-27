@@ -9,7 +9,6 @@ Date: 2026-04-21
 """
 
 import json
-import os
 import threading
 from collections import deque
 from contextlib import contextmanager
@@ -258,6 +257,8 @@ class ProcessCostTracker:
             "cost_usd": 0.0,
             "cost_unknown": 0,
             "local_calls": 0,
+            "api_cost_usd": 0.0,
+            "api_cost_unknown": 0,
         }
 
     def reset(self) -> None:
@@ -282,6 +283,8 @@ class ProcessCostTracker:
                 "cost_usd": 0.0,
                 "cost_unknown": 0,
                 "local_calls": 0,
+                "api_cost_usd": 0.0,
+                "api_cost_unknown": 0,
             }
 
     def open_run(self, run_id: str) -> None:
@@ -345,6 +348,10 @@ class ProcessCostTracker:
             totals: Dict[str, Any] = dict(self._totals)
         if totals["cost_unknown"]:
             totals["cost_usd"] = None
+        if totals["api_cost_unknown"]:
+            totals["api_usd"] = None
+        else:
+            totals["api_usd"] = totals["api_cost_usd"]
         return totals
 
     def record_call(
@@ -421,8 +428,8 @@ class ProcessCostTracker:
         )
         with self._lock:
             self._recent.append(record)
-            if resolved_run:
-                self._run_calls.setdefault(resolved_run, []).append(record)
+            if resolved_run in self._run_calls:
+                self._run_calls[resolved_run].append(record)
             self._totals["calls"] += 1
             self._totals["prompt_tokens"] += record.prompt_tokens
             self._totals["completion_tokens"] += record.completion_tokens
@@ -441,6 +448,11 @@ class ProcessCostTracker:
                 self._totals["cost_usd"] += record.cost_usd
             if record.provider == ModelProvider.OLLAMA.value:
                 self._totals["local_calls"] += 1
+            else:
+                if record.cost_usd is None:
+                    self._totals["api_cost_unknown"] += 1
+                else:
+                    self._totals["api_cost_usd"] += record.cost_usd
         return record
 
 
@@ -689,8 +701,6 @@ def write_cost_run_summary(
         summary["cost_per_application"] = summary["total_cost_usd"] / documents
     else:
         summary["cost_per_application"] = None
-    if storage_dir is None and os.getenv("PYTEST_CURRENT_TEST"):
-        return summary
     folder = Path(storage_dir) if storage_dir is not None else _default_metrics_dir()
     payload = {
         "run_id": run_id,
@@ -726,20 +736,18 @@ def write_cost_run_summary(
         get_logger(Components.SCRAPERS).warning(
             "Failed to write cost run file for %s: %s", run_id, exc
         )
-    in_pytest = bool(os.getenv("PYTEST_CURRENT_TEST"))
-    if tracker_factory is not None or not in_pytest:
-        try:
-            log_cost_run_to_mlflow(
-                summary,
-                run_id=run_id,
-                mode=mode,
-                tracker_factory=tracker_factory,
-                tracking_uri=tracking_uri,
-            )
-        except Exception as exc:  # noqa: BLE001 - MLflow must not fail the run
-            get_logger(Components.SCRAPERS).warning(
-                "MLflow logging for pipeline run %s failed: %s", run_id, exc
-            )
+    try:
+        log_cost_run_to_mlflow(
+            summary,
+            run_id=run_id,
+            mode=mode,
+            tracker_factory=tracker_factory,
+            tracking_uri=tracking_uri,
+        )
+    except Exception as exc:  # noqa: BLE001 - MLflow must not fail the run
+        get_logger(Components.SCRAPERS).warning(
+            "MLflow logging for pipeline run %s failed: %s", run_id, exc
+        )
     return summary
 
 

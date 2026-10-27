@@ -5,6 +5,7 @@ Tests for cost-run scope, the run file, and MLflow (Step 3.6, A4).
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime
 from pathlib import Path
 from threading import Thread
@@ -20,7 +21,11 @@ from src.metrics.cost_tracker import (
     write_cost_run_summary,
 )
 from src.models.pipeline_stage import PipelineStage
-from src.pipeline.orchestrator import PipelineConfig, PipelineOrchestrator
+from src.pipeline.orchestrator import (
+    PipelineConfig,
+    PipelineOrchestrator,
+    _new_run_id,
+)
 from src.pipeline.stages import StageResult
 
 
@@ -232,3 +237,52 @@ def test_run_frees_its_records(
         cost_mlflow_factory=MagicMock(),
     )
     assert get_cost_tracker().run_calls("free-1") == []
+
+
+def test_default_run_id_is_a_uuid() -> None:
+    """A missing run ID is a UUID, not a one-second timestamp."""
+    first = _new_run_id()
+    second = _new_run_id()
+    uuid.UUID(first)
+    uuid.UUID(second)
+    assert first != second
+    assert _new_run_id("keep-me") == "keep-me"
+
+
+def test_late_record_does_not_make_a_run_bucket() -> None:
+    """A record after close_run is not added to a new run bucket."""
+    tracker = get_cost_tracker()
+    tracker.open_run("late-1")
+    tracker.record_call(
+        task_type="selection",
+        provider="ollama",
+        model="qwen2.5:3b",
+        prompt_tokens=1,
+        completion_tokens=1,
+        latency_ms=1,
+        run_id="late-1",
+    )
+    tracker.close_run("late-1")
+    tracker.record_call(
+        task_type="selection",
+        provider="ollama",
+        model="qwen2.5:3b",
+        prompt_tokens=1,
+        completion_tokens=1,
+        latency_ms=1,
+        run_id="late-1",
+    )
+    assert tracker.run_calls("late-1") == []
+    assert len(tracker.recent_calls()) == 2
+
+
+def test_default_write_uses_isolated_metrics_dir(
+    _isolate_cost_run_io: dict[str, Any],
+) -> None:
+    """The default path writes the run file and calls the MLflow logger."""
+    with cost_run_scope("iso-1"):
+        _record()
+    write_cost_run_summary("iso-1")
+    path = _isolate_cost_run_io["metrics_dir"] / "cost_run_iso-1.json"
+    assert path.is_file()
+    _isolate_cost_run_io["mlflow_factory"].assert_called()

@@ -144,3 +144,48 @@ class TestMetricsAPI:
         last_run = response.json()["last_run"]
         assert last_run is not None
         assert last_run["run_id"] == "aaa"
+
+    def test_api_usd_is_cost_of_non_ollama_calls(self, client: TestClient) -> None:
+        """api_usd is the cost of the non-Ollama calls."""
+        reset_cost_tracker()
+        get_cost_tracker().record_call(
+            task_type="selection",
+            provider="ollama",
+            model="qwen2.5:3b",
+            prompt_tokens=1,
+            completion_tokens=1,
+            latency_ms=1,
+        )
+        get_cost_tracker().record_call(
+            task_type="selection",
+            provider="anthropic",
+            model="claude-sonnet-4-6",
+            prompt_tokens=1_000_000,
+            completion_tokens=0,
+            latency_ms=1,
+        )
+        costs = client.get("/api/metrics/costs")
+        assert costs.status_code == 200
+        assert costs.json()["api_costs_usd"] == 3.0
+        summary = client.get("/api/metrics/summary")
+        assert summary.status_code == 200
+        assert summary.json()["cost"]["api_usd"] == 3.0
+        reset_cost_tracker()
+
+    def test_api_usd_is_none_when_a_cloud_call_has_no_price(
+        self, client: TestClient
+    ) -> None:
+        """api_usd is None when any non-Ollama call has no price."""
+        reset_cost_tracker()
+        get_cost_tracker().record_call(
+            task_type="selection",
+            provider="anthropic",
+            model="claude-not-in-catalog",
+            prompt_tokens=10,
+            completion_tokens=4,
+            latency_ms=1,
+        )
+        costs = client.get("/api/metrics/costs")
+        assert costs.status_code == 200
+        assert costs.json()["api_costs_usd"] is None
+        reset_cost_tracker()

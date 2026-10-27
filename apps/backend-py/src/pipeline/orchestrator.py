@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +33,20 @@ from .stages import PipelineContext, PipelineStages, StageResult
 
 if TYPE_CHECKING:
     from ..llm.router import LLMRouter
+
+
+def _new_run_id(run_id: Optional[str] = None) -> str:
+    """
+    Return the given run ID, or a UUID when none is given.
+
+    Args:
+        run_id: Optional caller-supplied identifier.
+
+    Returns:
+        The run identifier.
+    """
+    return run_id or str(uuid.uuid4())
+
 
 # Multi-agent imports
 try:
@@ -303,7 +318,7 @@ class PipelineOrchestrator:
             return self.run(start_from, stop_at, run_id=run_id)
 
         start_time = datetime.now()
-        resolved_run_id = run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
+        resolved_run_id = _new_run_id(run_id)
         self.logger.info("=" * 60)
         self.logger.info("JOB RAIDER MULTI-AGENT PIPELINE STARTED")
         self.logger.info("=" * 60)
@@ -515,7 +530,7 @@ class PipelineOrchestrator:
             PipelineResult with execution summary
         """
         start_time = datetime.now()
-        resolved_run_id = run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
+        resolved_run_id = _new_run_id(run_id)
         self.logger.info("=" * 60)
         self.logger.info("JOB RAIDER PIPELINE STARTED")
         self.logger.info("=" * 60)

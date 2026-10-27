@@ -488,6 +488,46 @@ def temp_chroma_dir(tmp_path):
     return str(chroma_dir)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_cost_run_io(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """
+    Point default cost-run files and MLflow at a temporary folder.
+
+    Production code writes the run file and calls MLflow on the default
+    path. Tests that pass a tracker factory still reach
+    ``log_cost_run_to_mlflow``.
+
+    Args:
+        tmp_path: Pytest temporary directory for this test.
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Yields:
+        The isolated metrics directory and the default MLflow factory.
+    """
+    import src.metrics.cost_tracker as cost_mod
+
+    metrics_dir = tmp_path / "cost-metrics"
+    metrics_dir.mkdir()
+    mlflow_db = tmp_path / "mlflow" / "mlflow.db"
+    mlflow_db.parent.mkdir()
+    uri = f"sqlite:///{mlflow_db.as_posix()}"
+    monkeypatch.setattr(cost_mod, "_default_metrics_dir", lambda: metrics_dir)
+    real_log = cost_mod.log_cost_run_to_mlflow
+    fake_tracker = MagicMock()
+    fake_tracker.start_run.return_value = "isolated-mlflow-run"
+    fake_factory = MagicMock(return_value=fake_tracker)
+
+    def isolated_log(*args: object, **kwargs: object):
+        """Call the real logger with a temp store and a default fake factory."""
+        kwargs.setdefault("tracking_uri", uri)
+        if kwargs.get("tracker_factory") is None:
+            kwargs["tracker_factory"] = fake_factory
+        return real_log(*args, **kwargs)
+
+    monkeypatch.setattr(cost_mod, "log_cost_run_to_mlflow", isolated_log)
+    yield {"metrics_dir": metrics_dir, "mlflow_factory": fake_factory}
+
+
 @pytest.fixture
 def skip_if_no_embedding_model():
     """Skip test if nomic-embed-text is not available in Ollama."""
