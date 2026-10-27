@@ -70,6 +70,8 @@ Limits:
 - Embeddings are not recorded. They use the embedding client, not the router.
 - Ollama counts come from the Ollama chat response. The Metrics page marks a count that is a length estimate.
 - Cloud prices come from the official Anthropic and Google pages on 2026-10-27. The prices can change.
+- In a pipeline run, only resume generation (full mode) calls the LLM. A discover-mode run records 0 calls.
+- Process totals start at 0 when the backend starts again. The last run comes from its file.
 
 ## Tech Stack
 
