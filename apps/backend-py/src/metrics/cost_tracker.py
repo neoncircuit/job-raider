@@ -9,14 +9,16 @@ Date: 2026-04-21
 """
 
 import json
+import os
 import threading
 from collections import deque
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional
 
 from ..utils.logger import Components, get_logger
 
@@ -464,6 +466,266 @@ def current_cost_run_id() -> Optional[str]:
         The run ID, or ``None`` outside a scope.
     """
     return _cost_run_id.get()
+
+
+@contextmanager
+def cost_run_scope(run_id: str) -> Iterator[str]:
+    """
+    Bind router records in this context to ``run_id``.
+
+    ``asyncio.to_thread`` copies context variables, so a worker thread
+    that starts after this scope is entered keeps the same run ID.
+
+    Args:
+        run_id: Pipeline run identifier.
+
+    Yields:
+        The same run ID.
+    """
+    token = _cost_run_id.set(run_id)
+    get_cost_tracker().open_run(run_id)
+    try:
+        yield run_id
+    finally:
+        _cost_run_id.reset(token)
+
+
+def _default_metrics_dir() -> Path:
+    """
+    Absolute ``apps/backend-py/data/metrics`` directory.
+
+    Returns:
+        The metrics directory.
+    """
+    return Path(__file__).resolve().parents[2] / "data" / "metrics"
+
+
+def summarize_call_records(records: List[CallRecord]) -> Dict[str, Any]:
+    """
+    Build a cost summary from a list of call records.
+
+    Args:
+        records: Records of one run.
+
+    Returns:
+        Summary counts. ``total_cost_usd`` is ``None`` when any call
+        had no price.
+    """
+    calls = len(records)
+    prompt = sum(r.prompt_tokens for r in records)
+    completion = sum(r.completion_tokens for r in records)
+    total = sum(r.total_tokens for r in records)
+    estimated = sum(1 for r in records if r.tokens_estimated)
+    cache_hits = sum(1 for r in records if r.cache_hit)
+    fallbacks = sum(1 for r in records if r.fallback)
+    errors = sum(1 for r in records if r.error)
+    unknown = any(r.cost_usd is None for r in records)
+    cost = None if unknown else sum(float(r.cost_usd or 0.0) for r in records)
+    return {
+        "total_calls": calls,
+        "prompt_tokens": prompt,
+        "completion_tokens": completion,
+        "total_tokens": total,
+        "estimated_counts": estimated,
+        "cache_hits": cache_hits,
+        "fallbacks": fallbacks,
+        "errors": errors,
+        "cache_hit_rate": (cache_hits / calls) if calls else 0.0,
+        "estimated_share": (estimated / calls) if calls else 0.0,
+        "total_cost_usd": cost,
+        "total_duration_seconds": sum(r.latency_ms for r in records) / 1000.0,
+    }
+
+
+def log_cost_run_to_mlflow(
+    summary: Dict[str, Any],
+    *,
+    run_id: str,
+    mode: str = "",
+    tracker_factory: Optional[Callable[..., Any]] = None,
+    tracking_uri: Optional[str] = None,
+    timeout_s: float = 3.0,
+) -> Optional[str]:
+    """
+    Log one pipeline cost summary to the ``pipeline-runs`` experiment.
+
+    Fail open: an MLflow error is logged and ignored.
+
+    Args:
+        summary: Cost summary from ``summarize_call_records``.
+        run_id: Pipeline run identifier.
+        mode: Pipeline mode tag.
+        tracker_factory: Creates the tracker; defaults to
+            ``create_mlflow_tracker``.
+        tracking_uri: Store to use; defaults to ``resolve_tracking_uri``.
+        timeout_s: Seconds for the tracking server health check.
+
+    Returns:
+        The MLflow run ID, or ``None`` when logging was skipped.
+    """
+    from ..evaluation.report import (
+        DEFAULT_ARTIFACT_DIR,
+        DEFAULT_TRACKING_URI,
+        resolve_tracking_uri,
+        tracking_server_reachable,
+    )
+    from ..evaluation.run_metadata import BACKEND_DIR, collect_git_state
+
+    uri = tracking_uri or resolve_tracking_uri()
+    if tracker_factory is None:
+        if not tracking_server_reachable(uri, timeout_s=timeout_s):
+            get_logger(Components.SCRAPERS).warning(
+                "MLflow at %s is not reachable; cost run not logged.", uri
+            )
+            return None
+        from .mlflow_tracker import create_mlflow_tracker
+
+        tracker_factory = create_mlflow_tracker
+    artifact_location = None
+    if uri == DEFAULT_TRACKING_URI:
+        artifact_location = DEFAULT_ARTIFACT_DIR.as_uri()
+    if uri.startswith("sqlite:///"):
+        Path(uri[len("sqlite:///") :]).parent.mkdir(parents=True, exist_ok=True)
+    try:
+        import mlflow
+
+        previous_uri = mlflow.get_tracking_uri()
+    except ImportError:
+        get_logger(Components.SCRAPERS).warning(
+            "MLflow is not installed; cost run not logged."
+        )
+        return None
+    git_sha, _dirty = collect_git_state(BACKEND_DIR)
+    metrics = {
+        "calls": summary.get("total_calls"),
+        "prompt_tokens": summary.get("prompt_tokens"),
+        "completion_tokens": summary.get("completion_tokens"),
+        "total_tokens": summary.get("total_tokens"),
+        "estimated_share": summary.get("estimated_share"),
+        "cache_hit_rate": summary.get("cache_hit_rate"),
+        "fallback_count": summary.get("fallbacks"),
+        "error_count": summary.get("errors"),
+        "cost_usd": summary.get("total_cost_usd"),
+    }
+    try:
+        tracker = tracker_factory(
+            tracking_uri=uri,
+            experiment_name="pipeline-runs",
+            artifact_location=artifact_location,
+        )
+        if tracker is None:
+            get_logger(Components.SCRAPERS).warning(
+                "MLflow is not installed; cost run not logged."
+            )
+            return None
+        ml_run = tracker.start_run(
+            run_name=f"pipeline-{run_id}",
+            tags={"run_id": run_id, "mode": mode, "git_sha": git_sha},
+        )
+        try:
+            tracker.log_metrics(
+                {key: value for key, value in metrics.items() if value is not None}
+            )
+        finally:
+            tracker.end_run()
+        return str(ml_run)
+    except Exception as exc:  # noqa: BLE001 - tracking must not fail the run
+        get_logger(Components.SCRAPERS).warning(
+            "MLflow logging for pipeline run %s failed: %s", run_id, exc
+        )
+        return None
+    finally:
+        mlflow.set_tracking_uri(previous_uri)
+
+
+def write_cost_run_summary(
+    run_id: str,
+    *,
+    storage_dir: Optional[Path] = None,
+    mode: str = "",
+    documents: int = 0,
+    tracker_factory: Optional[Callable[..., Any]] = None,
+    tracking_uri: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Write ``cost_run_<run_id>.json`` and log the summary to MLflow.
+
+    File and MLflow errors are logged. The in-memory summary is still
+    returned.
+
+    Args:
+        run_id: Pipeline run identifier.
+        storage_dir: Folder for the JSON file. Defaults to
+            ``apps/backend-py/data/metrics``.
+        mode: Pipeline mode.
+        documents: Jobs that received a generated document in this run.
+        tracker_factory: Optional MLflow tracker factory for tests.
+        tracking_uri: Optional MLflow URI.
+
+    Returns:
+        The run summary (without the call list).
+    """
+    records = get_cost_tracker().run_calls(run_id)
+    summary = summarize_call_records(records)
+    summary["run_id"] = run_id
+    summary["mode"] = mode
+    summary["documents"] = documents
+    if documents > 0 and summary["total_cost_usd"] is not None:
+        summary["cost_per_application"] = summary["total_cost_usd"] / documents
+    else:
+        summary["cost_per_application"] = None
+    if storage_dir is None and os.getenv("PYTEST_CURRENT_TEST"):
+        return summary
+    folder = Path(storage_dir) if storage_dir is not None else _default_metrics_dir()
+    payload = {
+        "run_id": run_id,
+        "mode": mode,
+        "start_time": records[0].timestamp.isoformat() if records else None,
+        "end_time": datetime.now().isoformat(),
+        "summary": summary,
+        "calls": [
+            {
+                "timestamp": record.timestamp.isoformat(),
+                "run_id": record.run_id,
+                "task_type": record.task_type,
+                "provider": record.provider,
+                "model": record.model,
+                "prompt_tokens": record.prompt_tokens,
+                "completion_tokens": record.completion_tokens,
+                "total_tokens": record.total_tokens,
+                "tokens_estimated": record.tokens_estimated,
+                "latency_ms": record.latency_ms,
+                "cache_hit": record.cache_hit,
+                "fallback": record.fallback,
+                "error": record.error,
+                "cost_usd": record.cost_usd,
+            }
+            for record in records
+        ],
+    }
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / f"cost_run_{run_id}.json"
+        path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001 - file errors must not fail the run
+        get_logger(Components.SCRAPERS).warning(
+            "Failed to write cost run file for %s: %s", run_id, exc
+        )
+    in_pytest = bool(os.getenv("PYTEST_CURRENT_TEST"))
+    if tracker_factory is not None or not in_pytest:
+        try:
+            log_cost_run_to_mlflow(
+                summary,
+                run_id=run_id,
+                mode=mode,
+                tracker_factory=tracker_factory,
+                tracking_uri=tracking_uri,
+            )
+        except Exception as exc:  # noqa: BLE001 - MLflow must not fail the run
+            get_logger(Components.SCRAPERS).warning(
+                "MLflow logging for pipeline run %s failed: %s", run_id, exc
+            )
+    return summary
 
 
 class TaskType(str, Enum):

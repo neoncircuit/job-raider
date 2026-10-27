@@ -207,7 +207,7 @@ class TestRunPipeline:
                 captured["config"] = config
                 captured["profile"] = user_profile
 
-            def run(self, stop_at: Any = None) -> SimpleNamespace:
+            def run(self, stop_at: Any = None, **_kwargs: Any) -> SimpleNamespace:
                 """Return a minimal successful pipeline result.
 
                 Args:

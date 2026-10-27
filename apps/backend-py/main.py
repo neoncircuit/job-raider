@@ -15,6 +15,7 @@ import json
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 from typing import List, Optional
 
@@ -301,6 +302,7 @@ def run_pipeline(args) -> int:
 
         # Run pipeline
         result = orchestrator.run(
+            run_id=str(uuid.uuid4()),
             stop_at=PipelineStage(args.stop_at) if args.stop_at else None,
         )
 
@@ -395,7 +397,7 @@ def interactive_mode() -> int:
             user_profile=profile,
         )
 
-        result = orchestrator.run()
+        result = orchestrator.run(run_id=str(uuid.uuid4()))
 
         # Print summary
         print("\n" + "=" * 60)

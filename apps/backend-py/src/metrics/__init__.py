@@ -20,9 +20,12 @@ from .cost_tracker import (
     TaskType,
     TokenUsage,
     calculate_usage_cost,
+    cost_run_scope,
     get_cost_tracker,
     get_model_price,
+    log_cost_run_to_mlflow,
     reset_cost_tracker,
+    write_cost_run_summary,
 )
 from .mlflow_tracker import (
     ExperimentConfig,
@@ -48,6 +51,9 @@ __all__ = [
     "ProcessCostTracker",
     "get_cost_tracker",
     "reset_cost_tracker",
+    "cost_run_scope",
+    "write_cost_run_summary",
+    "log_cost_run_to_mlflow",
     "ModelProvider",
     "TaskType",
     "TokenUsage",

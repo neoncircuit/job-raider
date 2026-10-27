@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional
 
 from ..llm.router import create_router
+from ..metrics.cost_tracker import cost_run_scope, write_cost_run_summary
 from ..models.pipeline_stage import STAGE_ORDER, PipelineStage
 from ..models.user_profile import UserProfile
 from ..scoring.scam_detector import DEFAULT_SCAM_ACTION, DEFAULT_SCAM_THRESHOLD
@@ -282,6 +283,7 @@ class PipelineOrchestrator:
         self,
         start_from: PipelineStage = PipelineStage.SCRAPE,
         stop_at: Optional[PipelineStage] = None,
+        run_id: Optional[str] = None,
     ) -> PipelineResult:
         """
         Run the pipeline using multi-agent coordination.
@@ -298,9 +300,10 @@ class PipelineOrchestrator:
                 "Multi-agent system not available, falling back to standard execution"
             )
             # Fall back to synchronous execution
-            return self.run(start_from, stop_at)
+            return self.run(start_from, stop_at, run_id=run_id)
 
         start_time = datetime.now()
+        resolved_run_id = run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
         self.logger.info("=" * 60)
         self.logger.info("JOB RAIDER MULTI-AGENT PIPELINE STARTED")
         self.logger.info("=" * 60)
@@ -313,39 +316,46 @@ class PipelineOrchestrator:
         agent_tasks = []
 
         try:
-            for stage in stages_to_run:
-                # Run before hooks
-                for hook in self._before_stage_hooks.get(stage, []):
-                    try:
-                        hook(stage)
-                    except Exception as e:
-                        self.logger.warning(f"Before hook failed for {stage}: {str(e)}")
+            with cost_run_scope(resolved_run_id):
+                for stage in stages_to_run:
+                    # Run before hooks
+                    for hook in self._before_stage_hooks.get(stage, []):
+                        try:
+                            hook(stage)
+                        except Exception as e:
+                            self.logger.warning(
+                                f"Before hook failed for {stage}: {str(e)}"
+                            )
 
-                # Execute stage with agents
-                result, agent_task = await self._execute_stage_with_agents(
-                    stage, stage_results
-                )
-                stage_results[stage.value] = result
-
-                if agent_task:
-                    agent_tasks.append(agent_task)
-
-                if result.success:
-                    stages_completed.append(stage.value)
-                    self.logger.info(f"Stage '{stage.value}' completed successfully")
-                else:
-                    self.logger.error(
-                        f"Stage '{stage.value}' failed: {result.error_message}"
+                    # Execute stage with agents
+                    result, agent_task = await self._execute_stage_with_agents(
+                        stage, stage_results
                     )
-                    # Stop on failure
-                    break
+                    stage_results[stage.value] = result
 
-                # Run after hooks
-                for hook in self._after_stage_hooks.get(stage, []):
-                    try:
-                        hook(stage, result)
-                    except Exception as e:
-                        self.logger.warning(f"After hook failed for {stage}: {str(e)}")
+                    if agent_task:
+                        agent_tasks.append(agent_task)
+
+                    if result.success:
+                        stages_completed.append(stage.value)
+                        self.logger.info(
+                            f"Stage '{stage.value}' completed successfully"
+                        )
+                    else:
+                        self.logger.error(
+                            f"Stage '{stage.value}' failed: {result.error_message}"
+                        )
+                        # Stop on failure
+                        break
+
+                    # Run after hooks
+                    for hook in self._after_stage_hooks.get(stage, []):
+                        try:
+                            hook(stage, result)
+                        except Exception as e:
+                            self.logger.warning(
+                                f"After hook failed for {stage}: {str(e)}"
+                            )
 
             # Get agent performance data
             agent_performance = {}
@@ -373,6 +383,7 @@ class PipelineOrchestrator:
                     "execution_mode": "multi_agent",
                     "agent_performance": agent_performance,
                     "agent_tasks": agent_tasks,
+                    "cost": self._write_cost_summary(resolved_run_id, stage_results),
                 },
             )
 
@@ -386,7 +397,11 @@ class PipelineOrchestrator:
                 stage_results=stage_results,
                 start_time=start_time,
                 end_time=end_time,
-                metadata={"execution_mode": "multi_agent", "error": str(e)},
+                metadata={
+                    "execution_mode": "multi_agent",
+                    "error": str(e),
+                    "cost": self._write_cost_summary(resolved_run_id, stage_results),
+                },
             )
 
     async def _execute_stage_with_agents(
@@ -431,11 +446,55 @@ class PipelineOrchestrator:
 
         return self.agent_coordinator.get_performance_metrics()
 
+    def _write_cost_summary(
+        self,
+        run_id: str,
+        stage_results: Dict[str, StageResult],
+        storage_dir: Optional[Path] = None,
+        tracker_factory: Optional[Callable[..., Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Write the run cost file and log it to MLflow. Fail open.
+
+        Args:
+            run_id: Pipeline run identifier.
+            stage_results: Completed stage results.
+            storage_dir: Optional folder for the JSON file.
+
+        Returns:
+            The cost summary, or an empty summary when writing fails.
+        """
+        generate = stage_results.get(PipelineStage.GENERATE_RESUMES.value)
+        documents = 0
+        if generate is not None and generate.metadata:
+            documents = int(generate.metadata.get("resumes_generated") or 0)
+        try:
+            summary = write_cost_run_summary(
+                run_id,
+                storage_dir=storage_dir,
+                mode=self.config.mode,
+                documents=documents,
+                tracker_factory=tracker_factory,
+            )
+        except Exception as exc:  # noqa: BLE001 - cost I/O must not fail the run
+            self.logger.warning("Cost summary for %s failed: %s", run_id, exc)
+            summary = {"total_calls": 0, "run_id": run_id}
+        try:
+            from ..metrics.cost_tracker import get_cost_tracker
+
+            get_cost_tracker().close_run(run_id)
+        except Exception:
+            pass
+        return summary
+
     def run(
         self,
         start_from: PipelineStage = PipelineStage.SCRAPE,
         stop_at: Optional[PipelineStage] = None,
         should_stop: Optional[Callable[[], bool]] = None,
+        run_id: Optional[str] = None,
+        cost_storage_dir: Optional[Path] = None,
+        cost_mlflow_factory: Optional[Callable[..., Any]] = None,
     ) -> PipelineResult:
         """
         Run the complete pipeline.
@@ -447,11 +506,16 @@ class PipelineOrchestrator:
                 returns True, the run stops before that stage and the result
                 is marked cancelled. A stage that is already running is not
                 interrupted.
+            run_id: Pipeline run identifier. Generated when omitted.
+            cost_storage_dir: Folder for ``cost_run_<id>.json``. Tests pass
+                a temporary folder.
+            cost_mlflow_factory: Optional MLflow tracker factory for tests.
 
         Returns:
             PipelineResult with execution summary
         """
         start_time = datetime.now()
+        resolved_run_id = run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
         self.logger.info("=" * 60)
         self.logger.info("JOB RAIDER PIPELINE STARTED")
         self.logger.info("=" * 60)
@@ -465,39 +529,54 @@ class PipelineOrchestrator:
         stages_completed = []
         cancelled = False
 
-        for stage in stages_to_run:
-            if should_stop is not None and should_stop():
-                cancelled = True
-                self.logger.info(f"Run cancelled before stage '{stage.value}'")
-                break
+        try:
+            with cost_run_scope(resolved_run_id):
+                for stage in stages_to_run:
+                    if should_stop is not None and should_stop():
+                        cancelled = True
+                        self.logger.info(f"Run cancelled before stage '{stage.value}'")
+                        break
 
-            # Run before hooks
-            for hook in self._before_stage_hooks.get(stage, []):
-                try:
-                    hook(stage)
-                except Exception as e:
-                    self.logger.warning(f"Before hook failed for {stage}: {str(e)}")
+                    # Run before hooks
+                    for hook in self._before_stage_hooks.get(stage, []):
+                        try:
+                            hook(stage)
+                        except Exception as e:
+                            self.logger.warning(
+                                f"Before hook failed for {stage}: {str(e)}"
+                            )
 
-            # Execute stage
-            result = self._execute_stage(stage, stage_results)
-            stage_results[stage.value] = result
+                    # Execute stage
+                    result = self._execute_stage(stage, stage_results)
+                    stage_results[stage.value] = result
 
-            if result.success:
-                stages_completed.append(stage.value)
-                self.logger.info(f"Stage '{stage.value}' completed successfully")
-            else:
-                self.logger.error(
-                    f"Stage '{stage.value}' failed: {result.error_message}"
-                )
-                # Stop on failure
-                break
+                    if result.success:
+                        stages_completed.append(stage.value)
+                        self.logger.info(
+                            f"Stage '{stage.value}' completed successfully"
+                        )
+                    else:
+                        self.logger.error(
+                            f"Stage '{stage.value}' failed: {result.error_message}"
+                        )
+                        # Stop on failure
+                        break
 
-            # Run after hooks
-            for hook in self._after_stage_hooks.get(stage, []):
-                try:
-                    hook(stage, result)
-                except Exception as e:
-                    self.logger.warning(f"After hook failed for {stage}: {str(e)}")
+                    # Run after hooks
+                    for hook in self._after_stage_hooks.get(stage, []):
+                        try:
+                            hook(stage, result)
+                        except Exception as e:
+                            self.logger.warning(
+                                f"After hook failed for {stage}: {str(e)}"
+                            )
+        finally:
+            cost_summary = self._write_cost_summary(
+                resolved_run_id,
+                stage_results,
+                cost_storage_dir,
+                cost_mlflow_factory,
+            )
 
         end_time = datetime.now()
 
@@ -518,7 +597,7 @@ class PipelineOrchestrator:
             stage_results=stage_results,
             start_time=start_time,
             end_time=end_time,
-            metadata={"cancelled": cancelled},
+            metadata={"cancelled": cancelled, "cost": cost_summary},
         )
 
     def plan_stages(

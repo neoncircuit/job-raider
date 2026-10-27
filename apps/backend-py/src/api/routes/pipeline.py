@@ -163,6 +163,7 @@ def _execute_pipeline(
     _attach_stage_events(orchestrator, run_id, planned, loop)
 
     result = orchestrator.run(
+        run_id=run_id,
         stop_at=stop_at,
         should_stop=lambda: pipeline_runs[run_id].get("status") == "cancelled",
     )

@@ -99,6 +99,8 @@ class FakeOrchestrator:
         self,
         stop_at: Optional[PipelineStage] = None,
         should_stop: Optional[Callable[[], bool]] = None,
+        run_id: Optional[str] = None,
+        **_kwargs: Any,
     ) -> PipelineResult:
         """Call the hooks for each planned stage like the real orchestrator.
 
