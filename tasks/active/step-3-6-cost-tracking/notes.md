@@ -228,6 +228,7 @@ The user did a dry run from the Pipeline page. The check did not pass, so Step 3
 
 - `data/results/` has three new files from 00:58 (`pipeline_run_20261028_005812.json`, `_005816`, and `_005818`). Each run took 2 to 3 seconds and has `dry_run` true. The saved stages end at `score_and_rank` (the first file) or `filter_by_profile` (the other two). No run reached `generate_resumes`, the only pipeline stage that calls the LLM.
 - `data/metrics/` has no `cost_run_*.json` file. In the code at `858d03f`, `orchestrator.run` writes the cost file in a `finally` block before it saves the results file (`orchestrator.py:588-599`), also for a run with 0 calls. So the backend process that did these runs did not run this code. Probably it started before the cost-tracking commits of 2026-10-27 and did not load them. `scripts/dev.sh` starts uvicorn with `--reload`, but that is not proof: the reload may not see every change on `/mnt/d`.
+- **Correction (later on 2026-10-28):** the conclusion above is wrong. The three 00:58 files came from Claude's own test run, not from the user's run. Three tests in `tests/integration/test_pipeline.py` (`test_pipeline_with_mock_scraping`, `test_pipeline_hooks`, and `test_pipeline_result_summary`) call `orchestrator.run` with no `results_dir`, so they write into the real `apps/backend-py/data/results/`. Their stages match the files exactly (deduplicate to score, and `filter_by_profile` only), and the same files came again at 02:40 during the next test run. The autouse fixture of the fix round sends the cost files of tests to a temporary folder, so a test run leaves a results file with no cost file. No result file of the user's first run was found; what happened to that run is not known.
 - MLflow: no `pipeline-runs` experiment on the MLflow server (`localhost:5000`), and `data/mlflow.db` has not changed since 2026-10-26.
 - At the time of the check, no backend and no frontend were running.
 
@@ -244,6 +245,10 @@ The user rebuilt the Docker images (`docker compose up -d --build`) and did a fu
     - The MLflow server has the experiment `pipeline-runs` and the run `5add01079522461788889ba4d11af15f` (status FINISHED, all metrics 0, tags `run_id`, `mode: full`).
     - The `git_sha` tag is `unknown`, because the Docker image has no `.git` folder. This is a limit of Docker runs.
 
+### Third attempt at the real run (2026-10-28, Claude)
+
+Run `run_5569137a4264` on the rebuilt backend (with the selection fix): all 10 stages completed, but with Min Score 60 (the form default; the form does not keep the values of the last run). 60 listings scraped, 37 after the profile filter, 0 at or above 60, so `present_selection` had 0 jobs and `generate_resumes` made no LLM call. The cost file `cost_run_run_5569137a4264.json` (0 calls) and the MLflow run `f042a63e6ebb4ae681997c671b41f962` (FINISHED) were written. The run before had Min Score 30 and 20 jobs at or above it.
+
 ## Blockers / Questions
 
-- The real run must be done again on a backend image with the selection fix. Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.
+- The real run must be done again with Min Score 30 and Max Jobs 2, so that jobs reach `generate_resumes`. Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.

@@ -38,6 +38,10 @@ The items below moved here from the Backlog section of `tasks/todo.md` on 2026-1
 - [ ] `tests/unit/agents/test_task_store.py::test_records_expire_after_ttl` flaked once in a full run. `TaskStore` (`src/agents/task_store.py`) measures age with `datetime.now()`, the wall clock, which can jump in WSL2, and the test leaves a 50 ms margin (TTL 1.05 s, sleep 1.1 s). Use `time.monotonic()` for the TTL check.
 - [ ] Run Playwright against a production build (`next build` and `next start`) instead of `next dev`, so tests do not wait for on-demand compiles. Then set the navigation timeouts in `tests/e2e/smoke.spec.ts` and `basic.spec.ts` back to 15 s.
 
+### Tests write into the real data folder (2026-10-28)
+
+- [ ] Three tests in `apps/backend-py/tests/integration/test_pipeline.py` (`test_pipeline_with_mock_scraping`, `test_pipeline_hooks`, `test_pipeline_result_summary`) run `PipelineOrchestrator.run` with no `results_dir`, so each test run writes `pipeline_run_*.json` into the real `apps/backend-py/data/results/` and empty `all_*.json` files into `data/listings/`. Give them temporary folders, and add a check like the Step 3.6 data proof that covers all of `data/` (not only `data/metrics/` and `data/mlflow.db`). *(Source: Step 3.6 real run, 2026-10-28; these files were first taken for a user run)*
+
 ### Small follow-ups from completed work (2026-10-18)
 
 These items were still open inside completed sections. Each line names its source in the archive.
