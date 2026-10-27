@@ -65,6 +65,11 @@ The user accepted the plan and decisions 1 to 8 as written, and asked Claude to 
 7. **Task types.** The call record stores the router task type value. The 6-value enum in `cost_tracker.py` stays only if `get_cost_estimate` keeps a caller; today only the package exports use it.
 8. **Stages and the real run.** One Cursor round in parts A1 to A7, with one commit each. Then the Claude review, then at most one fix round (stop rule). The real run in the review needs Ollama: Claude runs a short CLI run from WSL when Ollama answers there; if not, the user runs one from the Pipeline page.
 
+9. **The fix round and the real run (accepted after the review, 2026-10-27).** The user accepted the review of the Step 3.6 round and its recommendations 1 and 2.
+    - Cursor fixes findings 1 to 7 of the review in one round: `handoff-fix.md`. This is the last round that decision 8 permits. Finding 1 goes first, with its test before the code.
+    - After the fix round and Claude's check, the user does one full-mode dry run from the Pipeline page with Ollama running. It closes the "Done when" item of this step and the open Step 1 manual check. Then Claude checks the Metrics page, the run file in `data/metrics/`, and the MLflow run, and closes Step 3.6.
+    - What is still wrong after the fix round goes to the README limits.
+
 ### Price check (2026-10-27, Claude)
 
 Standard (not batch) prices in USD per million tokens, from the official pages. The repository values are from `config/model_config.yaml`.
@@ -159,4 +164,4 @@ Each mutation that was not caught changes behaviour: K7 keeps every finished run
 
 ## Blockers / Questions
 
-- The user decides on the fix round (recommendation 1).
+- None. The fix round (decision 9, the last round) is with Cursor: `handoff-fix.md`. After it, the user does one full-mode dry run.

@@ -21,7 +21,10 @@ Record every LLM call that goes through `LLMRouter` (task, provider, model, toke
 - [x] A6. Metrics page: it shows the token totals and the tokens of each recent call. Frontend unit tests and the E2E mock change with it.
 - [x] A7. Docs: the README and `docs/` say what is recorded, with the command or the page to see it, and the limits (for example, embeddings are not recorded). No cost claim without a recorded run.
 - [x] Review (Claude, 2026-10-27, in `notes.md`): diffs, mutation proofs, the local gate (backend and frontend), and a real check with Ollama through the router (run file and MLflow in a scratch store). Result: accept with one fix round for findings 1 to 7; A3 and A5 stay open for findings 1 and 2. A discover run makes no LLM calls, so the real pipeline run moves to "Done when": a full-mode dry run by the user.
+- [ ] Fix round (decision 9, the last round): findings 1 to 7 of the review, each with a test, and the mutation proofs (`handoff-fix.md`).
+- [ ] Check of the fix round (Claude, in `notes.md`).
+- [ ] Real pipeline run: one full-mode dry run from the Pipeline page by the user, with Ollama running. Claude checks the Metrics page, the run file, and the MLflow run. This also closes the Step 1 manual check.
 - [ ] Done when: after a real pipeline run, the Metrics page shows real token counts, the run's cost summary is in MLflow, and no cost claim in the README is without recorded data.
 
 ## Status
-`in-progress` (Cursor's A1 to A7 round reviewed on 2026-10-27; one fix round recommended, waiting for the user's decision)
+`in-progress` (Cursor's A1 to A7 round reviewed on 2026-10-27; decision 9: the last fix round is with Cursor: `handoff-fix.md`)
