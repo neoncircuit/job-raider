@@ -246,6 +246,7 @@ class ProcessCostTracker:
             "errors": 0,
             "cost_usd": 0.0,
             "cost_unknown": 0,
+            "local_calls": 0,
         }
 
     def reset(self) -> None:
@@ -269,6 +270,7 @@ class ProcessCostTracker:
                 "errors": 0,
                 "cost_usd": 0.0,
                 "cost_unknown": 0,
+                "local_calls": 0,
             }
 
     def open_run(self, run_id: str) -> None:
@@ -426,6 +428,8 @@ class ProcessCostTracker:
                 self._totals["cost_unknown"] += 1
             else:
                 self._totals["cost_usd"] += record.cost_usd
+            if record.provider == ModelProvider.OLLAMA.value:
+                self._totals["local_calls"] += 1
         return record
 
 
@@ -1267,3 +1271,46 @@ class CostTracker:
             "total_calls": total_calls,
             "avg_tokens_per_call": total_tokens / total_calls if total_calls > 0 else 0,
         }
+
+
+def list_cost_run_files(storage_dir: Optional[Path] = None) -> List[Path]:
+    """
+    List saved run files, newest first.
+
+    Args:
+        storage_dir: Folder to scan. Defaults to
+            ``apps/backend-py/data/metrics``.
+
+    Returns:
+        Paths of ``cost_run_*.json`` files.
+    """
+    folder = Path(storage_dir) if storage_dir is not None else _default_metrics_dir()
+    if not folder.exists():
+        return []
+    return sorted(
+        folder.glob("cost_run_*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
+
+
+def load_latest_cost_run(
+    storage_dir: Optional[Path] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Load the newest saved run file.
+
+    Args:
+        storage_dir: Folder to scan.
+
+    Returns:
+        Parsed JSON, or ``None`` when no file exists.
+    """
+    files = list_cost_run_files(storage_dir)
+    if not files:
+        return None
+    try:
+        return json.loads(files[0].read_text(encoding="utf-8"))
+    except Exception:
+        get_logger(Components.SCRAPERS).warning(
+            "Failed to read cost run file %s", files[0]
+        )
+        return None

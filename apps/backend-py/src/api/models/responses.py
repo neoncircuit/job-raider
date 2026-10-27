@@ -156,11 +156,19 @@ class HealthCheckResponse(BaseModel):
 class MetricsResponse(BaseModel):
     """Response with metrics data."""
 
-    # Cost metrics
-    total_cost_usd: float = 0.0
-    cost_per_application: float = 0.0
-    api_costs_usd: float = 0.0
+    # Cost metrics. Cost fields are None when a price is unknown.
+    total_cost_usd: Optional[float] = None
+    cost_per_application: Optional[float] = None
+    api_costs_usd: Optional[float] = None
     local_model_usage: float = 0.0  # percentage
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    estimated_counts: int = 0
+    cache_hits: int = 0
+    fallbacks: int = 0
+    errors: int = 0
+    last_run: Optional[Dict[str, Any]] = None
 
     # Application metrics
     total_applications: int = 0
