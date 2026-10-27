@@ -81,20 +81,51 @@ def _price_config() -> Dict[str, Any]:
 
 def get_model_price(provider: str, model: str) -> Optional[ModelPrice]:
     """
-    Read the catalog price for one provider and model.
+    Read the catalog price for one provider and model. Never raises.
 
-    Ollama always has cost 0. A cloud model that is not in the table
-    or a catalog row that has no price fields returns ``None``.
+    Ollama always has cost 0. A cloud model that is not in the table,
+    a catalog row without a price, a value that is not a number, or a
+    catalog that cannot be read returns ``None``. The cloud clients
+    call this inside their retry loops, so an error here would send a
+    paid call again.
 
     Args:
         provider: Provider name (``anthropic``, ``gemini``, or ``ollama``).
         model: Model identifier.
 
     Returns:
-        The price, or ``None`` when a cloud model has no row or no price.
+        The price, or ``None`` when the cost is unknown.
     """
     if provider == ModelProvider.OLLAMA.value or provider == "ollama":
         return ModelPrice(input_per_million=0.0, output_per_million=0.0)
+    try:
+        return _read_catalog_price(provider, model)
+    except Exception as exc:  # noqa: BLE001 - a price error must not break a call
+        get_logger(Components.SCRAPERS).warning(
+            "Catalog price for %s/%s cannot be read (%s); cost is unknown",
+            provider,
+            model,
+            exc,
+        )
+        return None
+
+
+def _read_catalog_price(provider: str, model: str) -> Optional[ModelPrice]:
+    """
+    Read one cloud price row from the catalog.
+
+    Args:
+        provider: Cloud provider name.
+        model: Model identifier.
+
+    Returns:
+        The price, or ``None`` when the model has no row or no price.
+
+    Raises:
+        ValueError: When a price or a multiplier is not a number.
+        TypeError: When a price or a multiplier has a wrong type.
+        Exception: Any error from reading the catalog file.
+    """
     config = _price_config()
     provider_cfg = (config.get("models") or {}).get(provider) or {}
     model_cfg = (provider_cfg.get("models") or {}).get(model)

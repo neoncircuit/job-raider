@@ -106,6 +106,109 @@ def test_catalog_row_without_price_fields_returns_none(
     reset_price_config_cache()
 
 
+def test_catalog_row_without_cost_per_input_returns_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A catalog row with only cost_per_output is unknown, and nothing raises."""
+    import src.metrics.cost_tracker as cost_mod
+
+    reset_price_config_cache()
+    monkeypatch.setattr(
+        cost_mod,
+        "_PRICE_CONFIG",
+        {
+            "models": {
+                "anthropic": {
+                    "models": {
+                        "claude-half-priced": {"cost_per_output": 15.0},
+                    }
+                }
+            }
+        },
+    )
+    assert get_model_price("anthropic", "claude-half-priced") is None
+    reset_price_config_cache()
+
+
+def test_price_value_that_is_not_a_number_returns_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A price or multiplier that is not a number is unknown, and nothing raises."""
+    import src.metrics.cost_tracker as cost_mod
+
+    reset_price_config_cache()
+    monkeypatch.setattr(
+        cost_mod,
+        "_PRICE_CONFIG",
+        {
+            "models": {
+                "anthropic": {
+                    "models": {
+                        "claude-comma-price": {
+                            "cost_per_input": "3,0",
+                            "cost_per_output": 15.0,
+                        },
+                    }
+                },
+                "gemini": {
+                    "cache_write_multiplier": "one and a quarter",
+                    "models": {
+                        "gemini-bad-multiplier": {
+                            "cost_per_input": 0.30,
+                            "cost_per_output": 2.50,
+                        },
+                    },
+                },
+            }
+        },
+    )
+    assert get_model_price("anthropic", "claude-comma-price") is None
+    assert get_model_price("gemini", "gemini-bad-multiplier") is None
+    reset_price_config_cache()
+
+
+@patch("src.llm.claude_client.Anthropic")
+@patch("src.llm.claude_client.AsyncAnthropic")
+def test_claude_client_calls_the_api_once_when_a_price_is_bad(
+    mock_async: MagicMock,
+    mock_sync: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A bad catalog price gives an unknown cost and does not repeat the paid call."""
+    import src.metrics.cost_tracker as cost_mod
+
+    reset_price_config_cache()
+    monkeypatch.setattr(
+        cost_mod,
+        "_PRICE_CONFIG",
+        {
+            "models": {
+                "anthropic": {
+                    "models": {
+                        "claude-sonnet-4-6": {
+                            "cost_per_input": "3,0",
+                            "cost_per_output": 15.0,
+                        },
+                    }
+                }
+            }
+        },
+    )
+    mock_sync.return_value.messages.create.return_value = SimpleNamespace(
+        content=[SimpleNamespace(text="ok")],
+        usage=SimpleNamespace(input_tokens=10, output_tokens=5),
+    )
+    client = ClaudeClient(
+        config=LLMConfig(model="claude-sonnet-4-6", max_retries=2, retry_delay=0.0),
+        api_key="test-key",
+    )
+    response = client.generate([Message(role=MessageType.USER, content="hello")])
+    assert response.content == "ok"
+    assert response.cost is None
+    assert mock_sync.return_value.messages.create.call_count == 1
+    reset_price_config_cache()
+
+
 def test_unknown_cloud_model_has_no_price() -> None:
     """A cloud model that is not in the table returns None."""
     assert get_model_price("anthropic", "claude-not-in-catalog") is None
