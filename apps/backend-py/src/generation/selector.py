@@ -9,7 +9,7 @@ Date: 2026-04-20
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
@@ -30,6 +30,35 @@ class SelectionOutput:
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
     tokens_used: Optional[int] = None
+
+
+def keep_profile_projects(selected: Any, profile: UserProfile) -> List[Dict[str, str]]:
+    """
+    Keep only selected projects that name a project in the profile.
+
+    Names are compared without letter case and without spaces at the ends.
+    The kept item uses the profile's spelling. A name is kept one time.
+
+    Args:
+        selected: The ``selected_projects`` value from the model.
+        profile: The user profile.
+
+    Returns:
+        Items with ``name`` (the profile's spelling) and ``reason``.
+    """
+    by_key = {
+        project.name.strip().lower(): project.name for project in profile.projects
+    }
+    kept: List[Dict[str, str]] = []
+    seen = set()
+    for item in selected if isinstance(selected, list) else []:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("name", "")).strip().lower()
+        if key in by_key and key not in seen:
+            seen.add(key)
+            kept.append({"name": by_key[key], "reason": str(item.get("reason", ""))})
+    return kept
 
 
 class ResumeSelector:
@@ -73,6 +102,8 @@ class ResumeSelector:
         # Prepare profile summary
         profile_summary = self._summarize_profile(profile)
 
+        project_count = min(3, len(profile.projects))
+
         # Prepare prompt
         messages = [
             Message(
@@ -82,7 +113,7 @@ class ResumeSelector:
             Message(
                 role=MessageType.USER,
                 content=f"""Given this job and candidate profile, select:
-1. The 3 most relevant projects to highlight
+1. Up to {project_count} most relevant projects to highlight. Use the exact project names from the CANDIDATE PROFILE.
 2. The 5 most important keywords to emphasize in the resume
 3. Key achievements that align with the job requirements
 
@@ -95,9 +126,7 @@ CANDIDATE PROFILE:
 Return a JSON object:
 {{
   "selected_projects": [
-    {{"name": "Project 1", "reason": "Why this project is relevant"}},
-    {{"name": "Project 2", "reason": "..."}},
-    {{"name": "Project 3", "reason": "..."}}
+    {{"name": "Exact project name from the profile", "reason": "Why this project is relevant"}}
   ],
   "keywords_to_emphasize": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
   "key_achievements": ["achievement1", "achievement2"],
@@ -136,7 +165,9 @@ Return a JSON object:
                 tokens_used = prompt_tokens + completion_tokens
 
             return SelectionOutput(
-                selected_projects=data.get("selected_projects", []),
+                selected_projects=keep_profile_projects(
+                    data.get("selected_projects", []), profile
+                ),
                 keywords_to_emphasize=data.get("keywords_to_emphasize", []),
                 key_achievements=data.get("key_achievements", []),
                 summary_suggestion=data.get("summary_suggestion", ""),
