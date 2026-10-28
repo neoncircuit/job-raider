@@ -89,6 +89,32 @@ Done by GLM-5.3-Flash Free in opencode.
 
 Result: accept MH-3.
 
+## Check of MH-4 and the full check (2026-10-29, Claude, commit `03d60e8`)
+
+MH-4 was done by GLM-5.3-Flash Free in opencode.
+
+- The commit changes only `resume_writer.py` and the new test file. The diff matches the handoff line for line (`import re`, `_project_key`, `match_project_names`, and the call in `write`). The test file is the same as the handoff, character for character.
+- MH-4 checks: 4 tests pass, black and ruff pass. Mutation proofs: P1 the "(...)" part is kept, P2 names compared with case, P3 the input item is changed, P4 the writer does not map names, P5 a name that matches nothing is dropped. All 5 were caught.
+- Full backend gate after MH-4: black and ruff pass on the CI paths, the mypy gate has 0 new errors (180 known), and pytest has 1691 passed.
+
+Result: accept MH-4.
+
+### The reproduction again (WSL, the real profile, `qwen2.5:3b` and `qwen2.5:7b`, one model on the GPU at a time)
+
+| | Before the fix | After MH-1 to MH-4 |
+|---|---|---|
+| Selector projects | 3, with `"None"` or an invented name | the 2 profile projects, exact names |
+| Writer's skills | category groups (or a crash with `qwen2.5:14b`) | a flat list of strings |
+| Writer's project names | sometimes shortened | exact |
+| Missing projects or keywords | yes | none |
+| Validator | reject (63 and 25), or a crash | reject, score 0 |
+
+Causes 1 to 3 are fixed. The drafts now fail only on `HALLUCINATED_SKILL`: the writer lists 11 and 9 skills that are not in the profile. Some are the selector's job keywords ("AI", "Evaluation", "Scam Detection", "Scalability", "Data Pipeline"): the selector picks them from the job, and the writer prompt says "All keywords MUST be naturally incorporated", so the model puts them in the skills list. Others are invented ("Leadership", "Computer Science", "MySQL", "Neo4j", "Software Architecture"). Each one counts as a failed item against 7 checked items (2 projects and 5 keywords), so the score is 0.
+
+This meets the reproduction part of "Done when" (the drafts fail only on real issues), but a full-mode run would still generate no resume.
+
+Recommendation (needs the user's decision): one more micro-handoff, MH-5. After parsing, `ResumeWriter.write` keeps only skills that are in the profile (compared without case), and the prompt says that job keywords go in the summary and the bullets, not in the skills list. This makes sure that a resume never lists a skill that the user does not have. Cost: a real skill written in another way ("LLMs" for "Large Language Models") is dropped, not matched.
+
 ## Blockers / Questions
 
-- None. The micro-handoffs are with the local agent: `AGENT.md`, then `mh-1` to `mh-4`.
+- The user decides on MH-5 (keep only profile skills in the writer's skills list).
