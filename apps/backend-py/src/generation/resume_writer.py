@@ -8,6 +8,7 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -79,6 +80,49 @@ def flatten_skills(value: Any) -> List[str]:
 
     walk(value)
     return skills
+
+
+def _project_key(name: Any) -> str:
+    """
+    Normalize a project name for matching.
+
+    Args:
+        name: Project name.
+
+    Returns:
+        The name in lower case, without a trailing "(...)" part, with
+        single spaces.
+    """
+    text = re.sub(r"\s*\([^)]*\)\s*$", "", str(name or ""))
+    return " ".join(text.lower().split())
+
+
+def match_project_names(projects: Any, profile: UserProfile) -> List[Dict[str, Any]]:
+    """
+    Give each draft project the profile's name when the names match.
+
+    Names match when they are equal after ``_project_key``. A name that
+    matches no profile project stays. An item that is not a dict is
+    dropped. The input list and its items are not changed.
+
+    Args:
+        projects: The ``projects`` value from the model.
+        profile: The user profile.
+
+    Returns:
+        New project dicts.
+    """
+    by_key = {_project_key(project.name): project.name for project in profile.projects}
+    result: List[Dict[str, Any]] = []
+    for item in projects if isinstance(projects, list) else []:
+        if not isinstance(item, dict):
+            continue
+        copy = dict(item)
+        match = by_key.get(_project_key(copy.get("name")))
+        if match:
+            copy["name"] = match
+        result.append(copy)
+    return result
 
 
 class ResumeWriter:
@@ -204,7 +248,7 @@ Return a JSON object with the rewritten resume sections:
                 summary=data.get("summary", ""),
                 skills=flatten_skills(data.get("skills", [])),
                 experience=data.get("experience", []),
-                projects=data.get("projects", []),
+                projects=match_project_names(data.get("projects", []), profile),
                 education=data.get("education", []),
                 raw_response=response.content,
                 model_used=self.llm_router.routes[
