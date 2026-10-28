@@ -62,6 +62,33 @@ Done by GLM-5.3-Flash Free in opencode (hosted; zero retention and no training, 
 
 Result: accept MH-1.
 
+## Check of MH-2 (2026-10-29, Claude, commit `3847293`)
+
+Started by `qwen3.5-4b-16k` in opencode, finished by GLM-5.3-Flash Free:
+
+- The local 4B model wrote the test file and change 1 (the import), then opencode stopped the session twice with "Response still truncated after two output token limit continuations", also for a one-line change. A short request through the same API made it think for only 192 tokens and return a correct `edit` call, so the cause is probably opencode's long context for a 4B model, not the thinking mode by itself.
+- An earlier try with Aider and `qwen2.5-coder-7b-16k` applied nothing: the model put the test code in a nested code fence instead of an edit block, and never wrote the validator changes.
+- GLM made changes 2 to 4, ran the checks, and committed.
+
+Findings:
+- The commit changes only `validator.py` and the new test file. The validator diff is exactly the four changes of the handoff.
+- The test file differs from the handoff in three docstring lines only: double backticks became single backticks (from the 4B model). The report said "verbatim". This does not change a test.
+- Checks: 8 tests pass (3 new, 5 of MH-1), black and ruff pass, and the mypy gate has 0 new errors (180 known).
+- Mutation proofs (fixed-string replace, count 1, checksum changed, restore matched): Y1 skills not flattened in the check, caught; Y2 keyword not made a string, caught; Y4 import removed, caught; Y3 the resume text not flattened, **not caught**. Y3 changes behaviour only when a grouped skills value reaches the validator directly (a category name then counts as found keyword text). After MH-1 the writer always gives a flat list, so the pipeline is not affected. The handoff had no test for change 4: a gap in the handoff, not in the agent's work.
+
+Result: accept MH-2.
+
+## Check of MH-3 (2026-10-29, Claude, commit `f3f4e6c`)
+
+Done by GLM-5.3-Flash Free in opencode.
+
+- The commit changes only `selector.py` and the new test file. The selector diff matches the handoff line for line (the helper, the `Any` import, `project_count`, the prompt line, the one-line JSON example, and the call in `SelectionOutput`). The test file is the same as the handoff, character for character.
+- The commit was made while Claude's MH-2 mutations had `validator.py` changed in the same working tree; the agent staged only its two files, so nothing else went in.
+- Checks: 2 tests pass, black and ruff pass, and the mypy gate has 0 new errors (180 known).
+- Mutation proofs: Z1 no filtering, caught; Z2 names compared with case, caught; Z4 always 3 projects in the prompt, caught; Z5 reason dropped, caught; Z3 duplicates kept, **not caught**. Z3 lists a project twice when the model names it twice; the validator then finds it twice, so no draft fails. The handoff test has no duplicate: a gap in the handoff, not in the agent's work.
+
+Result: accept MH-3.
+
 ## Blockers / Questions
 
 - None. The micro-handoffs are with the local agent: `AGENT.md`, then `mh-1` to `mh-4`.
