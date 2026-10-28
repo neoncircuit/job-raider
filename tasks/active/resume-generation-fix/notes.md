@@ -115,6 +115,20 @@ This meets the reproduction part of "Done when" (the drafts fail only on real is
 
 Recommendation (needs the user's decision): one more micro-handoff, MH-5. After parsing, `ResumeWriter.write` keeps only skills that are in the profile (compared without case), and the prompt says that job keywords go in the summary and the bullets, not in the skills list. This makes sure that a resume never lists a skill that the user does not have. Cost: a real skill written in another way ("LLMs" for "Large Language Models") is dropped, not matched.
 
+## MH-5 and MH-6 (2026-10-29, Claude)
+
+The user asked for MH-5 (keep only profile skills). A writer filter alone would move the failure: the job keywords that the writer now puts in the skills list would leave the resume, and the validator would report them as `MISSING_KEYWORD`. The keywords come from the selector, so the fix is two micro-handoffs, one file each:
+
+- MH-5 (`selector.py`): the keywords are only profile skills that the job asks for (`profile_skill_names`, `keep_profile_keywords`, and the prompt).
+- MH-6 (`resume_writer.py`): the skills list keeps only profile skills and adds the selected keywords; when no skill is left, it uses the profile's skills. One existing MH-1 test changes ("SQL" to "Django"), because "SQL" is not in the sample profile; `AGENT.md` names this as the only allowed change to an existing test.
+
+Dry run on a full scratch copy (`/tmp/rgf2`, not the repository):
+
+- The given test code passes black and ruff. Before the changes, each new test file fails with an import error.
+- After the changes, the 22 resume generation tests pass, and the 5 changed files pass black and ruff.
+- The full suite on the scratch copy: 1687 passed, 11 failed. All 11 need files that the scratch copy does not have (`VERSION`, `scripts/dev.sh`, `docker-compose.yml`, the git history, the frontend Pipeline page, the notebooks); none is in the resume generation code.
+- The reproduction on the scratch copy with the real profile (`qwen2.5:3b` and `qwen2.5:7b`, one model on the GPU at a time): both drafts **pass the validator with score 100 ("approve")**. The selector's keywords are profile skills ("Python", "Docker", "Convex", "Inngest", "FastAPI" for the first job; "Python" for the second), no skill outside the profile is listed, and no project or keyword is missing.
+
 ## Blockers / Questions
 
-- The user decides on MH-5 (keep only profile skills in the writer's skills list).
+- None. MH-5 and MH-6 are with the agent.

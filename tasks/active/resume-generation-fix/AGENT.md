@@ -1,10 +1,10 @@
 # Agent Brief: Resume Generation Fix
 
-Read this file and one micro-handoff (`mh-1` to `mh-4`). Do not read other task files.
+Read this file and one micro-handoff (`mh-1` to `mh-6`). Do not read other task files.
 
 ## How to work
 
-1. Do one micro-handoff at a time, in order: `mh-1`, `mh-2`, `mh-3`, `mh-4`.
+1. Do one micro-handoff at a time, in order: `mh-1` to `mh-6`.
 2. Edit only the files that the micro-handoff names. In Aider, `/add` only those files.
 3. Add the test first. Run it and see it fail.
 4. Change the code. Run the test again and see it pass.
@@ -16,7 +16,7 @@ Read this file and one micro-handoff (`mh-1` to `mh-4`). Do not read other task 
 
 - Each function has a docstring with a description, `Args:`, and `Returns:`, and type hints.
 - Do not rename, move, or reformat code that the micro-handoff does not name.
-- Do not change a test that already exists.
+- Do not change a test that already exists, unless the micro-handoff names the change (only MH-6 does).
 - Do not open `.env`, `.env.local`, or anything in `apps/backend-py/data/`.
 - If a step does not work after three tries, stop and report. Do not guess.
 
