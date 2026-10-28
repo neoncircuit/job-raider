@@ -11,7 +11,7 @@ Make full-mode resume generation produce resumes again. Today every draft fails,
 - Keep dry run as the default. Do not make auto-submit reachable.
 
 ## Acceptance Criteria
-- [ ] MH-1. `flatten_skills` in `src/generation/resume_writer.py` turns any skills shape into one flat list of strings, and `ResumeWriter.write` uses it. The writer prompt asks for a flat list. (`mh-1-flatten-skills.md`)
+- [x] MH-1 (`8f25bf8`, checked 2026-10-28). `flatten_skills` in `src/generation/resume_writer.py` turns any skills shape into one flat list of strings, and `ResumeWriter.write` uses it. The writer prompt asks for a flat list. (`mh-1-flatten-skills.md`)
 - [ ] MH-2. `ResumeValidator.validate` checks the flattened skills and does not crash on a skill or a keyword that is not a string. (`mh-2-validator-skills.md`)
 - [ ] MH-3. `ResumeSelector.select` keeps only projects from the profile, with the profile's spelling, and asks for no more projects than the profile has. (`mh-3-selector-projects.md`)
 - [ ] MH-4. `ResumeWriter.write` gives each draft project the profile's name when the names match without case and without a trailing "(...)". (`mh-4-project-names.md`)

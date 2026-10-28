@@ -51,6 +51,17 @@ Before the handoffs went to the local agent, Claude applied them to a scratch co
 - Three code snippets were not black-formatted in the first draft; they are fixed, and `AGENT.md` now says to run `black` on the changed files before the checks.
 - Each pytest run takes about 80 to 90 s from `/mnt/d` (mostly import time). The agent should run only the named test files.
 
+## Check of MH-1 (2026-10-28, Claude, commit `8f25bf8`)
+
+Done by GLM-5.3-Flash Free in opencode (hosted; zero retention and no training, per the OpenCode docs). The local `qwen2.5-coder:7b` could not be used: through Ollama it returned tool calls as plain text, and Ollama ran it with a 4096-token context.
+
+- The commit changes only `src/generation/resume_writer.py` and the new `tests/unit/test_resume_writer_skills.py`. The test file is the same as the handoff, character for character.
+- `flatten_skills` follows the rules of the handoff. It compares names with `casefold()` and also accepts tuples. The prompt line and rule 7 are as written. The inner helpers `add` and `walk` have no docstrings (`CLAUDE.md` asks for them); this is minor and not a reason to reject.
+- Checks: the 6 tests pass (5 new and the existing fallback test), black and ruff pass, and the mypy gate has 0 new errors (180 known).
+- Mutation proofs (fixed-string replace, count 1, checksum changed, restore matched): X1 a dict gives its keys; X2 duplicates compared with case; X3 no strip; X4 no `"skills"`-key branch; X5 the writer does not flatten; X6 the prompt asks for groups again. All 6 were caught.
+
+Result: accept MH-1.
+
 ## Blockers / Questions
 
 - None. The micro-handoffs are with the local agent: `AGENT.md`, then `mh-1` to `mh-4`.
