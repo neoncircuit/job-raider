@@ -33,6 +33,54 @@ class GeneratedResume:
     provider_used: Optional[str] = None
 
 
+def flatten_skills(value: Any) -> List[str]:
+    """
+    Flatten grouped skills into one list of skill names.
+
+    Accepts a flat list, a dict of category lists, or a list of category
+    objects, and returns the skill names in order. Blank entries and
+    duplicates (in any letter case) are dropped, keeping the first spelling.
+
+    Args:
+        value: Skills as the writer model returned them.
+
+    Returns:
+        One flat list of skill names.
+    """
+    skills: List[str] = []
+    seen: set[str] = set()
+
+    def add(candidate: str) -> None:
+        name = candidate.strip()
+        if not name:
+            return
+        key = name.casefold()
+        if key in seen:
+            return
+        seen.add(key)
+        skills.append(name)
+
+    def walk(item: Any) -> None:
+        if isinstance(item, str):
+            add(item)
+        elif isinstance(item, dict):
+            if "skills" in item:
+                walk(item["skills"])
+            elif "name" in item:
+                name = item["name"]
+                if isinstance(name, str):
+                    add(name)
+            else:
+                for child in item.values():
+                    walk(child)
+        elif isinstance(item, (list, tuple)):
+            for child in item:
+                walk(child)
+
+    walk(value)
+    return skills
+
+
 class ResumeWriter:
     """
     Generate tailored resumes using a large model.
@@ -86,7 +134,8 @@ CRITICAL RULES:
 3. All keywords MUST be naturally incorporated
 4. Keep dates and facts exactly as provided
 5. Use action verbs and quantify achievements where possible
-6. Maintain professional tone throughout""",
+6. Maintain professional tone throughout
+7. "skills" is one flat list of skill names from the BASE RESUME. Do not group skills by category.""",
             ),
             Message(
                 role=MessageType.USER,
@@ -104,7 +153,7 @@ BASE RESUME:
 Return a JSON object with the rewritten resume sections:
 {{
   "summary": "Professional summary (2-3 sentences)",
-  "skills": ["Skill 1", "Skill 2", ...],  // Group by category
+  "skills": ["Skill 1", "Skill 2", ...],
   "experience": [
     {{
       "title": "Job Title",
@@ -153,7 +202,7 @@ Return a JSON object with the rewritten resume sections:
 
             return GeneratedResume(
                 summary=data.get("summary", ""),
-                skills=data.get("skills", []),
+                skills=flatten_skills(data.get("skills", [])),
                 experience=data.get("experience", []),
                 projects=data.get("projects", []),
                 education=data.get("education", []),
