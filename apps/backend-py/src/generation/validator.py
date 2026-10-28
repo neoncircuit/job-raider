@@ -17,7 +17,7 @@ from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
-from .resume_writer import GeneratedResume
+from .resume_writer import GeneratedResume, flatten_skills
 from .selector import SelectionOutput
 
 
@@ -108,12 +108,12 @@ class ResumeValidator:
         # 2. Check that all keywords are mentioned
         resume_text = self._get_resume_text(resume)
         for keyword in selection.keywords_to_emphasize:
-            if keyword.lower() not in resume_text.lower():
+            if str(keyword).lower() not in resume_text.lower():
                 missing_keywords.append(keyword)
                 issues.append(ValidationIssue.MISSING_KEYWORD)
 
         # 3. Check for fabricated skills
-        resume_skills = {s.lower() for s in resume.skills}
+        resume_skills = {s.lower() for s in flatten_skills(resume.skills)}
         profile_skills = {s.name.lower() for s in profile.skills}
 
         fabricated = resume_skills - profile_skills
@@ -288,7 +288,7 @@ Return a JSON object:
 
         parts.append(resume.summary)
 
-        parts.extend(resume.skills)
+        parts.extend(flatten_skills(resume.skills))
 
         for exp in resume.experience:
             parts.append(exp["title"])
