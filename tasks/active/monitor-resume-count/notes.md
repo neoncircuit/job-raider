@@ -39,6 +39,15 @@ On scratch copies in WSL's native disk (`/tmp/mrc`, not the repository). The fro
 
 Result: accept MH-1.
 
+## Check of MH-2 (2026-10-30, Claude, commit `e12658a`)
+
+- The commit changes only `api.ts`, `page.tsx`, and the new test file. The diff matches the handoff line for line (the two optional fields with comments, the two constants, and the resume line). The test file is the same as the handoff, character for character.
+- Checks: the 7 Live Monitor tests pass (3 new, `cloud-badge`, `live-monitor`).
+- Mutation proofs (each on its own copy, with the repository's `node_modules` linked; the repository file did not change): F1 the line shows when the count is 0, F2 no singular "job", F3 "generated" shows the selected count, F4 the selected count from the shortlist, F5 the generated count from the wrong field. All 5 were caught.
+- Frontend gate (WSL, Node 24.22.1): `npm run lint` and `npm run type-check` pass, prettier passes on the 3 changed files, and the full vitest suite (`--no-cache`) has 256 tests in 48 files passed.
+
+Result: accept MH-2. To close the task: a full-mode run after `make docker-up` (the frontend image changed) must show the resume line.
+
 ## Blockers / Questions
 
-- None. MH-2 is with the agent.
+- None. Next: the full-mode run (the user). It can also be the Step 1 manual check (Skip Submission off).

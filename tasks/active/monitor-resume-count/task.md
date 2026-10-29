@@ -11,9 +11,9 @@ The Live Monitor shows how many jobs a full-mode run selected for resumes (the M
 
 ## Acceptance Criteria
 - [x] MH-1 (`f4dad31`, checked 2026-10-30). `GET /api/pipeline/status/{run_id}` returns `jobs_for_resumes` (Select Jobs `selected_count`) and `resumes_generated` (Generate Resumes `generated_count`), 0 when the stage did not run. (`mh-1-status-resume-counts.md`)
-- [ ] MH-2. The Live Monitor shows "Resumes: N jobs selected (Max Jobs) · M generated" when `jobs_for_resumes` is greater than 0, and hides the line when it is 0. (`mh-2-monitor-resume-line.md`)
-- [ ] Check (Claude, in `notes.md`): the diffs, mutation proofs, the backend gate, and the frontend checks (vitest, eslint, prettier, type-check).
+- [x] MH-2 (`e12658a`, checked 2026-10-30). The Live Monitor shows "Resumes: N jobs selected (Max Jobs) · M generated" when `jobs_for_resumes` is greater than 0, and hides the line when it is 0. (`mh-2-monitor-resume-line.md`)
+- [x] Check (Claude, in `notes.md`): the diffs, mutation proofs, the backend gate, and the frontend checks (vitest, eslint, prettier, type-check). Done 2026-10-30: 1702 backend tests and 256 frontend tests pass; 11 of 11 mutations caught.
 - [ ] Done when: a full-mode dry run shows the resume line on the Live Monitor with the Max Jobs count.
 
 ## Status
-`in-progress` (MH-1 checked on 2026-10-30; MH-2 is with the agent)
+`in-progress` (MH-1 and MH-2 checked on 2026-10-30; the full-mode run is next)
