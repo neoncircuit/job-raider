@@ -61,6 +61,45 @@ def keep_profile_projects(selected: Any, profile: UserProfile) -> List[Dict[str,
     return kept
 
 
+def profile_skill_names(profile: UserProfile) -> Dict[str, str]:
+    """
+    Map each profile skill name to its spelling.
+
+    Args:
+        profile: The user profile.
+
+    Returns:
+        A dict from the skill name in lower case, without spaces at the
+        ends, to the profile's spelling.
+    """
+    return {skill.name.strip().lower(): skill.name for skill in profile.skills}
+
+
+def keep_profile_keywords(keywords: Any, profile: UserProfile) -> List[str]:
+    """
+    Keep only keywords that are skills in the profile.
+
+    Names are compared without letter case and without spaces at the ends.
+    The kept keyword uses the profile's spelling. A keyword is kept one time.
+
+    Args:
+        keywords: The ``keywords_to_emphasize`` value from the model.
+        profile: The user profile.
+
+    Returns:
+        Profile skill names, in the model's order.
+    """
+    allowed = profile_skill_names(profile)
+    kept: List[str] = []
+    for item in keywords if isinstance(keywords, list) else []:
+        if not isinstance(item, str):
+            continue
+        name = allowed.get(item.strip().lower())
+        if name and name not in kept:
+            kept.append(name)
+    return kept
+
+
 class ResumeSelector:
     """
     Select relevant content from user profile for a job application.
@@ -114,7 +153,7 @@ class ResumeSelector:
                 role=MessageType.USER,
                 content=f"""Given this job and candidate profile, select:
 1. Up to {project_count} most relevant projects to highlight. Use the exact project names from the CANDIDATE PROFILE.
-2. The 5 most important keywords to emphasize in the resume
+2. Up to 5 skills from the CANDIDATE PROFILE that this job asks for. Use the exact skill names from the profile.
 3. Key achievements that align with the job requirements
 
 JOB REQUIREMENTS:
@@ -128,7 +167,7 @@ Return a JSON object:
   "selected_projects": [
     {{"name": "Exact project name from the profile", "reason": "Why this project is relevant"}}
   ],
-  "keywords_to_emphasize": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+  "keywords_to_emphasize": ["Skill name from the profile", "..."],
   "key_achievements": ["achievement1", "achievement2"],
   "summary_suggestion": "2-3 sentence professional summary emphasizing fit"
 }}""",
@@ -168,7 +207,9 @@ Return a JSON object:
                 selected_projects=keep_profile_projects(
                     data.get("selected_projects", []), profile
                 ),
-                keywords_to_emphasize=data.get("keywords_to_emphasize", []),
+                keywords_to_emphasize=keep_profile_keywords(
+                    data.get("keywords_to_emphasize", []), profile
+                ),
                 key_achievements=data.get("key_achievements", []),
                 summary_suggestion=data.get("summary_suggestion", ""),
                 raw_response=response.content,
