@@ -19,9 +19,9 @@ Make full-mode resume generation produce resumes again. Today every draft fails,
 - [x] MH-6 (`7f7561c`, checked 2026-10-29). `ResumeWriter.write` keeps only profile skills in the skills list and adds the selected keywords; when no skill is left, it uses the profile's skills. (`mh-6-writer-profile-skills.md`)
 - [x] Check of MH-5 and MH-6 (Claude, in `notes.md`): the diffs, mutation proofs, the full gate, and the reproduction with the real profile. Done 2026-10-29: 1698 tests pass; 16 of 19 mutations caught (the 3 survivors are gaps in the handoff tests); both drafts pass the validator with score 100.
 - [x] MH-7 (`c4e2b23`, checked 2026-10-29). `ResumeFormatter._format_pdf` gives each reportlab `Spacer` a width, so the resume PDF is written. (`mh-7-resume-pdf-spacer.md`)
-- [ ] Check of MH-7 (Claude, in `notes.md`): the diff, mutation proofs, the full gate, and one more full-mode dry run (after `make docker-up`) that writes a resume PDF.
+- [x] Check of MH-7 (Claude, in `notes.md`): the diff, mutation proofs, the full gate, and one more full-mode dry run (after `make docker-up`) that writes a resume PDF. Done 2026-10-29: 1700 tests pass; 6 of 6 mutations caught; run `run_0de31c69` wrote 2 PDF and 2 DOCX resumes.
 - [x] Check (Claude, in `notes.md`): the diffs, the full backend gate, mutation proofs for each change, and the reproduction script again against the real profile and Ollama. Done 2026-10-29: 1691 tests pass; 18 of 20 mutations caught (the 2 survivors are gaps in the handoff tests); the drafts now fail only on skills that are not in the profile.
-- [ ] Done when: the reproduction gives drafts that pass the validator (or fail only on real issues, such as a skill that is not in the profile), and a full-mode dry run generates at least one resume.
+- [x] Done when: the reproduction gives drafts that pass the validator (or fail only on real issues, such as a skill that is not in the profile), and a full-mode dry run generates at least one resume. Done 2026-10-29: both reproduction drafts score 100, and 2 dry runs each generated 2 resumes.
 
 ## Status
-`in-progress` (MH-1 to MH-6 checked on 2026-10-29; the reproduction passes; the full-mode dry run generated 2 valid DOCX resumes; the resume PDF failed; MH-7 fixes it and is checked; one more dry run must write a PDF)
+`done` (2026-10-29). Review in `notes.md`.

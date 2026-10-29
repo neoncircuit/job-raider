@@ -1,9 +1,8 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Resume generation fix (`tasks/active/resume-generation-fix/`; causes found; four micro-handoffs for the local agent, then Claude's check). It blocks the Step 1 manual check.
+- [ ] Step 1 manual check: a full-mode run from the Pipeline page with Ollama running, Dry Run on, and Skip Submission off; needs the user (`tasks/active/step-1-core-flow/`). Resume generation works again (2026-10-29, `tasks/archive/resume-generation-fix/`): two dry runs with Skip Submission on generated 2 resumes each, but stopped before `submit_applications`.
 - [ ] Step 3.2 remainder: about 15 real generated letters, labeled by the user and run locally (`tasks/active/step-3-measurable-claims/`)
-- [ ] Step 1 manual check: a full-mode dry run from the Pipeline page with Ollama running; needs the user (`tasks/active/step-1-core-flow/`). On 2026-10-28 a dry run reached resume generation (the selection bug is fixed), but the validator rejected both drafts; see "Full-mode resume generation" in `tasks/backlog.md`.
 
 ## Next Up
 - [ ] Steps 3.4 and 3.7 to 3.9 (`tasks/active/step-3-measurable-claims/`)

@@ -209,6 +209,22 @@ MH-7 was done by the agent in opencode.
 
 Result: accept MH-7. To close the task: one more full-mode dry run after `make docker-up` must write a resume PDF.
 
-## Blockers / Questions
+## The second full-mode dry run (2026-10-29, the user, run `run_0de31c69`, `pipeline_run_20261029_152643.json`)
 
-- None. Next: the full-mode dry run that writes a PDF (the user).
+The user ran `make docker-up` first (the backend container was made at 15:19), then the same settings: MyCareersFuture, Min Score 30, Max Jobs 2, Dry Run and Skip Submission on.
+
+- The counts are the same as in the first run: 60 scraped, 20 after the semantic re-rank, 2 presented and selected.
+- Generate Resumes: 2 attempted, 2 generated, 0 validation failures, average score 100.
+- The resume folder now has 2 PDF and 2 DOCX files. The backend log shows "Generated PDF" for each resume and no PDF error.
+- The user again read "20 shortlisted" as the Max Jobs count. The label is not clear (see the backlog).
+
+Result: "Done when" is met. The Step 1 manual check needs one more run with Skip Submission off, because it must reach `submit_applications` (this run stopped after Generate Resumes).
+
+## Review (2026-10-29, Claude)
+
+- Goal met: full-mode resume generation produces resumes again. Both real drafts pass the validator with score 100, and the run writes the PDF and the DOCX.
+- 7 micro-handoffs (MH-1 to MH-7), one or two files each, all test-first. MH-1 to MH-5 were done by GLM-5.3-Flash Free in opencode, MH-6 by DeepSeek in opencode, and MH-7 by the agent in opencode. No local model finished a micro-handoff: `qwen2.5-coder:7b` (tool calls as plain text), Aider with `qwen2.5-coder-7b-16k` (no edit blocks), `qwen3.5-4b-16k` (truncated twice), and `qwen3.5-9b-16k` (5 to 7 tokens per second, no code change).
+- Checks: 1700 backend tests pass, the mypy gate has 0 new errors, and 40 of 45 mutation proofs were caught. The 5 survivors (Y3, Z3, K5, K9, W10) are gaps in the handoff tests, not in the agents' work.
+- What worked: a reproduction script with the real profile before and after the fix; a dry run of each handoff on a scratch copy before the agent got it; one model on the GPU at a time.
+- What to do better: the handoff tests had no inputs with spaces at the ends or of the wrong type. `format_resume` hid the PDF bug: it reported success when only the DOCX was written.
+- Moved to `tasks/backlog.md`: the "shortlisted" label, the keyword limit of the selector, and a failed output format that shows only in the log.
