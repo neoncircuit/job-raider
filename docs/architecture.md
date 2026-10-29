@@ -761,30 +761,23 @@ graph TB
         Frontend[Next.js Dashboard<br/>on :3000]
     end
     
-    Backend -->|Connects via shared-services| SharedNetwork
-    
     subgraph "Shared Services - shared-services network"
-        Ollama[Ollama<br/>Shared Model Inference<br/>on :11434]
         MLflow[MLflow Tracking<br/>Shared Experiment Tracking<br/>on :5000]
     end
     
     subgraph "Host System"
         DockerDesktop[Docker Desktop]
-        NVIDIAToolkit[NVIDIA Container Toolkit]
+        Ollama[Ollama<br/>WSL systemd service<br/>on :11434]
         GPU[RTX 3070 Ti - 8GB VRAM]
     end
     
     Frontend -->|/api/proxy/* with X-API-Key| Backend
-    Backend -->|HTTP API via shared-services| Ollama
+    Backend -->|HTTP API via host.docker.internal:11434| Ollama
     Backend -->|Experiment logging via shared-services| MLflow
-    Ollama -->|GPU Passthrough| GPU
-    NVIDIAToolkit -->|Enables GPU| Ollama
+    Ollama -->|CUDA through WSL| GPU
     DockerDesktop -->|Manages| Backend
     DockerDesktop -->|Manages| Frontend
-    DockerDesktop -->|Manages| Ollama
     DockerDesktop -->|Manages| MLflow
-    
-    Backend -.->|shared-services external network| SharedNetwork
 ```
 
 ### Container Configuration
@@ -793,19 +786,37 @@ graph TB
 |---------|-------|------|-----|---------|
 | backend | Custom (CUDA 12.4.0) | Dynamic (default 8000) | No | FastAPI REST API, pipeline orchestration |
 | frontend | Custom (Node 24 Alpine) | Dynamic (default 3000) | No | Next.js web dashboard |
-| **ollama** | **ollama/ollama:latest** | **Dynamic (default 11434)** | **Yes (NVIDIA)** | **Shared local LLM inference for all projects** |
 | **mlflow** | **ghcr.io/mlflow/mlflow:latest** | **5000** | **No** | **Shared experiment tracking for all projects** |
 
-**Note:** Ollama and MLflow are shared services running on `~/docker-services/docker-compose.yml` with persistent volumes for models and experiments. All projects connect via the external `shared-services` Docker network.
+**Note:** MLflow is a shared service in `~/docker-services/docker-compose.yml`, with a persistent volume for experiments. Projects connect to it through the external `shared-services` Docker network. Ollama is not a container. It runs as the WSL systemd service, and containers reach it at `host.docker.internal:11434`.
+
+### One Ollama per Machine
+
+Run only one Ollama server on the machine: the WSL systemd service (`ollama.service`). It keeps all models in `/usr/share/ollama/.ollama/models`.
+
+Do not add an Ollama container to this project or to `~/docker-services`. A second server that publishes port 11434 can take the port before the WSL service starts. The WSL service then fails with `bind: address already in use`, and `ollama list` shows only the models of the other server. Two servers can also load models into the 8 GB of VRAM at the same time.
+
+```mermaid
+graph LR
+    Boot[Machine starts] --> Race{Which server<br/>gets :11434?}
+    Race -->|One Ollama only| WSL[WSL Ollama<br/>all models]
+    Race -->|Container starts first| Container[Container Ollama<br/>its own models]
+    Container --> Fail[WSL service fails:<br/>address already in use]
+```
+
+Check which server answers. In WSL, the client and the server must show the same version, with no `Warning: client version` line.
+
+Check the Ollama version (WSL):
+
+```bash
+ollama --version
+```
 
 ### GPU Passthrough
 
-GPU acceleration is configured via the NVIDIA Container Toolkit:
-
-- The Ollama container receives GPU access through Docker's `deploy.resources.reservations.devices` configuration
+- Ollama runs in WSL and uses the GPU through the WSL CUDA driver. It finds CUDA automatically.
 - CUDA 12.4.0 runtime is used in the backend container for compatibility with the host driver (595.79, CUDA 13.2)
-- Ollama automatically detects and uses CUDA for model inference when GPU is available
-- Models (qwen2.5:3b, qwen2.5:7b) are stored in a persistent Docker volume (`ollama-data`) and pulled on first use
+- Models (qwen2.5:3b, qwen2.5:7b) are stored in the WSL Ollama model folder. Pull a model in WSL with `ollama pull <model>`.
 
 ### Dynamic Port Allocation
 
@@ -818,8 +829,8 @@ Ports are allocated dynamically to avoid conflicts with other services:
 ### Inter-Service Communication
 
 - Frontend to Backend: Next.js proxy at `/api/proxy/*` forwards to `http://backend:8000` (Docker) or `http://localhost:8000` (local)
-- Backend to Ollama: HTTP API calls via shared-services network (`http://ollama:11434`)
+- Backend to Ollama: HTTP API calls to the WSL Ollama at `http://host.docker.internal:11434` (Docker) or `http://localhost:11434` (local)
 - Backend to MLflow: Experiment logging via shared-services network (`http://mlflow:5000`)
 - Job-raider services use `job-raider-network` bridge network
-- Shared services (Ollama, MLflow) use `shared-services` external bridge network
+- The shared MLflow service uses the `shared-services` external bridge network
 - Backend connects to both networks for cross-project service access

@@ -49,6 +49,8 @@ docker compose up -d
 
 **Best for:** Production deployments, containerized environments
 
+**Warning:** Use this option only on a machine that does not run Ollama already. Run one Ollama server per machine. On the development machine, Ollama runs as the WSL systemd service (Option 1). A container that publishes port 11434 next to it can take the port at startup, and the WSL service then does not start. See [One Ollama per Machine](architecture.md#one-ollama-per-machine).
+
 **Configuration:**
 
 ```yaml
