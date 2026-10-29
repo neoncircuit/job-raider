@@ -18,8 +18,10 @@ Make full-mode resume generation produce resumes again. Today every draft fails,
 - [x] MH-5 (`7e8a9b5`, checked 2026-10-29). `ResumeSelector.select` keeps only keywords that are profile skills, with the profile's spelling, and the prompt asks for profile skills that the job asks for. (`mh-5-selector-keywords.md`)
 - [x] MH-6 (`7f7561c`, checked 2026-10-29). `ResumeWriter.write` keeps only profile skills in the skills list and adds the selected keywords; when no skill is left, it uses the profile's skills. (`mh-6-writer-profile-skills.md`)
 - [x] Check of MH-5 and MH-6 (Claude, in `notes.md`): the diffs, mutation proofs, the full gate, and the reproduction with the real profile. Done 2026-10-29: 1698 tests pass; 16 of 19 mutations caught (the 3 survivors are gaps in the handoff tests); both drafts pass the validator with score 100.
+- [ ] MH-7. `ResumeFormatter._format_pdf` gives each reportlab `Spacer` a width, so the resume PDF is written. (`mh-7-resume-pdf-spacer.md`)
+- [ ] Check of MH-7 (Claude, in `notes.md`): the diff, mutation proofs, the full gate, and one more full-mode dry run (after `make docker-up`) that writes a resume PDF.
 - [x] Check (Claude, in `notes.md`): the diffs, the full backend gate, mutation proofs for each change, and the reproduction script again against the real profile and Ollama. Done 2026-10-29: 1691 tests pass; 18 of 20 mutations caught (the 2 survivors are gaps in the handoff tests); the drafts now fail only on skills that are not in the profile.
 - [ ] Done when: the reproduction gives drafts that pass the validator (or fail only on real issues, such as a skill that is not in the profile), and a full-mode dry run generates at least one resume.
 
 ## Status
-`in-progress` (MH-1 to MH-6 checked on 2026-10-29; the reproduction passes; the full-mode dry run generated 2 valid DOCX resumes; the resume PDF fails, see `notes.md`)
+`in-progress` (MH-1 to MH-6 checked on 2026-10-29; the reproduction passes; the full-mode dry run generated 2 valid DOCX resumes; the resume PDF fails; MH-7 is written, dry-run, and with the agent)

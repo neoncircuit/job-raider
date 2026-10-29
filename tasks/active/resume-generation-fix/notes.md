@@ -186,6 +186,18 @@ graph LR
 
 Result: the "Done when" dry run part is met with DOCX resumes. The PDF bug is open.
 
+## MH-7 (2026-10-29, Claude)
+
+The user asked for a micro-handoff for the PDF bug. MH-7 (`mh-7-resume-pdf-spacer.md`) adds `tests/unit/test_resume_formatter_pdf.py` (a PDF alone, and the default PDF and DOCX together) and changes the 4 `Spacer` calls in `_format_pdf` to `Spacer(1, height)`. It does not change `format_resume`. `AGENT.md` now names `mh-1` to `mh-7`.
+
+Dry run on scratch copies in WSL's native disk (not the repository):
+
+- Before the change: 2 of the 3 tests fail (the 2 new PDF tests; the DOCX test passes). The given test file passes black.
+- After the change: the 3 tests pass, the grep check shows 4 `Spacer(` lines that all have a width, and the 2 files pass black and ruff.
+- One old call put back at a time (lines 372, 442, 456, 467): each one makes the 2 PDF tests fail. The test resume reaches all 4 calls.
+
+Backlog (not in MH-7): `format_resume` reports success when one of the requested formats fails, and the Generate Resumes stage does not count a missing PDF. A failed format shows only in the backend log.
+
 ## Blockers / Questions
 
-- The PDF bug in `formatter.py`: fix it in this task before the task closes.
+- None. MH-7 is with the agent.

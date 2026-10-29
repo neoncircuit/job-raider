@@ -1,10 +1,10 @@
 # Agent Brief: Resume Generation Fix
 
-Read this file and one micro-handoff (`mh-1` to `mh-6`). Do not read other task files.
+Read this file and one micro-handoff (`mh-1` to `mh-7`). Do not read other task files.
 
 ## How to work
 
-1. Do one micro-handoff at a time, in order: `mh-1` to `mh-6`.
+1. Do one micro-handoff at a time, in order: `mh-1` to `mh-7`.
 2. Edit only the files that the micro-handoff names. In Aider, `/add` only those files.
 3. Add the test first. Run it and see it fail.
 4. Change the code. Run the test again and see it pass.
