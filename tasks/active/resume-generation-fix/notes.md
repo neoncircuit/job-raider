@@ -198,6 +198,17 @@ Dry run on scratch copies in WSL's native disk (not the repository):
 
 Backlog (not in MH-7): `format_resume` reports success when one of the requested formats fails, and the Generate Resumes stage does not count a missing PDF. A failed format shows only in the backend log.
 
+## Check of MH-7 (2026-10-29, Claude, commit `c4e2b23`)
+
+MH-7 was done by the agent in opencode.
+
+- The commit changes only `formatter.py` and the new test file. The diff is the 4 `Spacer` lines of the handoff and nothing else. The test file is the same as the handoff, character for character.
+- MH-7 checks: the 3 formatter tests pass (2 new, 1 DOCX). black and ruff pass.
+- Mutation proofs (each on its own copy in WSL's native disk; the repository file did not change): S1 to S4 the old form of each `Spacer` call (after the name, an experience item, a project, a section), S5 no PDF is made, S6 the default formats have no PDF. All 6 were caught.
+- Full backend gate after MH-7: black and ruff pass on the CI paths, the mypy gate has 0 new errors (180 known), and pytest has 1700 passed (1698 before, and 2 new tests).
+
+Result: accept MH-7. To close the task: one more full-mode dry run after `make docker-up` must write a resume PDF.
+
 ## Blockers / Questions
 
-- None. MH-7 is with the agent.
+- None. Next: the full-mode dry run that writes a PDF (the user).
