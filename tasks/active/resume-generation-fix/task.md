@@ -22,4 +22,4 @@ Make full-mode resume generation produce resumes again. Today every draft fails,
 - [ ] Done when: the reproduction gives drafts that pass the validator (or fail only on real issues, such as a skill that is not in the profile), and a full-mode dry run generates at least one resume.
 
 ## Status
-`in-progress` (MH-1 to MH-6 checked on 2026-10-29; the reproduction passes; the full-mode dry run is next)
+`in-progress` (MH-1 to MH-6 checked on 2026-10-29; the reproduction passes; the full-mode dry run generated 2 valid DOCX resumes; the resume PDF fails, see `notes.md`)

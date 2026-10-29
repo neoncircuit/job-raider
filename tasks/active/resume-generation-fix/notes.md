@@ -167,6 +167,25 @@ This meets the reproduction part of "Done when". The full-mode dry run is still 
 
 Observation for the backlog (not a blocker): the prompt asks for up to 5 keywords, but the selector gave 9 and 6, because `keep_profile_keywords` does not limit the count. The two lists are almost the same, so some keywords can be profile skills that the job does not ask for. A later change can keep at most 5 keywords, and keep only skills that the job text names.
 
+## The full-mode dry run (2026-10-29, the user, run `run_0e3dbf88`, `pipeline_run_20261029_144117.json`)
+
+Settings: MyCareersFuture, Min Score 30, Max Jobs 2, Dry Run on. The run took 118 seconds.
+
+```mermaid
+graph LR
+    A[Scrape<br/>60] --> B[Filter by profile<br/>35]
+    B --> C[Score at or above 30<br/>27]
+    C --> D[Semantic re-rank<br/>20]
+    D --> E[Select Jobs<br/>2, Max Jobs]
+    E --> F[Generate Resumes<br/>2 generated]
+```
+
+- Generate Resumes: 2 attempted, 2 generated, 0 validation failures, average score 100. Cover letters: 1 saved, 1 needs review.
+- The monitor shows "20 shortlisted". This is the ranked shortlist for the Jobs page (`len(rag_ranked_listings or scored_listings)` in `routes/pipeline.py`), not the jobs that Max Jobs selects. Max Jobs works: Select Jobs presented 2. The label is not clear (backlog).
+- New bug: no PDF. `src/generation/formatter.py` calls `Spacer(0.1 * inch)` at 4 places, and the reportlab `Spacer` needs a width and a height (the other formatters use `Spacer(1, height)`). The backend log shows "PDF generation failed: Spacer.__init__() missing 1 required positional argument: 'height'" for each resume. The DOCX files are saved, so the stage reports success. The bug was in the code before the move to `apps/` (`84d4c5d`, 2026-07-09). No resume PDF was ever written, because no draft passed the validator before this task. No test covers the resume PDF (only `test_resume_formatter_docx.py`).
+
+Result: the "Done when" dry run part is met with DOCX resumes. The PDF bug is open.
+
 ## Blockers / Questions
 
-- None. Next: the full-mode dry run (the user).
+- The PDF bug in `formatter.py`: fix it in this task before the task closes.
