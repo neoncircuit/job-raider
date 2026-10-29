@@ -140,6 +140,33 @@ MH-5 was done by GLM-5.3-Flash Free in opencode. Before that, `qwen3.5-9b-16k` i
 
 Result: accept MH-5.
 
+## Check of MH-6 and the full check (2026-10-29, Claude, commit `7f7561c`)
+
+MH-6 was done by DeepSeek in opencode.
+
+- The commit changes `resume_writer.py`, the new test file, and the one allowed change in `test_resume_writer_skills.py` ("SQL" to "Django", two lines). The diff matches the handoff line for line (the import, `keep_profile_skills`, the call in `write`, and rule 7). The test file is the same as the handoff, character for character.
+- MH-6 checks: the 22 resume generation tests pass. black and ruff pass.
+- Mutation proofs (each on its own copy in WSL's native disk; the repository file did not change): W1 a skill that is not in the profile is kept, W2 skills compared with case, W3 keywords not added, W4 keywords before the model's skills, W5 duplicates kept, W6 no fallback to the profile skills, W7 `write` does not filter, W8 `write` passes no keywords, W9 rule 7 as before. All 9 were caught. W10 (the input skill is not stripped) was not caught: the test skills have no spaces at the ends, the same gap as K9.
+- Full backend gate after MH-6: black and ruff pass on the CI paths, the mypy gate has 0 new errors (180 known; 2 known errors are now fixed, and the baseline is not updated), and pytest has 1698 passed (1691 before, and 7 new tests).
+
+Result: accept MH-6.
+
+### The reproduction after MH-1 to MH-6 (WSL, the real profile, `qwen2.5:3b` then `qwen2.5:7b`)
+
+The script ran all selections with `qwen2.5:3b`, unloaded it, ran all drafts with `qwen2.5:7b`, and unloaded it. No model was loaded before or after.
+
+| | After MH-1 to MH-4 | After MH-1 to MH-6 |
+|---|---|---|
+| Selector projects | the 2 profile projects, exact names | the same |
+| Selector keywords | job keywords, also skills outside the profile | only profile skills (9 for the first job, 6 for the second) |
+| Writer's skills | 11 and 9 skills that are not in the profile | 9 and 6 skills, all profile skills |
+| Missing projects or keywords | none | none |
+| Validator | reject, score 0 (`HALLUCINATED_SKILL`) | **approve, score 100, valid**, for both drafts |
+
+This meets the reproduction part of "Done when". The full-mode dry run is still to do (the user).
+
+Observation for the backlog (not a blocker): the prompt asks for up to 5 keywords, but the selector gave 9 and 6, because `keep_profile_keywords` does not limit the count. The two lists are almost the same, so some keywords can be profile skills that the job does not ask for. A later change can keep at most 5 keywords, and keep only skills that the job text names.
+
 ## Blockers / Questions
 
-- None. MH-6 is with the agent.
+- None. Next: the full-mode dry run (the user).
