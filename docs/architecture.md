@@ -822,8 +822,8 @@ ollama --version
 
 Ports are allocated dynamically to avoid conflicts with other services:
 
-- `docker-run.sh` calls `scripts/find-port.sh` to discover available ports starting from the default
-- Port assignments are passed to docker-compose via environment variables (`BACKEND_PORT`, `OLLAMA_PORT`, `FRONTEND_PORT`)
+- `docker-run.sh` calls `scripts/find-port.sh` to find a free frontend port, starting from 3000
+- The frontend port is passed to docker-compose as `FRONTEND_PORT`. Ollama (11434) and the shared MLflow (5000) run outside this compose project and keep their own ports
 - The docker-compose.yml uses the extended port definition format with `${VAR:-default}` interpolation
 
 ### Inter-Service Communication

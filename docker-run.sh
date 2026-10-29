@@ -21,19 +21,24 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Backend is not published on the host (local-first). Only the frontend
-# loopback port and shared services need free host ports.
-OLLAMA_PORT=$(find_port 11434)
+# loopback port needs a free host port. Ollama (the WSL service) and the
+# shared MLflow (~/docker-services) run outside this compose project on
+# their own ports, so this script does not pick ports for them.
 FRONTEND_PORT=$(find_port 3000)
-MLFLOW_PORT=$(find_port 5000)
+OLLAMA_URL="http://localhost:11434"
+MLFLOW_URL="http://localhost:${MLFLOW_PORT:-5000}"
 
-echo -e "${GREEN}Ports allocated:${NC}"
+echo -e "${GREEN}Services:${NC}"
 echo -e "  Frontend:  ${BLUE}http://127.0.0.1:$FRONTEND_PORT${NC}"
 echo -e "  Backend:   ${BLUE}Compose network only (backend:8000)${NC}"
-echo -e "  MLflow:    ${BLUE}http://localhost:$MLFLOW_PORT${NC}"
-echo -e "  Ollama:    ${BLUE}localhost:$OLLAMA_PORT${NC}"
+echo -e "  MLflow:    ${BLUE}$MLFLOW_URL${NC} (shared, ~/docker-services)"
+echo -e "  Ollama:    ${BLUE}$OLLAMA_URL${NC} (WSL service)"
+if ! curl -sf -m 3 "$OLLAMA_URL/api/version" >/dev/null 2>&1; then
+    echo -e "  ${YELLOW}Ollama does not answer. Start it in WSL: sudo systemctl start ollama${NC}"
+fi
 echo ""
 
-export OLLAMA_PORT FRONTEND_PORT MLFLOW_PORT
+export FRONTEND_PORT
 unset BACKEND_PORT
 
 # Stop existing containers
@@ -51,7 +56,7 @@ echo -e "${GREEN}  All services running${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "  Dashboard:  ${BLUE}http://127.0.0.1:$FRONTEND_PORT${NC}"
 echo -e "  API:        ${BLUE}via frontend proxy (backend not published)${NC}"
-echo -e "  MLflow:     ${BLUE}http://localhost:$MLFLOW_PORT${NC}"
+echo -e "  MLflow:     ${BLUE}$MLFLOW_URL${NC}"
 echo ""
 echo -e "${YELLOW}Logs:${NC}  docker compose logs -f"
 echo -e "${YELLOW}Stop:${NC}  docker compose down"

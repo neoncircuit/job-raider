@@ -50,17 +50,27 @@ The following services are started:
 |---------|------|-------------|
 | Backend API | 8000+ | FastAPI web server |
 | Frontend | 8501+ | Streamlit web dashboard |
-| Ollama | 11434 | Local LLM server |
-| MLflow | 5000+ | Experiment tracking server (optional) |
+| Ollama | 11434 | Local LLM server (the WSL service; Docker does not start it) |
+| MLflow | 5000 | Shared experiment tracking (`~/docker-services`; not started here) |
 
 ## Port Detection
 
-If the default ports are in use, the `docker-run.sh` script will automatically find available ports starting from:
-- API: 8000
-- Frontend: 8501
-- Ollama: 11434
+The `docker-run.sh` script finds a free host port for the frontend, starting from 3000. The backend is not published on the host. Ollama and MLflow run outside this compose project, on their own ports:
 
-The script will display the actual ports assigned.
+- Ollama: 11434, the WSL service. See [One Ollama per Machine](docs/architecture.md#one-ollama-per-machine).
+- MLflow: 5000, the shared service in `~/docker-services`.
+
+The script shows these addresses. It gives a warning when Ollama does not answer.
+
+```mermaid
+graph LR
+    Run[docker-run.sh] --> Port[Find a free<br/>frontend port from 3000]
+    Run --> Check{Ollama answers<br/>on :11434?}
+    Check -->|No| Warn[Show a warning]
+    Check -->|Yes| Up
+    Warn --> Up
+    Port --> Up[docker compose up]
+```
 
 ## Access Points
 
@@ -75,24 +85,7 @@ Once running:
 
 ## GPU Support
 
-To enable GPU acceleration for Ollama:
-
-1. Install NVIDIA Container Toolkit: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
-
-2. Uncomment the GPU section in `docker-compose.yml` (already enabled by default):
-
-```yaml
-ollama:
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            count: 1
-            capabilities: [gpu]
-```
-
-3. Restart: `docker compose up -d`
+Ollama runs as the WSL service and uses the GPU through the WSL CUDA driver. Docker does not run Ollama, so Docker needs no GPU setting for it. Do not add an Ollama container. See [One Ollama per Machine](docs/architecture.md#one-ollama-per-machine).
 
 ## Docker Image Structure
 
@@ -177,7 +170,6 @@ lsof -i :8000
 ```bash
 # Check logs
 docker compose logs backend
-docker compose logs ollama
 
 # Rebuild
 docker compose build --no-cache
@@ -186,11 +178,22 @@ docker compose up -d
 
 ### Ollama not responding
 
+Check the Ollama service (WSL):
+
 ```bash
-# Pull models manually
-docker exec -it job-raider-ollama ollama pull qwen2.5:3b
-docker exec -it job-raider-ollama ollama pull qwen2.5:7b
-docker exec -it job-raider-ollama ollama pull nomic-embed-text
+systemctl status ollama --no-pager
+```
+
+Start the Ollama service (WSL):
+
+```bash
+sudo systemctl start ollama
+```
+
+Pull the default models (WSL):
+
+```bash
+ollama pull qwen2.5:3b && ollama pull qwen2.5:7b && ollama pull nomic-embed-text
 ```
 
 ## Production Deployment
