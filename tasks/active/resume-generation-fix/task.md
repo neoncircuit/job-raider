@@ -15,11 +15,11 @@ Make full-mode resume generation produce resumes again. Today every draft fails,
 - [x] MH-2 (`3847293`, checked 2026-10-29). `ResumeValidator.validate` checks the flattened skills and does not crash on a skill or a keyword that is not a string. (`mh-2-validator-skills.md`)
 - [x] MH-3 (`f3f4e6c`, checked 2026-10-29). `ResumeSelector.select` keeps only projects from the profile, with the profile's spelling, and asks for no more projects than the profile has. (`mh-3-selector-projects.md`)
 - [x] MH-4 (`03d60e8`, checked 2026-10-29). `ResumeWriter.write` gives each draft project the profile's name when the names match without case and without a trailing "(...)". (`mh-4-project-names.md`)
-- [ ] MH-5. `ResumeSelector.select` keeps only keywords that are profile skills, with the profile's spelling, and the prompt asks for profile skills that the job asks for. (`mh-5-selector-keywords.md`)
+- [x] MH-5 (`7e8a9b5`, checked 2026-10-29). `ResumeSelector.select` keeps only keywords that are profile skills, with the profile's spelling, and the prompt asks for profile skills that the job asks for. (`mh-5-selector-keywords.md`)
 - [ ] MH-6. `ResumeWriter.write` keeps only profile skills in the skills list and adds the selected keywords; when no skill is left, it uses the profile's skills. (`mh-6-writer-profile-skills.md`)
 - [ ] Check of MH-5 and MH-6 (Claude, in `notes.md`): the diffs, mutation proofs, the full gate, and the reproduction with the real profile.
 - [x] Check (Claude, in `notes.md`): the diffs, the full backend gate, mutation proofs for each change, and the reproduction script again against the real profile and Ollama. Done 2026-10-29: 1691 tests pass; 18 of 20 mutations caught (the 2 survivors are gaps in the handoff tests); the drafts now fail only on skills that are not in the profile.
 - [ ] Done when: the reproduction gives drafts that pass the validator (or fail only on real issues, such as a skill that is not in the profile), and a full-mode dry run generates at least one resume.
 
 ## Status
-`in-progress` (MH-1 to MH-4 checked on 2026-10-29; MH-5 and MH-6 written and dry-run on 2026-10-29; they are with the agent)
+`in-progress` (MH-1 to MH-5 checked on 2026-10-29; MH-6 is with the agent)

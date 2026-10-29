@@ -129,6 +129,17 @@ Dry run on a full scratch copy (`/tmp/rgf2`, not the repository):
 - The full suite on the scratch copy: 1687 passed, 11 failed. All 11 need files that the scratch copy does not have (`VERSION`, `scripts/dev.sh`, `docker-compose.yml`, the git history, the frontend Pipeline page, the notebooks); none is in the resume generation code.
 - The reproduction on the scratch copy with the real profile (`qwen2.5:3b` and `qwen2.5:7b`, one model on the GPU at a time): both drafts **pass the validator with score 100 ("approve")**. The selector's keywords are profile skills ("Python", "Docker", "Convex", "Inngest", "FastAPI" for the first job; "Python" for the second), no skill outside the profile is listed, and no project or keyword is missing.
 
+## Check of MH-5 (2026-10-29, Claude, commit `7e8a9b5`)
+
+MH-5 was done by GLM-5.3-Flash Free in opencode. Before that, `qwen3.5-9b-16k` in opencode ran at 5 to 7 tokens per second and stopped before it changed `selector.py`. It wrote only the new test file, which is the same as the handoff.
+
+- The commit changes only `selector.py` and the new test file. The diff matches the handoff line for line (`profile_skill_names`, `keep_profile_keywords`, the two prompt lines, and the call in `select`). The test file is the same as the handoff, character for character.
+- Checks: 5 tests pass (3 new, 2 of MH-3). black and ruff pass on the CI paths. The mypy gate has 0 new errors (180 known). It also reports that 2 known errors are now fixed; the baseline is not updated.
+- Mutation proofs (fixed-string replace, count 1, checksum changed, restore matched): K1 keyword compared with case, K2 a keyword that is not in the profile is kept, K3 duplicates kept, K4 the model's spelling kept, K6 an item that is not a string is not skipped, K7 `select` does not filter, K8 the prompt asks for job keywords again. All 7 were caught. The first K6 replace gave an indentation error; it was done again with `if False:` and was caught by a test failure.
+- Not caught: K5 (a value that is not a list is iterated) and K9 (the input keyword is not stripped). With K5, a string value gives one item for each letter, and a letter is kept only when the profile has a one-letter skill (for example "R"); the sample profile has none. With K9, the test keywords have no spaces at the ends. Both are gaps in the handoff tests, not in the agent's work.
+
+Result: accept MH-5.
+
 ## Blockers / Questions
 
-- None. MH-5 and MH-6 are with the agent.
+- None. MH-6 is with the agent.
