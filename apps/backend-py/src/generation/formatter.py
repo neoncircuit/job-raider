@@ -369,7 +369,7 @@ class ResumeFormatter:
         if lines:
             name = lines[0].split("-")[0].strip()
             story.append(Paragraph(name, title_style))
-            story.append(Spacer(0.1 * inch))
+            story.append(Spacer(1, 0.1 * inch))
 
         # Render sections in configured order
         for section in self._get_ordered_sections(options):
@@ -439,7 +439,7 @@ class ResumeFormatter:
                     story.append(Paragraph(exp.get("dates", ""), normal_style))
                     for hl in exp.get("highlights", []):
                         story.append(Paragraph(f"{bullet_char} {hl}", normal_style))
-                    story.append(Spacer(0.1 * inch))
+                    story.append(Spacer(1, 0.1 * inch))
 
             elif section == "projects":
                 for project in resume.projects:
@@ -453,7 +453,7 @@ class ResumeFormatter:
                         )
                     for hl in project.get("highlights", []):
                         story.append(Paragraph(f"{bullet_char} {hl}", normal_style))
-                    story.append(Spacer(0.1 * inch))
+                    story.append(Spacer(1, 0.1 * inch))
 
             elif section == "education":
                 for edu in resume.education:
@@ -464,7 +464,7 @@ class ResumeFormatter:
                         edu_line += f" ({edu['year']})"
                     story.append(Paragraph(edu_line, normal_style))
 
-            story.append(Spacer(0.15 * inch))
+            story.append(Spacer(1, 0.15 * inch))
 
         doc.build(story)
         self.logger.info("Generated PDF: %s", filepath)
