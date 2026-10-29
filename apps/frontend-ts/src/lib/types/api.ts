@@ -113,6 +113,10 @@ export interface PipelineStatusResponse {
    * set and was not ``ollama`` (shown as a Cloud badge on the Pipeline page).
    */
   cloud_documents?: number;
+  /** Jobs that Select Jobs passed to Generate Resumes (limited by Max Jobs). */
+  jobs_for_resumes?: number;
+  /** Resumes that Generate Resumes saved. */
+  resumes_generated?: number;
 }
 
 export interface PipelineRun {

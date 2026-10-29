@@ -505,6 +505,8 @@ function LiveMonitor({ runId }: { runId: string }) {
   const jobsScraped = status.data?.jobs_scraped ?? 0;
   const jobsScored = status.data?.jobs_scored ?? 0;
   const jobsSelected = status.data?.jobs_selected ?? 0;
+  const jobsForResumes = status.data?.jobs_for_resumes ?? 0;
+  const resumesGenerated = status.data?.resumes_generated ?? 0;
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
@@ -554,6 +556,11 @@ function LiveMonitor({ runId }: { runId: string }) {
             {jobsScraped} scraped · {jobsScored} scored
             {jobsSelected > 0 ? ` · ${jobsSelected} shortlisted` : ""}
           </p>
+          {jobsForResumes > 0 && (
+            <p className="text-sm text-foreground">
+              {`Resumes: ${jobsForResumes} ${jobsForResumes === 1 ? "job" : "jobs"} selected (Max Jobs) · ${resumesGenerated} generated`}
+            </p>
+          )}
         </div>
 
         {runState === "completed" && (
