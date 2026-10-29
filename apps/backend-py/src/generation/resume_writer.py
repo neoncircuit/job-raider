@@ -17,7 +17,7 @@ from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
-from .selector import SelectionOutput
+from .selector import SelectionOutput, profile_skill_names
 
 
 @dataclass
@@ -125,6 +125,33 @@ def match_project_names(projects: Any, profile: UserProfile) -> List[Dict[str, A
     return result
 
 
+def keep_profile_skills(
+    skills: List[str], keywords: List[str], profile: UserProfile
+) -> List[str]:
+    """
+    Keep only profile skills, then add the selected keywords that are profile skills.
+
+    Names are compared without letter case and without spaces at the ends,
+    and the profile's spelling is used. A name is kept one time. When no
+    skill is left, the result is all profile skill names.
+
+    Args:
+        skills: Flat skill names from the model.
+        keywords: The selection's keywords to emphasize.
+        profile: The user profile.
+
+    Returns:
+        Profile skill names: the model's skills first, then the keywords.
+    """
+    allowed = profile_skill_names(profile)
+    result: List[str] = []
+    for item in list(skills) + list(keywords):
+        name = allowed.get(str(item).strip().lower())
+        if name and name not in result:
+            result.append(name)
+    return result or [skill.name for skill in profile.skills]
+
+
 class ResumeWriter:
     """
     Generate tailored resumes using a large model.
@@ -179,7 +206,7 @@ CRITICAL RULES:
 4. Keep dates and facts exactly as provided
 5. Use action verbs and quantify achievements where possible
 6. Maintain professional tone throughout
-7. "skills" is one flat list of skill names from the BASE RESUME. Do not group skills by category.""",
+7. "skills" lists only skill names from the BASE RESUME, in one flat list. Do not add other skills, and do not group skills by category.""",
             ),
             Message(
                 role=MessageType.USER,
@@ -246,7 +273,11 @@ Return a JSON object with the rewritten resume sections:
 
             return GeneratedResume(
                 summary=data.get("summary", ""),
-                skills=flatten_skills(data.get("skills", [])),
+                skills=keep_profile_skills(
+                    flatten_skills(data.get("skills", [])),
+                    selection.keywords_to_emphasize,
+                    profile,
+                ),
                 experience=data.get("experience", []),
                 projects=match_project_names(data.get("projects", []), profile),
                 education=data.get("education", []),

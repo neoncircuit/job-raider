@@ -41,7 +41,7 @@ def test_writer_returns_a_flat_skill_list(
     """The writer flattens grouped skills, and the prompt asks for a flat list."""
     payload = {
         "summary": "Backend engineer.",
-        "skills": [{"category": "Languages", "skills": ["Python", "SQL"]}],
+        "skills": [{"category": "Languages", "skills": ["Python", "Django"]}],
         "experience": [],
         "projects": [],
         "education": [],
@@ -62,6 +62,6 @@ def test_writer_returns_a_flat_skill_list(
         job=sample_job_listing, profile=sample_user_profile, selection=selection
     )
 
-    assert resume.skills == ["Python", "SQL"]
+    assert resume.skills == ["Python", "Django"]
     prompt = router.generate.call_args.kwargs["messages"][1].content
     assert "Group by category" not in prompt
