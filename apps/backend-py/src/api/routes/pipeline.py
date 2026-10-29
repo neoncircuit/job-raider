@@ -422,6 +422,8 @@ async def get_pipeline_status(run_id: str):
     jobs_selected = run.get("jobs_selected", 0)
     applications_submitted = run.get("applications_submitted", 0)
     cloud_documents = 0
+    jobs_for_resumes = 0
+    resumes_generated = 0
     if result is not None:
         jobs_scraped = getattr(result, "jobs_scraped", jobs_scraped) or jobs_scraped
         jobs_scored = getattr(result, "jobs_scored", jobs_scored) or jobs_scored
@@ -430,10 +432,15 @@ async def get_pipeline_status(run_id: str):
             or applications_submitted
         )
         stage_results = getattr(result, "stage_results", None) or {}
+        select = stage_results.get("present_selection")
+        if select is not None:
+            meta = getattr(select, "metadata", None) or {}
+            jobs_for_resumes = int(meta.get("selected_count") or 0)
         generate = stage_results.get("generate_resumes")
         if generate is not None:
             meta = getattr(generate, "metadata", None) or {}
             cloud_documents = int(meta.get("cloud_documents") or 0)
+            resumes_generated = int(meta.get("generated_count") or 0)
 
     return PipelineStatusResponse(
         run_id=run_id,
@@ -449,6 +456,8 @@ async def get_pipeline_status(run_id: str):
         stages_planned=run.get("stages_planned", []),
         stages_completed=run.get("stages_completed", []),
         cloud_documents=cloud_documents,
+        jobs_for_resumes=jobs_for_resumes,
+        resumes_generated=resumes_generated,
     )
 
 

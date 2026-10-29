@@ -41,6 +41,8 @@ class PipelineStatusResponse(BaseModel):
     stages_planned: List[str] = []
     stages_completed: List[str] = []
     cloud_documents: int = 0
+    jobs_for_resumes: int = 0  # Select Jobs selected_count (limited by Max Jobs)
+    resumes_generated: int = 0  # Generate Resumes generated_count
 
 
 class PipelineResultResponse(BaseModel):
