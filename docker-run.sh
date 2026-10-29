@@ -20,6 +20,12 @@ echo -e "${BLUE}  Job Raider - Docker${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
+# Stop existing containers first, so that the frontend port that this
+# project holds is free again before the port check.
+echo -e "${YELLOW}Stopping existing containers...${NC}"
+docker compose down 2>/dev/null || true
+echo ""
+
 # Backend is not published on the host (local-first). Only the frontend
 # loopback port needs a free host port. Ollama (the WSL service) and the
 # shared MLflow (~/docker-services) run outside this compose project on
@@ -40,10 +46,6 @@ echo ""
 
 export FRONTEND_PORT
 unset BACKEND_PORT
-
-# Stop existing containers
-echo -e "${YELLOW}Stopping existing containers...${NC}"
-docker compose down 2>/dev/null || true
 
 # Start (images already built; rebuild only if source changed)
 echo ""

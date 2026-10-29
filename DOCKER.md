@@ -44,18 +44,18 @@ docker compose down
 
 ## Services
 
-The following services are started:
+Docker Compose starts two containers. Ollama and MLflow run outside this compose project.
 
 | Service | Port | Description |
 |---------|------|-------------|
-| Backend API | 8000+ | FastAPI web server |
-| Frontend | 8501+ | Streamlit web dashboard |
+| Backend API (`job-raider-backend`) | 8000, Compose network only | FastAPI web server. Not published on the host. |
+| Frontend (`job-raider-frontend`) | 3000+ on 127.0.0.1 | Next.js web dashboard |
 | Ollama | 11434 | Local LLM server (the WSL service; Docker does not start it) |
 | MLflow | 5000 | Shared experiment tracking (`~/docker-services`; not started here) |
 
 ## Port Detection
 
-The `docker-run.sh` script finds a free host port for the frontend, starting from 3000. The backend is not published on the host. Ollama and MLflow run outside this compose project, on their own ports:
+The `docker-run.sh` script stops the project's containers first. Then it finds a free host port for the frontend, starting from 3000. The backend is not published on the host. Ollama and MLflow run outside this compose project, on their own ports:
 
 - Ollama: 11434, the WSL service. See [One Ollama per Machine](docs/architecture.md#one-ollama-per-machine).
 - MLflow: 5000, the shared service in `~/docker-services`.
@@ -64,24 +64,29 @@ The script shows these addresses. It gives a warning when Ollama does not answer
 
 ```mermaid
 graph LR
-    Run[docker-run.sh] --> Port[Find a free<br/>frontend port from 3000]
-    Run --> Check{Ollama answers<br/>on :11434?}
+    Run[docker-run.sh] --> Down[Stop the project's<br/>containers]
+    Down --> Port[Find a free<br/>frontend port from 3000]
+    Port --> Check{Ollama answers<br/>on :11434?}
     Check -->|No| Warn[Show a warning]
-    Check -->|Yes| Up
+    Check -->|Yes| Up[docker compose up]
     Warn --> Up
-    Port --> Up[docker compose up]
 ```
 
 ## Access Points
 
 Once running:
 
-- **Dashboard**: http://localhost:8501
-- **API Docs**: http://localhost:8000/docs
-- **API Health**: http://localhost:8000/api/health
-- **API Version**: http://localhost:8000/api/version
+- **Dashboard**: http://127.0.0.1:3000 (or the port that `docker-run.sh` shows)
 - **Ollama**: http://localhost:11434
-- **MLflow UI**: http://localhost:5000 (when enabled)
+- **MLflow UI**: http://localhost:5000 (when the shared MLflow runs)
+
+The backend is not published on the host, so the API pages (`/docs`, `/api/health`, `/api/version`) do not open in a browser. The dashboard reaches the backend through its server-side proxy. To call the backend directly, send the request from the backend container.
+
+Check the backend health (repository root):
+
+```bash
+docker compose exec backend curl -s http://localhost:8000/api/health
+```
 
 ## GPU Support
 
@@ -93,11 +98,13 @@ The project uses multiple Dockerfiles organized by purpose:
 
 | File | Purpose | Base Image |
 |------|---------|------------|
-| `docker/Dockerfile` | Production backend (CUDA + GPU) | nvidia/cuda:12.4.0-runtime-ubuntu22.04 |
+| `docker/Dockerfile` | Backend, used by `docker-compose.yml` | nvidia/cuda:12.4.0-runtime-ubuntu22.04 |
 | `docker/Dockerfile.dev` | Development backend (slim) | python:3.12-slim |
-| `frontend-py/docker/Dockerfile` | Frontend (Streamlit) | python:3.12-slim |
+| `docker/Dockerfile.overlay` | Temporary code-only update on a built backend image | job-raider-backend:pre-overlay |
+| `apps/frontend-ts/Dockerfile` | Frontend (Next.js), used by `docker-compose.yml` | node:24-alpine |
+| `frontend-py/docker/Dockerfile` | Old Streamlit frontend, not used by `docker-compose.yml` | python:3.12-slim |
 
-All Dockerfiles run as non-root user `jobraider` for security.
+The images set non-root users: `jobraider` (backend) and `nextjs` (frontend). `docker-compose.yml` runs the backend container as `root` (`user: root`).
 
 ## Configuration
 
@@ -120,19 +127,22 @@ Key variables:
 - `SENTRY_DSN`: For error tracking (optional, disabled by default)
 - `MLFLOW_TRACKING_URI`: For experiment tracking (default: http://localhost:5000)
 
-Frontend environment variables are configured in `frontend-py/.env`:
+Frontend environment variables are configured in `apps/frontend-ts/.env.local`.
+
+Copy the frontend example file (repository root):
 
 ```bash
-cp frontend-py/.env.example frontend-py/.env
+cp apps/frontend-ts/.env.example apps/frontend-ts/.env.local
 ```
 
 Key variables:
-- `BACKEND_API_URL`: Backend API base URL (default: http://localhost:8000)
-- `REQUEST_TIMEOUT_SEC`: HTTP request timeout (default: 120)
+- `API_KEY`: Shared secret that the proxy sends as `X-API-Key`. It must match `API_KEY` in `apps/backend-py/.env`. `setup.sh` generates it on the first run.
+- `BACKEND_API_URL`: Backend API base URL. `docker-compose.yml` sets it to `http://backend:8000`.
+- `NEXT_PUBLIC_WS_URL`: WebSocket URL for live progress. `docker-compose.yml` sets it empty, because the browser cannot reach the backend. The Live Monitor then uses status polling.
 
 ### Application Settings (config/*.yaml)
 
-All non-sensitive configuration lives in YAML files mounted under `./config`:
+All non-sensitive configuration lives in YAML files in `apps/backend-py/config/`. The backend image copies them at build time:
 - `app_config.yaml`: General settings, paths, monitoring
 - `model_config.yaml`: LLM model selection and routing
 - `scrapers_config.yaml`: Scraper settings and rate limits
@@ -140,14 +150,13 @@ All non-sensitive configuration lives in YAML files mounted under `./config`:
 - `scoring_config.yaml`: Scoring weights and thresholds
 - `logging_config.yaml`: Logging configuration
 
-Configuration changes take effect on container restart.
+Configuration changes take effect after a rebuild. `make docker-up` rebuilds the images that changed.
 
 ## Data Persistence
 
-The following directories are mounted as volumes:
+This directory is mounted into the backend container:
 
-- `./data` - All application data
-- `./config` - Configuration files
+- `./apps/backend-py/data` - All application data (at `/app/backend-py/data`)
 
 Data persists across container restarts.
 
@@ -155,14 +164,12 @@ Data persists across container restarts.
 
 ### Port already in use
 
-The `docker-run.sh` script automatically finds available ports. If you see port conflicts:
+The `docker-run.sh` script stops the project's containers, then finds a free frontend port from 3000. If another program holds port 3000, the dashboard moves to the next free port, and the script shows it.
+
+Check what uses port 3000 (WSL):
 
 ```bash
-# Check what's using the port
-lsof -i :8000
-
-# Stop the conflicting service or use docker-run.sh
-./docker-run.sh
+lsof -i :3000
 ```
 
 ### Container won't start

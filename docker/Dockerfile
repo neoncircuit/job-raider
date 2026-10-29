@@ -1,7 +1,8 @@
 # Job Raider - Dockerfile for Cloud Deployment
 #
-# Backend API image. Local LLM calls go to the shared Ollama service
-# (compose OLLAMA_HOST=ollama:11434). Do not install Ollama in this image.
+# Backend API image. Local LLM calls go to the WSL Ollama service on the host
+# (compose OLLAMA_HOST=host.docker.internal:11434). Do not install Ollama in
+# this image, and do not add an Ollama container: run one Ollama per machine.
 #
 # Author: Job Raider
 # Date: 2026-04-22
