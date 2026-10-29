@@ -30,6 +30,15 @@ On scratch copies in WSL's native disk (`/tmp/mrc`, not the repository). The fro
 - MH-2: before the change, 2 of the 3 new tests fail (the "hides" test passes, because the line does not exist yet). After the change, the 7 Live Monitor tests pass (3 new, `cloud-badge`, `live-monitor`). prettier, eslint, and `npm run type-check` pass. (The first draft of the test had one line that prettier wraps; the handoff now has prettier's form.)
 - `node_modules/.vite` and `coverage/` in `apps/frontend-ts` belong to root (some `node_modules/.bin` links too), probably from an earlier install or run as root. Vitest then fails with `EACCES` when it writes `node_modules/.vite/vitest/results.json`. `npx vitest run --no-cache` does not write that file and passes in the repository, so the handoff and `AGENT.md` use `--no-cache`. A lasting fix needs the user (`sudo chown`).
 
+## Check of MH-1 (2026-10-30, Claude, commit `f4dad31`)
+
+- The commit changes only `responses.py`, `routes/pipeline.py`, and the new test file. The diff matches the handoff line for line (the two fields, the two start values, the `present_selection` block, the `generated_count` line, and the two response arguments). The test file is the same as the handoff, character for character.
+- Checks: 23 tests pass (2 new, 21 route tests). black and ruff pass.
+- Mutation proofs (each on its own copy in WSL's native disk; the repository file did not change): R1 `jobs_for_resumes` not read, R2 `jobs_for_resumes` from the shortlist count, R3 a wrong stage key for Select Jobs, R4 `resumes_generated` from `attempted_count`, R5 and R6 a count not in the response. All 6 were caught.
+- Full backend gate: black and ruff pass on the CI paths, the mypy gate has 0 new errors (180 known), and pytest has 1702 passed (1700 before, and 2 new tests).
+
+Result: accept MH-1.
+
 ## Blockers / Questions
 
-- None. MH-1 and MH-2 are with the agent.
+- None. MH-2 is with the agent.
