@@ -2,6 +2,16 @@
 
 Read `AGENT.md` first. Do MH-B first: this step uses `read_letters` from `scripts/build_grounding_label_page.py`.
 
+## Apply with the runner
+
+The handoff runner applies this file: it writes the two new files, runs the red command (it must fail), runs the "Done when" checks (they must pass), and commits. See `docs/handoff-runner.md`.
+
+Apply this handoff (WSL, from `apps/backend-py`):
+
+```bash
+.venv/bin/python scripts/run_handoff.py ../../tasks/active/step-3-2-real-letters/mh-c-import-labels.md
+```
+
 ## Why
 
 The MH-B page exports `labels.json`: for each letter, the labels, the ungrounded sentences, a note, and `reviewed`. The grounding suite reads `cases.jsonl`, one `GroundingCase` for each line. This script joins `letters.jsonl` (MH-A) and `labels.json` into `cases.jsonl`, so that `python main.py eval grounding --dataset data/eval/grounding_real` can run.
@@ -36,7 +46,7 @@ flowchart LR
 
 `apps/backend-py/tests/unit/test_import_grounding_labels.py`:
 
-```python
+```python new=apps/backend-py/tests/unit/test_import_grounding_labels.py
 """Tests for the label import of the real-letter set (Step 3.2 real letters, MH-C)."""
 
 import json
@@ -229,7 +239,7 @@ def test_main_writes_nothing_when_the_import_stops(
 
 Run it (from `apps/backend-py`). It must fail with `ImportError` (the script does not exist yet):
 
-```bash
+```bash red cwd=apps/backend-py
 .venv/bin/python -m pytest tests/unit/test_import_grounding_labels.py -q
 ```
 
@@ -237,7 +247,7 @@ Run it (from `apps/backend-py`). It must fail with `ImportError` (the script doe
 
 `apps/backend-py/scripts/import_grounding_labels.py`:
 
-```python
+```python new=apps/backend-py/scripts/import_grounding_labels.py
 #!/usr/bin/env python3
 """
 Job Raider - Import the labels of the real-letter grounding set
@@ -441,20 +451,26 @@ if __name__ == "__main__":
 
 Run the new tests and the MH-B tests:
 
-```bash
+```bash check cwd=apps/backend-py
 .venv/bin/python -m pytest tests/unit/test_import_grounding_labels.py tests/unit/test_build_grounding_label_page.py -q
 ```
 
 Format the new files:
 
-```bash
+```bash check cwd=apps/backend-py
 .venv/bin/python -m black scripts/import_grounding_labels.py tests/unit/test_import_grounding_labels.py
 ```
 
 Check the lint:
 
-```bash
+```bash check cwd=apps/backend-py
 .venv/bin/python -m ruff check scripts/import_grounding_labels.py tests/unit/test_import_grounding_labels.py
 ```
 
-Do not run the script on real data, and do not open `apps/backend-py/data/`. Commit message: `feat(eval): add the label import of the real-letter grounding set`
+Do not run the script on real data, and do not open `apps/backend-py/data/`.
+
+Commit message:
+
+```text commit
+feat(eval): add the label import of the real-letter grounding set
+```

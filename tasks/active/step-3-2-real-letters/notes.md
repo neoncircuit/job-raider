@@ -68,6 +68,16 @@ Checked before writing: the suite reads only `cases.jsonl` (with `load_jsonl` an
 - Before the script, the test file fails at collection. After the script, the 9 MH-C tests and the 9 MH-B tests pass, and the given code passes black and ruff (after black's layout in 3 places).
 - Mutation preview: C1 an unknown case accepted, C2 missing labels accepted, C3 review not required, C4 an unknown label not named, C5 `ungrounded_claims` not added, C6 `ungrounded_claims` not removed, C7 labels sorted by name, C8 sentence whitespace kept, C9 frozen cases replaced, C10 the labels not copied, C11 the note dropped. All 11 were caught. (C7 needed labels whose name order differs from the suite order; the test now uses `inflated_duration` and `fabricated_experience`.)
 
+## Check of MH-A (2026-10-30, Claude, commit `7465502`)
+
+The agent (opencode) wrote both files, then its free quota ran out before the checks and the commit. Claude finished the handoff here.
+
+- The two files are the same as the handoff, character for character, with LF line endings.
+- MH-A checks: the 8 tests pass, and black and ruff pass. The mutation preview of the dry run (12 of 12 caught) ran on the same code.
+- Full backend gate: black and ruff pass on the CI paths, the mypy gate has 0 new errors (180 known), and pytest has 1709 passed and 1 failed. The failure is `tests/unit/agents/test_task_store.py::TestTaskStore::test_records_expire_after_ttl`, which MH-A does not touch. It passed 6 of 6 times alone. `TaskStore` measures the TTL with `datetime.now()` (the wall clock, which WSL can set back), and the test has a 50 ms margin. Moved to the backlog.
+
+Result: accept MH-A.
+
 ## Blockers / Questions
 
-- None. MH-A is with the agent; MH-B and MH-C follow in order.
+- None. The opencode quota ran out, so MH-B and MH-C are applied with the handoff runner (`tasks/active/handoff-runner/`).

@@ -2,6 +2,16 @@
 
 Read `AGENT.md` first.
 
+## Apply with the runner
+
+The handoff runner applies this file: it writes the two new files, runs the red command (it must fail), runs the "Done when" checks (they must pass), and commits. See `docs/handoff-runner.md`.
+
+Apply this handoff (WSL, from `apps/backend-py`):
+
+```bash
+.venv/bin/python scripts/run_handoff.py ../../tasks/active/step-3-2-real-letters/mh-b-label-page.md
+```
+
 ## Why
 
 MH-A writes `letters.jsonl` and `profiles.json`. Claude then writes draft labels in `drafts.json`, and the user corrects them. This script builds the page for that work: one self-contained `label.html` beside the data. It opens from the file in a browser and makes no network call. For each letter, it shows the job and the letter split into the sentences that the grounding suite reads. The user ticks each ungrounded sentence and each label, writes a note, marks the letter as reviewed, and exports `labels.json` (MH-C imports it).
@@ -31,7 +41,7 @@ flowchart LR
 
 `apps/backend-py/tests/unit/test_build_grounding_label_page.py`:
 
-```python
+```python new=apps/backend-py/tests/unit/test_build_grounding_label_page.py
 """Tests for the labeling page of the real-letter set (Step 3.2 real letters, MH-B)."""
 
 import json
@@ -219,7 +229,7 @@ def test_main_stops_without_letters(tmp_path: Path) -> None:
 
 Run it (from `apps/backend-py`). It must fail with `ImportError` (the script does not exist yet):
 
-```bash
+```bash red cwd=apps/backend-py
 .venv/bin/python -m pytest tests/unit/test_build_grounding_label_page.py -q
 ```
 
@@ -227,7 +237,7 @@ Run it (from `apps/backend-py`). It must fail with `ImportError` (the script doe
 
 `apps/backend-py/scripts/build_grounding_label_page.py` (the page template is a raw string, `r"""..."""`, so that `\n` in the JavaScript stays as written):
 
-```python
+```python new=apps/backend-py/scripts/build_grounding_label_page.py
 #!/usr/bin/env python3
 """
 Job Raider - Build the labeling page of the real-letter grounding set
@@ -725,20 +735,26 @@ if __name__ == "__main__":
 
 Run the new tests:
 
-```bash
+```bash check cwd=apps/backend-py
 .venv/bin/python -m pytest tests/unit/test_build_grounding_label_page.py -q
 ```
 
 Format the new files:
 
-```bash
+```bash check cwd=apps/backend-py
 .venv/bin/python -m black scripts/build_grounding_label_page.py tests/unit/test_build_grounding_label_page.py
 ```
 
 Check the lint:
 
-```bash
+```bash check cwd=apps/backend-py
 .venv/bin/python -m ruff check scripts/build_grounding_label_page.py tests/unit/test_build_grounding_label_page.py
 ```
 
-Do not run the script on real data, and do not open `apps/backend-py/data/`. Commit message: `feat(eval): add the labeling page of the real-letter grounding set`
+Do not run the script on real data, and do not open `apps/backend-py/data/`.
+
+Commit message:
+
+```text commit
+feat(eval): add the labeling page of the real-letter grounding set
+```

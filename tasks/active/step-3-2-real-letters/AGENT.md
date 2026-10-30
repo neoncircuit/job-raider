@@ -2,6 +2,8 @@
 
 Read this file and one micro-handoff (`mh-a`, `mh-b`, or `mh-c`). Do not read other task files.
 
+Since 2026-10-30, the handoff runner applies these micro-handoffs without an agent (`docs/handoff-runner.md`). Each handoff has an "Apply with the runner" section. This brief stays for an agent that does the same work by hand.
+
 ## How to work
 
 1. Do one micro-handoff at a time, in order: `mh-a`, `mh-b`, then `mh-c`.

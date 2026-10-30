@@ -10,7 +10,7 @@ Measure the grounding validator on about 15 cover letters that the app generates
 - The implementer is an agent in opencode (GLM-5.3-Flash Free or DeepSeek). Each micro-handoff gives its code and test in full. The agent reads `AGENT.md` and one `mh-*.md` file, nothing else.
 
 ## Acceptance Criteria
-- [ ] MH-A. `scripts/make_real_grounding_set.py` writes `profiles.json` and `letters.jsonl` (no validator output, no `cases.jsonl`) for up to 15 shortlisted jobs, one per company. (`mh-a-generator.md`)
+- [x] MH-A (`7465502`, checked 2026-10-30). `scripts/make_real_grounding_set.py` writes `profiles.json` and `letters.jsonl` (no validator output, no `cases.jsonl`) for up to 15 shortlisted jobs, one per company. (`mh-a-generator.md`)
 - [ ] MH-B. `scripts/build_grounding_label_page.py` writes a self-contained `label.html` with the draft labels filled in and an export of `labels.json`. (`mh-b-label-page.md`)
 - [ ] MH-C. `scripts/import_grounding_labels.py` turns `letters.jsonl` and `labels.json` into a valid `cases.jsonl`. (`mh-c-import-labels.md`)
 - [ ] Check of each handoff (Claude, in `notes.md`): the diff, mutation proofs, and the backend gate.
