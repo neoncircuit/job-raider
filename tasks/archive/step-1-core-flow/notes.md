@@ -108,8 +108,10 @@ Part B: submit stage
 
 - [x] Backend: pytest, ruff, Black, and the mypy gate. CI run 39188312697 on `5a8232f`: 1,067 passed; gate 182 known errors, 0 new.
 - [x] Frontend (Node 20): ESLint, tsc, Prettier, Vitest, `next build`, and Playwright. CI run 39188312697: 41 Vitest files passed; Playwright 40 passed, 2 flaky (see the Backlog item "Flaky Mobile Chrome navigation smoke test").
-- [ ] Manual: start a full-mode dry run from the Pipeline page with Ollama running. Confirm that the stage list moves during the run, and that the run reaches `submit_applications` with zero real submissions.
-  - 2026-10-30, run `run_18ae691859d2` (Docker, full mode, Dry Run on, Skip Submission off, Max Jobs 2): the run reached `submit_applications` with `dry_run` true: 0 applied, 0 simulated, 2 manual (no job had auto-submit). No application record was written. Generate Resumes made 2 resumes (score 100). The resume generation fix (`tasks/archive/resume-generation-fix/`) made this possible. Still to confirm by the user: the stage list moved during the run.
+- [x] Manual: start a full-mode dry run from the Pipeline page with Ollama running. Confirm that the stage list moves during the run, and that the run reaches `submit_applications` with zero real submissions.
+  - 2026-10-30, run `run_18ae691859d2` (the user; Docker, full mode, Dry Run on, Skip Submission off, Max Jobs 2): the run reached `submit_applications` with `dry_run` true: 0 applied, 0 simulated, 2 manual (no job had auto-submit). No application record was written. Generate Resumes made 2 resumes (score 100). The resume generation fix (`tasks/archive/resume-generation-fix/`) made this possible. The user was not sure that the stage list moved.
+  - 2026-10-30, run `run_8e8837ffb270` (Claude, with the user's approval, in the built-in browser; same settings; no model loaded at the start): Claude read the stage rows every 10 seconds. 09:24:22 Scrape Jobs done, Deduplicate running, 9 waiting. 09:24:32 6 done, Detect Auto-Submit running. 09:24:42 to 09:26:33 9 done, Generate Resumes running. 09:27:35 Complete, 11 done. The run file: `submit_applications` with `dry_run` true, 0 applied, 0 simulated, 2 manual; 2 resumes (PDF and DOCX); no application record. Claude unloaded the 3 models after the run.
+  - Seen during the run (backlog): the Counts box stayed at "0 scraped · 0 scored" until the run ended; the GPU held `qwen2.5:3b`, `qwen2.5:7b`, and `nomic-embed-text` together (about 7.2 GB).
 
 ##### Out of scope for Step 1
 

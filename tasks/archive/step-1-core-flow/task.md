@@ -12,7 +12,7 @@ A full-mode pipeline run goes from scrape to the submit stage in dry run. The CL
 - [x] Steps 1.1 to 1.7 are done and pushed (last: `5a8232f`).
 - [x] Backend checks in CI (run 39188312697).
 - [x] Frontend checks in CI (run 39188312697).
-- [ ] Manual: start a full-mode dry run from the Pipeline page with Ollama running. The stage list moves during the run, and the run reaches `submit_applications` with zero real submissions.
+- [x] Manual: start a full-mode dry run from the Pipeline page with Ollama running. The stage list moves during the run, and the run reaches `submit_applications` with zero real submissions. Done 2026-10-30: runs `run_18ae691859d2` and `run_8e8837ffb270` (see `notes.md`).
 
 ## Status
-`review` (2026-10-30): run `run_18ae691859d2` reached `submit_applications` in dry run with 0 submissions (see `notes.md`). The user confirms that the stage list moved during the run.
+`done` (2026-10-30).
