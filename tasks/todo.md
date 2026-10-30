@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Step 3.2 remainder: about 15 real generated letters, labels drafted by Claude and corrected by the user, run locally (`tasks/active/step-3-2-real-letters/`; three micro-handoffs, then the labeling and one eval run)
+- [ ] Step 3.2 remainder: about 15 real generated letters, labels drafted by Claude and corrected by the user, run locally (`tasks/active/step-3-2-real-letters/`; the generator, labeling page, and import are committed; next: generate the letters on real data, then the labels and one eval run)
 
 ## Next Up
 - [ ] Steps 3.4 and 3.7 to 3.9 (`tasks/active/step-3-measurable-claims/`)

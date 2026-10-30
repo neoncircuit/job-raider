@@ -53,6 +53,21 @@ flowchart TD
 - MH-B and MH-C of `step-3-2-real-letters` now use the format (`new=`, `red`, `check`, `text commit`, and an "Apply with the runner" section). `--dry-run` on the real repository accepts both: new test, red, new script, 3 checks, commit.
 - `docs/handoff-runner.md` (the format, the safety rules, a flow diagram, labeled commands, and rules for Claude), and a pointer in `tasks/index.md`.
 
+## The real apply (2026-10-30, Claude)
+
+- Scratch run first (`git clone --shared` in `/tmp`, the backend `.venv` linked): the runner applied MH-B, then MH-C. Each red command failed with `ImportError` (exit 2), each check passed (9 and 18 tests, black, ruff), and each commit held exactly the two files of its handoff.
+- Then in the repository: MH-B `befc870` and MH-C `f7c5d7a`, with the same results. Claude checked both commits like an agent's: the files are the handoff's files, the same text character for character, with LF line endings.
+- Full backend gate after the two commits: black and ruff pass on the CI paths, the mypy gate has 0 new errors (180 known), and pytest has 1747 passed (1710 before, 19 runner tests, 9 MH-B tests, 9 MH-C tests).
+
+Result: "Done when" is met.
+
+## Review (2026-10-30, Claude)
+
+- Goal met: a handoff goes from Markdown to a checked commit with one command, without a model, a GPU, or a quota.
+- What worked: the format adds a few words to the info string, so the handoffs stay readable; the validation before any write and the rollback make a failed run leave nothing behind; a scratch clone with a linked `.venv` tests a handoff end to end before the real run.
+- Limits: an `edit=` block holds one OLD/NEW pair, and its old text ends at a line end. A handoff that is not written in full (a described change) still needs a person or an agent.
+- Lesson for writing handoffs: test each handoff with the runner on a scratch clone; the dry runs of this task found black layout changes and a weak test before the user saw them.
+
 ## Blockers / Questions
 
 - None.

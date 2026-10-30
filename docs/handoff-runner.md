@@ -6,7 +6,7 @@ The script is `apps/backend-py/scripts/run_handoff.py` (Python standard library 
 
 ## Why
 
-Small local models (7B or smaller, which keep the GPU below its safe limit) did not finish a micro-handoff in opencode or Aider, and the free hosted quota can run out. The handoffs already give every line of code, so the agent only copies text and runs commands. A script does that exactly, and it cannot add code that the handoff does not contain. See `tasks/active/handoff-runner/notes.md`.
+Small local models (7B or smaller, which keep the GPU below its safe limit) did not finish a micro-handoff in opencode or Aider, and the free hosted quota can run out. The handoffs already give every line of code, so the agent only copies text and runs commands. A script does that exactly, and it cannot add code that the handoff does not contain. See `tasks/archive/handoff-runner/notes.md`.
 
 ## Flow
 

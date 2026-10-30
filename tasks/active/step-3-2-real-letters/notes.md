@@ -78,6 +78,16 @@ The agent (opencode) wrote both files, then its free quota ran out before the ch
 
 Result: accept MH-A.
 
+## Check of MH-B and MH-C (2026-10-30, Claude, commits `befc870` and `f7c5d7a`)
+
+The handoff runner (`docs/handoff-runner.md`) applied both handoffs in the repository, after a scratch run on a clone.
+
+- MH-B: the red command failed (`ImportError`), the 9 tests pass, black and ruff pass. MH-C: the red command failed, the 18 tests (MH-C and MH-B) pass, black and ruff pass.
+- Each commit holds exactly the two files of its handoff, the same text character for character, with LF line endings. The mutation previews of the dry runs ran on the same code: MH-B 11 of 11 (N5 again after black's layout), MH-C 11 of 11.
+- Full backend gate: black and ruff pass on the CI paths, the mypy gate has 0 new errors (180 known), and pytest has 1747 passed.
+
+Result: accept MH-B and MH-C. The tooling is complete; the next step is the run on real data (step 1 of "Run steps").
+
 ## Blockers / Questions
 
-- None. The opencode quota ran out, so MH-B and MH-C are applied with the handoff runner (`tasks/active/handoff-runner/`).
+- None. Next: generate the letters on real data (the user's approval, no model loaded, the GPU free).

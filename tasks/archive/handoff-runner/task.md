@@ -16,7 +16,7 @@ Apply a micro-handoff without an LLM agent. A script reads a handoff file, write
 - [x] Tests in temporary git repositories: a full run commits; each validation error stops before a write; a failing check and a passing red command roll back with no commit; staged files stop the run. (19 tests; 16 of 16 mutations caught.)
 - [x] MH-B and MH-C of `step-3-2-real-letters` use the format, and a dry run of each passes.
 - [x] `docs/handoff-runner.md` (format, safety rules, flow diagram, labeled commands), and `tasks/index.md` points to it.
-- [ ] Done when: the runner applies MH-B for real (red fails, checks pass, one commit), and Claude checks that commit like an agent's commit.
+- [x] Done when: the runner applies MH-B for real (red fails, checks pass, one commit), and Claude checks that commit like an agent's commit. Done 2026-10-30: MH-B `befc870` and MH-C `f7c5d7a`, both the same as their handoffs; 1747 backend tests pass.
 
 ## Status
-`in-progress` (plan approved and runner built on 2026-10-30; the real apply of MH-B is next)
+`done` (2026-10-30). Review in `notes.md`.
