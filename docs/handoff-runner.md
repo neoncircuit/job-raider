@@ -88,7 +88,7 @@ The runner prints each step with its exit code and the last lines of each comman
 
 ## Spec handoffs for an agent
 
-A spec handoff gives the required behavior, the tests to write, and the commands, but not the code. An LLM agent writes the code. Use it when Claude does not write the full code, so the runner cannot apply it. The first spec handoff was MH-1 of the `copilot-agent-trial` task (Claude Haiku 5.5, one prompt, 6 of 6 mutants caught).
+A spec handoff gives the required behavior, the tests to write, and the commands, but not the code. An LLM agent writes the code. Use it when Claude does not write the full code, so the runner cannot apply it. The first spec handoff was MH-1 of `tasks/archive/copilot-agent-trial/` (Claude Haiku 5.5, one prompt, 6 of 6 mutants caught).
 
 No agent is the default. The user changes between three agent sets as their quotas run out, so each spec handoff must work in all of them:
 

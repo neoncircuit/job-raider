@@ -67,5 +67,12 @@ No agent is the default. The user changes between three agent sets as their quot
 
 So each spec handoff must work in any of the three: one `AGENT.md`, one handoff, exact commands, and the exact `git add`. Claude changes the tool or model advice only when the user says which agent is in use. `docs/handoff-runner.md` has the rules (section "Spec handoffs for an agent").
 
+## Review (2026-10-31, Claude)
+
+- Goal met: a low-cost Copilot model (Claude Haiku 5.5 in opencode) did a spec handoff from one prompt. The tests and the code obey the spec, 6 of 6 mutants are caught, and the full gate passes (1764 tests). The TaskStore TTL flake is fixed (`c1687ab`).
+- Cost: about USD 0.21 from the token counts (up to USD 0.56 with all of the day's prompts). It was high because the run used an old opencode session. The GitHub billing figure is not recorded (user decision).
+- Decision: no default agent. Spec handoffs must work in Cursor, Copilot in opencode, and open-source models in opencode (`docs/handoff-runner.md`). The user says when they swap the agent or model, and Claude records the agent and model of each handoff in the task notes.
+- Lesson added to `docs/lessons.md`: do not make one agent or model the default for handoffs.
+
 ## Blockers / Questions
-- The credits that the trial used (GitHub billing page) are not recorded.
+- None.
