@@ -48,6 +48,21 @@ Result: accept MH-1.
 
 Result: accept MH-2. To close the task: a full-mode run after `make docker-up` (the frontend image changed) must show the resume line.
 
+## The full-mode run (2026-10-30, the user, run `run_18ae691859d2`, `pipeline_run_20261030_011746.json`)
+
+The user ran `make docker-up` first (both containers were made 6 minutes before the run), then a full-mode run: MyCareersFuture, Min Score 30, Max Jobs 2, Dry Run on, Skip Submission off.
+
+- The run file: Select Jobs `selected_count` 2; Generate Resumes 2 generated (2 PDF, 2 DOCX), score 100; `submit_applications` ran with `dry_run` true, 0 applied, 0 simulated, 2 manual (no job had auto-submit).
+- The Live Monitor (Claude, built-in browser, the run opened from History): "60 scraped · 20 scored · 20 shortlisted" and under it "Resumes: 2 jobs selected (Max Jobs) · 2 generated". The stage list ends with "Submit Applications".
+
+Result: "Done when" is met.
+
+## Review (2026-10-30, Claude)
+
+- Goal met: the Live Monitor shows the jobs that Max Jobs selects for resumes and the resumes generated, next to the Jobs page shortlist.
+- 2 micro-handoffs (backend, frontend), done by the agent in opencode. 11 of 11 mutation proofs were caught. 1702 backend tests and 256 frontend tests pass.
+- Found on the way: root owns `node_modules/.vite` and `coverage/` in `apps/frontend-ts`, so vitest needs `--no-cache` until the user changes the owner.
+
 ## Blockers / Questions
 
-- None. Next: the full-mode run (the user). It can also be the Step 1 manual check (Skip Submission off).
+- None.

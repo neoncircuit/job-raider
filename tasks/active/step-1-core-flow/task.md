@@ -15,4 +15,4 @@ A full-mode pipeline run goes from scrape to the submit stage in dry run. The CL
 - [ ] Manual: start a full-mode dry run from the Pipeline page with Ollama running. The stage list moves during the run, and the run reaches `submit_applications` with zero real submissions.
 
 ## Status
-`ready for the manual check` (2026-10-29): resume generation works again (`tasks/archive/resume-generation-fix/`). The check needs a full-mode run with Dry Run on and Skip Submission off, so that the run reaches `submit_applications`.
+`review` (2026-10-30): run `run_18ae691859d2` reached `submit_applications` in dry run with 0 submissions (see `notes.md`). The user confirms that the stage list moved during the run.

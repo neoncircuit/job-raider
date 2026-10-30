@@ -109,6 +109,7 @@ Part B: submit stage
 - [x] Backend: pytest, ruff, Black, and the mypy gate. CI run 39188312697 on `5a8232f`: 1,067 passed; gate 182 known errors, 0 new.
 - [x] Frontend (Node 20): ESLint, tsc, Prettier, Vitest, `next build`, and Playwright. CI run 39188312697: 41 Vitest files passed; Playwright 40 passed, 2 flaky (see the Backlog item "Flaky Mobile Chrome navigation smoke test").
 - [ ] Manual: start a full-mode dry run from the Pipeline page with Ollama running. Confirm that the stage list moves during the run, and that the run reaches `submit_applications` with zero real submissions.
+  - 2026-10-30, run `run_18ae691859d2` (Docker, full mode, Dry Run on, Skip Submission off, Max Jobs 2): the run reached `submit_applications` with `dry_run` true: 0 applied, 0 simulated, 2 manual (no job had auto-submit). No application record was written. Generate Resumes made 2 resumes (score 100). The resume generation fix (`tasks/archive/resume-generation-fix/`) made this possible. Still to confirm by the user: the stage list moved during the run.
 
 ##### Out of scope for Step 1
 
