@@ -114,6 +114,20 @@ def is_loopback_ollama_host(ollama_host: str) -> bool:
     return name.lower() in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 
 
+def is_docker_gateway_host(ollama_host: str) -> bool:
+    """
+    Return True when the host is Docker's name for the host machine.
+
+    Args:
+        ollama_host: Host string from settings or env.
+
+    Returns:
+        True for ``host.docker.internal`` (any scheme, letter case, or port).
+    """
+    name, _port = parse_ollama_host_port(ollama_host)
+    return name.lower() == "host.docker.internal"
+
+
 def running_in_docker() -> bool:
     """
     Detect whether the process is running inside a Docker container.
@@ -137,7 +151,10 @@ def resolve_effective_ollama_host(
 
     Preference: non-loopback Settings host, then ``OLLAMA_HOST`` when Settings
     is loopback inside Docker (``localhost`` inside a container is not the
-    shared Ollama service), then Settings, then env, then localhost.
+    shared Ollama service), then Settings, then env, then localhost. Outside
+    Docker, a Settings host of ``host.docker.internal`` (the Compose name for
+    the host machine) does not resolve, so ``OLLAMA_HOST`` or localhost is
+    used instead.
 
     Args:
         settings_host: Host from ``api_config.ollama_host``.
@@ -153,6 +170,10 @@ def resolve_effective_ollama_host(
     env = (env_host if env_host is not None else os.getenv("OLLAMA_HOST") or "").strip()
     docker = running_in_docker() if in_docker is None else in_docker
 
+    if settings and not docker and is_docker_gateway_host(settings):
+        if env and not is_docker_gateway_host(env):
+            return env
+        return "localhost:11434"
     if settings and not (
         docker
         and is_loopback_ollama_host(settings)
