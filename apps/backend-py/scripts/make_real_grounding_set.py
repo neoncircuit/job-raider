@@ -48,6 +48,7 @@ DEFAULT_SHORTLIST = _BACKEND_ROOT / "data" / "results" / "latest_shortlist.json"
 DEFAULT_PROFILES_DIR = _BACKEND_ROOT / "data" / "profiles"
 DEFAULT_OUT = _BACKEND_ROOT / "data" / "eval" / "grounding_real"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
+FALLBACK_MODELS = ("template_fallback", "fallback")
 
 SelectFn = Callable[[JobListing, UserProfile], SelectionOutput]
 WriteFn = Callable[[JobListing, UserProfile, SelectionOutput], str]
@@ -325,12 +326,21 @@ def select_with_app(job: JobListing, profile: UserProfile) -> SelectionOutput:
 
     Returns:
         The selection, as the pipeline makes it.
+
+    Raises:
+        RuntimeError: When the selector used its rule-based fallback, so no
+            model answered.
     """
     from src.generation.selector import ResumeSelector
     from src.llm.router import create_router
 
     selector = ResumeSelector(llm_router=create_router(prefer_local=True))
-    return selector.select(job, profile)
+    selection = selector.select(job, profile)
+    if not selection.raw_response:
+        raise RuntimeError(
+            "the selector used its rule-based fallback; check that Ollama answers"
+        )
+    return selection
 
 
 def write_with_app(
@@ -349,10 +359,18 @@ def write_with_app(
 
     Returns:
         The final letter text, or an empty string.
+
+    Raises:
+        RuntimeError: When the writer used its template fallback, so no
+            model wrote the letter.
     """
     from src.generation.cover_letter_service import generate_cover_letter_sync
 
     response = generate_cover_letter_sync(job, profile, selection=selection)
+    if response.cover_letter.get("model_used") in FALLBACK_MODELS:
+        raise RuntimeError(
+            "the writer used its template fallback; check that Ollama answers"
+        )
     return str(response.cover_letter.get("content") or "")
 
 
@@ -420,6 +438,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             write_with_app,
             between=lambda: unload_models(args.ollama_url),
         )
+    except RuntimeError as exc:
+        print(f"Stopped: {exc}. Nothing was written.")
+        return 1
     finally:
         unload_models(args.ollama_url)
     path = write_dataset(args.out, profile, records, force=args.force)
