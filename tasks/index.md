@@ -57,7 +57,7 @@ When a task is fully completed:
 
 - **Lessons:** after a correction from the user, add the pattern to `docs/lessons.md` (`CLAUDE.md`, Self-Improvement Loop).
 - **Backlog:** `tasks/backlog.md` holds parked work and design notes. Read it only when you choose new work. To start an item, add it to `tasks/todo.md` and create its task folder.
-- **Handoffs:** a handoff to another agent (for example Cursor) is a file in the task folder, `handoff-<round>.md`. The other agent adds its results at the end of that file. The review of each round goes in the task's `notes.md`.
+- **Handoffs:** a handoff to another agent (for example Cursor) is a file in the task folder, `handoff-<round>.md`. The other agent adds its results at the end of that file. The review of each round goes in the task's `notes.md`. A micro-handoff (`mh-*.md`, the complete code and commands of one small change) is applied by the handoff runner, without an agent: see `docs/handoff-runner.md` for the block format and the command.
 - **Plans and reviews:** the plan of a task is its `task.md` (goal, constraints, acceptance criteria). Detailed sub-step plans, decisions, and reviews go in `notes.md`.
 - **Legacy:** `tasks/archive/legacy/` holds the old single-file archive (`todo-done.md`, "Phase 1" to "Phase 54"), an old plan (`auto_apply_plan.md`), and the old `todo.md` conventions.
 - **Style:** task files follow `CLAUDE.md`: ASD-STE100 Simplified Technical English, no emojis, and each terminal command in its own snippet.
