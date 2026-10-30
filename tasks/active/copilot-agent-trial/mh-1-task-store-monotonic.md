@@ -94,7 +94,19 @@ Run the mypy gate. It must report 0 new errors. It can also say that some baseli
 .venv/bin/python scripts/mypy_gate.py
 ```
 
-Commit message:
+The working tree has other changed files that are not part of this handoff. Do not stage them. Do not use `git add -A`, `git add .`, or `git commit -a`. Stage only your two files:
+
+```bash
+git add src/agents/task_store.py tests/unit/agents/test_task_store.py
+```
+
+Check that only these two files are staged:
+
+```bash
+git diff --cached --name-only
+```
+
+Commit with this message:
 
 ```text
 fix(agents): expire task records with a monotonic clock

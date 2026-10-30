@@ -19,7 +19,7 @@ flowchart LR
 2. Write the tests first. Run them and see them fail.
 3. Change the code. Run the tests again and see them pass.
 4. Run the "Done when" commands of the handoff. All must pass.
-5. Commit with the message that the handoff gives. Do not push.
+5. Stage only the files that the handoff names, with the `git add` command that it gives. Commit with the message that the handoff gives. Do not push.
 6. Stop and report: the commit hash, the test output before and after the code change, and anything that did not work.
 
 ## Rules
