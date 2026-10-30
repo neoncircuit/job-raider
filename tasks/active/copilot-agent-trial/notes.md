@@ -57,5 +57,15 @@ Tokens and cost:
 
 Lesson: start each handoff in a new opencode session (`/new`). An old session sends its full history with each step.
 
+## Decision (user, 2026-10-31)
+
+No agent is the default. The user changes between three agent sets as their quotas run out:
+
+1. Cursor: the preferred agent when its monthly quota allows (it was near the limit 5 days after the last reset).
+2. GitHub Copilot in opencode: Claude Haiku 5.5 did this trial. Start each handoff with `/new`.
+3. Open-source models in opencode (the free hosted GLM and DeepSeek models finished earlier handoffs; local Ollama models did not).
+
+So each spec handoff must work in any of the three: one `AGENT.md`, one handoff, exact commands, and the exact `git add`. Claude changes the tool or model advice only when the user says which agent is in use. `docs/handoff-runner.md` has the rules (section "Spec handoffs for an agent").
+
 ## Blockers / Questions
--
+- The credits that the trial used (GitHub billing page) are not recorded.

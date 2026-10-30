@@ -3616,3 +3616,14 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 **How to apply:**
 - Before you call a run slow, read the model sizes (`/api/tags`) and what is loaded (`/api/ps`: `size` against `size_vram`), and compare them with the GPU memory. Look for "Pulling model" in the backend log.
 - Measure with the `latency_ms` of each call in the cost run file, not with the time that the page seems to take.
+
+### Do not make one agent or model the default for handoffs
+
+**Lesson:** After one good Copilot trial (2026-10-31), Claude proposed Claude Haiku 5.5 as the default agent for spec handoffs. The user said no: they change between three agent sets (Cursor, GitHub Copilot in opencode, and open-source models in opencode) as each quota runs out, and Cursor is the preferred one when its monthly quota allows.
+
+**Why:**
+- A default agent is wrong as soon as its quota runs out, and a handoff that depends on one agent can fail in the next one.
+
+**How to apply:**
+- Write each handoff so that any of the three agent sets can do it: one `AGENT.md`, one handoff, exact commands, and the exact `git add` (`docs/handoff-runner.md`, "Spec handoffs for an agent").
+- Keep notes for each agent set (model, session rule, cost) instead of a default. Ask which agent is in use before advice that depends on it.

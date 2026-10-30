@@ -24,7 +24,7 @@ flowchart LR
 - [x] The user runs MH-1 in opencode with `github-copilot/claude-haiku-5.5`, and the agent reports a commit. (`c1687ab`, 2026-10-31, one prompt)
 - [x] Claude check: the diff matches the required behavior, every preview mutation is caught, and the full backend gate passes. (6 of 6 mutants; 1764 tests)
 - [ ] `notes.md` records the tokens (`opencode stats`), the credits (GitHub billing), the number of tries, and each rule that the agent did not obey. (All except the credits)
-- [ ] `notes.md` records the decision: the default Copilot model for spec handoffs, or no Copilot agent. Then `docs/handoff-runner.md` and the agent memory note say when to use an agent and which model.
+- [x] `notes.md` records the decision. Then `docs/handoff-runner.md` and the agent memory note say when to use an agent and which model. (2026-10-31: no default agent; the user changes between Cursor, Copilot in opencode, and open-source models as the quotas run out. Copilot runs use Claude Haiku 5.5 in a new session.)
 
 ## Status
-`in-progress` (2026-10-31: MH-1 done by Claude Haiku 5.5 and checked; the GitHub credits and the decision are open)
+`in-progress` (2026-10-31: MH-1 done by Claude Haiku 5.5 and checked; decision recorded; the GitHub credits are open)

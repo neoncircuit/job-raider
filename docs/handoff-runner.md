@@ -85,3 +85,36 @@ The runner prints each step with its exit code and the last lines of each comman
 2. Give each change to an existing file as an `edit=` block whose old text occurs exactly once.
 3. Put the "Done when" commands in `check` blocks, and the commit message in one `text commit` block.
 4. Run the runner on a scratch clone before the handoff goes to the user: the red command must fail and every check must pass.
+
+## Spec handoffs for an agent
+
+A spec handoff gives the required behavior, the tests to write, and the commands, but not the code. An LLM agent writes the code. Use it when Claude does not write the full code, so the runner cannot apply it. The first spec handoff was MH-1 of the `copilot-agent-trial` task (Claude Haiku 5.5, one prompt, 6 of 6 mutants caught).
+
+No agent is the default. The user changes between three agent sets as their quotas run out, so each spec handoff must work in all of them:
+
+| Agent set | Notes |
+|---|---|
+| Cursor | The preferred agent when its monthly quota allows. |
+| GitHub Copilot in opencode | Copilot Pro bills each token in AI Credits (USD 0.01 each). Use `github-copilot/claude-haiku-5.5`. Start each handoff in a new session (`/new`): an old session sends its full history with each step, and above 100K tokens Haiku 5.5 costs 5 times more. |
+| Open-source models in opencode | The free hosted GLM and DeepSeek models finished earlier handoffs. Local Ollama models (7B or smaller) did not. |
+
+```mermaid
+flowchart TD
+    H{Does Claude give<br/>the full code?} -->|yes| R[Handoff runner]
+    H -->|no| S[Spec handoff]
+    S --> Q{Which agent set<br/>has quota?}
+    Q -->|first| CU[Cursor]
+    Q -->|next| CP[Copilot in opencode<br/>Haiku 5.5, new session]
+    Q -->|last| OS[Open-source models<br/>in opencode]
+    CU --> K[Claude checks: diff,<br/>mutants, full gate]
+    CP --> K
+    OS --> K
+```
+
+Rules for Claude when writing a spec handoff:
+
+1. Give the agent one `AGENT.md` and one handoff. Use no commands or features of one agent only.
+2. Name each test and its values exactly, so that the tests catch the mutants that Claude plans.
+3. Give the exact `git add` command and a check of the staged files, because the working tree can have other changes.
+4. Before the handoff goes to the user, write a reference fix on a scratch clone: the new tests must fail (`FAILED`, not `ERROR`) on the current code and pass on the fix, and every planned mutant must be caught.
+5. After the run, apply the same mutants to the agent's code and run the full gate.
