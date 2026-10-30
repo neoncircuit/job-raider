@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import requests
+from pydantic import ValidationError
 
 # Allow ``from src...`` when run as a script.
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +51,36 @@ DEFAULT_OLLAMA_URL = "http://localhost:11434"
 
 SelectFn = Callable[[JobListing, UserProfile], SelectionOutput]
 WriteFn = Callable[[JobListing, UserProfile, SelectionOutput], str]
+
+
+def shortlist_job(item: Dict[str, Any]) -> Optional[JobListing]:
+    """
+    Turn one shortlist item into a job listing.
+
+    The shortlist stores some fields for display (for example
+    ``salary_range`` as text), and ``JobListing`` rejects them. Such an
+    optional field is dropped. A job whose required field does not validate
+    is skipped.
+
+    Args:
+        item: One item of the ``jobs`` list of ``latest_shortlist.json``.
+
+    Returns:
+        The job listing, or None when a required field does not validate.
+    """
+    data = dict(item)
+    required = {
+        name for name, field in JobListing.model_fields.items() if field.is_required()
+    }
+    while True:
+        try:
+            return JobListing.model_validate(data)
+        except ValidationError as exc:
+            failed = {str(error["loc"][0]) for error in exc.errors() if error["loc"]}
+            if not failed or failed & required:
+                return None
+            for name in failed:
+                data.pop(name, None)
 
 
 def pick_jobs(shortlist_jobs: Sequence[Any], limit: int) -> List[JobListing]:
@@ -78,9 +109,8 @@ def pick_jobs(shortlist_jobs: Sequence[Any], limit: int) -> List[JobListing]:
             continue
         if len(description) < MIN_DESCRIPTION_CHARS:
             continue
-        try:
-            job = JobListing.model_validate(item)
-        except ValueError:
+        job = shortlist_job(item)
+        if job is None:
             continue
         companies.add(company)
         picked.append(job)
