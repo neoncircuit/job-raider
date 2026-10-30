@@ -11,11 +11,11 @@ Measure the grounding validator on about 15 cover letters that the app generates
 
 ## Acceptance Criteria
 - [ ] MH-A. `scripts/make_real_grounding_set.py` writes `profiles.json` and `letters.jsonl` (no validator output, no `cases.jsonl`) for up to 15 shortlisted jobs, one per company. (`mh-a-generator.md`)
-- [ ] MH-B. `scripts/build_grounding_label_page.py` writes a self-contained `label.html` with the draft labels filled in and an export of `labels.json`.
-- [ ] MH-C. `scripts/import_grounding_labels.py` turns `letters.jsonl` and `labels.json` into a valid `cases.jsonl`.
+- [ ] MH-B. `scripts/build_grounding_label_page.py` writes a self-contained `label.html` with the draft labels filled in and an export of `labels.json`. (`mh-b-label-page.md`)
+- [ ] MH-C. `scripts/import_grounding_labels.py` turns `letters.jsonl` and `labels.json` into a valid `cases.jsonl`. (`mh-c-import-labels.md`)
 - [ ] Check of each handoff (Claude, in `notes.md`): the diff, mutation proofs, and the backend gate.
 - [ ] The letters are generated, Claude drafts the labels, the user corrects them, and the labels are frozen.
 - [ ] Done when: one `eval grounding` run on `data/eval/grounding_real` is recorded in `notes.md` with its command, dataset SHA-256, and MLflow run ID, and the 3.2 criterion in the Step 3 `task.md` is checked.
 
 ## Status
-`in-progress` (plan approved on 2026-10-30; MH-A written and dry-run, with the agent)
+`in-progress` (plan approved on 2026-10-30; MH-A, MH-B, and MH-C written and dry-run; MH-A is with the agent)
