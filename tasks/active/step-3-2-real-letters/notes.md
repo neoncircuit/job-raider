@@ -88,6 +88,31 @@ The handoff runner (`docs/handoff-runner.md`) applied both handoffs in the repos
 
 Result: accept MH-B and MH-C. The tooling is complete; the next step is the run on real data (step 1 of "Run steps").
 
+## The run on real data (2026-10-30, Claude, with the user's approval)
+
+Three problems came up in the first runs. Each fix is a micro-handoff that the handoff runner applied after a scratch run on a clone.
+
+1. **No job picked.** The shortlist stores `salary_range` as display text (`json.dump(..., default=str)`), so every item failed `JobListing` validation. The MH-A tests built items from the sample job, which has the right shape. Fix MH-A2 (`99149da`): `shortlist_job` drops an optional field that does not validate; a failed required field still skips the job. With the fix, 15 of 20 items are picked, from 15 companies. Lesson: test an import with the shape that the app writes, not with the shape of the model.
+2. **No model reached.** The saved Settings hold `host.docker.internal:11434` (for Compose), and `resolve_effective_ollama_host` kept it outside Docker, where the name does not resolve. Fix MH-H1 (`731748a`): outside Docker, such a host gives `OLLAMA_HOST` or `localhost:11434`; inside Docker nothing changes. This also fixes a native backend run (`dev.sh`) with Compose Settings.
+3. **Fallback letters were written.** With no model, the selector and the writer used their fallbacks, and the generator still wrote 15 template letters (removed by the next run with `--force`; not labeled). Fix MH-A3 (`de7e889`): the generator stops on an empty selection answer or a `template_fallback` letter and writes nothing.
+
+Checks of the three fixes (scratch clone): MH-A2 11 tests; MH-H1 20 tests, mutations 5 of 5; MH-A3 17 tests, mutations 4 of 4. Each commit matches its handoff (black's layout of the MH-A3 test is now in the handoff).
+
+Then the generator ran: the router used `localhost:11434`, 15 selections and 15 letters with no error line, no model loaded after the run.
+
+## Draft labels (2026-10-30, Claude)
+
+Claude read the profile (without contact details) and the 15 letters, split with `split_letter_sentences`, and wrote `drafts.json` (gitignored). No validator ran on these letters. Counts: 36 ungrounded sentences in 14 letters, 8 `analogical_claim`, 2 `scope_inflation`, 1 `fabricated_experience`, 1 `fabricated_technology`; no letter is clean.
+
+How the guide was applied, so that the user corrects in the same way:
+
+- `ungrounded_claims`: a sentence that states something about the candidate that the profile does not support, including a misattribution (for example, the 52% to 78% gain credited to the evaluation graders instead of the ablation studies) and an outcome or purpose the profile does not state.
+- `analogical_claim`: a sentence that maps the candidate's work onto a duty that only the job names (robotics, machine control, Windows GUIs, air navigation) with "aligns with", "directly relates to", "reflects the kind of", "resonates with", or "equips me to". A general "aligns with your requirements" is not labeled.
+- `scope_inflation`: "led" or "spearheaded" where the profile says "built"; such a sentence is also ungrounded.
+- Not ungrounded: greetings, closings, sign-offs, interest, opinions, and general self-assessments ("a strong fit"). General "scalable" claims are not labeled, except when tied to the personal project.
+
+`label.html` is built with the drafts. Next: the user corrects each letter, marks it reviewed, and exports `labels.json`; then the import and the one eval run.
+
 ## Blockers / Questions
 
-- None. Next: generate the letters on real data (the user's approval, no model loaded, the GPU free).
+- None. The labels are with the user.

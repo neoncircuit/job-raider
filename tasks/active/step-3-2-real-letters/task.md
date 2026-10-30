@@ -18,4 +18,4 @@ Measure the grounding validator on about 15 cover letters that the app generates
 - [ ] Done when: one `eval grounding` run on `data/eval/grounding_real` is recorded in `notes.md` with its command, dataset SHA-256, and MLflow run ID, and the 3.2 criterion in the Step 3 `task.md` is checked.
 
 ## Status
-`in-progress` (MH-A, MH-B, and MH-C committed and checked on 2026-10-30; the run on real data is next)
+`in-progress` (2026-10-30: the tooling and three fixes are committed; 15 real letters generated; draft labels written; the user corrects them in `label.html`)
