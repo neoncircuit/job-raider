@@ -7,6 +7,7 @@ in memory indefinitely.
 """
 
 import threading
+import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -25,6 +26,7 @@ class TaskRecord:
     error: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
+    created_monotonic: float = field(default_factory=lambda: time.monotonic())
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the record to a dictionary."""
@@ -81,8 +83,9 @@ class TaskStore:
             error: Optional error message for failed tasks.
         """
         now = datetime.now()
+        mono = time.monotonic()
         with self._lock:
-            self._evict_expired(now)
+            self._evict_expired(mono)
 
             existing = self._records.get(task_id)
             if existing is not None:
@@ -105,6 +108,7 @@ class TaskStore:
                 error=error,
                 created_at=now,
                 updated_at=now,
+                created_monotonic=mono,
             )
 
             if len(self._records) >= self.max_size:
@@ -122,7 +126,7 @@ class TaskStore:
         Returns:
             The task record, or ``None`` if it does not exist or has expired.
         """
-        now = datetime.now()
+        now = time.monotonic()
         with self._lock:
             self._evict_expired(now)
             record = self._records.get(task_id)
@@ -130,13 +134,17 @@ class TaskStore:
                 self._records.move_to_end(task_id)
             return record
 
-    def _evict_expired(self, now: datetime) -> None:
-        """Remove records older than the configured TTL."""
-        cutoff = now - self.ttl
+    def _evict_expired(self, now: float) -> None:
+        """
+        Remove records whose TTL has passed.
+
+        Args:
+            now: The current ``time.monotonic()`` value.
+        """
         expired = [
             task_id
             for task_id, record in self._records.items()
-            if record.created_at < cutoff
+            if now - record.created_monotonic > self.ttl.total_seconds()
         ]
         for task_id in expired:
             del self._records[task_id]
