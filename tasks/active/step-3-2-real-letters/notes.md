@@ -98,6 +98,8 @@ Three problems came up in the first runs. Each fix is a micro-handoff that the h
 
 Checks of the three fixes (scratch clone): MH-A2 11 tests; MH-H1 20 tests, mutations 5 of 5; MH-A3 17 tests, mutations 4 of 4. Each commit matches its handoff (black's layout of the MH-A3 test is now in the handoff).
 
+Full backend gate after the three fixes: black and ruff pass on the CI paths, the mypy gate has 0 new errors (180 known), and pytest has 1761 passed (1747 before, and 3, 5, and 6 new tests).
+
 Then the generator ran: the router used `localhost:11434`, 15 selections and 15 letters with no error line, no model loaded after the run.
 
 ## Draft labels (2026-10-30, Claude)
