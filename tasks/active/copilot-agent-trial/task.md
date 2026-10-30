@@ -21,10 +21,10 @@ flowchart LR
 - No Ollama model is loaded while the agent runs. The trial does not need the GPU.
 
 ## Acceptance Criteria
-- [ ] The user runs MH-1 in opencode with `github-copilot/claude-haiku-5.5`, and the agent reports a commit.
-- [ ] Claude check: the diff matches the required behavior, every preview mutation is caught, and the full backend gate passes.
-- [ ] `notes.md` records the tokens (`opencode stats`), the credits (GitHub billing), the number of tries, and each rule that the agent did not obey.
+- [x] The user runs MH-1 in opencode with `github-copilot/claude-haiku-5.5`, and the agent reports a commit. (`c1687ab`, 2026-10-31, one prompt)
+- [x] Claude check: the diff matches the required behavior, every preview mutation is caught, and the full backend gate passes. (6 of 6 mutants; 1764 tests)
+- [ ] `notes.md` records the tokens (`opencode stats`), the credits (GitHub billing), the number of tries, and each rule that the agent did not obey. (All except the credits)
 - [ ] `notes.md` records the decision: the default Copilot model for spec handoffs, or no Copilot agent. Then `docs/handoff-runner.md` and the agent memory note say when to use an agent and which model.
 
 ## Status
-`in-progress` (2026-10-31: plan and MH-1 written; waiting for the user to run MH-1)
+`in-progress` (2026-10-31: MH-1 done by Claude Haiku 5.5 and checked; the GitHub credits and the decision are open)

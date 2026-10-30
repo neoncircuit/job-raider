@@ -35,5 +35,27 @@ Claude wrote the MH-1 tests and a reference fix as the spec says (scratch files 
 
 Claude runs the same mutants on the agent's code after the run.
 
+### Trial run of MH-1 (2026-10-31)
+
+The agent was `github-copilot/claude-haiku-5.5` in opencode v2.2.3. It finished MH-1 from one prompt, with no help and no stop, and committed `c1687ab`. It reported 3 failed and 12 passed before the code change, and 15 passed after.
+
+Claude check:
+
+- The diff obeys the required behavior. `TaskRecord` has a `created_monotonic` field (default `lambda: time.monotonic()`, so the fake clock also works for the default), and `to_dict()` does not return it. `save` and `get` use `time.monotonic()`. An update does not change `created_monotonic`. The tests are the ones that the spec names, with a `FakeClock` and a `fake_clock` fixture.
+- The six mutants of the spec check, applied to the agent's code on a scratch clone: 6 of 6 caught.
+- Full backend gate: black and ruff pass; mypy gate 180 known, 0 new (2 baseline errors fixed; `--update` not run); pytest 1764 passed (1761, minus the removed sleep test, plus 4 new tests).
+- Staging: only the two files. The 14 other changed files in the working tree stayed unstaged.
+- Small rule misses: `JumpedDatetime.now` has no type hints, and its docstring says that `tz` is ignored "as in `datetime.now`" (`datetime.now` does not ignore it). The new test methods have no `-> None`, the same as the existing tests in the file.
+
+Tokens and cost:
+
+- The user sent the prompt in the opencode session that held every handoff since 2026-10-28. Each step sent 152K to 169K tokens, so all steps were above the 100K tier of Claude Haiku 5.5 (5 times the price).
+- Session export, the trial prompt only: 12 steps, 1.80M cached input, 0.16M cache writes, 7.7K output with reasoning. About USD 0.21.
+- `opencode stats --days 0` (also has 3 prompts sent to this session for another project): 56 steps, 4.71M cached input, 0.39M cache writes, 33K output with reasoning. About USD 0.56. The two sources do not count steps the same way.
+- Credits on the GitHub billing page: not yet recorded.
+- Estimate for a new session (prompts of 20K to 40K tokens, low tier): about USD 0.05.
+
+Lesson: start each handoff in a new opencode session (`/new`). An old session sends its full history with each step.
+
 ## Blockers / Questions
 -
