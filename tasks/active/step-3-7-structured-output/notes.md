@@ -62,5 +62,15 @@ A new local suite, `python main.py eval structured`, with a fixed set in `tests/
 - Mutants (13 of 13 caught): no fence removal, closing fence kept, no object check, any recommendation text, no score range, first closing brace, no brace order check, alignment score required, a call site missing from `OUTPUT_MODELS`, the `schema` and `not_json` reasons swapped, a nullable field made required, an optional list made required.
 - Applied on the repo (2026-10-31, Claude ran the runner on the user's word "Yes, apply it"): commit `8e9aadf`. The red step failed, and the 4 checks passed. The two committed files are the same blobs as on the mutant clone, with LF line endings.
 
+## MH-2 written and checked (2026-11-01, Claude)
+
+`mh-2-structured-suite.md`: `src/evaluation/suites/structured.py`, the fixed set `tests/fixtures/eval/structured/cases.jsonl` (43 cases: 5 for each site, 3 for resume parsing), `tests/unit/test_structured_suite.py` (29 tests with a fake `generate`), the registry in `src/evaluation/suites/__init__.py`, and the exact-tuple registry test in `tests/unit/test_scam_suite.py`.
+
+- Inputs: the grounding set's 3 synthetic profiles, jobs, and letters; the 4 pasted JDs; resume texts and one JD text written from the grounding data by the suite (`render_resume_text`, `render_job_text`). The steps after selection get a fixed selection (first 3 profile projects, up to 5 profile skills that the job names) and, for the resume validation, a resume made only of profile facts.
+- Found while writing: `CoverLetterValidator.validate_with_llm` returns the rule result without an LLM call when the rules find a hard fail. The first draft used 2 letters with a made-up technology, which gave no call; the set now uses clean letters for that site.
+- The response cache is turned off in the suite's router (`_response_cache.enabled = False`), so each sample is a new answer; the report also counts cached calls. `default_router` is not unit-tested, because it reads the saved Settings.
+- Scratch clone: black makes no change, ruff passes, 29 tests pass, the mypy gate has 0 new errors. The runner applies the handoff (red step fails, 5 checks pass, commit `ee301f5` on the clone).
+- Mutants (18 of 18 caught): rescued counted as strict; the two legacy flags; the truncation boundary; no unload; no model order; no task-type filter; samples ignored; the lowest VRAM kept; an empty rate as 0; content kept for strict answers; no_call counted as failed; local calls counted as non-local; references not checked; keywords not from the job; a wrong task type; JD inputs not checked; resume text without projects.
+
 ## Blockers / Questions
 - None.
