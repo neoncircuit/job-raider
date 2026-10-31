@@ -22,7 +22,7 @@ flowchart LR
 - Cloud fallback providers ignore the schema; the parser accepts their JSON (also inside a code fence) without a regex.
 
 ## Acceptance Criteria
-- [ ] MH-1: output models for the 9 JSON tasks and one strict parser (`json.loads` and `model_validate`, code fences removed), with tests.
+- [x] MH-1: output models for the 9 JSON tasks and one strict parser (`json.loads` and `model_validate`, code fences removed), with tests. (`8e9aadf`, 2026-10-31; 35 tests; 13 of 13 mutants caught)
 - [ ] MH-2: eval suite `structured` and its fixed set: for each task, the share of answers that parse strictly, that only the old regex can rescue, and that fail; prompt tokens against the context size; the model of each task in the run metadata.
 - [ ] Baseline run on the current code, recorded in `notes.md` (command, dataset SHA-256, MLflow run ID, peak VRAM).
 - [ ] MH-3: the router passes a JSON schema to Ollama as `format`, sets `num_ctx` for each task, and keeps both in the response-cache key.

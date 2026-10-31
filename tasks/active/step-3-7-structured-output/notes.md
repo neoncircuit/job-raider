@@ -60,6 +60,7 @@ A new local suite, `python main.py eval structured`, with a fixed set in `tests/
 - Model choices: a field that the prompt allows to be empty is `Optional` without a default (required, `null` allowed), so Ollama's schema makes the model write every key. The analysis fields that only the job-specific prompt asks for have defaults. Recommendations are `approve`, `needs_revision`, or `reject`; scores are 0 to 100; confidences 0 to 1. The resume parser model has grouped skills (the prompt also allows a flat list; MH-7 removes that sentence).
 - Scratch clone: the runner's red step fails (no module), then 35 tests pass, black makes no change, ruff passes, the mypy gate has 0 new errors, and the runner commits (`fd982b2` on the clone).
 - Mutants (13 of 13 caught): no fence removal, closing fence kept, no object check, any recommendation text, no score range, first closing brace, no brace order check, alignment score required, a call site missing from `OUTPUT_MODELS`, the `schema` and `not_json` reasons swapped, a nullable field made required, an optional list made required.
+- Applied on the repo (2026-10-31, Claude ran the runner on the user's word "Yes, apply it"): commit `8e9aadf`. The red step failed, and the 4 checks passed. The two committed files are the same blobs as on the mutant clone, with LF line endings.
 
 ## Blockers / Questions
 - None.
