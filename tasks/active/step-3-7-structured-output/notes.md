@@ -53,5 +53,13 @@ A new local suite, `python main.py eval structured`, with a fixed set in `tests/
 2. MH-1 to MH-3: Claude writes the full code; the handoff runner applies them.
 3. MH-4 to MH-7: spec handoffs for whichever agent has quota (`docs/handoff-runner.md`, "Spec handoffs for an agent"). Claude checks each with a reference fix and mutants before and after the run, and records the agent and model of each handoff here.
 
+## MH-1 written and checked (2026-10-31, Claude)
+
+`mh-1-output-models.md`: `src/llm/structured.py` (9 output models, `OUTPUT_MODELS` by call site, `parse_structured`, `strip_code_fence`, `StructuredOutputError` with the reasons `not_json`, `not_object`, and `schema`, and `extract_braced_object` for the suite's "rescued" count without a regex) and `tests/unit/test_structured_output.py` (35 tests, one sample answer in each prompt's shape).
+
+- Model choices: a field that the prompt allows to be empty is `Optional` without a default (required, `null` allowed), so Ollama's schema makes the model write every key. The analysis fields that only the job-specific prompt asks for have defaults. Recommendations are `approve`, `needs_revision`, or `reject`; scores are 0 to 100; confidences 0 to 1. The resume parser model has grouped skills (the prompt also allows a flat list; MH-7 removes that sentence).
+- Scratch clone: the runner's red step fails (no module), then 35 tests pass, black makes no change, ruff passes, the mypy gate has 0 new errors, and the runner commits (`fd982b2` on the clone).
+- Mutants (13 of 13 caught): no fence removal, closing fence kept, no object check, any recommendation text, no score range, first closing brace, no brace order check, alignment score required, a call site missing from `OUTPUT_MODELS`, the `schema` and `not_json` reasons swapped, a nullable field made required, an optional list made required.
+
 ## Blockers / Questions
 - None.
