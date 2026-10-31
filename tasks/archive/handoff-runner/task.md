@@ -4,7 +4,7 @@
 Apply a micro-handoff without an LLM agent. A script reads a handoff file, writes its new files and exact edits, runs its "red" command (must fail) and its "Done when" commands (must pass), and commits with the given message. No model, no GPU, no quota. Claude keeps writing, dry-running, and checking each handoff.
 
 ## Constraints & Context
-- Why: the free opencode quota ran out during MH-A of `tasks/active/step-3-2-real-letters/`, and no local model (7B or smaller, below the BSOD limit) finished a handoff in opencode or Aider. The handoffs already give the complete code and the exact edits, so the agent only types and runs commands (decision of 2026-10-30, the user: "Handoff runner").
+- Why: the free opencode quota ran out during MH-A of `tasks/archive/step-3-2-real-letters/`, and no local model (7B or smaller, below the BSOD limit) finished a handoff in opencode or Aider. The handoffs already give the complete code and the exact edits, so the agent only types and runs commands (decision of 2026-10-30, the user: "Handoff runner").
 - The handoffs stay readable for people and for agents: the runner reads attributes in the fenced-block info string (` ```python new=<path>`), which Markdown shows as a normal code block.
 - Safety: the runner checks everything before it writes; it touches only the files that the handoff names, never `apps/backend-py/data/` or `.env` files; it stops when files are staged or when a file to edit has other changes; on any failure it restores every file and does not commit.
 - Stdlib only. The script lives in `apps/backend-py/scripts/` and its tests in `apps/backend-py/tests/unit/`, so CI runs them.

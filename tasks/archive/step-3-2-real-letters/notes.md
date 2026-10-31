@@ -115,6 +115,55 @@ How the guide was applied, so that the user corrects in the same way:
 
 `label.html` is built with the drafts. Next: the user corrects each letter, marks it reviewed, and exports `labels.json`; then the import and the one eval run.
 
+## Labels, senior roles, and the import (2026-10-31)
+
+- The user looked at most letters and changed one label: `real__07` S5 (the graders and GPT-4.1) is not ungrounded, because the profile names GPT-4.1 under the same role. The export also had `real__01` S4 unticked; the user said to tick it again, but `real__01` is left out (next item).
+- **Senior roles left out (user decision).** The profile is a fresh graduate's, so letters for senior roles are not the letters the user sends. Left out: `real__04`, `real__05`, `real__10` (title "Senior", source level Senior, 4 to 6 years asked), `real__08` ("Advanced/Senior"), and `real__01` ("Software Engineer III"). `real__12` stays: its title says "Fresh Graduates Welcome", although the source level says Senior. The 15 letters stay in `letters_all.jsonl` and the raw export in `labels_export_original.json` (gitignored).
+- The export had no letter marked as reviewed. On the user's word ("looked into most of the letters"), Claude set `reviewed` on the 10 kept letters in `labels_export_adjusted.json`, and imported that file.
+- So the labels are: drafted by Claude, checked by the user for most letters, one sentence changed. They are frozen (version 1). The validator output is now seen, so a later label change is a new version with its own numbers.
+- Import: 10 cases, 10 with labels, 26 ungrounded sentences in 9 letters (`real__06` has `analogical_claim` only). Label support: `analogical_claim` 7, `scope_inflation` 2, `fabricated_technology` 1, `ungrounded_claims` 9 cases. No letter is clean.
+
+## The one eval run on the real letters (2026-10-31)
+
+Command (WSL, from `apps/backend-py`), one time:
+
+```bash
+.venv/bin/python main.py eval grounding --dataset data/eval/grounding_real
+```
+
+Git SHA `d52aac6d63874d7fced1a43d30b9f92f4507e474` (`git_dirty`: true; the 14 CRLF-only files, not the dataset). Dataset SHA-256 `f2c2dcbf3c63f83823a73e189038c4d2c467f43178ea90d897d731ef79c855d2`. MLflow run `6759197d7a2548ff8315a5cf7331a5fe`. Report `data/eval/grounding/20261031T082249521532Z.json`. Letters: selection `qwen2.5:3b`, writing `qwen2.5:7b`, one profile.
+
+| Label | Real P | Real R | Real support | Holdout P | Holdout R | Holdout support | Main (3b) P | Main (3b) R | Main support |
+|-------|--------|--------|--------------|-----------|-----------|-----------------|-------------|-------------|--------------|
+| `analogical_claim` | n/a (0 predicted) | 0.000 | 7 | 1.000 | 1.000 | 1 | 1.000 | 1.000 | 3 |
+| `fabricated_technology` | n/a (0 predicted) | 0.000 | 1 | 1.000 | 1.000 | 3 | 0.800 | 1.000 | 8 |
+| `fabricated_experience` | 0.000 (1 false positive) | n/a | 0 | 0.500 | 1.000 | 2 | 0.857 | 0.750 | 8 |
+| `scope_inflation` | 1.000 | 1.000 | 2 | 0.500 | 1.000 | 1 | 1.000 | 1.000 | 4 |
+| `ungrounded_claims` (case) | 0.875 | 0.778 | 9 | 0.500 | 1.000 | 11 | 0.523 | 1.000 | 34 |
+| micro | 0.818 | 0.474 | — | 0.611 | 1.000 | — | 0.654 | 0.971 | — |
+| `ungrounded_claims` (sentence) | 0.182 | 0.154 | 26 | 0.104 | 0.727 | 11 | 0.154 | 0.638 | 69 |
+
+Micro F1: real 0.600, holdout 0.759, main 0.781. Sentence counts on the real letters: TP 4, FP 18, FN 22. Clean false-positive rate: n/a (no clean real letter).
+
+What the run shows (counts by Claude from the report; no letter text here):
+
+- **Recall does not carry over to real letters.** The constructed sets inject one clear error per letter. The real errors are different, and the rule checks find 4 of 26 sentences:
+  - 7 claim a duty or background that only the job names (machine control, hardware, simulation, sensors). `analogical_claim` is 0 of 7 at case level.
+  - 6 credit a profile result to the wrong work (mostly the 52% to 78% gain credited to the evaluation graders, not the ablation studies). Each word is in the profile, so a word-overlap check passes the sentence.
+  - 7 add an outcome, purpose, or quality that the profile does not state, or turn a profile fact around.
+  - 2 use "led" or "spearheaded" for "built". `scope_inflation` is found at case level (2 of 2), but these sentences are not flagged as ungrounded.
+- **The 18 sentence false positives** are 4 sentences about the employer, 3 closings and calls to action that the skip list does not know, 4 plans or statements of interest, 4 "aligns with your role" statements (labeled `analogical_claim` at case level only, by the drafting rule), and 3 skill claims that the labels accept (one of them, a secure-coding claim, is a possible label miss; version 1 is not changed).
+- **Sentence splitting:** `split_letter_sentences` splits after "PTE." in "PTE. LTD.", so at least 4 sentences in 3 letters start with "LTD." or lose their subject. Labels and the validator use the same split, so the scores are consistent, but the fragments are harder to judge.
+- **The writer:** by these labels, 9 of 10 letters from `qwen2.5:7b` have at least one ungrounded sentence (26 in total), and 7 of 10 map the work onto duties that only the job names.
+
+Limits of these numbers: 10 letters, one profile, one writer model; labels drafted by Claude and checked by the user for most letters; senior roles left out.
+
+## Review (2026-10-31, Claude)
+
+- Goal met: the realistic measure exists. It shows that the rule validator finds few of the errors in real letters (sentence recall 0.154) and that its sentence precision (0.182) is as low as on the constructed sets.
+- The tools (MH-A, MH-B, MH-C) and three fixes (MH-A2, MH-H1, MH-A3) were applied by the handoff runner. Senior roles were left out by the user's decision, and the seniority finding is in the backlog.
+- The real-letter findings go to Step 3.9 as known limits, and to Steps 3.7 and 3.8 as inputs (the writer prompt and the model comparison), not to a new rule round on these letters: the letters are now seen.
+
 ## Blockers / Questions
 
-- None. The labels are with the user.
+- None.

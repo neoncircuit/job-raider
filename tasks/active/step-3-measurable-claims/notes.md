@@ -100,7 +100,12 @@ Suggested order: Step 3.1 first. Then Steps 3.2, 3.3, 3.5, and 3.6, which are de
 
 ## Step 3.2 remainder: real generated letters (2026-10-30)
 
-Moved to its own task: `tasks/active/step-3-2-real-letters/` (the plan, the decisions of 2026-10-30, and the micro-handoffs).
+Moved to its own task: `tasks/archive/step-3-2-real-letters/` (the plan, the decisions of 2026-10-30, and the micro-handoffs).
+
+Result (2026-10-31): one eval run on 10 real letters (senior roles left out), labels drafted by Claude and checked by the user. Sentence-level `ungrounded_claims`: precision 0.182, recall 0.154 (main set 0.154 and 0.638; holdout 0.104 and 0.727). `analogical_claim` 0 of 7. Inputs for the next sub-steps:
+
+- Step 3.9 known limits: the rule checks miss a result credited to the wrong work (each word is in the profile), duties that only the job names, and added outcomes; they flag sentences about the employer, some closings, and "aligns with your role" statements; `split_letter_sentences` splits "PTE. LTD.".
+- Steps 3.7 and 3.8: 9 of 10 letters from `qwen2.5:7b` have at least one ungrounded sentence, and 7 of 10 map the work onto duties that only the job names. Compare writer models and prompts on this kind of error, not only on the constructed set.
 
 ## Status before the restructure (2026-10-24)
 

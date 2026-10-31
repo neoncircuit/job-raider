@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Step 3.2 remainder: about 15 real generated letters, labels drafted by Claude and corrected by the user, run locally (`tasks/active/step-3-2-real-letters/`; the tools are committed and 15 letters are generated with draft labels; next: the user corrects the labels in `label.html`, then the import and one eval run)
+- [ ] Choose the next Step 3 sub-step: 3.7 (schema-constrained output), then 3.8, 3.4, and 3.9 (`tasks/active/step-3-measurable-claims/`)
 
 ## Next Up
 - [ ] Steps 3.4 and 3.7 to 3.9 (`tasks/active/step-3-measurable-claims/`)

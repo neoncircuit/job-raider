@@ -14,8 +14,8 @@ Measure the grounding validator on about 15 cover letters that the app generates
 - [x] MH-B (`befc870`, checked 2026-10-30). `scripts/build_grounding_label_page.py` writes a self-contained `label.html` with the draft labels filled in and an export of `labels.json`. (`mh-b-label-page.md`)
 - [x] MH-C (`f7c5d7a`, checked 2026-10-30). `scripts/import_grounding_labels.py` turns `letters.jsonl` and `labels.json` into a valid `cases.jsonl`. (`mh-c-import-labels.md`)
 - [x] Check of each handoff (Claude, in `notes.md`): the diff, mutation proofs, and the backend gate. Done 2026-10-30: MH-A, MH-B, and MH-C match their handoffs; 34 of 34 preview mutations caught; 1747 backend tests pass.
-- [ ] The letters are generated, Claude drafts the labels, the user corrects them, and the labels are frozen.
-- [ ] Done when: one `eval grounding` run on `data/eval/grounding_real` is recorded in `notes.md` with its command, dataset SHA-256, and MLflow run ID, and the 3.2 criterion in the Step 3 `task.md` is checked.
+- [x] The letters are generated, Claude drafts the labels, the user corrects them, and the labels are frozen. (2026-10-31: 15 generated; the 5 senior-role letters left out by the user's decision; 10 letters, 26 ungrounded sentences; labels version 1 frozen)
+- [x] Done when: one `eval grounding` run on `data/eval/grounding_real` is recorded in `notes.md` with its command, dataset SHA-256, and MLflow run ID, and the 3.2 criterion in the Step 3 `task.md` is checked. (MLflow run `6759197d7a2548ff8315a5cf7331a5fe`; sentence precision 0.182, recall 0.154)
 
 ## Status
-`in-progress` (2026-10-30: the tooling and three fixes are committed; 15 real letters generated; draft labels written; the user corrects them in `label.html`)
+`done` (2026-10-31: one eval run on 10 real letters recorded; archived)
