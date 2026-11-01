@@ -122,18 +122,20 @@ class TestGenerateQuestions:
         """Engine should return the requested number of questions."""
         mock_llm_router.generate.return_value = MagicMock(
             content=json.dumps(
-                [
-                    {
-                        "question_type": "conceptual",
-                        "answer_format": "freeform",
-                        "difficulty": "intermediate",
-                        "topic": f"topic_{i}",
-                        "question_text": f"Question {i}",
-                        "options": [],
-                        "correct_answer_hint": f"hint {i}",
-                    }
-                    for i in range(3)
-                ]
+                {
+                    "questions": [
+                        {
+                            "question_type": "conceptual",
+                            "answer_format": "freeform",
+                            "difficulty": "intermediate",
+                            "topic": f"topic_{i}",
+                            "question_text": f"Question {i}",
+                            "options": [],
+                            "correct_answer_hint": f"hint {i}",
+                        }
+                        for i in range(3)
+                    ]
+                }
             )
         )
 
@@ -539,17 +541,19 @@ class TestParseQuestions:
     def test_parses_clean_json(self, engine):
         """Should parse valid JSON array."""
         response = json.dumps(
-            [
-                {
-                    "question_type": "coding",
-                    "answer_format": "freeform",
-                    "difficulty": "advanced",
-                    "topic": "algorithms",
-                    "question_text": "Implement binary search.",
-                    "options": [],
-                    "correct_answer_hint": "O(log n) approach",
-                }
-            ]
+            {
+                "questions": [
+                    {
+                        "question_type": "coding",
+                        "answer_format": "freeform",
+                        "difficulty": "advanced",
+                        "topic": "algorithms",
+                        "question_text": "Implement binary search.",
+                        "options": [],
+                        "correct_answer_hint": "O(log n) approach",
+                    }
+                ]
+            }
         )
         questions = engine._parse_questions(response, 1)
         assert len(questions) == 1
@@ -558,7 +562,7 @@ class TestParseQuestions:
 
     def test_handles_markdown_fences(self, engine):
         """Should strip markdown code fences."""
-        response = '```json\n[{"question_type": "conceptual", "answer_format": "freeform", "difficulty": "beginner", "topic": "basics", "question_text": "What is HTTP?", "options": []}]\n```'
+        response = '```json\n{"questions": [{"question_type": "conceptual", "answer_format": "freeform", "difficulty": "beginner", "topic": "basics", "question_text": "What is HTTP?", "options": []}]}\n```'
         questions = engine._parse_questions(response, 1)
         assert len(questions) == 1
         assert questions[0].topic == "basics"
@@ -572,17 +576,19 @@ class TestParseQuestions:
     def test_truncates_to_expected_count(self, engine):
         """Should not return more questions than expected."""
         response = json.dumps(
-            [
-                {
-                    "question_type": "conceptual",
-                    "answer_format": "freeform",
-                    "difficulty": "intermediate",
-                    "topic": f"t{i}",
-                    "question_text": f"Q{i}",
-                    "options": [],
-                }
-                for i in range(10)
-            ]
+            {
+                "questions": [
+                    {
+                        "question_type": "conceptual",
+                        "answer_format": "freeform",
+                        "difficulty": "intermediate",
+                        "topic": f"t{i}",
+                        "question_text": f"Q{i}",
+                        "options": [],
+                    }
+                    for i in range(10)
+                ]
+            }
         )
         questions = engine._parse_questions(response, 3)
         assert len(questions) == 3

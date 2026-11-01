@@ -532,7 +532,7 @@ prompts:
       CONTEXT:
       {{context}}
 
-      Return a JSON array of question objects. Each object must have:
+      Return a JSON object with one key, "questions": an array of question objects. Each question object must have:
       {
         "question_type": "conceptual|scenario|coding|system_design",
         "answer_format": "freeform|multiple_choice",

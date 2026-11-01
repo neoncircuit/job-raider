@@ -32,6 +32,6 @@ class TestAssessmentTemplateNonce:
             templates = yaml.safe_load(handle)
 
         user_template = templates["prompts"]["assessment_generation"]["user"]
-        schema_marker = "Return a JSON array of question objects"
+        schema_marker = "Return a JSON object with one key"
         nonce_idx = user_template.index("SESSION NONCE:")
         assert nonce_idx > user_template.index(schema_marker)

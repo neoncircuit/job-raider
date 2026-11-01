@@ -13,7 +13,6 @@ Author: Job Raider
 Date: 2026-05-22
 """
 
-import json
 import random
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +23,11 @@ import yaml
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import (
+    AssessmentQuestionsAnswer,
+    AssessmentScoreAnswer,
+    parse_structured,
+)
 from ..models.assessment import (
     Answer,
     AnswerFormat,
@@ -180,6 +184,7 @@ class AssessmentEngine:
                 task_type=TaskType.ASSESSMENT_GENERATION,
                 temperature=0.9,
                 max_tokens=3000,
+                response_schema=AssessmentQuestionsAnswer.model_json_schema(),
             )
 
             questions = self._parse_questions(response.content, count)
@@ -388,52 +393,35 @@ class AssessmentEngine:
             List of parsed Question objects.
         """
         try:
-            # Extract JSON from response (may have markdown fences)
-            text = response_content.strip()
-            if text.startswith("```"):
-                text = text.split("\n", 1)[1] if "\n" in text else text[3:]
-                if text.endswith("```"):
-                    text = text[:-3]
-                text = text.strip()
-
-            data = json.loads(text)
-            if not isinstance(data, list):
-                data = [data]
+            answer = parse_structured(response_content, AssessmentQuestionsAnswer)
 
             questions = []
-            for item in data[:expected]:
-                options = []
-                for opt in item.get("options", []):
-                    options.append(
-                        MultipleChoiceOption(
-                            label=opt.get("label", ""),
-                            text=opt.get("text", ""),
-                            is_correct=opt.get("is_correct", False),
-                        )
+            for item in answer.questions[:expected]:
+                options = [
+                    MultipleChoiceOption(
+                        label=opt.label,
+                        text=opt.text,
+                        is_correct=opt.is_correct,
                     )
+                    for opt in item.options
+                ]
 
                 questions.append(
                     Question(
-                        question_type=QuestionType(
-                            item.get("question_type", "conceptual")
-                        ),
-                        answer_format=AnswerFormat(
-                            item.get("answer_format", "freeform")
-                        ),
-                        difficulty=DifficultyLevel(
-                            item.get("difficulty", "intermediate")
-                        ),
-                        topic=item.get("topic", "general"),
-                        question_text=item.get("question_text", ""),
+                        question_type=QuestionType(item.question_type),
+                        answer_format=AnswerFormat(item.answer_format),
+                        difficulty=DifficultyLevel(item.difficulty),
+                        topic=item.topic,
+                        question_text=item.question_text,
                         options=options,
-                        correct_answer_hint=item.get("correct_answer_hint", ""),
-                        time_limit_seconds=item.get("time_limit_seconds"),
+                        correct_answer_hint=item.correct_answer_hint,
+                        time_limit_seconds=item.time_limit_seconds,
                     )
                 )
 
             return questions
 
-        except (json.JSONDecodeError, KeyError, ValueError) as e:
+        except (KeyError, ValueError) as e:
             self.logger.error("Failed to parse question response: %s", e)
             return self._fallback_questions(
                 AssessmentSession(mode="skill_based"), expected
@@ -473,6 +461,7 @@ class AssessmentEngine:
                 task_type=TaskType.ASSESSMENT_EVALUATION,
                 temperature=0.3,
                 max_tokens=1000,
+                response_schema=AssessmentScoreAnswer.model_json_schema(),
             )
             return self._parse_score(response.content, question.question_id)
         except Exception as e:
@@ -529,6 +518,7 @@ class AssessmentEngine:
                 task_type=TaskType.ASSESSMENT_EVALUATION,
                 temperature=0.3,
                 max_tokens=600,
+                response_schema=AssessmentScoreAnswer.model_json_schema(),
             )
             score = self._parse_score(response.content, question.question_id)
             score.is_correct = is_correct
@@ -559,25 +549,18 @@ class AssessmentEngine:
             Parsed QuestionScore object.
         """
         try:
-            text = response_content.strip()
-            if text.startswith("```"):
-                text = text.split("\n", 1)[1] if "\n" in text else text[3:]
-                if text.endswith("```"):
-                    text = text[:-3]
-                text = text.strip()
-
-            data = json.loads(text)
+            answer = parse_structured(response_content, AssessmentScoreAnswer)
 
             return QuestionScore(
                 question_id=question_id,
-                score=float(data.get("score", 50)),
-                is_correct=data.get("is_correct"),
-                feedback=data.get("feedback", ""),
-                strengths=data.get("strengths", []),
-                improvements=data.get("improvements", []),
-                model_answer=data.get("model_answer", ""),
+                score=float(answer.score),
+                is_correct=answer.is_correct,
+                feedback=answer.feedback,
+                strengths=answer.strengths,
+                improvements=answer.improvements,
+                model_answer=answer.model_answer,
             )
-        except (json.JSONDecodeError, KeyError, ValueError) as e:
+        except (KeyError, ValueError) as e:
             self.logger.error("Failed to parse score response: %s", e)
             return QuestionScore(
                 question_id=question_id,
