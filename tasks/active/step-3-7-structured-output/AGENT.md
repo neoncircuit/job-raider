@@ -1,8 +1,8 @@
 # Agent Brief: Step 3.7 Structured Output
 
-Read this file and one spec handoff (`mh-4-*.md` to `mh-7-*.md`). Do not read other task files.
+Read this file and one spec handoff (`mh-4-*.md` to `mh-7-*.md`, `mh-9-*.md`, `mh-10-*.md`, or `mh-12-*.md`). Do not read other task files.
 
-A spec handoff gives the required behavior, the tests to write, and the commands. It does not give the code. You write the tests and the code. The handoff runner applied MH-1 to MH-3; do not change their files unless the handoff names them.
+A spec handoff gives the required behavior, the tests to write, and the commands. It does not give the code. You write the tests and the code. The handoff runner applied MH-1 to MH-3, MH-8, and MH-11; do not change their files unless the handoff names them.
 
 ```mermaid
 flowchart LR
