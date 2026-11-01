@@ -246,5 +246,24 @@ Search of `src/` after MH-10: no code takes LLM JSON with a regex any more (the 
 - `scoring/trust_analyzer.py:216` (deep trust analysis, `TaskType.TRUST_ANALYSIS`). Found: its LLM call is broken. It calls `self.llm_router.generate(task_type=..., prompt=..., system_prompt=...)` without `messages` and treats the result as a string; with `deep=True`, `routes/jobs.py` gives it a real `LLMRouter`, so the call raises a `TypeError`, which the method catches and logs as "LLM trust analysis failed", and returns `None`. The deep LLM trust analysis has never returned a result.
 - `linkedin/answer_engine.py:340` (LinkedIn Easy Apply answers): `json.loads(answer_text[answer_text.index("{"):])`. This is in the auto-apply code that Step 5 decides on.
 
+## MH-11 and MH-12: the trust analyzer and the form-answer engine (2026-11-02, Claude)
+
+Decision (user, "Fix them now"): fix both places in Step 3.7. Split as before: MH-11 adds the two output models (runner, full code), MH-12 makes both LLM calls work and parse strictly (spec handoff for the agent). Neither place is in the `structured` suite, so the tests and the mutants are the check.
+
+```mermaid
+flowchart LR
+    M[MH-11: TrustAnalysisAnswer,<br/>FormQuestionAnswer] --> C[MH-12: system and user Message,<br/>schema, parse_structured]
+    C --> T[Trust result dict]
+    C --> Q[QuestionAnswer]
+    C -->|parse failure| N[None and a warning<br/>with the reason]
+```
+
+The answer engine also failed in a second way: `generate` returns an `LLMResponse`, and the code called `response.strip()` on it. With the fake router of the tests (which accepts any arguments), both methods fail there, so the red step shows that error in the warning.
+
+Behavior change: a parse failure now gives no LLM result (`None` and a warning with the reason). Before, the trust analyzer used the raw text as its summary and the answer engine typed the raw text into the form field. The answer engine is used by `linkedin/form_filler.py` and `submission/submitter.py` (the auto-apply path); no existing test covers it (search of `tests/`).
+
+- `mh-11-trust-and-form-models.md`: `TrustAnalysisAnswer` (`confidence_adjustment` from -0.1 to 0.2, the range of the trust prompt) and `FormQuestionAnswer` (`confidence` high, medium, or low; the model writes `NEEDS_MANUAL_REVIEW` as the answer), and 12 tests. Scratch clone: red is an import error (no models yet); 76 tests pass with the other model tests and the suite; black and ruff clean; the mypy gate has 0 new errors (179 known). Mutants 6 of 6 caught (no adjustment range, lower bound -0.2, upper bound 0.5, any confidence text, reasoning optional, indicators optional). Runner test on a fresh clone: the red step failed, the 4 checks passed (94 tests), commit `2208920` on the clone, and both files are the same bytes as the checked copies.
+- `mh-12-trust-and-forms.md`: `_run_llm_analysis` and `_try_llm` send a system and a user `Message`, the task, temperature 0.2, and the schema, and parse with `parse_structured`; the answer engine gets a system prompt (`FORM_ANSWER_SYSTEM_PROMPT`) with the `NEEDS_MANUAL_REVIEW` rule. 11 named tests in a new file. Reference check (on a clone with MH-11): the first red run gave 9 failed and 2 passed; the two "drops" tests passed because the current code gives `None` for every answer. Both now also check that the warning gives the `schema` reason; re-check: red 11 failed, green 11 passed. Green of the first run: 362 passed (the new file and the scam tests); black and ruff clean; the mypy gate has 0 new errors. Mutants 9 of 9 caught (trust: no schema, no system message, prose rescued from the first brace, wrong task; form: no schema, no system message, prose rescued, no manual-review check, confidence fixed at medium).
+
 ## Blockers / Questions
-- The two brace-search places above: fix them in Step 3.7, or record them in the backlog (the trust analyzer as a bug).
+- None.
