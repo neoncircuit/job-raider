@@ -118,5 +118,14 @@ What the baseline shows:
 - Applied on the repo (2026-11-01, Claude ran the runner on the user's word "Yes, apply it"): commit `251aa83`. The red step failed, and the 5 checks passed. The three files are the same bytes as the checked copies.
 - Full backend gate after MH-3: black and ruff pass on the CI paths, the mypy gate has 0 new errors (179 known, 3 baseline errors fixed; `--update` not run), and pytest has 1841 passed (1764 before MH-1, plus 35, 29, and 13 new tests).
 
+## MH-4 spec handoff written and checked (2026-11-01, Claude)
+
+`AGENT.md` (the brief for MH-4 to MH-7) and `mh-4-resume-pipeline.md`: the selector, the resume writer, and the LLM resume validation send their schema and parse with `parse_structured`; 13 named tests; two existing tests change.
+
+- A probe of the reference fix against the existing tests found two that send answers the schema refuses: `test_keywords_are_only_profile_skills` (missing keys and an integer keyword) and `test_writer_returns_a_flat_skill_list` (skills grouped by category). The handoff names both changes. Grouped skills now fall back to the template resume; with Ollama's `format`, the model cannot write them, and `flatten_skills` stays for other callers.
+- `pytest.ini` has `--maxfail=5`, so the red command adds `--maxfail=20` (also noted in `AGENT.md`).
+- Reference check on a scratch clone (Claude's own tests and fix, not given to the agent): red 10 failed and 3 passed; the two changed tests pass on the current code; with the fix, 95 tests of the components, the pipeline, and the suite pass; no `DOTALL` left; ruff clean; the mypy gate has 0 new errors.
+- Mutants on the reference fix (10 of 10 caught): no schema at each site (3); prose rescued at each site (3); the selection summary dropped; the writer experience dropped; a fixed validation recommendation; keywords not filtered by the profile.
+
 ## Blockers / Questions
 - None.
