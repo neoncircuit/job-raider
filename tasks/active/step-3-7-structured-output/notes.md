@@ -71,6 +71,7 @@ A new local suite, `python main.py eval structured`, with a fixed set in `tests/
 - The response cache is turned off in the suite's router (`_response_cache.enabled = False`), so each sample is a new answer; the report also counts cached calls. `default_router` is not unit-tested, because it reads the saved Settings.
 - Scratch clone: black makes no change, ruff passes, 29 tests pass, the mypy gate has 0 new errors. The runner applies the handoff (red step fails, 5 checks pass, commit `ee301f5` on the clone).
 - Mutants (18 of 18 caught): rescued counted as strict; the two legacy flags; the truncation boundary; no unload; no model order; no task-type filter; samples ignored; the lowest VRAM kept; an empty rate as 0; content kept for strict answers; no_call counted as failed; local calls counted as non-local; references not checked; keywords not from the job; a wrong task type; JD inputs not checked; resume text without projects.
+- Applied on the repo (2026-11-01, Claude ran the runner on the user's word "Yes, apply it"): commit `0542129`. The red step failed, and the 5 checks passed. The suite, its tests, the registry, and the fixed set are the same bytes as the scratch copies that the mutants ran on (LF line endings); `test_scam_suite.py` changes by the one expected line. (The `/tmp` clones were gone after a WSL restart, so the compare used the scratchpad copies.)
 
 ## Blockers / Questions
 - None.

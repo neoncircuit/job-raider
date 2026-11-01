@@ -23,7 +23,7 @@ flowchart LR
 
 ## Acceptance Criteria
 - [x] MH-1: output models for the 9 JSON tasks and one strict parser (`json.loads` and `model_validate`, code fences removed), with tests. (`8e9aadf`, 2026-10-31; 35 tests; 13 of 13 mutants caught)
-- [ ] MH-2: eval suite `structured` and its fixed set: for each task, the share of answers that parse strictly, that only the old regex can rescue, and that fail; prompt tokens against the context size; the model of each task in the run metadata.
+- [x] MH-2: eval suite `structured` and its fixed set: for each task, the share of answers that parse strictly, that only the old regex can rescue, and that fail; prompt tokens against the context size; the model of each task in the run metadata. (`0542129`, 2026-11-01; 43 cases; 29 tests; 18 of 18 mutants caught)
 - [ ] Baseline run on the current code, recorded in `notes.md` (command, dataset SHA-256, MLflow run ID, peak VRAM).
 - [ ] MH-3: the router passes a JSON schema to Ollama as `format`, sets `num_ctx` for each task, and keeps both in the response-cache key.
 - [ ] MH-4 to MH-7: the 9 call sites use the schema and the strict parser; JD extraction and resume parsing cut their input to the task budget and log when they fall back to rule-based parsing.
