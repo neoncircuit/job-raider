@@ -437,6 +437,26 @@ class AssessmentScoreAnswer(BaseModel):
     is_correct: Optional[bool] = None
 
 
+class TrustAnalysisAnswer(BaseModel):
+    """Answer of the deep trust analysis (``scoring/trust_analyzer.py``)."""
+
+    summary: str
+    additional_indicators: List[str]
+    confidence_adjustment: float = Field(ge=-0.1, le=0.2)
+
+
+class FormQuestionAnswer(BaseModel):
+    """Answer of the form-question fallback (``linkedin/answer_engine.py``).
+
+    The model writes ``NEEDS_MANUAL_REVIEW`` as the answer when the profile
+    does not give one.
+    """
+
+    answer: str
+    confidence: Literal["high", "medium", "low"]
+    reasoning: str
+
+
 OUTPUT_MODELS: Dict[str, Type[BaseModel]] = {
     "selection": SelectionAnswer,
     "resume_writing": ResumeWritingAnswer,
