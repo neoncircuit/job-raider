@@ -104,5 +104,17 @@ What the baseline shows:
 - **No prompt was cut:** the longest prompt was 1,331 tokens (resume parsing) and the longest answer 926 tokens (resume analysis), against a context of 4,096. The inputs of this set are short (pasted JDs up to 800 characters, short synthetic resumes), so the set measures the answer format, not the input size. The input-size risk is still in the code: the JD extractor sends up to 50,000 characters (about 12,500 tokens), and nothing cuts a long resume.
 - Resume parsing: the model wrote "not provided" for missing URLs, and the profile mapping dropped them (`url_parsing` messages in the log). The schema allows any string there, so MH-7 asks for `null`.
 
+## MH-3 written and checked (2026-11-01, Claude)
+
+`mh-3-router-schema-context.md`: 5 edits in `src/llm/router.py` and 3 in `src/llm/ollama_client.py`, and `tests/unit/test_router_structured_options.py` (13 tests).
+
+- `context_size(task_type)`: `TASK_NUM_CTX` gives 8,192 tokens to JD extraction and resume parsing, and `DEFAULT_NUM_CTX` 4,096 to the other tasks. The router sets `num_ctx` with `setdefault` in `generate` and `generate_async`, so a caller value wins. A module-level map, not a `RouteConfig` field, because the Settings reload builds the routes again.
+- Ollama loads a model again when `num_ctx` changes. The pipeline tasks all use 4,096, so a run does not reload; a pasted JD or a CV upload (8,192) can reload `qwen2.5:7b` one time. KV cache estimate for `qwen2.5:7b` (28 layers, 4 KV heads, head size 128, fp16): about 56 KB a token, so 8,192 tokens add about 0.23 GB over 4,096.
+- `response_schema` passes through the router; the Ollama client sends it as `format`, and the Claude and Gemini clients ignore it (they read only the keys they know).
+- The response-cache key gets `num_ctx` and `schema_key(schema)` (16 hex characters of the SHA-256 of the sorted schema).
+- `payload: Dict[str, Any]` in the Ollama client removes one baseline mypy error.
+- Scratch clone: black and ruff clean, 13 new tests and 72 router, client, and cost tests pass, the mypy gate has 0 new errors (3 baseline errors fixed). The runner applies the handoff (red step fails, 5 checks pass, commit `44be61b` on the clone).
+- Mutants (11 of 11 caught): no `options.num_ctx`; no `format`; no context size in `generate`; none in `generate_async`; a caller value replaced; the JD size and the default size changed; the cache key without the context size; without the schema; the schema key without sorted keys; the full-length schema key.
+
 ## Blockers / Questions
 - None.
