@@ -16,6 +16,7 @@ from bs4 import BeautifulSoup
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import JDExtractionAnswer, parse_structured
 from ..models.job_listing import (
     ExperienceLevel,
     JobListing,
@@ -27,6 +28,16 @@ from ..models.job_listing import (
     Skill,
     WorkMode,
 )
+from ..utils.logger import Components, get_logger
+
+logger = get_logger(Components.LLM)
+
+# JD extraction runs with a context of 8,192 tokens (router, Step 3.7). The
+# prompt takes about 400 tokens and the answer at most JD_MAX_TOKENS, so the
+# posting gets about 6,000 tokens. At 3 characters a token, 18,000 characters
+# stay within that.
+MAX_JD_CHARS = 18_000
+JD_MAX_TOKENS = 1_500
 
 
 @dataclass
@@ -226,16 +237,15 @@ class JDExtractor:
         Returns:
             ExtractionResult with extracted data
         """
-        errors = []
-        warnings = []
+        errors: List[str] = []
+        warnings: List[str] = []
 
         # Truncate text if too long
-        max_length = 50000  # Adjust based on model context
-        if len(text) > max_length:
+        if len(text) > MAX_JD_CHARS:
             warnings.append(
-                f"Text truncated from {len(text)} to {max_length} characters"
+                f"Text truncated from {len(text)} to {MAX_JD_CHARS} characters"
             )
-            text = text[:max_length]
+            text = text[:MAX_JD_CHARS]
 
         # Prepare prompt
         system_prompt = """You are a job description parser. Extract structured information from job postings.
@@ -268,23 +278,16 @@ Return a JSON object with these exact fields:
                 messages=messages,
                 task_type=TaskType.JD_EXTRACTION,
                 temperature=0.3,  # Lower temperature for extraction
+                max_tokens=JD_MAX_TOKENS,
+                response_schema=JDExtractionAnswer.model_json_schema(),
             )
 
-            # Parse JSON response
-            import json
-
-            # Extract JSON from response
-            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if not json_match:
-                errors.append("Failed to extract JSON from LLM response")
-                return ExtractionResult(
-                    success=False, job_listing=None, errors=errors, warnings=warnings
-                )
-
-            data = json.loads(json_match.group(0))
+            answer = parse_structured(response.content, JDExtractionAnswer)
 
             # Create JobListing
-            job_listing = self._create_job_listing_from_dict(data, url, source)
+            job_listing = self._create_job_listing_from_dict(
+                answer.model_dump(exclude_none=True), url, source
+            )
 
             return ExtractionResult(
                 success=True,
@@ -295,6 +298,7 @@ Return a JSON object with these exact fields:
 
         except Exception as e:
             errors.append(f"LLM extraction failed: {str(e)}")
+            logger.warning("JD extraction fell back to rules: %s", e)
             # Fall back to rule-based
             return self._extract_rule_based(text, url, source, errors, warnings)
 

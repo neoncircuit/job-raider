@@ -7,7 +7,6 @@ Author: Job Raider
 Date: 2026-04-29
 """
 
-import json
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
@@ -16,7 +15,11 @@ from pydantic import BaseModel, Field
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import JobClassificationAnswer, parse_structured
 from ..models.job_listing import JobListing
+from ..utils.logger import Components, get_logger
+
+logger = get_logger(Components.LLM)
 
 
 class Industry(str, Enum):
@@ -303,8 +306,8 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
         Returns:
             JobClassificationResult with classification data
         """
-        errors = []
-        warnings = []
+        errors: List[str] = []
+        warnings: List[str] = []
 
         # Prepare text sections
         requirements_text = "\n".join(
@@ -341,25 +344,15 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
                 messages=messages,
                 task_type=TaskType.CLASSIFICATION,
                 temperature=0.2,  # Low temperature for consistent classification
+                response_schema=JobClassificationAnswer.model_json_schema(),
             )
 
-            # Parse JSON response
-            import re
-
-            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if not json_match:
-                errors.append("Failed to extract JSON from LLM response")
-                return JobClassificationResult(
-                    success=False,
-                    classification=None,
-                    errors=errors,
-                    warnings=warnings,
-                )
-
-            data = json.loads(json_match.group(0))
+            answer = parse_structured(response.content, JobClassificationAnswer)
 
             # Create classification
-            classification = self._create_classification_from_dict(data)
+            classification = self._create_classification_from_dict(
+                answer.model_dump(exclude_none=True)
+            )
 
             return JobClassificationResult(
                 success=True,
@@ -370,6 +363,7 @@ Be thorough but realistic. If information is not available, use Unknown/null or 
 
         except Exception as e:
             errors.append(f"LLM classification failed: {str(e)}")
+            logger.warning("Job classification fell back to rules: %s", e)
             # Fall back to rule-based
             return self._classify_rule_based(job_listing, errors, warnings)
 
