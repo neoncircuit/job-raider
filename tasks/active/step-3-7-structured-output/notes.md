@@ -158,5 +158,16 @@ Claude check:
 - Reference checks on scratch clones: MH-6 red 9 failed and 2 passed, green 55 passed; MH-7 red 10 failed and 2 passed, green 118 passed. No `DOTALL` left, ruff clean, the mypy gate has 0 new errors for both.
 - Mutants on the reference fixes: MH-6 9 of 9 caught (no schema, no answer limit, prose rescued, the 50,000-character limit, no fallback log, null fields kept; classifier: no schema, prose rescued, no fallback log); MH-7 10 of 10 caught (no schema, no answer limit, prose rescued, a 20,000-character limit, the cut log not a warning, the prompt still "if present"; analyzer: no schema in each call, prose rescued, the summary dropped).
 
+## MH-5 run by the agent (2026-11-01)
+
+Agent and model: opencode, `github-copilot/claude-haiku-5.5`, the same session as MH-4 (the user keeps one session a day). One prompt; commit `50e70f3`.
+
+Claude check (scratch clone at `50e70f3`, because the agent was already running MH-6 in the repo):
+
+- The code diff is the same as the reference fix. The 9 tests have the spec's names; only `test_review_extracts_json_from_extra_text` was removed from `test_cover_letter_reviewer.py`. The commit has the 4 named files only.
+- The 8 mutants on the agent's code, with the agent's tests: 8 of 8 caught.
+- Full backend gate at `50e70f3`: black and ruff pass on the CI paths, the mypy gate has 0 new errors (179 known), pytest has 1862 passed (1854 plus 9 new, minus 1 removed).
+- Tokens (session export, second prompt): 31 steps, 2.54M cached input, 86.8K cache writes, 12.6K output with reasoning; the largest prompt was 92,188 tokens, still below the 100K tier. About USD 0.043. The longer session context (MH-4 history) shows in the cached input: 2.3 times that of MH-4.
+
 ## Blockers / Questions
 - None.
