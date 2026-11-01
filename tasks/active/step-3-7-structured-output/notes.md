@@ -138,5 +138,14 @@ Claude check:
 - Full backend gate: black and ruff pass on the CI paths, the mypy gate has 0 new errors (179 known), pytest has 1854 passed (1841 plus 13).
 - Tokens (session export): 25 steps, 1.106M cached input, 50.5K cache writes, 13.6K output with reasoning; the largest prompt was 55,843 tokens, so all steps stayed below Haiku 5.5's 100K price tier. About USD 0.024 (2.4 credits), against about USD 0.21 for the trial in an old session.
 
+## MH-5 spec handoff written and checked (2026-11-01, Claude)
+
+`mh-5-cover-letters.md`: the cover-letter review and the LLM cover-letter validation send their schema and parse with `parse_structured`; 9 named tests; one existing test is removed.
+
+- The probe of the reference fix found one existing test that checks the old behavior on purpose: `test_review_extracts_json_from_extra_text` (JSON taken from inside explanatory text). The handoff removes it; the new prose test checks the new behavior.
+- The validator's recommendation normalization (case, spaces, unknown words) goes: the schema allows only the three values, and no test covered the normalization.
+- Reference check on a scratch clone: red 7 failed and 2 passed; with the fix, 151 cover-letter, grounding, and suite tests pass; no `DOTALL` left; ruff clean; the mypy gate has 0 new errors.
+- Mutants on the reference fix (8 of 8 caught): no schema at each site (2); prose rescued at each site (2); a fixed rewrite flag; the score from the structure score; the LLM feedback dropped; the critique not stripped.
+
 ## Blockers / Questions
 - None.
