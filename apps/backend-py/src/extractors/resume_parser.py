@@ -20,6 +20,7 @@ from pypdf import PdfReader
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import ResumeParsingAnswer, parse_structured
 from ..models.job_listing import ExperienceLevel
 from ..models.user_profile import (
     ApprenticeshipContract,
@@ -35,6 +36,12 @@ from ..models.user_profile import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Resume parsing runs with a context of 8,192 tokens (router, Step 3.7). The
+# prompt takes about 1,100 tokens and the answer at most RESUME_MAX_TOKENS, so
+# the resume text gets about 4,000 tokens. MAX_RESUME_CHARS stays below that.
+MAX_RESUME_CHARS = 8_000
+RESUME_MAX_TOKENS = 3_000
 
 # Resume section headers that end a Skills / Technical Skills block.
 _NEXT_SECTION_HEADER = re.compile(
@@ -374,8 +381,13 @@ class ResumeParser:
         # Keep the full text for deterministic Technical Skills extraction;
         # only truncate what is sent to the LLM.
         full_text = text
-        max_length = 8000  # For models with 32K context
-        llm_text = text[:max_length] if len(text) > max_length else text
+        llm_text = text[:MAX_RESUME_CHARS]
+        if len(text) > MAX_RESUME_CHARS:
+            logger.warning(
+                "Resume text cut from %d to %d characters for the LLM",
+                len(text),
+                MAX_RESUME_CHARS,
+            )
 
         # Prepare prompt
         system_prompt = """You are a resume parser. Extract structured information from resume documents.
@@ -393,8 +405,8 @@ Return a JSON object with these exact fields:
     "email": "email@example.com",
     "phone": "phone number",
     "location": "City, State/Country - this must be a physical geographic location (e.g. 'Singapore, Singapore', 'New York, NY', 'London, UK', 'Tokyo, Japan'), NOT a job title, role, or department name",
-    "linkedin": "LinkedIn URL if present",
-    "github": "GitHub URL if present"
+    "linkedin": "LinkedIn URL, or null",
+    "github": "GitHub URL, or null"
   }},
   "summary": "Professional summary",
   "skills": {{
@@ -420,7 +432,7 @@ Return a JSON object with these exact fields:
       "name": "Project Name",
       "description": "Description",
       "technologies": ["tech1", "tech2"],
-      "url": "URL if present",
+      "url": "URL, or null",
       "highlights": ["achievement1", "achievement2"]
     }}
   ],
@@ -430,7 +442,7 @@ Return a JSON object with these exact fields:
       "school": "School Name",
       "location": "Location",
       "graduation_year": "YYYY",
-      "gpa": "GPA if present"
+      "gpa": "GPA, or null"
     }}
   ],
   "certifications": [
@@ -457,7 +469,7 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no explanations, just the JSON o
 IMPORTANT: The "location" in "basics" must be a real city and state/country (e.g. "Singapore, Singapore" or "New York, NY" or "London, UK"), never a job title or role. City-states like Singapore are valid locations.
 IMPORTANT: If the candidate has no work experience (recent graduate or student), still populate target_job keywords and industries based on their education, projects, and skills. Default experience_levels to ["Entry Level"] or ["Internship"] as appropriate.
 IMPORTANT: If the resume mentions an apprenticeship, traineeship, or sponsored training program with a work obligation, populate the "apprenticeship" object. If no such program is mentioned, set all apprenticeship fields to null.
-IMPORTANT: For skills, extract EVERY named skill under Technical Skills / Skills verbatim. Do not summarize into a short representative subset. Do not invent umbrella domains such as "Machine Learning" or "Web Development" unless those exact phrases appear on the resume. Atomic skills such as RAG, Prompt Engineering, Vector Databases, FastAPI, Convex, TypeScript, and SQL must be kept as separate entries when present. A flat skills array is also acceptable.
+IMPORTANT: For skills, extract EVERY named skill under Technical Skills / Skills verbatim. Do not summarize into a short representative subset. Do not invent umbrella domains such as "Machine Learning" or "Web Development" unless those exact phrases appear on the resume. Atomic skills such as RAG, Prompt Engineering, Vector Databases, FastAPI, Convex, TypeScript, and SQL must be kept as separate entries when present.
 IMPORTANT: For each project, technologies must come only from that project's own tech/stack line in the Projects section. Do not copy technologies from Experience, other projects, or the global Technical Skills list into a project. Include every tech on that project's line — do not summarize a long stack into a short subset."""
 
         messages = [
@@ -474,17 +486,12 @@ IMPORTANT: For each project, technologies must come only from that project's own
                 messages=messages,
                 task_type=TaskType.RESUME_PARSING,
                 temperature=0.3,
+                max_tokens=RESUME_MAX_TOKENS,
+                response_schema=ResumeParsingAnswer.model_json_schema(),
             )
             response_model = response.model
-            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if not json_match:
-                raise ValueError("Failed to extract JSON from LLM response")
-
-            import json
-
-            data = json.loads(json_match.group(0))
-            if not isinstance(data, dict):
-                raise ValueError("LLM resume JSON root must be an object")
+            answer = parse_structured(response.content, ResumeParsingAnswer)
+            data = answer.model_dump()
         except Exception as e:
             logger.error(f"LLM resume parsing failed, falling back to rule-based: {e}")
             profile = self._parse_rule_based(full_text)

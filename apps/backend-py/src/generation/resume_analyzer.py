@@ -8,14 +8,13 @@ Author: Job Raider
 Date: 2026-04-23
 """
 
-import json
-import re
 from pathlib import Path
 
 import yaml
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import ResumeAnalysisAnswer, parse_structured
 from ..models.job_listing import JobListing
 from ..models.resume_analysis import (
     ExperienceInsight,
@@ -102,6 +101,7 @@ class ResumeAnalyzer:
                 task_type=TaskType.RESUME_ANALYSIS,
                 temperature=0.3,
                 max_tokens=2500,
+                response_schema=ResumeAnalysisAnswer.model_json_schema(),
             )
 
             llm_result = self._parse_llm_assessment(response.content)
@@ -167,6 +167,7 @@ class ResumeAnalyzer:
                 task_type=TaskType.RESUME_ANALYSIS,
                 temperature=0.3,
                 max_tokens=2500,
+                response_schema=ResumeAnalysisAnswer.model_json_schema(),
             )
 
             llm_result = self._parse_llm_assessment(response.content)
@@ -353,25 +354,24 @@ class ResumeAnalyzer:
 
         Returns:
             Dictionary with qualitative assessment data
-        """
-        json_match = re.search(r"\{.*\}", response_content, re.DOTALL)
-        if not json_match:
-            raise ValueError("Failed to extract JSON from analysis response")
 
-        data = json.loads(json_match.group(0))
+        Raises:
+            StructuredOutputError: When the answer does not match the analysis schema.
+        """
+        answer = parse_structured(response_content, ResumeAnalysisAnswer)
 
         return {
-            "overall_score": data.get("overall_score", 0),
-            "summary": data.get("summary", ""),
-            "key_strengths": data.get("key_strengths", []),
-            "key_improvements": data.get("key_improvements", []),
-            "resume_improvements": data.get("resume_improvements", []),
-            "skill_gaps": data.get("skill_gaps", []),
-            "next_steps": data.get("next_steps", []),
-            "target_alignment_score": data.get("target_alignment_score"),
-            "competitive_advantages": data.get("competitive_advantages", []),
-            "competitive_gaps": data.get("competitive_gaps", []),
-            "metadata": data.get("metadata", {}),
+            "overall_score": answer.overall_score,
+            "summary": answer.summary,
+            "key_strengths": answer.key_strengths,
+            "key_improvements": answer.key_improvements,
+            "resume_improvements": answer.resume_improvements,
+            "skill_gaps": answer.skill_gaps,
+            "next_steps": answer.next_steps,
+            "target_alignment_score": answer.target_alignment_score,
+            "competitive_advantages": answer.competitive_advantages,
+            "competitive_gaps": answer.competitive_gaps,
+            "metadata": answer.metadata,
         }
 
     def _rule_based_assessment(self, profile: UserProfile) -> dict:
