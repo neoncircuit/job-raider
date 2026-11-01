@@ -190,5 +190,39 @@ Claude check (scratch clones at each commit):
 
 All 9 call sites now send their schema and parse strictly. A search of `src/` finds no regex `\{.*\}` any more. Three other places parse LLM JSON in their own way, outside the 9 call sites of review item R13: `generation/linkedin_analyzer.py` (a code-fence regex, then brace matching), `assessment/engine.py` (removes a fence, then `json.loads`; questions are a JSON list), and `api/routes/cover_letter.py` `_parse_json_object` (removes a fence, then the text from the first `{` to the last `}`, without a regex). They are not in the structured suite.
 
+## After run (2026-11-01, Claude, with the user's approval for the GPU time)
+
+Command (WSL, from `apps/backend-py`), one time, on the new code, with the same set as the baseline:
+
+```bash
+.venv/bin/python main.py eval structured
+```
+
+Git SHA `6e1e590598384ac0ad761858202887113b5b213b` (`git_dirty`: true; the 14 CRLF-only files). Dataset SHA-256 `2fce5d5296db542024fcbe8dd285cc1929cac8eec5a4b2436c13bd236bbd3e7e` (the same as the baseline). MLflow run `3882e8625b774a89bd32be9d891191e1`. Report `data/eval/structured/20261101T132424867497Z.json`. 21:16 to 21:25 (9 minutes; the baseline took 13). 129 calls, all local, 0 from the cache, 0 without an answer. Peak VRAM 6,444 MiB (suite) and 6,452 MiB (watchdog), below the baseline's 6,846 MiB; no model loaded after the run.
+
+| Site | Model | Strict before | Strict after | Failed before | Failed after | Latency p50 before | after | Answer tokens p50 before | after |
+|------|-------|---------------|--------------|---------------|--------------|--------------------|-------|--------------------------|-------|
+| selection | 3b | 1.000 | 1.000 | 0 | 0 | 2.0 s | 1.8 s | 299 | 276 |
+| resume_writing | 7b | 1.000 | 1.000 | 0 | 0 | 3.8 s | 3.5 s | 315 | 300 |
+| resume_validation | 3b | 1.000 | 1.000 | 0 | 0 | 0.6 s | 0.4 s | 60 | 60 |
+| resume_analysis | 7b | 1.000 | 1.000 | 0 | 0 | 10.1 s | 3.2 s | 832 | 278 |
+| cover_letter_review | 3b | 1.000 | 1.000 | 0 | 0 | 0.5 s | 0.5 s | 67 | 62 |
+| cover_letter_validation | 3b | 0.400 | 1.000 | 0.200 | 0 | 3.4 s | 1.2 s | 400 | 176 |
+| resume_parsing | 7b | 1.000 | 1.000 | 0 | 0 | 7.2 s | 6.2 s | 530 | 511 |
+| jd_extraction | 7b | 1.000 | 1.000 | 0 | 0 | 1.6 s | 1.4 s | 130 | 122 |
+| job_classification | 7b | 0.267 | 1.000 | 0 | 0 | 7.8 s | 3.6 s | 647 | 302 |
+| all | | 0.845 | 1.000 | 0.023 | 0 | | | | |
+
+The parse-failure rate (failed plus rescued, because the new code has no regex rescue) went from 0.155 (20 of 129) to 0 (0 of 129). The old parsing's fallback rate (no JSON object) went from 0.023 (3 of 129) to 0.
+
+What the after run shows:
+
+- **Cover letter validation:** 15 of 15 strict; the "Here is the evaluation" prose is gone, and the answer is 56% shorter (400 to 176 tokens), so the 3b model is 2.8 times faster.
+- **Job classification:** 15 of 15 strict; the field-by-field explanation after the JSON is gone (647 to 302 tokens), 2.2 times faster.
+- **Resume analysis:** the answer shrank from 832 to 278 tokens and the call is 3.2 times faster. The YAML prompt still asks for `skills_assessment`, `experience_insights`, and `project_insights`, which the code never used (they come from the parsed profile); the schema leaves them out, so the model no longer writes them.
+- **Resume parsing:** the log had 8 `url_parsing` messages ("not provided" URLs) in the baseline and 0 now.
+- **Context size:** the suite reads the context length from `/api/ps` once for each model, after the model's last case. The last `qwen2.5:7b` case is resume writing (4,096), so the report shows 4,096 for both models; it cannot show the 8,192 of JD extraction and resume parsing. The VRAM readings after each case include those cases, so 6,444 MiB is the peak with the 8,192 context. The unit tests of MH-3 show that the router sends 8,192 for these two tasks.
+- No prompt was cut; as in the baseline, the inputs of this set are short (longest prompt 1,327 tokens).
+
 ## Blockers / Questions
 - The three other JSON parsing places: a new handoff (MH-8) in Step 3.7, or a backlog item.
