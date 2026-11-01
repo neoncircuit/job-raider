@@ -127,5 +127,16 @@ What the baseline shows:
 - Reference check on a scratch clone (Claude's own tests and fix, not given to the agent): red 10 failed and 3 passed; the two changed tests pass on the current code; with the fix, 95 tests of the components, the pipeline, and the suite pass; no `DOTALL` left; ruff clean; the mypy gate has 0 new errors.
 - Mutants on the reference fix (10 of 10 caught): no schema at each site (3); prose rescued at each site (3); the selection summary dropped; the writer experience dropped; a fixed validation recommendation; keywords not filtered by the profile.
 
+## MH-4 run by the agent (2026-11-01)
+
+Agent and model: opencode, `github-copilot/claude-haiku-5.5`, a new session (user). One prompt, no help, no stop; commit `a84c616`. The agent reported red 10 failed and 3 passed, then 21 and 82 tests passing, no `DOTALL`, black and ruff clean, and the mypy gate with 0 new errors.
+
+Claude check:
+
+- The code diff is the same as the reference fix, line for line. The 13 tests have the names, inputs, and checks of the spec, and the two existing tests changed only as the spec says. The commit has the 6 named files only.
+- The 10 mutants on the agent's code, with the agent's tests: 10 of 10 caught.
+- Full backend gate: black and ruff pass on the CI paths, the mypy gate has 0 new errors (179 known), pytest has 1854 passed (1841 plus 13).
+- Tokens (session export): 25 steps, 1.106M cached input, 50.5K cache writes, 13.6K output with reasoning; the largest prompt was 55,843 tokens, so all steps stayed below Haiku 5.5's 100K price tier. About USD 0.024 (2.4 credits), against about USD 0.21 for the trial in an old session.
+
 ## Blockers / Questions
 - None.

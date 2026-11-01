@@ -26,7 +26,7 @@ flowchart LR
 - [x] MH-2: eval suite `structured` and its fixed set: for each task, the share of answers that parse strictly, that only the old regex can rescue, and that fail; prompt tokens against the context size; the model of each task in the run metadata. (`0542129`, 2026-11-01; 43 cases; 29 tests; 18 of 18 mutants caught)
 - [x] Baseline run on the current code, recorded in `notes.md` (command, dataset SHA-256, MLflow run ID, peak VRAM). (2026-11-01, MLflow run `ade9802558bf497ea05c2eceeaf40661`: strict 0.845, rescued 0.132, failed 0.023; peak VRAM 6,846 MiB)
 - [x] MH-3: the router passes a JSON schema to Ollama as `format`, sets `num_ctx` for each task, and keeps both in the response-cache key. (`251aa83`, 2026-11-01; 13 tests; 11 of 11 mutants caught; full gate 1841 passed)
-- [ ] MH-4 to MH-7: the 9 call sites use the schema and the strict parser; JD extraction and resume parsing cut their input to the task budget and log when they fall back to rule-based parsing.
+- [ ] MH-4 to MH-7: the 9 call sites use the schema and the strict parser; JD extraction and resume parsing cut their input to the task budget and log when they fall back to rule-based parsing. (MH-4 done 2026-11-01: `a84c616`, selector, resume writer, resume validation; Claude Haiku 5.5 in opencode; 10 of 10 mutants caught)
 - [ ] After run on the same set, recorded next to the baseline.
 - [ ] Done when: no code parses LLM JSON with a regex (`grep` check), the parse-failure rate per task is recorded before and after, and the full backend gate passes.
 
