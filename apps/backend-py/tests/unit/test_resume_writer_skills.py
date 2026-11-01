@@ -38,10 +38,10 @@ def test_duplicates_blanks_and_other_types_are_dropped() -> None:
 def test_writer_returns_a_flat_skill_list(
     sample_user_profile: Any, sample_job_listing: Any
 ) -> None:
-    """The writer flattens grouped skills, and the prompt asks for a flat list."""
+    """The writer returns a flat skill list, and the prompt asks for a flat list."""
     payload = {
         "summary": "Backend engineer.",
-        "skills": [{"category": "Languages", "skills": ["Python", "Django"]}],
+        "skills": ["Python", "Django"],
         "experience": [],
         "projects": [],
         "education": [],

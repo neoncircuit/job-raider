@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import SelectionAnswer, parse_structured
 from ..models.job_listing import JobListing
 from ..models.user_profile import Project, UserProfile
 from ..utils.logger import Components, get_logger
@@ -181,17 +182,10 @@ Return a JSON object:
                 task_type=TaskType.SELECTION,
                 temperature=0.5,
                 max_tokens=1000,
+                response_schema=SelectionAnswer.model_json_schema(),
             )
 
-            # Parse JSON response
-            import json
-            import re
-
-            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if not json_match:
-                raise ValueError("Failed to extract JSON from selection response")
-
-            data = json.loads(json_match.group(0))
+            answer = parse_structured(response.content, SelectionAnswer)
 
             prompt_tokens = response.prompt_tokens
             completion_tokens = response.completion_tokens
@@ -205,13 +199,13 @@ Return a JSON object:
 
             return SelectionOutput(
                 selected_projects=keep_profile_projects(
-                    data.get("selected_projects", []), profile
+                    [item.model_dump() for item in answer.selected_projects], profile
                 ),
                 keywords_to_emphasize=keep_profile_keywords(
-                    data.get("keywords_to_emphasize", []), profile
+                    answer.keywords_to_emphasize, profile
                 ),
-                key_achievements=data.get("key_achievements", []),
-                summary_suggestion=data.get("summary_suggestion", ""),
+                key_achievements=answer.key_achievements,
+                summary_suggestion=answer.summary_suggestion,
                 raw_response=response.content,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,

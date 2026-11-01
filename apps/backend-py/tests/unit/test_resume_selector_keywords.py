@@ -31,7 +31,9 @@ def test_keywords_are_only_profile_skills(
     router = _router_returning(
         {
             "selected_projects": [],
-            "keywords_to_emphasize": ["python", "Kubernetes", "FASTAPI", "Python", 7],
+            "keywords_to_emphasize": ["python", "Kubernetes", "FASTAPI", "Python"],
+            "key_achievements": [],
+            "summary_suggestion": "",
         }
     )
 

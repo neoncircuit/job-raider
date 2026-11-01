@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import ResumeValidationAnswer, parse_structured
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
@@ -246,26 +247,19 @@ Return a JSON object:
                 task_type=TaskType.VALIDATION,
                 temperature=0.3,
                 max_tokens=500,
+                response_schema=ResumeValidationAnswer.model_json_schema(),
             )
 
-            # Parse JSON response
-            import json
-            import re
-
-            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if not json_match:
-                raise ValueError("Failed to extract JSON from validation response")
-
-            data = json.loads(json_match.group(0))
+            answer = parse_structured(response.content, ResumeValidationAnswer)
 
             return ValidationResult(
-                is_valid=data.get("is_valid", False),
-                missing_projects=data.get("missing_projects", []),
-                missing_keywords=data.get("missing_keywords", []),
-                fabricated_content=data.get("fabricated_content", []),
-                date_inconsistencies=data.get("date_inconsistencies", []),
-                overall_score=data.get("overall_score", 0),
-                recommendation=data.get("recommendation", "needs_revision"),
+                is_valid=answer.is_valid,
+                missing_projects=answer.missing_projects,
+                missing_keywords=answer.missing_keywords,
+                fabricated_content=answer.fabricated_content,
+                date_inconsistencies=answer.date_inconsistencies,
+                overall_score=answer.overall_score,
+                recommendation=answer.recommendation,
                 issues=[],
             )
 

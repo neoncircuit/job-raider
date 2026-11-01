@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import ResumeWritingAnswer, parse_structured
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
@@ -259,28 +260,23 @@ Return a JSON object with the rewritten resume sections:
                 task_type=TaskType.RESUME_WRITING,
                 temperature=0.7,
                 max_tokens=2500,
+                response_schema=ResumeWritingAnswer.model_json_schema(),
             )
 
-            # Parse JSON response
-            import json
-            import re
-
-            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if not json_match:
-                raise ValueError("Failed to extract JSON from resume response")
-
-            data = json.loads(json_match.group(0))
+            answer = parse_structured(response.content, ResumeWritingAnswer)
 
             return GeneratedResume(
-                summary=data.get("summary", ""),
+                summary=answer.summary,
                 skills=keep_profile_skills(
-                    flatten_skills(data.get("skills", [])),
+                    flatten_skills(answer.skills),
                     selection.keywords_to_emphasize,
                     profile,
                 ),
-                experience=data.get("experience", []),
-                projects=match_project_names(data.get("projects", []), profile),
-                education=data.get("education", []),
+                experience=[item.model_dump() for item in answer.experience],
+                projects=match_project_names(
+                    [item.model_dump() for item in answer.projects], profile
+                ),
+                education=[item.model_dump() for item in answer.education],
                 raw_response=response.content,
                 model_used=self.llm_router.routes[
                     TaskType.RESUME_WRITING
