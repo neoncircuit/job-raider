@@ -115,6 +115,8 @@ What the baseline shows:
 - `payload: Dict[str, Any]` in the Ollama client removes one baseline mypy error.
 - Scratch clone: black and ruff clean, 13 new tests and 72 router, client, and cost tests pass, the mypy gate has 0 new errors (3 baseline errors fixed). The runner applies the handoff (red step fails, 5 checks pass, commit `44be61b` on the clone).
 - Mutants (11 of 11 caught): no `options.num_ctx`; no `format`; no context size in `generate`; none in `generate_async`; a caller value replaced; the JD size and the default size changed; the cache key without the context size; without the schema; the schema key without sorted keys; the full-length schema key.
+- Applied on the repo (2026-11-01, Claude ran the runner on the user's word "Yes, apply it"): commit `251aa83`. The red step failed, and the 5 checks passed. The three files are the same bytes as the checked copies.
+- Full backend gate after MH-3: black and ruff pass on the CI paths, the mypy gate has 0 new errors (179 known, 3 baseline errors fixed; `--update` not run), and pytest has 1841 passed (1764 before MH-1, plus 35, 29, and 13 new tests).
 
 ## Blockers / Questions
 - None.
