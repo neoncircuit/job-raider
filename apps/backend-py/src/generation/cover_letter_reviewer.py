@@ -15,13 +15,12 @@ Author: Job Raider
 Date: 2026-07-08
 """
 
-import json
-import re
 from dataclasses import dataclass
 from typing import Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import CoverLetterReviewAnswer, parse_structured
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
@@ -135,16 +134,12 @@ class CoverLetterReviewer:
                 task_type=TaskType.COVER_LETTER_REVIEW,
                 temperature=0.3,
                 max_tokens=400,
+                response_schema=CoverLetterReviewAnswer.model_json_schema(),
             )
 
-            content = response.content
-            json_match = re.search(r"\{.*\}", content, re.DOTALL)
-            if not json_match:
-                raise ValueError("Failed to extract JSON from review response")
-
-            data = json.loads(json_match.group(0))
-            critique = str(data.get("critique", "")).strip()
-            rewrite_needed = bool(data.get("rewrite_needed", False))
+            answer = parse_structured(response.content, CoverLetterReviewAnswer)
+            critique = answer.critique.strip()
+            rewrite_needed = answer.rewrite_needed
 
             model_used = self.llm_router.routes[
                 TaskType.COVER_LETTER_REVIEW

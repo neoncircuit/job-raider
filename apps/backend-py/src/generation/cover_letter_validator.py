@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import CoverLetterValidationAnswer, parse_structured
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
@@ -911,43 +912,21 @@ class CoverLetterValidator:
                 # produce identical scores (greedy decoding, no sampling noise).
                 temperature=0.0,
                 max_tokens=400,
+                response_schema=CoverLetterValidationAnswer.model_json_schema(),
             )
 
-            import json
-
-            json_match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if not json_match:
-                raise ValueError("Failed to extract JSON from validation response")
-
-            data = json.loads(json_match.group(0))
-            overall = data.get("overall_score", 0)
-
-            # The LLM can return a non-canonical recommendation (wrong case,
-            # spaces, or an unexpected word). Normalize to the three allowed
-            # values so downstream consumers never receive a surprise string.
-            raw_recommendation = (
-                str(data.get("recommendation", "needs_revision"))
-                .strip()
-                .lower()
-                .replace(" ", "_")
-                .replace("-", "_")
-            )
-            recommendation = (
-                raw_recommendation
-                if raw_recommendation in {"approve", "needs_revision", "reject"}
-                else "needs_revision"
-            )
+            answer = parse_structured(response.content, CoverLetterValidationAnswer)
 
             return CoverLetterValidationResult(
-                is_valid=data.get("is_valid", False),
-                score=overall,
+                is_valid=answer.is_valid,
+                score=answer.overall_score,
                 issues=[],
                 word_count=cover_letter.word_count,
-                structure_score=data.get("structure_score", 0),
-                content_score=data.get("content_score", 0),
-                tone_score=data.get("tone_score", 0),
-                recommendation=recommendation,
-                details={"llm_feedback": data.get("issues", [])},
+                structure_score=answer.structure_score,
+                content_score=answer.content_score,
+                tone_score=answer.tone_score,
+                recommendation=answer.recommendation,
+                details={"llm_feedback": answer.issues},
             )
 
         except Exception as e:

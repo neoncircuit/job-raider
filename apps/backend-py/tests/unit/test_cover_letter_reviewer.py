@@ -169,31 +169,6 @@ class TestCoverLetterReviewer:
         assert call_kwargs.get("temperature") == 0.3
         assert call_kwargs.get("max_tokens") == 400
 
-    def test_review_extracts_json_from_extra_text(
-        self,
-        mock_llm_router,
-        sample_draft,
-        sample_job,
-        sample_profile,
-        sample_selection,
-    ):
-        """Should find and parse JSON even when wrapped in explanatory text."""
-        mock_llm_router.generate.return_value = LLMResponse(
-            content='Here is my review:\n{"critique": "Too generic.", "rewrite_needed": true}\nHope this helps.',
-            model="qwen2.5:3b",
-            provider="ollama",
-            tokens_used=150,
-            cost=0.0,
-        )
-
-        reviewer = CoverLetterReviewer(mock_llm_router)
-        result = reviewer.review(
-            sample_draft, sample_job, sample_profile, sample_selection
-        )
-
-        assert result.critique == "Too generic."
-        assert result.rewrite_needed is True
-
     def test_review_graceful_on_missing_json(
         self,
         mock_llm_router,
