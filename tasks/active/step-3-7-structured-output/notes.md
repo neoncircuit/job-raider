@@ -169,5 +169,26 @@ Claude check (scratch clone at `50e70f3`, because the agent was already running 
 - Full backend gate at `50e70f3`: black and ruff pass on the CI paths, the mypy gate has 0 new errors (179 known), pytest has 1862 passed (1854 plus 9 new, minus 1 removed).
 - Tokens (session export, second prompt): 31 steps, 2.54M cached input, 86.8K cache writes, 12.6K output with reasoning; the largest prompt was 92,188 tokens, still below the 100K tier. About USD 0.043. The longer session context (MH-4 history) shows in the cached input: 2.3 times that of MH-4.
 
+## MH-6 and MH-7 run by the agent (2026-11-01)
+
+Agent and model: opencode, `github-copilot/claude-haiku-5.5`, the same session again; one prompt for both handoffs, one commit each: `fa5c43b` (MH-6) and `a6c6ce7` (MH-7). The agent reported red 9 failed and 2 passed (MH-6) and 10 failed and 2 passed (MH-7), then all checks passing.
+
+Claude check (scratch clones at each commit):
+
+- MH-6: the code matches the spec (the parsed answer goes straight into the mapping calls as `model_dump(exclude_none=True)`, without a `data` name). The 11 tests have the spec's names. Mutants 9 of 9 caught. Full gate at `fa5c43b`: black, ruff, and the mypy gate pass (0 new); pytest 1873 passed.
+- MH-7: the code matches the spec, with the `Raises:` line in `_parse_llm_assessment`. The 12 tests have the spec's names. Mutants 10 of 10 caught. Full gate at `a6c6ce7`: black, ruff, and the mypy gate pass (0 new); pytest 1885 passed.
+- Tokens and cost per prompt of the session (session export; Haiku 5.5 prices per step, 5 times above 100K prompt tokens):
+
+  | Prompt | Handoffs | Steps | Steps above 100K | Largest prompt | USD |
+  |--------|----------|-------|------------------|----------------|-----|
+  | 1 | MH-4 | 25 | 0 | 55,843 | 0.024 |
+  | 2 | MH-5 | 31 | 0 | 92,188 | 0.043 |
+  | 3 | MH-6 and MH-7 | 42 | 41 | 156,966 | 0.395 |
+  | all | | 98 | 41 | | 0.462 |
+
+  The third prompt carried the history of the first two; in a new session it would have cost about USD 0.05 to 0.08.
+
+All 9 call sites now send their schema and parse strictly. A search of `src/` finds no regex `\{.*\}` any more. Three other places parse LLM JSON in their own way, outside the 9 call sites of review item R13: `generation/linkedin_analyzer.py` (a code-fence regex, then brace matching), `assessment/engine.py` (removes a fence, then `json.loads`; questions are a JSON list), and `api/routes/cover_letter.py` `_parse_json_object` (removes a fence, then the text from the first `{` to the last `}`, without a regex). They are not in the structured suite.
+
 ## Blockers / Questions
-- None.
+- The three other JSON parsing places: a new handoff (MH-8) in Step 3.7, or a backlog item.
