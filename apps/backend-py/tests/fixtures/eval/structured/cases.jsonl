@@ -1,0 +1,43 @@
+{"case_id": "selection__ledger_hours", "site": "selection", "grounding_case": "clean__ledger_hours"}
+{"case_id": "selection__query_story", "site": "selection", "grounding_case": "clean__query_story"}
+{"case_id": "selection__atlas_search", "site": "selection", "grounding_case": "clean__atlas_search"}
+{"case_id": "selection__finch_tuning", "site": "selection", "grounding_case": "clean__finch_tuning"}
+{"case_id": "selection__harbor_tests", "site": "selection", "grounding_case": "clean__harbor_tests"}
+{"case_id": "resume_writing__docker_handoff", "site": "resume_writing", "grounding_case": "clean__docker_handoff"}
+{"case_id": "resume_writing__ledger_hours", "site": "resume_writing", "grounding_case": "clean__ledger_hours"}
+{"case_id": "resume_writing__eval_sets", "site": "resume_writing", "grounding_case": "clean__eval_sets"}
+{"case_id": "resume_writing__atlas_search", "site": "resume_writing", "grounding_case": "clean__atlas_search"}
+{"case_id": "resume_writing__cedar_forms", "site": "resume_writing", "grounding_case": "clean__cedar_forms"}
+{"case_id": "resume_validation__query_story", "site": "resume_validation", "grounding_case": "clean__query_story"}
+{"case_id": "resume_validation__docker_handoff", "site": "resume_validation", "grounding_case": "clean__docker_handoff"}
+{"case_id": "resume_validation__finch_tuning", "site": "resume_validation", "grounding_case": "clean__finch_tuning"}
+{"case_id": "resume_validation__harbor_tests", "site": "resume_validation", "grounding_case": "clean__harbor_tests"}
+{"case_id": "resume_validation__campus_queue", "site": "resume_validation", "grounding_case": "clean__campus_queue"}
+{"case_id": "resume_analysis__general_backend", "site": "resume_analysis", "mode": "general", "profile_id": "backend"}
+{"case_id": "resume_analysis__general_ml", "site": "resume_analysis", "mode": "general", "profile_id": "ml"}
+{"case_id": "resume_analysis__general_grad", "site": "resume_analysis", "mode": "general", "profile_id": "grad"}
+{"case_id": "resume_analysis__job_ledger_hours", "site": "resume_analysis", "mode": "job_specific", "grounding_case": "clean__ledger_hours"}
+{"case_id": "resume_analysis__job_eval_sets", "site": "resume_analysis", "mode": "job_specific", "grounding_case": "clean__eval_sets"}
+{"case_id": "cover_letter_review__ledger_hours", "site": "cover_letter_review", "grounding_case": "clean__ledger_hours"}
+{"case_id": "cover_letter_review__aws", "site": "cover_letter_review", "grounding_case": "fabricated_technology__aws"}
+{"case_id": "cover_letter_review__atlas_search", "site": "cover_letter_review", "grounding_case": "clean__atlas_search"}
+{"case_id": "cover_letter_review__gcp", "site": "cover_letter_review", "grounding_case": "fabricated_technology__gcp"}
+{"case_id": "cover_letter_review__harbor_tests", "site": "cover_letter_review", "grounding_case": "clean__harbor_tests"}
+{"case_id": "cover_letter_validation__query_story", "site": "cover_letter_validation", "grounding_case": "clean__query_story"}
+{"case_id": "cover_letter_validation__bridge_validation", "site": "cover_letter_validation", "grounding_case": "clean__bridge_validation"}
+{"case_id": "cover_letter_validation__finch_tuning", "site": "cover_letter_validation", "grounding_case": "clean__finch_tuning"}
+{"case_id": "cover_letter_validation__precision_gain", "site": "cover_letter_validation", "grounding_case": "clean__precision_gain"}
+{"case_id": "cover_letter_validation__cedar_forms", "site": "cover_letter_validation", "grounding_case": "clean__cedar_forms"}
+{"case_id": "resume_parsing__backend", "site": "resume_parsing", "profile_id": "backend"}
+{"case_id": "resume_parsing__ml", "site": "resume_parsing", "profile_id": "ml"}
+{"case_id": "resume_parsing__grad", "site": "resume_parsing", "profile_id": "grad"}
+{"case_id": "jd_extraction__greenhouse_midcut", "site": "jd_extraction", "text_file": "jd_paste/greenhouse_midcut.txt"}
+{"case_id": "jd_extraction__html_greenhouse_crumbs", "site": "jd_extraction", "text_file": "jd_paste/html_greenhouse_crumbs.txt"}
+{"case_id": "jd_extraction__linkedin_highlight", "site": "jd_extraction", "text_file": "jd_paste/linkedin_highlight.txt"}
+{"case_id": "jd_extraction__prose_no_headers", "site": "jd_extraction", "text_file": "jd_paste/prose_no_headers.txt"}
+{"case_id": "jd_extraction__job_eval_sets", "site": "jd_extraction", "grounding_case": "clean__eval_sets"}
+{"case_id": "job_classification__ledger_hours", "site": "job_classification", "grounding_case": "clean__ledger_hours"}
+{"case_id": "job_classification__docker_handoff", "site": "job_classification", "grounding_case": "clean__docker_handoff"}
+{"case_id": "job_classification__atlas_search", "site": "job_classification", "grounding_case": "clean__atlas_search"}
+{"case_id": "job_classification__eval_sets", "site": "job_classification", "grounding_case": "clean__eval_sets"}
+{"case_id": "job_classification__harbor_tests", "site": "job_classification", "grounding_case": "clean__harbor_tests"}
