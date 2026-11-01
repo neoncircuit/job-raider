@@ -73,5 +73,36 @@ A new local suite, `python main.py eval structured`, with a fixed set in `tests/
 - Mutants (18 of 18 caught): rescued counted as strict; the two legacy flags; the truncation boundary; no unload; no model order; no task-type filter; samples ignored; the lowest VRAM kept; an empty rate as 0; content kept for strict answers; no_call counted as failed; local calls counted as non-local; references not checked; keywords not from the job; a wrong task type; JD inputs not checked; resume text without projects.
 - Applied on the repo (2026-11-01, Claude ran the runner on the user's word "Yes, apply it"): commit `0542129`. The red step failed, and the 5 checks passed. The suite, its tests, the registry, and the fixed set are the same bytes as the scratch copies that the mutants ran on (LF line endings); `test_scam_suite.py` changes by the one expected line. (The `/tmp` clones were gone after a WSL restart, so the compare used the scratchpad copies.)
 
+## Baseline run (2026-11-01, Claude, with the user's approval for the GPU time)
+
+Command (WSL, from `apps/backend-py`), one time, on the current code (no schema, no `num_ctx`):
+
+```bash
+.venv/bin/python main.py eval structured
+```
+
+Git SHA `a190fd0c09f5c3d2dd18f0483021a2ab8d015e19` (`git_dirty`: true; the 14 CRLF-only files). Dataset SHA-256 `2fce5d5296db542024fcbe8dd285cc1929cac8eec5a4b2436c13bd236bbd3e7e`. MLflow run `ade9802558bf497ea05c2eceeaf40661`. Report `data/eval/structured/20261101T023903125197Z.json`. 10:26 to 10:39 (13 minutes). 129 calls, all to the local Ollama, 0 from the cache, 0 without an answer. Peak VRAM 6,846 MiB (suite) and 6,856 MiB (watchdog, limit 7,700); no model loaded after the run. Ollama gave both models a context of 4,096 tokens.
+
+| Site | Model | Calls | Strict | Rescued | Failed | Old parsing found no JSON | Latency p50 |
+|------|-------|-------|--------|---------|--------|---------------------------|-------------|
+| selection | 3b | 15 | 1.000 | 0 | 0 | 0 | 2.0 s |
+| resume_writing | 7b | 15 | 1.000 | 0 | 0 | 0 | 3.8 s |
+| resume_validation | 3b | 15 | 1.000 | 0 | 0 | 0 | 0.6 s |
+| resume_analysis | 7b | 15 | 1.000 | 0 | 0 | 0 | 10.1 s |
+| cover_letter_review | 3b | 15 | 1.000 | 0 | 0 | 0 | 0.5 s |
+| cover_letter_validation | 3b | 15 | 0.400 | 0.400 | 0.200 | 0.200 | 3.4 s |
+| resume_parsing | 7b | 9 | 1.000 | 0 | 0 | 0 | 7.2 s |
+| jd_extraction | 7b | 15 | 1.000 | 0 | 0 | 0 | 1.6 s |
+| job_classification | 7b | 15 | 0.267 | 0.733 | 0 | 0 | 7.8 s |
+| all | | 129 | 0.845 | 0.132 | 0.023 | 0.023 | |
+
+What the baseline shows:
+
+- 7 of 9 sites already answer with one clean JSON object every time on this set.
+- **Job classification:** 11 of 15 answers are a fenced JSON object followed by a prose explanation of each field. Only the old regex takes these; the strict parser does not (text after the fence).
+- **Cover letter validation (3b, temperature 0):** 9 of 15 answers start with "Here is the evaluation of the cover letter"; 6 have the JSON inside the prose, and 3 (one case, three identical samples) have no JSON at all, so the validator used its rule result. At temperature 0 the 3 samples of a case are the same, so this site has 5 distinct answers, not 15.
+- **No prompt was cut:** the longest prompt was 1,331 tokens (resume parsing) and the longest answer 926 tokens (resume analysis), against a context of 4,096. The inputs of this set are short (pasted JDs up to 800 characters, short synthetic resumes), so the set measures the answer format, not the input size. The input-size risk is still in the code: the JD extractor sends up to 50,000 characters (about 12,500 tokens), and nothing cuts a long resume.
+- Resume parsing: the model wrote "not provided" for missing URLs, and the profile mapping dropped them (`url_parsing` messages in the log). The schema allows any string there, so MH-7 asks for `null`.
+
 ## Blockers / Questions
 - None.
