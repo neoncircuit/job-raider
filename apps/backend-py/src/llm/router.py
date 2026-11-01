@@ -9,6 +9,8 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
+import hashlib
+import json
 import logging
 import threading
 import time
@@ -65,6 +67,41 @@ CACHEABLE_TASK_TYPES: Set[TaskType] = {
     TaskType.RESUME_PARSING,
 }
 MAX_CACHEABLE_TEMPERATURE = 0.3
+
+# Ollama context size (num_ctx) for each task (Step 3.7). Ollama loads a
+# model again when num_ctx changes, so most tasks share the default.
+DEFAULT_NUM_CTX = 4096
+TASK_NUM_CTX: Dict[TaskType, int] = {
+    TaskType.JD_EXTRACTION: 8192,
+    TaskType.RESUME_PARSING: 8192,
+}
+
+
+def context_size(task_type: TaskType) -> int:
+    """
+    Return the Ollama context size (``num_ctx``) for a task.
+
+    Args:
+        task_type: Routed task type.
+
+    Returns:
+        The task's context size in tokens.
+    """
+    return TASK_NUM_CTX.get(task_type, DEFAULT_NUM_CTX)
+
+
+def schema_key(schema: Dict[str, Any]) -> str:
+    """
+    Return a short stable hash of a JSON schema, for the response-cache key.
+
+    Args:
+        schema: JSON schema of the expected answer.
+
+    Returns:
+        The first 16 hex characters of the SHA-256 of the sorted schema.
+    """
+    text = json.dumps(schema, sort_keys=True)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
 @dataclass
@@ -504,6 +541,10 @@ class LLMRouter:
         }
         if "think" in kwargs:
             extra["think"] = kwargs["think"]
+        if kwargs.get("num_ctx"):
+            extra["num_ctx"] = int(kwargs["num_ctx"])
+        if kwargs.get("response_schema"):
+            extra["response_schema"] = schema_key(kwargs["response_schema"])
         return extra
 
     def _should_use_response_cache(
@@ -778,6 +819,8 @@ class LLMRouter:
 
         # Do not forward override to provider clients.
         kwargs.pop("model", None)
+        # Ollama context size for the task; a caller value wins (Step 3.7).
+        kwargs.setdefault("num_ctx", context_size(task_type))
 
         route = self.routes[task_type]
         provider, primary_model = self.resolve_primary_model(task_type, model)
@@ -906,6 +949,8 @@ class LLMRouter:
             raise ValueError(f"Unknown task type: {task_type}")
 
         kwargs.pop("model", None)
+        # Ollama context size for the task; a caller value wins (Step 3.7).
+        kwargs.setdefault("num_ctx", context_size(task_type))
 
         route = self.routes[task_type]
         provider, primary_model = self.resolve_primary_model(task_type, model)

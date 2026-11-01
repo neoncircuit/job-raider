@@ -174,7 +174,9 @@ class OllamaClient(BaseLLMClient):
                 ``temperature``, ``max_tokens``, ``top_p``, ``timeout``,
                 ``stop_sequences``, and optional ``think`` (passed through to
                 Ollama ``/api/chat`` only when explicitly provided so other
-                callers keep Ollama's default thinking behavior).
+                callers keep Ollama's default thinking behavior). Optional
+                ``num_ctx`` goes to ``options.num_ctx``, and optional
+                ``response_schema`` (a JSON schema) goes to ``format``.
 
         Returns:
             LLMResponse with generated content and metadata
@@ -186,7 +188,7 @@ class OllamaClient(BaseLLMClient):
 
         # Build request payload. Do not set ``think`` unless the caller asked;
         # cover-letter writing passes think=False for Gemma 4 blank-output.
-        payload = {
+        payload: Dict[str, Any] = {
             "model": self.config.model,
             "messages": [
                 {"role": msg.role.value, "content": msg.content} for msg in messages
@@ -200,6 +202,10 @@ class OllamaClient(BaseLLMClient):
         }
         if "think" in kwargs:
             payload["think"] = bool(kwargs["think"])
+        if kwargs.get("num_ctx"):
+            payload["options"]["num_ctx"] = int(kwargs["num_ctx"])
+        if kwargs.get("response_schema"):
+            payload["format"] = kwargs["response_schema"]
 
         keep_alive = kwargs.get("keep_alive", self.keep_alive)
         if keep_alive is not None:
