@@ -346,6 +346,97 @@ class JobClassificationAnswer(BaseModel):
     red_flags: List[str]
 
 
+class PrepSheetAnswer(BaseModel):
+    """Answer of the interview prep sheet (``api/routes/cover_letter.py``)."""
+
+    likely_questions: List[str]
+    gaps_to_address: List[str]
+    talking_points: List[str]
+
+
+class ScoreExplanationAnswer(BaseModel):
+    """Answer of the match-score explanation (``api/routes/cover_letter.py``)."""
+
+    strengths: List[str]
+    concerns: List[str]
+    improvements: List[str]
+
+
+class LinkedInSectionScore(BaseModel):
+    """Score of one LinkedIn profile section."""
+
+    section_name: str
+    score: int = Field(ge=0, le=100)
+    weight: float = Field(ge=0, le=1)
+    feedback: str
+
+
+class LinkedInInsight(BaseModel):
+    """One observation and recommendation about a LinkedIn profile."""
+
+    category: str
+    observation: str
+    recommendation: str
+    priority: Literal["high", "medium", "low"]
+
+
+class LinkedInAnalysisAnswer(BaseModel):
+    """Answer of the LinkedIn profile analysis (``linkedin_analyzer.py``)."""
+
+    overall_score: int = Field(ge=0, le=100)
+    summary: str
+    section_scores: List[LinkedInSectionScore]
+    insights: List[LinkedInInsight]
+    keyword_recommendations: List[str]
+    action_plan: List[str]
+    generated_headline_options: List[str]
+    summary_rewrite_suggestions: List[str]
+    competitive_edge: str
+    metadata: Dict[str, str] = Field(default_factory=dict)
+
+
+class AssessmentOption(BaseModel):
+    """One option of a multiple-choice assessment question."""
+
+    label: str
+    text: str
+    is_correct: bool
+
+
+class AssessmentQuestion(BaseModel):
+    """One generated assessment question."""
+
+    question_type: Literal["conceptual", "scenario", "coding", "system_design"]
+    answer_format: Literal["freeform", "multiple_choice"]
+    difficulty: Literal["beginner", "intermediate", "advanced", "expert"]
+    topic: str
+    question_text: str
+    options: List[AssessmentOption] = Field(default_factory=list)
+    correct_answer_hint: str = ""
+    time_limit_seconds: Optional[int] = None
+
+
+class AssessmentQuestionsAnswer(BaseModel):
+    """Answer of the assessment question generation (``assessment/engine.py``).
+
+    The questions are inside an object, because Ollama's ``format`` and
+    ``parse_structured`` take one JSON object.
+    """
+
+    questions: List[AssessmentQuestion]
+
+
+class AssessmentScoreAnswer(BaseModel):
+    """Answer of the free-form and multiple-choice answer scoring (``assessment/engine.py``)."""
+
+    score: float = Field(ge=0, le=100)
+    feedback: str
+    strengths: List[str]
+    improvements: List[str]
+    model_answer: str
+    is_correct: Optional[bool] = None
+
+
 OUTPUT_MODELS: Dict[str, Type[BaseModel]] = {
     "selection": SelectionAnswer,
     "resume_writing": ResumeWritingAnswer,
