@@ -14,6 +14,8 @@ from typing import Any, Callable, Dict, List, Optional
 import yaml
 from pydantic import BaseModel, Field
 
+from ..llm.base import Message, MessageType
+from ..llm.structured import FormQuestionAnswer, parse_structured
 from ..models.user_profile import (
     UserProfile,
     VisaStatus,
@@ -25,6 +27,20 @@ from .form_models import (
     ParsedForm,
     QuestionAnswer,
 )
+
+FORM_ANSWER_SYSTEM_PROMPT = """You are a job application form filler. Given a question from a job
+application and the applicant's profile, give a concise, truthful answer.
+
+Rules:
+1. Use only information from the applicant's profile.
+2. Do not make up or guess information.
+3. Keep the answer short enough for a form field.
+4. For a multiple-choice question, give the option that best matches the profile.
+5. For a numeric question, give only the number.
+6. If the profile does not give the answer, set "answer" to NEEDS_MANUAL_REVIEW.
+
+Return a JSON object with "answer", "confidence" (high, medium, or low), and
+"reasoning" (why you chose this answer)."""
 
 
 class AnswerBank(BaseModel):
@@ -308,17 +324,20 @@ class QuestionAnswerEngine:
                 f"APPLICANT PROFILE SUMMARY:\n{profile_summary}"
             )
 
+            messages = [
+                Message(role=MessageType.SYSTEM, content=FORM_ANSWER_SYSTEM_PROMPT),
+                Message(role=MessageType.USER, content=prompt),
+            ]
             response = self.llm_router.generate(
+                messages,
                 task_type=TaskType.QUESTION_ANSWERING,
-                prompt=prompt,
+                temperature=0.2,
+                response_schema=FormQuestionAnswer.model_json_schema(),
             )
 
-            if not response:
-                return None
+            answer = parse_structured(response.content, FormQuestionAnswer)
 
-            answer_text = response.strip()
-
-            if "NEEDS_MANUAL_REVIEW" in answer_text:
+            if "NEEDS_MANUAL_REVIEW" in answer.answer:
                 return QuestionAnswer(
                     question=question,
                     answer_value="",
@@ -328,31 +347,15 @@ class QuestionAnswerEngine:
                     reasoning="LLM indicated manual review is needed",
                 )
 
-            # Try to parse as JSON for structured response
-            answer_value = answer_text
-            confidence = AnswerConfidence.MEDIUM
-            reasoning = None
-
-            if "{" in answer_text:
-                try:
-                    import json
-
-                    parsed = json.loads(answer_text[answer_text.index("{") :])
-                    answer_value = parsed.get("answer", answer_text)
-                    conf = parsed.get("confidence", "medium")
-                    confidence = AnswerConfidence(conf)
-                    reasoning = parsed.get("reasoning")
-                except (json.JSONDecodeError, ValueError):
-                    pass
-
+            confidence = AnswerConfidence(answer.confidence)
             return QuestionAnswer(
                 question=question,
-                answer_value=answer_value,
+                answer_value=answer.answer,
                 confidence=confidence,
                 source="llm",
                 needs_review=confidence
                 in (AnswerConfidence.LOW, AnswerConfidence.UNKNOWN),
-                reasoning=reasoning,
+                reasoning=answer.reasoning,
             )
 
         except Exception as e:

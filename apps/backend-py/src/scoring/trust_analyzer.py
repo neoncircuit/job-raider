@@ -12,6 +12,8 @@ Date: 2026-05-06
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from ..llm.base import Message, MessageType
+from ..llm.structured import TrustAnalysisAnswer, parse_structured
 from ..models.job_listing import JobListing
 from ..utils.logger import Components, get_logger
 from .scam_detector import (
@@ -198,32 +200,19 @@ class TrustAnalyzer:
                 reasons=reasons_str,
             )
 
+            messages = [
+                Message(role=MessageType.SYSTEM, content=SYSTEM_PROMPT),
+                Message(role=MessageType.USER, content=prompt),
+            ]
             response = self.llm_router.generate(
+                messages,
                 task_type=TaskType.TRUST_ANALYSIS,
-                prompt=prompt,
-                system_prompt=SYSTEM_PROMPT,
+                temperature=0.2,
+                response_schema=TrustAnalysisAnswer.model_json_schema(),
             )
 
-            if not response:
-                return None
-
-            # Parse JSON response
-            text = response.strip()
-            if "{" in text:
-                import json
-
-                try:
-                    json_str = text[text.index("{") : text.rfind("}") + 1]
-                    return json.loads(json_str)
-                except (json.JSONDecodeError, ValueError):
-                    self.logger.warning("Failed to parse LLM trust analysis response")
-                    return {
-                        "summary": text,
-                        "additional_indicators": [],
-                        "confidence_adjustment": 0.0,
-                    }
-
-            return None
+            answer = parse_structured(response.content, TrustAnalysisAnswer)
+            return answer.model_dump()
 
         except Exception as e:
             self.logger.warning(f"LLM trust analysis failed: {e}")
