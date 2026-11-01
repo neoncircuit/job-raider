@@ -147,5 +147,16 @@ Claude check:
 - Reference check on a scratch clone: red 7 failed and 2 passed; with the fix, 151 cover-letter, grounding, and suite tests pass; no `DOTALL` left; ruff clean; the mypy gate has 0 new errors.
 - Mutants on the reference fix (8 of 8 caught): no schema at each site (2); prose rescued at each site (2); a fixed rewrite flag; the score from the structure score; the LLM feedback dropped; the critique not stripped.
 
+## MH-6 and MH-7 spec handoffs written and checked (2026-11-01, Claude)
+
+`mh-6-extraction.md` (JD extractor and job classifier, 11 named tests) and `mh-7-resume-parsing.md` (resume parser and resume analyzer, 12 named tests). They touch other files than MH-5, so they were written while the agent ran MH-5. Probes of both reference fixes: no existing test breaks (44 and 106 tests).
+
+- MH-6, JD extractor: the posting is cut to `MAX_JD_CHARS = 18_000` (was 50,000) and the answer limited to `JD_MAX_TOKENS = 1_500`, to fit the 8,192-token context; the parsed answer goes to the mapping as `model_dump(exclude_none=True)`. Found: a `null` `experience_level` reaches `.title()` and ends the LLM path ("'NoneType' object has no attribute 'title'" in the red run); `exclude_none` fixes it, and a test covers it. The old no-JSON branch returned `success=False`; a parse failure now goes to the rule-based result like any other failure.
+- MH-6, both files: a module logger (`Components.LLM`) logs a warning on each fallback; the result's `errors` still carries the reason. The `errors` and `warnings` lists get type hints, because mypy cannot infer `errors` after the branch goes (2 new errors in the first probe).
+- MH-7, resume parser: `MAX_RESUME_CHARS = 8_000` (unchanged size, now a named constant with a warning log when it cuts) and `RESUME_MAX_TOKENS = 3_000` (was the client default of 4,096, which shared the 8,192 context with the prompt). The prompt asks for `null` for missing URLs and GPA (the baseline had "not provided"), and no longer allows a flat skills list.
+- MH-7, resume analyzer: both calls send the schema; `_parse_llm_assessment` returns the same 11 keys from the parsed answer.
+- Reference checks on scratch clones: MH-6 red 9 failed and 2 passed, green 55 passed; MH-7 red 10 failed and 2 passed, green 118 passed. No `DOTALL` left, ruff clean, the mypy gate has 0 new errors for both.
+- Mutants on the reference fixes: MH-6 9 of 9 caught (no schema, no answer limit, prose rescued, the 50,000-character limit, no fallback log, null fields kept; classifier: no schema, prose rescued, no fallback log); MH-7 10 of 10 caught (no schema, no answer limit, prose rescued, a 20,000-character limit, the cut log not a warning, the prompt still "if present"; analyzer: no schema in each call, prose rescued, the summary dropped).
+
 ## Blockers / Questions
 - None.
