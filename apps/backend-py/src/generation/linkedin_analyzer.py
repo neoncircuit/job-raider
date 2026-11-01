@@ -9,8 +9,6 @@ Author: Job Raider
 Date: 2026-06-25
 """
 
-import json
-import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -18,6 +16,11 @@ import yaml
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
+from ..llm.structured import (
+    LinkedInAnalysisAnswer,
+    StructuredOutputError,
+    parse_structured,
+)
 from ..models.linkedin_analysis import (
     InboundAttractionInsight,
     LinkedInProfileAnalysis,
@@ -97,6 +100,7 @@ class LinkedInAnalyzer:
                 task_type=TaskType.LINKEDIN_ANALYSIS,
                 temperature=0.3,
                 max_tokens=3000,
+                response_schema=LinkedInAnalysisAnswer.model_json_schema(),
             )
 
             llm_result = self._parse_llm_analysis(response.content)
@@ -129,6 +133,7 @@ class LinkedInAnalyzer:
                 task_type=TaskType.LINKEDIN_ANALYSIS,
                 temperature=0.3,
                 max_tokens=3000,
+                response_schema=LinkedInAnalysisAnswer.model_json_schema(),
             )
 
             llm_result = self._parse_llm_analysis(response.content)
@@ -243,69 +248,6 @@ class LinkedInAnalyzer:
 
         return "\n".join(parts)
 
-    def _extract_json(self, response_content: str) -> Dict[str, Any]:
-        """
-        Extract a JSON object from an LLM response.
-
-        Strips markdown fences when present, then locates the first balanced
-        JSON object by counting braces while respecting string literals.
-
-        Args:
-            response_content: Raw LLM response that may contain markdown or
-                surrounding explanatory text.
-
-        Returns:
-            Parsed JSON dictionary.
-
-        Raises:
-            ValueError: If no valid JSON object can be extracted.
-        """
-        cleaned = response_content.strip()
-
-        # Try fenced markdown JSON first.
-        fence_match = re.search(r"```(?:json)?\s*(.*?)\s*```", cleaned, re.DOTALL)
-        if fence_match:
-            try:
-                return json.loads(fence_match.group(1).strip())
-            except json.JSONDecodeError:
-                pass
-
-        # Find the first '{' and balance braces.
-        start = cleaned.find("{")
-        if start == -1:
-            raise ValueError("No JSON object found in analysis response")
-
-        depth = 0
-        end: Optional[int] = None
-        in_string = False
-        escape = False
-        for i, char in enumerate(cleaned[start:], start=start):
-            if in_string:
-                if escape:
-                    escape = False
-                    continue
-                if char == "\\":
-                    escape = True
-                    continue
-                if char == '"':
-                    in_string = False
-                continue
-            if char == '"':
-                in_string = True
-                continue
-            if char == "{":
-                depth += 1
-            elif char == "}":
-                depth -= 1
-                if depth == 0:
-                    end = i + 1
-                    break
-
-        if end is None:
-            raise ValueError("Unbalanced JSON object in analysis response")
-
-        return json.loads(cleaned[start:end])
-
     def _parse_llm_analysis(self, response_content: str) -> Dict[str, Any]:
         """
         Parse LLM response into a dictionary.
@@ -319,24 +261,27 @@ class LinkedInAnalyzer:
             Dictionary with analysis data
 
         Raises:
-            ValueError: If JSON cannot be extracted or parsed
+            ValueError: If the answer does not match the analysis schema. The
+                message names the reason after "Failed to extract JSON".
         """
         try:
-            data = self._extract_json(response_content)
-        except ValueError as e:
-            raise ValueError("Failed to extract JSON from analysis response") from e
+            answer = parse_structured(response_content, LinkedInAnalysisAnswer)
+        except StructuredOutputError as e:
+            raise ValueError(
+                f"Failed to extract JSON from analysis response: {e}"
+            ) from e
 
         return {
-            "overall_score": data.get("overall_score", 50),
-            "summary": data.get("summary", ""),
-            "section_scores": data.get("section_scores", []),
-            "insights": data.get("insights", []),
-            "keyword_recommendations": data.get("keyword_recommendations", []),
-            "action_plan": data.get("action_plan", []),
-            "generated_headline_options": data.get("generated_headline_options", []),
-            "summary_rewrite_suggestions": data.get("summary_rewrite_suggestions", []),
-            "competitive_edge": data.get("competitive_edge", ""),
-            "metadata": data.get("metadata", {}),
+            "overall_score": answer.overall_score,
+            "summary": answer.summary,
+            "section_scores": [item.model_dump() for item in answer.section_scores],
+            "insights": [item.model_dump() for item in answer.insights],
+            "keyword_recommendations": answer.keyword_recommendations,
+            "action_plan": answer.action_plan,
+            "generated_headline_options": answer.generated_headline_options,
+            "summary_rewrite_suggestions": answer.summary_rewrite_suggestions,
+            "competitive_edge": answer.competitive_edge,
+            "metadata": answer.metadata,
         }
 
     def _rule_based_analysis(

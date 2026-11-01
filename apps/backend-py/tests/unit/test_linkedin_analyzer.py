@@ -217,7 +217,17 @@ class TestLinkedInAnalyzerParseLLM:
         llm_router = MagicMock(spec=LLMRouter)
         analyzer = LinkedInAnalyzer(llm_router)
 
-        response_data = {"overall_score": 75, "summary": "Good profile."}
+        response_data = {
+            "overall_score": 75,
+            "summary": "Good profile.",
+            "section_scores": [],
+            "insights": [],
+            "keyword_recommendations": [],
+            "action_plan": [],
+            "generated_headline_options": [],
+            "summary_rewrite_suggestions": [],
+            "competitive_edge": "Fair",
+        }
         markdown_text = f"```json\n{json.dumps(response_data)}\n```"
 
         result = analyzer._parse_llm_analysis(markdown_text)

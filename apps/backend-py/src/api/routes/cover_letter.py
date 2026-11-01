@@ -39,6 +39,7 @@ from ...generation.cover_letter_writer import GeneratedCoverLetter
 from ...generation.selector import SelectionOutput
 from ...llm.base import Message, MessageType
 from ...llm.router import TaskType, create_router
+from ...llm.structured import PrepSheetAnswer, ScoreExplanationAnswer, parse_structured
 from ...models.user_profile import UserProfile
 from ...scoring.matcher import JobMatcher
 from ...utils.logger import Components, get_logger
@@ -422,29 +423,6 @@ async def assess_job_match(request: ManualCoverLetterRequest):
     )
 
 
-def _parse_json_object(raw: str) -> Dict[str, Any]:
-    """
-    Extract the first JSON object from an LLM response.
-
-    Strips Markdown code fences and tolerates leading/trailing prose.
-
-    Raises:
-        ValueError: If no JSON object can be parsed.
-    """
-    text = raw.strip()
-    if text.startswith("```"):
-        text = text.split("```")[1]
-        if text.startswith("json"):
-            text = text[4:]
-
-    start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        raise ValueError("No JSON object found in LLM response")
-
-    return json.loads(text[start : end + 1])
-
-
 def _string_list(value: Any, limit: int = 10) -> List[str]:
     """Coerce an LLM-provided value into a bounded list of strings."""
     if not isinstance(value, list):
@@ -564,9 +542,11 @@ async def generate_prep_sheet(request: ManualCoverLetterRequest):
     try:
         llm_router = create_router(prefer_local=True)
         response = await llm_router.generate_async(
-            messages, task_type=TaskType.QUESTION_ANSWERING
+            messages,
+            task_type=TaskType.QUESTION_ANSWERING,
+            response_schema=PrepSheetAnswer.model_json_schema(),
         )
-        parsed = _parse_json_object(response.content)
+        answer = parse_structured(response.content, PrepSheetAnswer)
     except Exception as exc:
         logger.error("Prep sheet generation failed: %s", exc, exc_info=True)
         raise HTTPException(
@@ -576,9 +556,9 @@ async def generate_prep_sheet(request: ManualCoverLetterRequest):
 
     return PrepSheetResponse(
         success=True,
-        likely_questions=_string_list(parsed.get("likely_questions")),
-        gaps_to_address=_string_list(parsed.get("gaps_to_address")),
-        talking_points=_string_list(parsed.get("talking_points")),
+        likely_questions=_string_list(answer.likely_questions),
+        gaps_to_address=_string_list(answer.gaps_to_address),
+        talking_points=_string_list(answer.talking_points),
     )
 
 
@@ -601,13 +581,15 @@ async def _generate_explanation(
     ]
     llm_router = create_router(prefer_local=True)
     response = await llm_router.generate_async(
-        messages, task_type=TaskType.QUESTION_ANSWERING
+        messages,
+        task_type=TaskType.QUESTION_ANSWERING,
+        response_schema=ScoreExplanationAnswer.model_json_schema(),
     )
-    parsed = _parse_json_object(response.content)
+    answer = parse_structured(response.content, ScoreExplanationAnswer)
     return ScoreExplanationResponse(
-        strengths=_string_list(parsed.get("strengths")),
-        concerns=_string_list(parsed.get("concerns")),
-        improvements=_string_list(parsed.get("improvements")),
+        strengths=_string_list(answer.strengths),
+        concerns=_string_list(answer.concerns),
+        improvements=_string_list(answer.improvements),
     )
 
 
