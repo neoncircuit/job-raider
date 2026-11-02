@@ -48,5 +48,15 @@ Runner handoffs for the data and the suite; spec handoffs for the fixes where th
 1. Job pool: the new constructed set (2 synthetic profiles, about 70 constructed jobs with seniority mismatches and the R4 traps).
 2. Labels: Claude drafts every label with a one-line reason before any ranker runs; the user checks all of them. This changes decision 1 of 2026-10-22 (the user labels the pairs) in the same way as the real-letter decision of 2026-10-30.
 
+## Draft set written (2026-11-03, Claude)
+
+`draft/` holds the labeling guide (`README.md`), the two synthetic profiles (`profiles.py`, with `MODES`: `fresh_ml` uses `fresh_grad_mode`), 70 constructed jobs with a draft label for each profile (`jobs_ml.py`: rk-001 to rk-035; `jobs_backend.py`: rk-036 to rk-070), and `build_set.py`, which validates every profile and job against the app models and writes `draft/out/` (`profiles.json`, `modes.json`, `jobs.jsonl`, `labels.jsonl`) and `label-review.md`.
+
+- Profiles: `fresh_ml` (0.5 years from one internship; targets machine learning engineer, data scientist, AI; entry level; 12 skills; 3 projects) and `mid_backend` (4.4 years from two jobs; targets backend engineer, platform engineer, Java; mid level; 11 skills).
+- Jobs: 57 with required skills and 13 without (the matcher's description path, as for a pasted job description). Fewer description-only jobs than planned; the description-path jobs are rk-003, rk-007, rk-018, rk-019, rk-021, rk-022, rk-023, rk-027, rk-031, rk-035, rk-051, rk-052, and rk-062, so the skill traps "Git" in digital (rk-021) and "Go" in good, going, Google, and goal (rk-023, rk-051, rk-052) reach that path. The keyword traps ("AI" and "Java" in the profile targets) reach every job, because keywords are matched in the title and description. Traps for R4: "AI" against email, maintain, detail, retail, and training (rk-019 to rk-023); "Git" against digital (rk-021); "Java" against JavaScript (rk-044, rk-045); "Go" against good, going, Google, goal, Django, and MongoDB (rk-023, rk-043, rk-051, rk-052, rk-056).
+- Draft labels: `fresh_ml` 8 apply, 19 maybe, 43 not relevant; `mid_backend` 11, 17, 42.
+- The guide changed once while drafting, before any ranker ran: the label rules now give every pair one label (a target role or a role next to it, at most one level step off, is at least `1`; `2` needs a target role, the right level, and most required skills), and "role next to a target role" names software roles in the profile's main language for a machine learning profile.
+- No ranker has run on the set. The user checks every label in `label-review.md`.
+
 ## Blockers / Questions
-- None.
+- The user's label check (`label-review.md`).
