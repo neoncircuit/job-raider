@@ -533,10 +533,11 @@ def run_eval_command(args) -> int:
 
     Args:
         args: Parsed arguments with ``suite``, ``dataset``, ``out``,
-            ``no_mlflow``, and ``part``.
+            ``no_mlflow``, ``part``, ``model``, and ``samples``.
 
     Returns:
-        Exit code: 0 on success, 1 when the dataset is missing or invalid.
+        Exit code: 0 on success, 1 when the dataset is missing or invalid, or
+        when the writer suite has no ``--model``.
     """
     from src.evaluation.report import log_report_to_mlflow, write_report
     from src.evaluation.suites import emscad as emscad_suite
@@ -558,6 +559,14 @@ def run_eval_command(args) -> int:
     runner_kwargs = {}
     if args.suite == "emscad":
         runner_kwargs["part"] = args.part
+    if args.suite == "writer":
+        if not args.model:
+            message = "The writer suite needs --model, for example --model qwen2.5:7b."
+            logger.error(message)
+            print(message)
+            return 1
+        runner_kwargs["model"] = args.model
+        runner_kwargs["samples"] = args.samples
     try:
         report = runner(dataset, **runner_kwargs)
     except (FileNotFoundError, ValueError) as exc:
@@ -807,6 +816,9 @@ Examples:
   # Score listing-pair dedupe on the committed labeled set
   python main.py eval dedupe
 
+  # Compare one cover-letter writer model on the grounding set (local; needs Ollama)
+  python main.py eval writer --model qwen2.5:7b
+
   # Use another dataset folder and write only the JSON report
   python main.py eval grounding --dataset path/to/set --no-mlflow
         """,
@@ -834,6 +846,18 @@ Examples:
         choices=("tuning", "heldout"),
         default="tuning",
         help="EMSCAD part (emscad only; default: tuning)",
+    )
+    eval_parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="Writer model (writer only; required there)",
+    )
+    eval_parser.add_argument(
+        "--samples",
+        type=int,
+        default=3,
+        help="Letters for each profile-job pair (writer only; default: 3)",
     )
 
     return parser

@@ -681,7 +681,14 @@ class TestRegistryAndPart:
 
     def test_registry_lists_scam_and_emscad(self) -> None:
         """``scam`` and ``emscad`` resolve to their default folders."""
-        assert SUITE_NAMES == ("grounding", "scam", "emscad", "dedupe", "structured")
+        assert SUITE_NAMES == (
+            "grounding",
+            "scam",
+            "emscad",
+            "dedupe",
+            "structured",
+            "writer",
+        )
         scam_runner, scam_dir = get_suite("scam")
         emscad_runner, emscad_dir = get_suite("emscad")
         assert scam_runner is run_scam_suite

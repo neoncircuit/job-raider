@@ -15,6 +15,11 @@ level). The validator does not find analogical claims in real letters.
 
 One run uses one model. Letters from the writer's template fallback or from
 another model are counted, not scored. Tests pass a fake writer.
+
+Without a fake writer, the run uses the app's cover-letter writer for one
+model of ``WRITER_MODELS``, local only (Step 3.8, MH-2). The run stops before
+any call when the cover-letter route is not Ollama with that model, sets the
+route's fallback to none, records the peak VRAM, and unloads the model once.
 """
 
 from __future__ import annotations
@@ -27,14 +32,21 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from ...generation.cover_letter_validator import CoverLetterValidator
-from ...generation.cover_letter_writer import GeneratedCoverLetter
+from ...generation.cover_letter_writer import CoverLetterWriter, GeneratedCoverLetter
 from ...generation.selector import SelectionOutput
+from ...llm.router import TaskType
 from ...models.job_listing import JobListing
 from ...models.user_profile import UserProfile
 from ..report import EvalReport
 from ..run_metadata import build_run_metadata
 from .grounding import DEFAULT_DATASET_DIR as GROUNDING_DIR
-from .structured import fixed_selection, load_suite_data
+from .structured import (
+    default_router,
+    fixed_selection,
+    gpu_memory_used_mib,
+    load_suite_data,
+    unload_ollama_model,
+)
 
 SUITE = "writer"
 DEFAULT_DATASET_DIR = GROUNDING_DIR
@@ -48,9 +60,13 @@ CHECKS: tuple[str, ...] = (
     "fabricated_experience",
     "scope_inflation",
 )
+# Local models of 7B or smaller that the user approved for this host (Step 3.8).
+WRITER_MODELS: tuple[str, ...] = ("qwen2.5:7b", "qwen3.5:4b", "qwen2.5:3b", "gemma3:4b")
 
 WriteFn = Callable[[JobListing, UserProfile, SelectionOutput], GeneratedCoverLetter]
 Clock = Callable[[], float]
+UnloadFn = Callable[[str], None]
+VramProbe = Callable[[], Optional[int]]
 
 
 @dataclass(frozen=True)
@@ -287,45 +303,144 @@ def profile_rates(rows: Sequence[LetterRow]) -> Dict[str, Optional[float]]:
     return rates
 
 
+def check_model(model: str) -> None:
+    """
+    Refuse a model that is not on the writer allow-list.
+
+    Args:
+        model: The writer model of the run.
+
+    Raises:
+        ValueError: When the model is not in ``WRITER_MODELS``.
+    """
+    if model not in WRITER_MODELS:
+        raise ValueError(
+            f"model {model!r} is not on the writer allow-list: "
+            f"{', '.join(WRITER_MODELS)}"
+        )
+
+
+def local_writer(router: Any, model: str) -> WriteFn:
+    """
+    The app's cover-letter writer, fixed to one local model with no fallback.
+
+    Args:
+        router: The app's LLM router.
+        model: The Ollama model that the cover-letter route must use.
+
+    Returns:
+        The write function, which calls the writer with ``model``.
+
+    Raises:
+        ValueError: When the cover-letter route does not resolve to
+            ``ollama/<model>``. No call is made.
+    """
+    provider, resolved = router.resolve_primary_model(
+        TaskType.COVER_LETTER_WRITING, model
+    )
+    if provider != "ollama" or resolved != model:
+        raise ValueError(
+            f"The cover-letter route uses {provider}/{resolved}, not ollama/{model}. "
+            "Set the cover-letter writing route to Ollama in Settings."
+        )
+    router.routes[TaskType.COVER_LETTER_WRITING].fallback_provider = "none"
+    writer = CoverLetterWriter(router)
+
+    def write(
+        job: JobListing, profile: UserProfile, selection: SelectionOutput
+    ) -> GeneratedCoverLetter:
+        """
+        Write one letter with the model.
+
+        Args:
+            job: The job.
+            profile: The profile.
+            selection: The selection.
+
+        Returns:
+            The letter.
+        """
+        return writer.write(job=job, profile=profile, selection=selection, model=model)
+
+    return write
+
+
 def run_writer_suite(
     dataset_dir: Path = DEFAULT_DATASET_DIR,
     *,
     model: str,
-    write: WriteFn,
+    write: Optional[WriteFn] = None,
     samples: int = DEFAULT_SAMPLES,
     validator: Optional[Any] = None,
     clock: Clock = time.perf_counter,
+    router: Optional[Any] = None,
+    unload: Optional[UnloadFn] = None,
+    vram_probe: Optional[VramProbe] = None,
 ) -> EvalReport:
     """
     Write ``samples`` letters for each pair with one model and check them.
 
     Args:
         dataset_dir: The grounding dataset folder.
-        model: The writer model of this run.
+        model: The writer model of this run; it must be in ``WRITER_MODELS``.
         write: Writes a letter for a job, a profile, and a selection with
-            ``model``.
+            ``model``. When None, the app's writer is used (see ``local_writer``),
+            and the model is unloaded and the VRAM is read unless ``unload`` or
+            ``vram_probe`` is given.
         samples: Letters for each pair.
         validator: The letter validator; the default is the deterministic
             validator of the grounding suite (no LLM).
         clock: Gives the time in seconds (tests pass a fake).
+        router: The LLM router for the default writer (default: the app's).
+        unload: Unloads the model once after the letters, also on error.
+        vram_probe: Gives the used VRAM in MiB after each letter, or None.
 
     Returns:
-        Report with the metrics of ``summarize``, the main-check share for
-        each profile, the counts for each pair, and one row for each letter.
+        Report with the metrics of ``summarize`` and ``peak_vram_mib``, the
+        main-check share for each profile, the counts for each pair, and one
+        row for each letter.
 
     Raises:
-        ValueError: When ``samples`` is below 1 or a case names an unknown
-            profile.
+        ValueError: When ``samples`` is below 1, the model is not on the
+            writer allow-list, a case names an unknown profile, or (with no
+            ``write``) the cover-letter route is not Ollama with ``model``.
     """
     if samples < 1:
         raise ValueError("samples must be 1 or more")
+    check_model(model)
+    if write is None:
+        app_router = router if router is not None else default_router()
+        write = local_writer(app_router, model)
+        if unload is None:
+
+            def unload_model(name: str) -> None:
+                """
+                Unload the model from Ollama.
+
+                Args:
+                    name: The model name.
+                """
+                unload_ollama_model(app_router, name)
+
+            unload = unload_model
+        if vram_probe is None:
+            vram_probe = gpu_memory_used_mib
     dataset_dir = Path(dataset_dir)
     pairs = load_pairs(dataset_dir)
     checker = validator or CoverLetterValidator(llm_router=None, strict_mode=False)
     rows: List[LetterRow] = []
-    for pair in pairs:
-        for sample in range(samples):
-            rows.append(write_and_check(pair, sample, model, write, checker, clock))
+    peak: Optional[int] = None
+    try:
+        for pair in pairs:
+            for sample in range(samples):
+                rows.append(write_and_check(pair, sample, model, write, checker, clock))
+                if vram_probe is not None:
+                    reading = vram_probe()
+                    if reading is not None and (peak is None or reading > peak):
+                        peak = reading
+    finally:
+        if unload is not None:
+            unload(model)
 
     metadata = build_run_metadata(
         SUITE,
@@ -334,10 +449,12 @@ def run_writer_suite(
         model=model,
         temperature=WRITER_TEMPERATURE,
     )
+    metrics: Dict[str, Optional[float]] = summarize(rows)
+    metrics["peak_vram_mib"] = float(peak) if peak is not None else None
     return EvalReport(
         suite=SUITE,
         metadata=metadata,
-        metrics=summarize(rows),
+        metrics=metrics,
         details={
             "model": model,
             "samples": samples,
