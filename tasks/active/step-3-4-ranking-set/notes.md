@@ -80,5 +80,13 @@ The user chose yes-or-no questions over the review sheet (the set is synthetic, 
 
 Result: rk-003 for `mid_backend` changed from 0 to 1, with a new line in the guide's terms and its Changes section. Final counts: `fresh_ml` 8 apply, 19 maybe, 43 not relevant; `mid_backend` 11, 18, 41. The labels are final; no ranker has run on the set.
 
+## MH-1 written and checked (2026-11-03, Claude)
+
+`mh-1-ranking-set.md` (runner): `profiles.json`, `modes.json`, `jobs.jsonl`, and `labels.jsonl` in `tests/fixtures/eval/ranking/` (from `draft/build_set.py`), and `tests/unit/test_ranking_set.py` (5 tests: the models, the matcher modes, unique job IDs, one label of 0 to 2 with a reason for each pair, the label mix for each profile, and the guide's label rules).
+
+- The guide (`tests/fixtures/eval/ranking/README.md`) is in Claude's docs commit, not in the handoff: it has a Mermaid fence, and the runner's fence pattern (`FENCE_RE` in `scripts/run_handoff.py`) reads only three-backtick blocks, so a four-backtick block that holds the guide would be skipped.
+- Scratch clone (guide in place): red 4 failed and 1 passed (the guide test); black leaves the test unchanged; ruff clean; 5 passed; the mypy gate has 0 new errors.
+- Data mutants 8 of 8 caught (duplicate job, label 3, missing label, profile without a name, wrong matcher mode, no apply labels for a profile, empty reason, guide without the label-first rule).
+
 ## Blockers / Questions
 - None.
