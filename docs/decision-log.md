@@ -1,5 +1,36 @@
 # Job Raider Decision Log
 
+## 2026-11-02 - Structured LLM output: JSON schema and strict parsing
+
+### Context
+
+Each LLM task that answers in JSON took the answer with the regex `\{.*\}` or with a cut from the first `{` to the last `}`, and used the default Ollama context of 4,096 tokens for every task (review items R13 and R14). On a fixed set of 43 cases, 15.5% of the answers did not parse strictly: the models wrote prose around the JSON. Two LLM calls (the deep trust analysis and the form-question fallback of LinkedIn Easy Apply) had wrong router arguments and had never returned a result.
+
+### Decision
+
+- Each JSON task has a Pydantic output model in `src/llm/structured.py`. The call site sends the model's JSON schema to Ollama as `format`, and the router sets `num_ctx` for each task (8,192 tokens for JD extraction and resume parsing, 4,096 for the others). The response-cache key includes both.
+- The call site parses the whole answer with `parse_structured` (code fence removal, `json.loads`, `model_validate`). No regex, no brace search. A failure raises `StructuredOutputError` with the reason (`not_json`, `not_object`, or `schema`).
+- A parse failure uses the existing fallback of the task, or gives no LLM result. It never uses the raw text as the answer.
+- The `structured` eval suite (local only, it needs Ollama) measures the share of strict, rescued, and failed answers for the 9 main call sites.
+
+### Consequences
+
+- On the same set, strict answers went from 0.845 to 1.000 at all 9 sites (MLflow runs `ade9802558bf497ea05c2eceeaf40661` and `3882e8625b774a89bd32be9d891191e1`). Cover-letter validation, job classification, and resume analysis became 2 to 3 times faster, because the models no longer write prose or unused fields. Peak VRAM went from 6,846 to 6,444 MiB.
+- Cloud fallback providers ignore the schema; `parse_structured` still accepts their JSON, also inside a code fence.
+- A new JSON task needs an output model; the suite measures it only when it is added to the suite's cases.
+- The deep trust analysis and the form-question fallback now return LLM results. The form-question fallback is part of the auto-apply path, which Step 5 decides on.
+
+### Flow
+
+```mermaid
+flowchart LR
+    C[Call site] -->|schema| R[Router: format, num_ctx]
+    R --> O[Ollama]
+    O --> P{parse_structured}
+    P -->|ok| U[Output model]
+    P -->|error with reason| F[Fallback or no LLM result]
+```
+
 ## 2026-09-02 - Product version checkpoints (semver + tags)
 
 ### Context

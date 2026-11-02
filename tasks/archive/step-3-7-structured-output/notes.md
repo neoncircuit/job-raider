@@ -274,5 +274,13 @@ Agent and model: opencode, `claude-haiku-5.5` (from the session export), a new s
 - Search of `src/` after MH-12 (regex, `json.loads` on answer text, brace search): only `src/llm/structured.py` is left, with the `json.loads` of `parse_structured` and the `rfind("}")` of `extract_braced_object` (the suite's "rescued" count only). No call site parses LLM JSON with a regex or cuts an answer by brace position.
 - Tokens and cost (session export): 14 steps, none above the 100K tier, largest prompt 53,380 tokens, about USD 0.018 (2 credits). A new session for one handoff costs much less than a prompt late in a long session (USD 0.83 for MH-9 and MH-10).
 
+## Review (2026-11-02, Claude)
+
+- Goal met: every LLM task that answers in JSON sends its schema to Ollama and parses the whole answer with `parse_structured`; no code takes LLM JSON with a regex or by brace position. On the fixed set, strict answers went from 0.845 to 1.000 at all 9 sites (parse-failure rate 0.155 to 0), with lower latency and lower peak VRAM. The full gate passes with 1948 tests.
+- Work split: 12 micro-handoffs. The runner applied MH-1, MH-2, MH-3, MH-8, and MH-11 (full code). Claude Haiku 5.5 in opencode (GitHub Copilot) did the 7 spec handoffs MH-4 to MH-7, MH-9, MH-10, and MH-12, for about USD 1.31 in total; every handoff passed its mutant check (121 mutants over the 12 handoffs, all caught).
+- Found on the way: two LLM calls that had never worked (the deep trust analysis and the form-question fallback), now fixed; and unused prompt fields in resume analysis (the schema leaves them out).
+- Limits: the set has short inputs, so it measures the answer format, not long inputs; the suite cannot show the 8,192-token context of JD extraction and resume parsing (the router tests check it). The mypy gate reports 3 baseline errors as fixed; the baseline file is not changed (`--update` is not run).
+- Docs: `docs/usage.md` ("Structured-Output Suite", with the before and after runs) and `docs/decision-log.md` (2026-11-02 entry).
+
 ## Blockers / Questions
 - None.

@@ -449,7 +449,7 @@ flowchart LR
     F -->|No| W[Warning; report kept]
 ```
 
-Suites available now: `grounding` (the deterministic cover-letter grounding validator). Its default dataset is the labeled main set in `tests/fixtures/eval/grounding`. The holdout set in `tests/fixtures/eval/grounding_holdout` is not for routine runs: it ran one time, and its README explains why.
+Suites available now: `grounding` (the deterministic cover-letter grounding validator), `scam`, `emscad`, and `dedupe` (deterministic; `python main.py eval --help` shows an example for each), and `structured` (LLM structured output; it needs Ollama, see "Structured-Output Suite" below). The default dataset of `grounding` is the labeled main set in `tests/fixtures/eval/grounding`. The holdout set in `tests/fixtures/eval/grounding_holdout` is not for routine runs: it ran one time, and its README explains why.
 
 Run the grounding suite on the main set (from `apps/backend-py`):
 
@@ -500,6 +500,44 @@ Change a pin only in the same commit as the change that moves it:
 1. Run `python main.py eval grounding` and note the MLflow run.
 2. Edit the count in `thresholds.json`. When the main set changed, also set the new `dataset_sha256`.
 3. Add an entry to `changes` with the date, the reason, and the MLflow run. A pin that goes up accepts a worse count, so its reason must say why.
+
+### Structured-Output Suite
+
+Each LLM task that answers in JSON has an output model in `src/llm/structured.py`. The call site sends the model's JSON schema to Ollama (`format`), and the router sets the context size of the task (`num_ctx`: 8,192 tokens for JD extraction and resume parsing, 4,096 for the other tasks). The call site then checks the whole answer with `parse_structured`: no regex, and no cut from the first `{` to the last `}`. When the answer does not match, the call site logs the reason (`not_json`, `not_object`, or `schema`) and uses its fallback.
+
+```mermaid
+flowchart LR
+    C[Call site] -->|messages, task,<br/>JSON schema| R[LLM router]
+    R -->|format and num_ctx| O[Ollama]
+    O --> P{parse_structured}
+    P -->|Matches the model| U[Use the answer]
+    P -->|not_json, not_object,<br/>or schema| F[Log the reason;<br/>use the fallback]
+```
+
+The `structured` suite measures this on a fixed set of 43 synthetic cases for the 9 call sites in `OUTPUT_MODELS`: selection, resume writing, resume validation, resume analysis, cover-letter review, cover-letter validation, resume parsing, JD extraction, and job classification. The suite runs the real component of each site 3 times for each case, with the response cache off, and sorts each answer:
+
+- `strict`: the whole answer is one JSON object that matches the output model.
+- `rescued`: only the text from the first `{` to the last `}` matches (what the old regex took).
+- `failed`: neither.
+
+The suite also records the answers in which the old parsing found no JSON object, the prompts that filled the context, the peak GPU memory, the calls that did not reach Ollama, and the model of each task. It loads one model at a time and unloads each model after its cases. It needs Ollama, so it runs locally, not in CI; its unit tests use a fake router and run in CI.
+
+Before you run it, make sure that no other model is loaded in Ollama and that no pipeline is running (the GPU limit is one model of 7B or smaller at a time). Run the suite (from `apps/backend-py`):
+
+```bash
+python main.py eval structured
+```
+
+Results of Step 3.7 on the same set (dataset SHA-256 `2fce5d52...`):
+
+| Run | MLflow run | Strict | Rescued | Failed | Peak VRAM |
+|-----|------------|--------|---------|--------|-----------|
+| Before (regex parsing, no schema) | `ade9802558bf497ea05c2eceeaf40661` | 0.845 | 0.132 | 0.023 | 6,846 MiB |
+| After (schema and strict parsing) | `3882e8625b774a89bd32be9d891191e1` | 1.000 | 0 | 0 | 6,444 MiB |
+
+Limits: the inputs of the set are short (the longest prompt is about 1,330 tokens), so the set measures the answer format, not long inputs. The suite reads the context length from Ollama one time for each model, so its report cannot show the 8,192 tokens of JD extraction and resume parsing; the router's unit tests check that value.
+
+To add a JSON task: add its output model to `src/llm/structured.py`, send `Model.model_json_schema()` as `response_schema`, and parse with `parse_structured`. When the suite must measure the task, also add it to `OUTPUT_MODELS`, to `SITE_TASK_TYPES` and `run_case` in `src/evaluation/suites/structured.py`, and to `tests/fixtures/eval/structured/cases.jsonl`. A changed set has a new SHA-256, so its runs do not compare with the runs above.
 
 ## Multi-Agent API
 

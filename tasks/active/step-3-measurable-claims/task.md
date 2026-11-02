@@ -18,7 +18,7 @@ Every number in the README and in the resume framing (review section 7) comes fr
 - [ ] 3.4 Ranking set, then the R4 and R5 fixes.
 - [x] 3.5 Dedupe set, then the R2 fix (`tasks/archive/step-3-5-dedupe-set/`; done 2026-10-27: flag and keep, identified precision and recall in the README, CI gate with 0 merged `different` pairs).
 - [x] 3.6 Real cost and usage tracking (`tasks/archive/step-3-6-cost-tracking/`; done 2026-10-28: every router call recorded with real token counts, a run file and an MLflow run for each pipeline run, real tokens on the Metrics page, one dated price table).
-- [ ] 3.7 Schema-constrained output and context size.
+- [x] 3.7 Schema-constrained output and context size (`tasks/archive/step-3-7-structured-output/`; done 2026-11-02: every JSON task sends its schema and parses strictly; strict answers 0.845 to 1.000 at all 9 sites on the fixed set, MLflow runs `ade9802558bf497ea05c2eceeaf40661` and `3882e8625b774a89bd32be9d891191e1`; two broken LLM calls fixed).
 - [ ] 3.8 Model comparison on the grounding set.
 - [ ] 3.9 README and resume numbers, with the known limits of the grounding rules (`tasks/archive/step-3-2-grounding-validator/notes.md`).
 - [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.

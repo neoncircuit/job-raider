@@ -33,4 +33,4 @@ flowchart LR
 - [x] Done when: no code parses LLM JSON with a regex (`grep` check), the parse-failure rate per task is recorded before and after, and the full backend gate passes. (2026-11-02: the search finds only `parse_structured` and the suite's `extract_braced_object`; rates in "After run"; full gate 1948 passed at `4ee166f`)
 
 ## Status
-`in-progress` (2026-10-31: plan approved; MH-1 to MH-3 by the runner, MH-4 to MH-7 as spec handoffs for an agent)
+`done` (2026-11-02: all 9 sites strict on the fixed set, MH-8 to MH-12 for the other JSON places, full gate 1948 passed, docs in `docs/usage.md` and `docs/decision-log.md`; archived)
