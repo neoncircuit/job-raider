@@ -30,5 +30,13 @@ Request (user): "Make 3b the default", after Step 3.8 recommended `qwen2.5:3b` (
 - First runner test failed at the frontend `vitest` check (exit 1), and the runner restored every file. Cause: `apps/frontend-ts/node_modules/.vite/vitest/` and its `results.json` belong to `root` (written 2026-10-18 and 2026-10-21), so `vitest run` as the WSL user cannot write its results cache and exits with 1 after the tests pass. Claude's own check had missed this, because it read the test summary lines, not the exit codes; so its frontend red step and the frontend mutants P4 and P5 counted that exit, not a test result. Fix: the vitest commands use `--no-cache`. Re-check with exit codes: frontend red exit 1 (the new test fails), green exit 0 (5 passed); mutants 5 of 5 caught again, P4 and P5 now on real test failures. The root-owned cache folder is in the backlog (a `chown` is the user's call).
 - Runner test on a fresh clone (with `--no-cache`): both red steps failed, the 8 checks passed (4 backend, 4 frontend), commit `fa09db2` on the clone, and the five files are the same bytes as the checked copies.
 
+## MH-1 applied (2026-11-03, Claude ran the runner on the user's word "Yes, apply it")
+
+Commit `fa8dcb0`. Both red steps failed, and the 8 checks passed. The five files are the same bytes as the runner test's. Docs: `docs/usage.md` (the Review & rewrite tip names `qwen2.5:3b` and the Settings step), `docs/architecture.md` (the model table), and the 2026-11-02 decision-log entry (applied); the backlog item is checked.
+
+Full gates on a scratch clone at `fa8dcb0` (exit codes printed): backend black, ruff, and the mypy gate pass (0 new errors), pytest 2010 passed; frontend prettier, eslint, and `tsc` pass. The full `vitest run --no-cache` had 1 failure of 257: `tests/app/cover-letter/page.test.tsx` "generates a cover letter and shows the validation panel" timed out at 10 seconds in a very slow run (setup 1,018 s, environment 1,149 s through the scratch clone). Run alone, that file passes 13 of 13 at `fa8dcb0` and at `04dcfdf` (before the change), so the timeout is load, not the change.
+
+The user's saved Settings: Claude does not open `data/settings/user_settings.json`. If the saved `cover_letter_writing` route is `qwen2.5:7b`, the app keeps using it until the user clicks "Use recommended (3b / 7b)" or sets the route.
+
 ## Blockers / Questions
 - None.

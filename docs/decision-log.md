@@ -14,7 +14,7 @@ The plan ranked the models on the share of letters with `ungrounded_claims`. The
 
 ### Decision
 
-- The recommended local cover-letter writer is `qwen2.5:3b`. This entry does not change the Settings default; that is a separate change.
+- The recommended local cover-letter writer is `qwen2.5:3b`. Applied on 2026-11-03 (`tasks/active/writer-default-3b/`): the built-in `cover_letter_writing` route uses `qwen2.5:3b`, and the task is in the small Ollama tier, so the Settings presets keep it and a cloud fallback for it is the small cloud model. A saved Settings route still wins over the default.
 - `qwen2.5:3b` and `gemma3:4b` both meet the secondary rule. `gemma3:4b` gets there with short letters (89 of 195 too short, 85 with poor structure, 186 without a call to action, lowest mean score). `qwen2.5:3b` meets it with letters of nearly the baseline's length, a higher valid share and mean score, and the lowest latency and VRAM.
 - `qwen3.5:4b` does not meet the rule: its `fabricated_technology` rate is 0.010, and 13 of its letters have `fabricated_experience`.
 

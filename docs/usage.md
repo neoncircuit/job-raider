@@ -773,7 +773,7 @@ http://localhost:3000
 - **Small (fast / high volume):** job scoring, project and keyword selection, validation, quick Q&A, trust checks, cover-letter review
 - **Large (quality / writing):** JD extraction, resume parsing/writing/analysis, LinkedIn analysis, classification, cover-letter drafting, assessment generation and evaluation
 - Recommended defaults remain `qwen2.5:3b` and `qwen2.5:7b`; any installed model may be saved as your default
-- For local cover-letter drafting on `qwen2.5:7b`, enable **Review & rewrite** on the Cover Letter page. One critique + rewrite pass improves structure without loading a larger GPU model. Avoid hopping to `qwen3.5:9b` on hosts with GPU IRQL / StoreMI instability; compare only lighter tags such as `qwen3.5:4b` one model at a time if you A/B.
+- Local cover letters are drafted with `qwen2.5:3b` by default (Step 3.8; see the 2026-11-02 entry of `docs/decision-log.md`). A saved Settings route wins over the default: to use it, click **Use recommended (3b / 7b)** in Settings, or set the cover-letter writing route to `qwen2.5:3b`. Enable **Review & rewrite** on the Cover Letter page for one critique and rewrite pass; it improves structure without loading a larger GPU model. Do not use `qwen3.5:9b` or other models above 7B on hosts with GPU IRQL / StoreMI instability; compare writer models one at a time with `main.py eval writer` (see "Writer Model Comparison").
 
 ### Logs page
 

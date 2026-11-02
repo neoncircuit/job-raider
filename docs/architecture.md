@@ -269,7 +269,7 @@ Recommended defaults (also shown in Settings as **Use recommended (3b / 7b)**):
 
 | Model | Parameters | VRAM Usage | Use Case | Cost |
 |-------|-----------|------------|----------|------|
-| qwen2.5:3b | 3B | ~2 GB | Selection, Scoring (small tier) | Free (local) |
+| qwen2.5:3b | 3B | ~2 GB | Selection, Scoring, Cover-letter writing (small tier) | Free (local) |
 | qwen2.5:7b | 7B | ~4 GB | Resume Writing (large tier) | Free (local) |
 | gemma3:4b | 4B | ~2.5 GB | Alt. Selection | Free (local) |
 | gemma3:12b | 12B | ~7 GB | Alt. Writing | Free (local) |

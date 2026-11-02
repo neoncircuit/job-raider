@@ -21,9 +21,9 @@ flowchart LR
 
 ## Acceptance Criteria
 - [x] Plan approved by the user (including the cloud fallback side effect). (2026-11-02: "Small tier for both")
-- [ ] MH-1 (runner): `DEFAULT_ROUTES` gives `cover_letter_writing` the model `qwen2.5:3b`; `cover_letter_writing` is in the small tier in the backend and the frontend; tests for the default route, both tier lists, the tier apply, and the cloud fallback model.
-- [ ] Docs: `docs/usage.md` (the Review & rewrite tip), `docs/architecture.md` (the model table), and the 2026-11-02 decision-log entry say that the default is applied; the backlog item is checked.
+- [x] MH-1 (runner): `DEFAULT_ROUTES` gives `cover_letter_writing` the model `qwen2.5:3b`; `cover_letter_writing` is in the small tier in the backend and the frontend; tests for the default route, both tier lists, the tier apply, and the cloud fallback model. (`fa8dcb0`, 6 tests, 5 of 5 mutants)
+- [x] Docs: `docs/usage.md` (the Review & rewrite tip), `docs/architecture.md` (the model table), and the 2026-11-02 decision-log entry say that the default is applied; the backlog item is checked.
 - [ ] Done when: the backend and frontend gates pass, and the user has changed their saved route (or chooses to keep it).
 
 ## Status
-`in-progress` (2026-11-02: plan approved; MH-1 written, checked, and runner-tested; next: the user applies MH-1)
+`in-progress` (2026-11-03: MH-1 applied as `fa8dcb0`, gates pass; next: the user's saved Settings route)
