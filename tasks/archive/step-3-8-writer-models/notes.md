@@ -161,5 +161,17 @@ What the results show:
 - `qwen3.5:4b` is out under both rules (`fabricated_technology` 0.010) and has 13 letters with `fabricated_experience`.
 - Limit: most flagged sentences are false flags (sentence precision 0.15 to 0.18), and the validator does not see analogical claims in real letters. The numbers rank how often the rules fire, not a measured error rate.
 
+Decisions (user, 2026-11-02): the decision log recommends `qwen2.5:3b` as the default writer (Claude's recommendation; the Settings default is a separate change, now in the backlog), and MH-4 is applied with the runner.
+
+- MH-4 applied on the repo (Claude ran the runner on the user's word "Yes, apply it"): commit `9b49850`. The red step failed, and the 4 checks passed. The three files are the same bytes as the checked copies. `scripts/compare_writer_reports.py --secondary`, run from the repository on the four reports, gives the same output as the scratch-clone run above.
+
+## Review (2026-11-02, Claude)
+
+- Goal met: the writer choice in `docs/decision-log.md` rests on 65 profile-job pairs of the grounding set with 3 letters each (780 letters over four models), not on 3 synthetic cases. Recommended writer: `qwen2.5:3b`.
+- The plan's main metric did not work: the validator flags every baseline letter, so the letter-level share was at its ceiling. The plan took the letter-level precision from real letters that all had errors, so it never measured flags on clean letters. The secondary analysis was fixed after the baseline and committed before the other results (`b442783`). Lesson: before a model comparison, check that the metric is below its ceiling on the baseline (one model run or a few letters) before the full set of runs.
+- Work: 4 micro-handoffs. The runner applied MH-1 and MH-4 (full code). Claude Haiku 5.5 in opencode did the spec handoffs MH-2 and MH-3 in one prompt of a new session (about USD 0.049). Mutants: 11, 11, 11, and 10, all caught. Full gate at `9b49850`: black and ruff pass on the CI paths, the mypy gate has 0 new errors (179 known), pytest 2005 passed.
+- GPU: four runs of about 10 minutes each, one model at a time, peak VRAM 4,189 to 6,656 MiB, no watchdog stop.
+- Limits (also in the decision log): validator evidence only, false flags dominate, no analogical claims, first draft only, 3 synthetic profiles.
+
 ## Blockers / Questions
-- Which writer becomes the recommended default: `qwen2.5:3b` (Claude's recommendation), or keep `qwen2.5:7b`?
+- None.

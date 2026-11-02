@@ -3627,3 +3627,17 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 **How to apply:**
 - Write each handoff so that any of the three agent sets can do it: one `AGENT.md`, one handoff, exact commands, and the exact `git add` (`docs/handoff-runner.md`, "Spec handoffs for an agent").
 - Keep notes for each agent set (model, session rule, cost) instead of a default. Ask which agent is in use before advice that depends on it.
+
+## Writer model comparison (2026-11-02)
+
+### Check that the metric is below its ceiling on the baseline before the full runs
+
+**Lesson:** The Step 3.8 plan ranked writer models on the share of letters that the validator flags for `ungrounded_claims`. The baseline run (`qwen2.5:7b`, 195 letters) showed that the validator flags every letter, so the share was 1.0 and could not separate the models. The plan took the letter-level precision (0.875) from 10 real letters that all had real errors, so that number never measured flags on clean letters.
+
+**Why:**
+- A metric at its ceiling (or floor) on the baseline gives a difference of 0 for every model that is also at the ceiling, and a false difference for any model that is not.
+- A precision measured only on letters with errors says nothing about how often a check fires on a clean letter.
+
+**How to apply:**
+- Before the full set of model runs, run the baseline (or a few letters) and check that the main metric is clearly below its ceiling and above its floor.
+- When a metric fails this check after the baseline, fix the new analysis and commit it before any other model's result exists, and report the original rule too.

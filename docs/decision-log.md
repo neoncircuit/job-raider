@@ -1,5 +1,65 @@
 # Job Raider Decision Log
 
+## 2026-11-02 - Cover-letter writer model chosen on the grounding set
+
+### Context
+
+The decision of 2026-08-25 kept `qwen2.5:7b` as the local cover-letter writer after an A/B against `qwen3.5:4b` on 3 synthetic cases with one letter each (validator mean score 83.0 against 77.67). Step 3.8 measured the choice again on the grounding set: 65 profile-job pairs (3 synthetic profiles), 3 letters for each pair, the production writer (temperature 0.8), and the deterministic validator on each letter. The user approved four local models of 7B or smaller for this host: `qwen2.5:7b`, `qwen3.5:4b`, `qwen2.5:3b`, and `gemma3:4b`. `gemma4:e4b` was left out: it stores 8.0B parameters in a 9.6 GB file, more than the free VRAM of the 8 GB GPU.
+
+The plan ranked the models on the share of letters with `ungrounded_claims`. The baseline run showed that the validator flags at least one ungrounded sentence in every `qwen2.5:7b` letter, so that share was at its ceiling. A secondary analysis was fixed after the baseline and before the other results (commit `b442783`), and the user chose it:
+
+- S1: the mean count of flagged ungrounded sentences in a letter, compared pair by pair with the baseline (95% bootstrap interval, 2,000 resamples, seed 0).
+- S2: the share of letters with `scope_inflation`, compared in the same way.
+- Rule: switch only when the S1 interval is below 0, the S2 interval is not above 0, and the `fabricated_technology` rate is not higher.
+
+### Decision
+
+- The recommended local cover-letter writer is `qwen2.5:3b`. This entry does not change the Settings default; that is a separate change.
+- `qwen2.5:3b` and `gemma3:4b` both meet the secondary rule. `gemma3:4b` gets there with short letters (89 of 195 too short, 85 with poor structure, 186 without a call to action, lowest mean score). `qwen2.5:3b` meets it with letters of nearly the baseline's length, a higher valid share and mean score, and the lowest latency and VRAM.
+- `qwen3.5:4b` does not meet the rule: its `fabricated_technology` rate is 0.010, and 13 of its letters have `fabricated_experience`.
+
+| Model | Flagged sentences in a letter | S1 difference (95% interval) | `scope_inflation` | Flags per 100 words | Words (median) | Valid share | Mean score | Latency (median) | Peak VRAM | Secondary rule |
+|-------|------|------|------|------|------|------|------|------|------|------|
+| `qwen2.5:7b` | 3.96 | baseline | 0.205 | 1.63 | 243 | 0.851 | 90.5 | 2.9 s | 6,656 MiB | baseline |
+| `qwen3.5:4b` | 2.97 | -0.99 (-1.27 to -0.73) | 0.026 | 1.61 | 185 | 0.703 | 85.5 | 2.0 s | 5,848 MiB | keep |
+| `qwen2.5:3b` | 3.10 | -0.86 (-1.11 to -0.60) | 0.113 | 1.37 | 223 | 0.892 | 92.0 | 1.6 s | 4,189 MiB | switch |
+| `gemma3:4b` | 1.71 | -2.25 (-2.56 to -1.94) | 0.005 | 1.15 | 160 | 0.938 | 82.7 | 1.8 s | 5,890 MiB | switch |
+
+MLflow runs (experiment `job_raider_eval`): `qwen2.5:7b` `66ea7f014fc2461db21f916f087f055c`, `qwen3.5:4b` `b1268a2c64d243568208541326231987`, `qwen2.5:3b` `3eecbd310e48427e8cc2d5175c500cd4`, `gemma3:4b` `bd83bdb368c94a27935dd6c583be488e`. Each run: 195 letters, no template or other-model letters, no errors.
+
+Run one model on the grounding set (WSL, from `apps/backend-py`; it loads the model on the GPU):
+
+```bash
+python main.py eval writer --model qwen2.5:3b
+```
+
+Compare a model with the baseline with the secondary analysis (the baseline report first):
+
+```bash
+python scripts/compare_writer_reports.py data/eval/writer/BASELINE.json data/eval/writer/OTHER.json --secondary
+```
+
+### Consequences
+
+- `qwen2.5:3b` writes a letter in about 1.6 s and needs about 4.2 GB of VRAM, against 2.9 s and 6.7 GB for `qwen2.5:7b`: more room below the GPU limit of this host.
+- Trade-offs of `qwen2.5:3b`: more `technique_mismatch` (13 of 195 against 2) and more letters that leave out a selected project (20 against 6).
+- Limits: the evidence is the rule validator only. Most flagged sentences are false flags (sentence precision 0.15 to 0.18 on the labeled sets), so the numbers rank how often the rules fire, not a measured error rate. The validator does not find analogical claims in real letters, the most common real error. The runs measure the first draft only, without the review pass, on 3 synthetic profiles.
+- The 2026-08-25 recommendation to keep `qwen2.5:7b` rested on 3 cases; this entry replaces it.
+- Under the original rule of the plan, `qwen2.5:3b` and `gemma3:4b` also give `switch`, but only because the baseline is at the ceiling (differences of -0.031 and -0.144 in the share of flagged letters).
+
+### Flow
+
+```mermaid
+flowchart LR
+    G[Grounding set:<br/>65 pairs] --> W[Each model:<br/>3 letters for each pair]
+    W --> V[Validator]
+    V --> B{Baseline share<br/>at the ceiling?}
+    B -->|Yes| S[Secondary analysis:<br/>S1, S2, technology]
+    S --> C[qwen2.5:3b and gemma3:4b<br/>meet the rule]
+    C --> D[Structure checks:<br/>gemma3:4b letters too short]
+    D --> R[Recommend qwen2.5:3b]
+```
+
 ## 2026-11-02 - Structured LLM output: JSON schema and strict parsing
 
 ### Context

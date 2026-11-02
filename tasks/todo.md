@@ -1,8 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Step 3.8: writer model comparison on the grounding set (`tasks/active/step-3-8-writer-models/`; MH-1 to MH-3 in the repo; next: the four GPU runs)
-- [ ] Then Steps 3.4 and 3.9 (`tasks/active/step-3-measurable-claims/`)
+- [ ] Choose the next Step 3 sub-step: 3.4 (ranking set; needs the user's labels) or 3.9 (README and resume numbers) (`tasks/active/step-3-measurable-claims/`)
 
 ## Next Up
 - [ ] Step 4: Make it demo-able (`tasks/active/review-follow-up/`)

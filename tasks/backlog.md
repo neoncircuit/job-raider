@@ -63,6 +63,14 @@ Found in the Step 3.2 real-letter run (`tasks/archive/step-3-2-real-letters/note
 - [ ] `split_letter_sentences` (`src/generation/cover_letter_grounding.py`) splits after "PTE." in "PTE. LTD.", so a sentence that names a Singapore company is cut in two. Check the main set and the holdout labels before a fix, because the labels hold exact sentence texts. *(Source: 2026-10-31)*
 - [ ] The grounding rules flag sentences about the employer, some closings and calls to action that the skip list does not have, and "aligns with your role" statements, and they miss a profile result credited to the wrong work, duties that only the job names, and added outcomes. Record these as known limits in Step 3.9. A new rule round needs a new set of unseen real letters, because the 10 real letters are now seen. *(Source: 2026-10-31)*
 
+### Writer model findings (2026-11-02)
+
+Found in the Step 3.8 writer runs (`tasks/archive/step-3-8-writer-models/notes.md`).
+
+- [ ] Make `qwen2.5:3b` the default cover-letter writer in Settings and the default routes (the decision log of 2026-11-02 recommends it; Step 3.8 changed no default). Update the 2026-08-25 guidance that names `qwen2.5:7b` for "Review & rewrite", and check the Settings compare card text, which names `qwen2.5:7b` and `qwen3.5:4b`. *(Source: Step 3.8, 2026-11-02)*
+- [ ] `qwen2.5:3b` letters have more `technique_mismatch` (13 of 195 against 2 for `qwen2.5:7b`) and more letters that leave out a selected project (20 against 6). Look at the writer prompt for small models before or with the default change. *(Source: Step 3.8, 2026-11-02)*
+- [ ] The validator flags at least one ungrounded sentence in nearly every generated letter (all 195 of `qwen2.5:7b`), so a letter-level grounding share cannot rank writers. A better writer measure needs fewer false flags (sentence precision 0.15 to 0.18) or labeled generated letters. *(Source: Step 3.8, 2026-11-02)*
+
 ### Tests write into the real data folder (2026-10-28)
 
 - [ ] Three tests in `apps/backend-py/tests/integration/test_pipeline.py` (`test_pipeline_with_mock_scraping`, `test_pipeline_hooks`, `test_pipeline_result_summary`) run `PipelineOrchestrator.run` with no `results_dir`, so each test run writes `pipeline_run_*.json` into the real `apps/backend-py/data/results/` and empty `all_*.json` files into `data/listings/`. Give them temporary folders, and add a check like the Step 3.6 data proof that covers all of `data/` (not only `data/metrics/` and `data/mlflow.db`). *(Source: Step 3.6 real run, 2026-10-28; these files were first taken for a user run)*

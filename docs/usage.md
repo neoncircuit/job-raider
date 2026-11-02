@@ -449,7 +449,7 @@ flowchart LR
     F -->|No| W[Warning; report kept]
 ```
 
-Suites available now: `grounding` (the deterministic cover-letter grounding validator), `scam`, `emscad`, and `dedupe` (deterministic; `python main.py eval --help` shows an example for each), and `structured` (LLM structured output; it needs Ollama, see "Structured-Output Suite" below). The default dataset of `grounding` is the labeled main set in `tests/fixtures/eval/grounding`. The holdout set in `tests/fixtures/eval/grounding_holdout` is not for routine runs: it ran one time, and its README explains why.
+Suites available now: `grounding` (the deterministic cover-letter grounding validator), `scam`, `emscad`, and `dedupe` (deterministic; `python main.py eval --help` shows an example for each), and `structured` and `writer` (LLM output; they need Ollama, see "Structured-Output Suite" and "Writer Model Comparison" below). The default dataset of `grounding` is the labeled main set in `tests/fixtures/eval/grounding`. The holdout set in `tests/fixtures/eval/grounding_holdout` is not for routine runs: it ran one time, and its README explains why.
 
 Run the grounding suite on the main set (from `apps/backend-py`):
 
@@ -538,6 +538,59 @@ Results of Step 3.7 on the same set (dataset SHA-256 `2fce5d52...`):
 Limits: the inputs of the set are short (the longest prompt is about 1,330 tokens), so the set measures the answer format, not long inputs. The suite reads the context length from Ollama one time for each model, so its report cannot show the 8,192 tokens of JD extraction and resume parsing; the router's unit tests check that value.
 
 To add a JSON task: add its output model to `src/llm/structured.py`, send `Model.model_json_schema()` as `response_schema`, and parse with `parse_structured`. When the suite must measure the task, also add it to `OUTPUT_MODELS`, to `SITE_TASK_TYPES` and `run_case` in `src/evaluation/suites/structured.py`, and to `tests/fixtures/eval/structured/cases.jsonl`. A changed set has a new SHA-256, so its runs do not compare with the runs above.
+
+### Writer Model Comparison
+
+The `writer` suite measures one local cover-letter writer model on the grounding set. For each of the 65 profile-job pairs, the production writer (`CoverLetterWriter.write`, temperature 0.8) writes 3 letters with a fixed selection, and the deterministic validator checks each letter. The labels of the grounding cases belong to their fixed letters, so the suite uses only the jobs and the profiles. Each run is one model and one MLflow run.
+
+```mermaid
+flowchart LR
+    G[Grounding set:<br/>65 profile-job pairs] --> W[One model writes<br/>3 letters for each pair]
+    W --> V[Validator checks<br/>each letter]
+    V --> R[Report and MLflow run]
+    R --> C[compare_writer_reports.py:<br/>pair by pair against the baseline]
+    C --> D{Interval below 0 and<br/>no more fabricated technology?}
+    D -->|Yes| S[switch]
+    D -->|No| K[keep the baseline]
+```
+
+The main metric is `ungrounded_claims_rate`, the share of the model's letters that the validator flags for unsupported claims. On real generated letters, this check has a precision of 0.875 and a recall of 0.778 at the letter level (Step 3.2). The report also gives the shares for `fabricated_technology`, `fabricated_experience`, and `scope_inflation`, the share of valid letters, the mean score, the median word count, the latency, and the peak VRAM. A letter from the writer's template fallback or from another model is counted, not scored.
+
+The run stays local:
+
+- Only the models in `WRITER_MODELS` (`src/evaluation/suites/writer.py`) can run: `qwen2.5:7b`, `qwen3.5:4b`, `qwen2.5:3b`, and `gemma3:4b`. These are the models of 7B or smaller that are approved for this host.
+- The run stops before any call when the cover-letter writing route in Settings does not use Ollama with the requested model. It also turns off the route's fallback provider and the response cache for the run.
+- The model is unloaded after the run, also when the run stops with an error.
+
+Before you run it, make sure that no other model is loaded in Ollama and that no pipeline is running. Run one model (from `apps/backend-py`):
+
+```bash
+python main.py eval writer --model qwen2.5:7b
+```
+
+Change the number of letters for each pair (the default is 3):
+
+```bash
+python main.py eval writer --model qwen2.5:7b --samples 1
+```
+
+Compare a model with the baseline `qwen2.5:7b`. Give the two report files that the runs printed, the baseline first:
+
+```bash
+python scripts/compare_writer_reports.py data/eval/writer/BASELINE.json data/eval/writer/OTHER.json
+```
+
+The script compares the two models pair by pair: for each pair, the difference in the share of flagged letters, and a 95% bootstrap interval of the mean difference (2,000 resamples, seed 0). It prints `switch` only when the whole interval is below 0 and the other model's `fabricated_technology` rate is not higher.
+
+On the grounding set, the validator flags nearly every letter, so that share is at its ceiling. Use the secondary analysis instead (the baseline report first):
+
+```bash
+python scripts/compare_writer_reports.py data/eval/writer/BASELINE.json data/eval/writer/OTHER.json --secondary
+```
+
+It compares the mean count of flagged ungrounded sentences in a letter (S1) and the share of letters with `scope_inflation` (S2), pair by pair with the same bootstrap. It prints `switch` only when the S1 interval is below 0, the S2 interval is not above 0, and the `fabricated_technology` rate is not higher. Also compare the word counts and the structure checks in the reports: a model with short letters has fewer sentences to flag. The results and the decision for the default writer are in `docs/decision-log.md`.
+
+Limits: the validator does not find analogical claims (work credited to duties that only the job names), which is the most common error in real letters. The suite measures the first draft only, without the review pass.
 
 ## Multi-Agent API
 
