@@ -33,6 +33,7 @@ from src.evaluation.writer_compare import (  # noqa: E402
     DEFAULT_ROUNDS,
     DEFAULT_SEED,
     compare_reports,
+    compare_secondary,
     load_writer_report,
 )
 
@@ -65,9 +66,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=DEFAULT_SEED,
         help=f"Bootstrap seed (default: {DEFAULT_SEED})",
     )
+    parser.add_argument(
+        "--secondary",
+        action="store_true",
+        help="Use the secondary analysis of Step 3.8 (S1 and S2)",
+    )
     args = parser.parse_args(argv)
+    compare = compare_secondary if args.secondary else compare_reports
     try:
-        result = compare_reports(
+        result = compare(
             load_writer_report(Path(args.baseline)),
             load_writer_report(Path(args.other)),
             rounds=args.rounds,
