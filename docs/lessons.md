@@ -3641,3 +3641,14 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 **How to apply:**
 - Before the full set of model runs, run the baseline (or a few letters) and check that the main metric is clearly below its ceiling and above its floor.
 - When a metric fails this check after the baseline, fix the new analysis and commit it before any other model's result exists, and report the original rule too.
+
+### Judge a check by its exit code, not by its summary line
+
+**Lesson:** In the writer-default check (2026-11-02), Claude read the `vitest` summary lines ("Tests 5 passed") and did not print the exit code. `vitest` exited with 1 on every run, because it could not write its results cache (a folder that belongs to `root`). So the frontend red step and two frontend mutants were "caught" by that exit, not by a test result. The handoff runner, which checks exit codes, found it.
+
+**Why:**
+- A tool can print a passing summary and still exit with an error (a cache write, a teardown, a reporter). A mutant check that reads only the exit code is valid only when a clean run exits with 0.
+
+**How to apply:**
+- In a check script, print the exit code of each red, green, and gate command, and confirm that the unchanged code exits with 0 before running mutants.
+- When a command exits non-zero with passing tests, find the cause before using it as a red or mutant signal.
