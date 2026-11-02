@@ -271,7 +271,10 @@ jobs:
 
   test-frontend-e2e:
     name: Test Frontend (E2E Tests)
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moves to Ubuntu 26.04 from 2026-10-19, and
+    # Playwright 1.60 cannot install Chromium there. Go back to ubuntu-latest
+    # after a Playwright upgrade that supports Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: apps/frontend-ts
