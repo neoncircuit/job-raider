@@ -49,5 +49,13 @@ For the agent: a new opencode session for each handoff costs much less than a lo
 2. Check: validator only. The decision log states that the validator does not see analogical claims.
 3. The user left the order of the work to Claude ("whatever is sensible"), with a new opencode session when that is better for an agent handoff.
 
+## MH-1 written and checked (2026-11-02, Claude)
+
+`mh-1-writer-suite.md`: `src/evaluation/suites/writer.py` (`load_pairs`, `write_and_check`, `summarize`, `pair_counts`, `profile_rates`, `percentile`, `run_writer_suite`) and `tests/unit/test_writer_suite.py` (18 tests, fake writer and fake validator). It uses `fixed_selection` and `load_suite_data` of the structured suite, so every model gets the same selection. A letter from the template fallback or another model is counted, not scored; a writer exception is an `error` row. The suite is not in the registry yet (MH-2).
+
+- Scratch clone: red is an import error; 47 tests pass (with the structured suite tests); black and ruff clean; the mypy gate has 0 new errors (179 known).
+- Mutants 11 of 11 caught (fallback letters scored, other-model letters scored, rates over all letters, pairs in file order, one sample short, writer errors not caught, percentile rounded down, profile rates over all letters, pair counts over all letters, no temperature in the metadata, strict validator).
+- Runner test on a fresh clone: the red step failed, the 4 checks passed, commit `8a8cbf0` on the clone, and both files are the same bytes as the checked copies.
+
 ## Blockers / Questions
 - None.
