@@ -1,7 +1,8 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Choose the next Step 3 sub-step: 3.8 (model comparison on the grounding set), 3.4, or 3.9 (`tasks/active/step-3-measurable-claims/`)
+- [ ] Step 3.8: writer model comparison on the grounding set (`tasks/active/step-3-8-writer-models/`; plan approved; next: MH-1)
+- [ ] Then Steps 3.4 and 3.9 (`tasks/active/step-3-measurable-claims/`)
 
 ## Next Up
 - [ ] Step 4: Make it demo-able (`tasks/active/review-follow-up/`)
