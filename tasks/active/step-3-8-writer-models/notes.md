@@ -45,7 +45,7 @@ For the agent: a new opencode session for each handoff costs much less than a lo
 
 ## Decisions (user, 2026-11-02)
 
-1. Models: `qwen3.5:4b` and `qwen2.5:3b`, against the baseline `qwen2.5:7b` (not `gemma3:4b`, not the other 7B models). `ALLOWED_MODELS` becomes `qwen2.5:7b`, `qwen3.5:4b`, and `qwen2.5:3b`.
+1. Models: `qwen3.5:4b`, `qwen2.5:3b`, and `gemma3:4b`, against the baseline `qwen2.5:7b` (not the other 7B models). `ALLOWED_MODELS` becomes `qwen2.5:7b`, `qwen3.5:4b`, `qwen2.5:3b`, and `gemma3:4b`. Change (user, same day): `gemma3:4b` added after Claude explained that it is not `gemma4:e4b`. `gemma4:e4b` stays out: 8.0B stored parameters (about 4B active), a 9.6 GB file with vision and audio parts, more than the free VRAM of the RTX 3070 Ti (8,192 MiB, about 1,574 MiB used by the desktop), and above the 7B limit. `gemma3:4b` is 4.3B and 3.3 GB (Q4_K_M), the same size class as `qwen3.5:4b`.
 2. Check: validator only. The decision log states that the validator does not see analogical claims.
 3. The user left the order of the work to Claude ("whatever is sensible"), with a new opencode session when that is better for an agent handoff.
 
@@ -56,6 +56,9 @@ For the agent: a new opencode session for each handoff costs much less than a lo
 - Scratch clone: red is an import error; 47 tests pass (with the structured suite tests); black and ruff clean; the mypy gate has 0 new errors (179 known).
 - Mutants 11 of 11 caught (fallback letters scored, other-model letters scored, rates over all letters, pairs in file order, one sample short, writer errors not caught, percentile rounded down, profile rates over all letters, pair counts over all letters, no temperature in the metadata, strict validator).
 - Runner test on a fresh clone: the red step failed, the 4 checks passed, commit `8a8cbf0` on the clone, and both files are the same bytes as the checked copies.
+- MH-1 applied on the repo (2026-11-02, Claude ran the runner on the user's word "Yes, apply it"): commit `c84adc9`. The red step failed, and the 4 checks passed. Both files are the same bytes as the checked copies.
+
+Found for MH-2 (from `LLMRouter.generate` and `resolve_primary_model`): the writer's `model` override is used only when the Settings route for cover letters has Ollama as its primary provider (else the route's own model writes), and a failed local call goes to the route's fallback provider when one is set. MH-2 must stop the run before any call when the route is not Ollama with the requested model, and set the route's fallback to `none` for the run. MH-1 already counts any letter from another model as `other_model`.
 
 ## Blockers / Questions
 - None.

@@ -23,8 +23,8 @@ flowchart LR
 - The Settings compare (API route, frontend card, and `scripts/compare_cover_letter_models.py`) keeps its 3 quick cases. The suite uses the same model allow-list (`ALLOWED_MODELS` in `src/evaluation/cover_letter_compare.py`), so the list exists only once.
 
 ## Acceptance Criteria
-- [x] Plan and decisions approved by the user (models, extra check). (2026-11-02: `qwen3.5:4b` and `qwen2.5:3b` against `qwen2.5:7b`; validator only)
-- [ ] MH-1: eval suite `writer`: the 65 pairs, N samples for each pair with one model, letter-level metrics for each check, with tests (fake writer).
+- [x] Plan and decisions approved by the user (models, extra check). (2026-11-02: `qwen3.5:4b`, `qwen2.5:3b`, and `gemma3:4b` against `qwen2.5:7b`; validator only)
+- [x] MH-1: eval suite `writer`: the 65 pairs, N samples for each pair with one model, letter-level metrics for each check, with tests (fake writer). (`c84adc9`, runner, 18 tests, 11 of 11 mutants)
 - [ ] MH-2: `main.py eval writer --model <tag> --samples <n>`, the real writer with the cache off, unload after the model, peak VRAM, and the allow-list check.
 - [ ] MH-3: paired comparison of two writer reports (for each pair: the share of flagged samples; difference with a bootstrap 95% interval).
 - [ ] Baseline run `qwen2.5:7b`, then one run for each other approved model, recorded in `notes.md` (command, dataset SHA-256, MLflow run ID, peak VRAM).
