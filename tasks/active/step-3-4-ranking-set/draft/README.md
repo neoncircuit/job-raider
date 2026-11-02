@@ -52,7 +52,7 @@ A word that the job and the profile share does not decide the label. "Java" in t
 ## Terms
 
 - **Target role**: a role that the profile's target keywords name, or the role of its experience and projects.
-- **Role next to a target role**: a role that uses the same core skills for a nearby purpose. Examples: data analyst, BI or analytics engineering, data engineer, MLOps, or AI evaluation for a data scientist or machine learning target; a software role in the profile's main language (or open to any language) for a machine learning profile; site reliability, DevOps, cloud, data engineering, integration, or full-stack for a backend target.
+- **Role next to a target role**: a role that uses the same core skills for a nearby purpose. Examples: data analyst, BI or analytics engineering, data engineer, MLOps, or AI evaluation for a data scientist or machine learning target; a software role in the profile's main language (or open to any language) for a machine learning profile; site reliability, DevOps, cloud, data engineering, integration, full-stack, or backend services inside an AI or data product (for example LLM features built as API services) for a backend target.
 - **Level steps**: Internship, Entry Level, Mid Level, Senior, Lead, Principal, in this order. A job without a level is placed by the years of experience that it asks for (0 to 2 years: Entry Level; 2 to 5: Mid Level; 5 to 10: Senior; more: Lead). The profile's level is its target level.
 
 ## Label Definitions
@@ -86,3 +86,4 @@ Write one short line that names the deciding point, for example "Fits: entry ML 
 ## Changes
 
 - 2026-11-03: First version (Step 3.4).
+- 2026-11-03: Before any ranker ran, the user's check: backend services inside an AI or data product are next to a backend target. Relabeled: rk-003 for `mid_backend` from 0 to 1. No other label changes: rk-010, rk-024, and rk-026 already had this reading.

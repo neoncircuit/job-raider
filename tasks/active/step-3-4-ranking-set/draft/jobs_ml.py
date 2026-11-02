@@ -121,7 +121,7 @@ JOBS_ML: List[Dict[str, Any]] = [
         zero to two years of experience and real projects.""",
         both(
             (2, "Fits: entry AI role; has Python, LangChain, retrieval project, FastAPI"),
-            (0, "LLM application role; not a backend or platform target"),
+            (1, "Backend services in an AI product (FastAPI); entry is one step below"),
         ),
     ),
     job(

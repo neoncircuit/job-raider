@@ -85,7 +85,7 @@ The job texts are in `draft/jobs_ml.py` (rk-001 to rk-035) and `draft/jobs_backe
 |-----|-------|-------|---------|-------|--------|------------------------|
 | rk-001 | Graduate Machine Learning Engineer | Entry | Lumen Analytics | 0 | Machine learning role; not a backend or platform target | |
 | rk-002 | Junior Data Scientist | Entry | Kestrel Insurance | 0 | Data science role; not a backend or platform target | |
-| rk-003 | AI Engineer, LLM Applications | Entry | Brightloop Software | 0 | LLM application role; not a backend or platform target | |
+| rk-003 | AI Engineer, LLM Applications | Entry | Brightloop Software | 1 | Backend services in an AI product (FastAPI); entry is one step below | |
 | rk-004 | Associate NLP Engineer | Entry | Wordwise Labs | 0 | Machine learning role; not a backend or platform target | |
 | rk-005 | Machine Learning Engineer | Mid | Orchid Mobility | 0 | Machine learning role; not a backend or platform target | |
 | rk-006 | Senior Machine Learning Engineer | Senior | Orchid Mobility | 0 | Machine learning role; not a backend or platform target | |

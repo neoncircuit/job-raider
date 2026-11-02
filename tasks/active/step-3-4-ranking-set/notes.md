@@ -58,5 +58,27 @@ Runner handoffs for the data and the suite; spec handoffs for the fixes where th
 - The guide changed once while drafting, before any ranker ran: the label rules now give every pair one label (a target role or a role next to it, at most one level step off, is at least `1`; `2` needs a target role, the right level, and most required skills), and "role next to a target role" names software roles in the profile's main language for a machine learning profile.
 - No ranker has run on the set. The user checks every label in `label-review.md`.
 
+## Label check (user, 2026-11-03)
+
+The user chose yes-or-no questions over the review sheet (the set is synthetic, so the questions ask whether a job fits a made-up profile). Claude asked about the label rules and the borderline cases, so each answer covers a group of labels.
+
+| Round | Question | Answer |
+|-------|----------|--------|
+| 1 | Fresh graduate: mid-level ML and data jobs (rk-005, 011, 012, 017, 025, 033) are 1 | Yes |
+| 1 | Fresh graduate: the AI internship (rk-013) is 1 | Yes |
+| 1 | Fresh graduate: nearby data roles (rk-008, 009, 010, 015, 034, 035, 048) are 1 | Yes |
+| 1 | Fresh graduate: Python or any-language software jobs (rk-026, 043, 062) are 1; Java-only or Go-only backend jobs are 0 | Yes |
+| 2 | Backend engineer: senior one step up (rk-028, 040, 063) is 1; lead, staff, principal (rk-041, 054, 064) are 0 | Yes |
+| 2 | Backend engineer: junior and graduate one step down (rk-009, 010, 026, 042, 062) are 1; internships (rk-013, 053) are 0 | Yes |
+| 2 | Backend engineer: roles next to backend (rk-045 to 049, 057, 059) are 1 | Yes |
+| 2 | Backend engineer: backend in another stack (rk-043, 061) is 1 | Yes |
+| 3 | Backend engineer: QA automation (rk-058) and DBA (rk-065) are 0 | Yes |
+| 3 | Backend engineer: the AI engineer job with FastAPI services (rk-003) is 0 | No: make it 1 |
+| 3 | Backend engineer: Kotlin backend (rk-055) is 2 | Yes |
+| 3 | Backend engineer: search backend (rk-060) and ML platform (rk-024) are 2 | Yes |
+| 4 | rk-030 is 1; rk-019 and rk-031 are 0; the clear fits are 2; the clear non-fits are 0 | Not answered: the user said "I'll just let you decide what is considered sensible"; Claude kept the drafts, which follow the rules that rounds 1 to 3 confirmed |
+
+Result: rk-003 for `mid_backend` changed from 0 to 1, with a new line in the guide's terms and its Changes section. Final counts: `fresh_ml` 8 apply, 19 maybe, 43 not relevant; `mid_backend` 11, 18, 41. The labels are final; no ranker has run on the set.
+
 ## Blockers / Questions
-- The user's label check (`label-review.md`).
+- None.
