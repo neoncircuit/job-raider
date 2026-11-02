@@ -25,11 +25,11 @@ flowchart LR
 ## Acceptance Criteria
 - [x] Plan and decisions approved by the user (models, extra check). (2026-11-02: `qwen3.5:4b`, `qwen2.5:3b`, and `gemma3:4b` against `qwen2.5:7b`; validator only)
 - [x] MH-1: eval suite `writer`: the 65 pairs, N samples for each pair with one model, letter-level metrics for each check, with tests (fake writer). (`c84adc9`, runner, 18 tests, 11 of 11 mutants)
-- [ ] MH-2: `main.py eval writer --model <tag> --samples <n>`, the real writer with the cache off, unload after the model, peak VRAM, and the allow-list check.
-- [ ] MH-3: paired comparison of two writer reports (for each pair: the share of flagged samples; difference with a bootstrap 95% interval).
+- [x] MH-2: `main.py eval writer --model <tag> --samples <n>`, the real writer with the cache off, unload after the model, peak VRAM, and the allow-list check. (`0566703`, Claude Haiku 5.5 in opencode, 16 tests, 11 of 11 mutants)
+- [x] MH-3: paired comparison of two writer reports (for each pair: the share of flagged samples; difference with a bootstrap 95% interval). (`97ac87d`, Claude Haiku 5.5 in opencode, 12 tests, 11 of 11 mutants; full gate 1994 passed)
 - [ ] Baseline run `qwen2.5:7b`, then one run for each other approved model, recorded in `notes.md` (command, dataset SHA-256, MLflow run ID, peak VRAM).
 - [ ] Decision: the comparison table, the decision rule result, the command, and the limits in `docs/decision-log.md`; the suite in `docs/usage.md`.
 - [ ] Done when: the model choice in the decision log rests on the grounding set, not on 3 synthetic cases, and the full backend gate passes.
 
 ## Status
-`in-progress` (2026-11-02: MH-1 applied; MH-2 and MH-3 written and checked; next: MH-2 and MH-3 by an agent)
+`in-progress` (2026-11-02: MH-1 to MH-3 in the repo; next: the four GPU runs, after the user approves the GPU time)
