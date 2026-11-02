@@ -27,7 +27,8 @@ flowchart LR
 - [x] MH-1: eval suite `writer`: the 65 pairs, N samples for each pair with one model, letter-level metrics for each check, with tests (fake writer). (`c84adc9`, runner, 18 tests, 11 of 11 mutants)
 - [x] MH-2: `main.py eval writer --model <tag> --samples <n>`, the real writer with the cache off, unload after the model, peak VRAM, and the allow-list check. (`0566703`, Claude Haiku 5.5 in opencode, 16 tests, 11 of 11 mutants)
 - [x] MH-3: paired comparison of two writer reports (for each pair: the share of flagged samples; difference with a bootstrap 95% interval). (`97ac87d`, Claude Haiku 5.5 in opencode, 12 tests, 11 of 11 mutants; full gate 1994 passed)
-- [ ] Baseline run `qwen2.5:7b`, then one run for each other approved model, recorded in `notes.md` (command, dataset SHA-256, MLflow run ID, peak VRAM).
+- [ ] MH-4: the secondary analysis (S1, S2, and its rule) in `writer_compare.py` and `--secondary` in the comparison script (added 2026-11-02: the baseline put the main metric at its ceiling; the user chose the secondary analysis).
+- [x] Baseline run `qwen2.5:7b`, then one run for each other approved model, recorded in `notes.md` (command, dataset SHA-256, MLflow run ID, peak VRAM). (2026-11-02, 20:58 to 21:39: 4 runs of 195 letters, peak VRAM 4,189 to 6,656 MiB)
 - [ ] Decision: the comparison table, the decision rule result, the command, and the limits in `docs/decision-log.md`; the suite in `docs/usage.md`.
 - [ ] Done when: the model choice in the decision log rests on the grounding set, not on 3 synthetic cases, and the full backend gate passes.
 

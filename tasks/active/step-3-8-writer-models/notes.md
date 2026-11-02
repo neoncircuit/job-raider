@@ -95,7 +95,7 @@ The four runs started at 20:58 (`run_models.sh`, baseline first). Baseline `qwen
 
 Problem: the main metric is at its ceiling. The validator flags at least one ungrounded sentence in every letter, so the letter-level share is 1.0, and the paired rule of the plan cannot show a difference (a model that is also at 1.0 gives differences of 0, so the rule says `keep` for any such model). The plan took the letter-level precision 0.875 from the 10 real letters of Step 3.2, but all of those letters had real errors, so that number did not measure flags on clean letters; on the constructed main set the letter-level precision was 0.523, and the sentence-level precision is 0.15 to 0.18 on every set. The plan's assumption was wrong.
 
-Proposed secondary analysis, written at 21:20, after the baseline and before any other model's run ended (Claude has not seen another model's numbers). The user decides whether to use it:
+Proposed secondary analysis, committed at 21:12:23 (`b442783`), after the baseline and while `qwen3.5:4b` was running (started 21:11:31), before any other model's run ended (Claude has not seen another model's numbers). The runs after the baseline report this commit as their git SHA; it changed only `tasks/`, so the code is the same. The user decides whether to use it:
 
 - S1, the main secondary metric: for each pair, the mean number of flagged ungrounded sentences in each letter; the paired difference against the baseline, with the same bootstrap (2,000 resamples, seed 0). Limit: most flagged sentences are false flags (sentence precision 0.15 to 0.18), and longer letters can have more flags, so the report also gives the words for each model.
 - S2: the `scope_inflation` share for each pair (the only check with precision and recall 1.0 on the real letters, but with support 2), with the same paired bootstrap.
@@ -104,5 +104,62 @@ Proposed secondary analysis, written at 21:20, after the baseline and before any
 
 The other three runs continue as approved: the letters do not depend on the metric, and the rows keep each letter's issues and sentence count, so either rule can use the same runs.
 
+Decision (user, 2026-11-02, "Yes, use it", given while `gemma3:4b` was running): use the secondary analysis (S1, S2, and its rule) to choose the writer. The original rule is still reported. MH-4 (runner) adds the secondary analysis to `src/evaluation/writer_compare.py` and `--secondary` to the comparison script, so the numbers come from a command in the repository.
+
+## MH-4 written and checked (2026-11-02, Claude)
+
+`mh-4-secondary-analysis.md` (runner): `sentence_means`, `sentence_differences`, `mean_sentences`, and `compare_secondary` in `src/evaluation/writer_compare.py`, `--secondary` in `scripts/compare_writer_reports.py`, and `tests/unit/test_writer_compare_secondary.py` (11 tests). Scratch clone: red 10 failed and 1 passed (the test of the unchanged default output); black leaves the three files unchanged; ruff clean; 41 tests pass with the other writer tests; the mypy gate has 0 new errors. Mutants 10 of 10 caught (S1 reversed, S1 counts other rows, S1 rule on the low end, S2 ignored, S2 on the high end, technology ignored, no dataset check, script ignores `--secondary`, mean counts other rows, S2 on the wrong check). Runner test on a fresh clone: the red step failed, the 4 checks passed, commit `3b40763` on the clone, and the three files are the same bytes as the checked copies.
+
+## All four runs and both analyses (2026-11-02)
+
+The runs ended at 21:39; no model was loaded after them; the watchdog never stopped a run. Each run: 195 letters written, 0 fallback, 0 other model, 0 errors. Reports in `data/eval/writer/` (gitignored). Git SHA `662e9bd` (baseline) and `b442783` (the other three; only `tasks/` differs).
+
+| Model | MLflow run | Peak VRAM | Latency p50 | Words p50 | Valid share | Mean score |
+|-------|------------|-----------|-------------|-----------|-------------|------------|
+| `qwen2.5:7b` | `66ea7f014fc2461db21f916f087f055c` | 6,656 MiB | 2.9 s | 243 | 0.851 | 90.5 |
+| `qwen3.5:4b` | `b1268a2c64d243568208541326231987` | 5,848 MiB | 2.0 s | 185 | 0.703 | 85.5 |
+| `qwen2.5:3b` | `3eecbd310e48427e8cc2d5175c500cd4` | 4,189 MiB | 1.6 s | 223 | 0.892 | 92.0 |
+| `gemma3:4b` | `bd83bdb368c94a27935dd6c583be488e` | 5,890 MiB | 1.8 s | 160 | 0.938 | 82.7 |
+
+Original rule (`scripts/compare_writer_reports.py`, baseline `qwen2.5:7b`, 65 pairs):
+
+| Model | `ungrounded_claims` share | Mean pair difference (95% interval) | `fabricated_technology` | Decision |
+|-------|---------------------------|-------------------------------------|-------------------------|----------|
+| `qwen3.5:4b` | 0.969 | -0.031 (-0.056 to -0.010) | 0.010 | keep |
+| `qwen2.5:3b` | 0.969 | -0.031 (-0.062 to -0.005) | 0.000 | switch |
+| `gemma3:4b` | 0.856 | -0.144 (-0.195 to -0.092) | 0.000 | switch |
+
+The original rule says `switch` for two models only because the baseline is at 1.0 on every pair: any model that leaves a few letters unflagged has an interval below 0.
+
+Secondary analysis (the MH-4 reference code on a scratch clone, `--secondary`; the same numbers come from the repository command after MH-4 is applied):
+
+| Model | Flagged sentences in a letter | S1 difference (95% interval) | `scope_inflation` share | S2 difference (95% interval) | Flags per 100 words | Decision |
+|-------|-------------------------------|------------------------------|-------------------------|------------------------------|---------------------|----------|
+| `qwen2.5:7b` | 3.96 | | 0.205 | | 1.63 | baseline |
+| `qwen3.5:4b` | 2.97 | -0.99 (-1.27 to -0.73) | 0.026 | -0.18 (-0.25 to -0.11) | 1.61 | keep (technology 0.010) |
+| `qwen2.5:3b` | 3.10 | -0.86 (-1.11 to -0.60) | 0.113 | -0.09 (-0.15 to -0.04) | 1.37 | switch |
+| `gemma3:4b` | 1.71 | -2.25 (-2.56 to -1.94) | 0.005 | -0.20 (-0.27 to -0.13) | 1.15 | switch |
+
+Other checks of the validator (letters out of 195; not part of either rule):
+
+| Check | `qwen2.5:7b` | `qwen3.5:4b` | `qwen2.5:3b` | `gemma3:4b` |
+|-------|--------------|--------------|--------------|-------------|
+| `too_short` | 0 | 20 | 5 | 89 |
+| `poor_structure` | 0 | 0 | 3 | 85 |
+| `no_call_to_action` | 33 | 182 | 23 | 186 |
+| `missing_job_title` | 17 | 55 | 0 | 46 |
+| `missing_selected_project` | 6 | 0 | 20 | 0 |
+| `technique_mismatch` | 2 | 8 | 13 | 12 |
+| `analogical_claim` | 25 | 41 | 18 | 6 |
+| `fabricated_experience` | 2 | 13 | 3 | 3 |
+
+What the results show:
+
+- The secondary rule has two models that qualify and no rule to choose between them.
+- `gemma3:4b` has the fewest flags, but its letters are short (median 160 words; 89 `too_short`, 85 `poor_structure`, 186 without a call to action) and its mean score is the lowest. Part of its S1 drop comes from length: S1 counts flags in a letter, and a short letter has fewer sentences. Per 100 words it is still lower (1.15 against 1.63).
+- `qwen2.5:3b` qualifies with letters of nearly the same length (223 words), a higher valid share and mean score than the baseline, fewer flags per 100 words (1.37), less scope inflation, the lowest latency and VRAM. It has more `technique_mismatch` (13 against 2) and more `missing_selected_project` (20 against 6).
+- `qwen3.5:4b` is out under both rules (`fabricated_technology` 0.010) and has 13 letters with `fabricated_experience`.
+- Limit: most flagged sentences are false flags (sentence precision 0.15 to 0.18), and the validator does not see analogical claims in real letters. The numbers rank how often the rules fire, not a measured error rate.
+
 ## Blockers / Questions
-- Use the secondary analysis (S1, S2), or report only the original rule (uninformative at the ceiling) and keep `qwen2.5:7b`?
+- Which writer becomes the recommended default: `qwen2.5:3b` (Claude's recommendation), or keep `qwen2.5:7b`?
