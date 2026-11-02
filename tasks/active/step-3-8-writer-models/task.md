@@ -20,7 +20,7 @@ flowchart LR
 - The decision rule is fixed before the runs (see `notes.md`).
 - Committed data is synthetic only (the grounding profiles and jobs). Reports go to `apps/backend-py/data/eval/writer/` (gitignored).
 - The unit tests use a fake writer and run in CI. The real runs are local.
-- The Settings compare (API route, frontend card, and `scripts/compare_cover_letter_models.py`) keeps its 3 quick cases. The suite uses the same model allow-list (`ALLOWED_MODELS` in `src/evaluation/cover_letter_compare.py`), so the list exists only once.
+- The Settings compare (API route, frontend card, and `scripts/compare_cover_letter_models.py`) keeps its 3 quick cases and its two models. The suite has its own allow-list (`WRITER_MODELS`, the four approved models), because `ALLOWED_MODELS` is also the Settings compare's default model list (change of 2026-11-02; see `notes.md`).
 
 ## Acceptance Criteria
 - [x] Plan and decisions approved by the user (models, extra check). (2026-11-02: `qwen3.5:4b`, `qwen2.5:3b`, and `gemma3:4b` against `qwen2.5:7b`; validator only)
@@ -32,4 +32,4 @@ flowchart LR
 - [ ] Done when: the model choice in the decision log rests on the grounding set, not on 3 synthetic cases, and the full backend gate passes.
 
 ## Status
-`in-progress` (2026-11-02: plan approved; next: MH-1 by the runner)
+`in-progress` (2026-11-02: MH-1 applied; MH-2 and MH-3 written and checked; next: MH-2 and MH-3 by an agent)
