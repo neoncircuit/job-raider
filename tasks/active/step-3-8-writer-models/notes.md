@@ -78,5 +78,31 @@ Agent and model: opencode, `claude-haiku-5.5` (from the session export), a new s
 - Claude check (scratch clone at `97ac87d`): the test names match the specs (14 and 12 functions). Mutants on the agent's code: MH-2 11 of 11 caught, MH-3 11 of 11 caught. Full gate: black and ruff pass on the CI paths, the mypy gate has 0 new errors (179 known), pytest 1994 passed (1948, plus 18, 16, and 12). `main.py eval --help` shows `--model`, `--samples`, and the writer example.
 - Tokens and cost (session export): 34 steps, none above the 100K tier, largest prompt 87,600 tokens, about USD 0.049 for both handoffs.
 
+## Baseline run and a problem with the main metric (2026-11-02, Claude, with the user's approval for the GPU time)
+
+The four runs started at 20:58 (`run_models.sh`, baseline first). Baseline `qwen2.5:7b`, 20:58 to 21:11: 195 letters written, 0 fallback, 0 other model, 0 errors; peak VRAM 6,656 MiB (suite and watchdog). MLflow run `66ea7f014fc2461db21f916f087f055c`, report `data/eval/writer/20261102T131044235540Z.json`.
+
+| Metric | `qwen2.5:7b` |
+|--------|--------------|
+| `ungrounded_claims_rate` | 1.000 (195 of 195) |
+| ungrounded sentences in each letter | 1 to 8 (4 letters with 1; median 4) |
+| `scope_inflation_rate` | 0.205 |
+| `fabricated_technology_rate` | 0.000 |
+| `fabricated_experience_rate` | 0.010 |
+| `analogical_claim` (not a ranked check) | 25 of 195 |
+| `valid_rate`, mean score | 0.851, 90.52 |
+| words p50, latency p50 and p95 | 243, 2.9 s and 3.5 s |
+
+Problem: the main metric is at its ceiling. The validator flags at least one ungrounded sentence in every letter, so the letter-level share is 1.0, and the paired rule of the plan cannot show a difference (a model that is also at 1.0 gives differences of 0, so the rule says `keep` for any such model). The plan took the letter-level precision 0.875 from the 10 real letters of Step 3.2, but all of those letters had real errors, so that number did not measure flags on clean letters; on the constructed main set the letter-level precision was 0.523, and the sentence-level precision is 0.15 to 0.18 on every set. The plan's assumption was wrong.
+
+Proposed secondary analysis, written at 21:20, after the baseline and before any other model's run ended (Claude has not seen another model's numbers). The user decides whether to use it:
+
+- S1, the main secondary metric: for each pair, the mean number of flagged ungrounded sentences in each letter; the paired difference against the baseline, with the same bootstrap (2,000 resamples, seed 0). Limit: most flagged sentences are false flags (sentence precision 0.15 to 0.18), and longer letters can have more flags, so the report also gives the words for each model.
+- S2: the `scope_inflation` share for each pair (the only check with precision and recall 1.0 on the real letters, but with support 2), with the same paired bootstrap.
+- Rule: change the default writer only when the S1 interval is below 0, the S2 interval is not above 0, and the `fabricated_technology` rate is not higher. Else keep `qwen2.5:7b`.
+- The original rule is also reported, as fixed in the plan.
+
+The other three runs continue as approved: the letters do not depend on the metric, and the rows keep each letter's issues and sentence count, so either rule can use the same runs.
+
 ## Blockers / Questions
-- None.
+- Use the secondary analysis (S1, S2), or report only the original rule (uninformative at the ceiling) and keep `qwen2.5:7b`?
