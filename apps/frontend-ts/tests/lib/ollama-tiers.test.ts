@@ -58,6 +58,19 @@ describe("ollama-tiers", () => {
     expect(next.routing.scoring?.primary_model).toBe("gemma3:4b");
   });
 
+  it("puts cover-letter writing in the small tier", () => {
+    const next = applyOllamaTierModelsLocally(
+      baseSettings(),
+      "gemma3:4b",
+      "qwen2.5:14b",
+    );
+    expect(next.routing.cover_letter_writing?.primary_model).toBe("gemma3:4b");
+    expect(next.routing.cover_letter_writing?.fallback_model).toBe(
+      "claude-haiku-4-5-20251001",
+    );
+    expect(next.routing.resume_writing?.primary_model).toBe("qwen2.5:14b");
+  });
+
   it("retargets cloud fallbacks to Gemini", () => {
     const next = applyCloudFallbackProvider(baseSettings().routing, "gemini");
     expect(next.selection?.fallback_provider).toBe("gemini");

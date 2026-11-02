@@ -40,6 +40,7 @@ OLLAMA_SMALL_TASKS = frozenset(
         "question_answering",
         "trust_analysis",
         "cover_letter_review",
+        "cover_letter_writing",
     }
 )
 
@@ -52,7 +53,6 @@ OLLAMA_LARGE_TASKS = frozenset(
         "resume_analysis",
         "linkedin_analysis",
         "classification",
-        "cover_letter_writing",
         "assessment_generation",
         "assessment_evaluation",
     }
