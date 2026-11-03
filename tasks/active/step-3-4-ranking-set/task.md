@@ -32,4 +32,4 @@ flowchart LR
 - [ ] Done when: the README can state NDCG@10 for heuristic, BM25, dense, and hybrid on the labeled set, measured after the R5 fix, with the command.
 
 ## Status
-`in-progress` (2026-11-03: the set and the heuristic and BM25 suite are in the repository; next: MH-3, dense and hybrid)
+`in-progress` (2026-11-03: the set and the heuristic and BM25 suite are in the repository; MH-3, dense and hybrid, ready for the runner)

@@ -114,5 +114,14 @@ The heuristic matcher puts 3 of the 8 `apply` jobs of the fresh graduate in its 
 
 Next: MH-3, the dense and hybrid methods (local; the embedding model `nomic-embed-text`). The official baseline runs after MH-3, so all four methods share one code state; MH-3 does not change the heuristic and BM25 methods.
 
+## MH-3 written and checked (2026-11-03, Claude)
+
+`mh-3-dense-and-hybrid.md` (runner): `default_embedding_client`, `rag_ranker`, `dense_ranking`, and `hybrid_ranking` in the ranking suite (15 edit blocks, made with `difflib` from the MH-2 file and checked to rebuild the new file), `--methods` in `main.py`, and `tests/unit/test_ranking_local.py` (10 tests, with a fake embedding client of hashed word counts and a real ChromaDB in a temporary folder).
+
+- `dense`: `RAGRanker.index_profile`, `index_jobs`, and `_compute_semantic_similarity`. `hybrid`: the heuristic scores with the profile's mode, then `RAGRanker.re_rank` (the pipeline's path, with its BM25 index, RRF, and score mix); jobs below its final limit get -1. Each profile gets a new temporary vector store and BM25 index. The CI methods never make an embedding client.
+- Scratch clone (exit codes printed): red 9 failed and 1 passed (the test that a run without `--methods` gives no arguments); black reformats only the test; ruff clean; 96 tests pass (the new file, MH-2, the set, CLI, writer command, and RAG ranker tests); the mypy gate has 0 new errors.
+- Mutants: the first run caught 9 of 10. L3 (hybrid ignores the `re_rank` score) survived, because the fake `re_rank` returned its two jobs in job-ID order, so the tie-break gave the same order; the test now returns them against job-ID order. Re-check: 10 of 10 caught (dense does not index the jobs or the profile, hybrid ignores the score or the mode, one shared store folder, no BM25 in the ranker, no embedding model check, embedding client for CI methods, command drops the methods, local methods refused).
+- Runner test on a fresh clone: the red step failed, the 4 checks passed, commit `c8f26e0` on the clone, and the three files are the same bytes as the checked copies.
+
 ## Blockers / Questions
 - None.
