@@ -92,5 +92,24 @@ Result: rk-003 for `mid_backend` changed from 0 to 1, with a new line in the gui
 
 The ranking set is in the repository and final. Next: MH-2, the `ranking` eval suite with the heuristic matcher and BM25.
 
+## MH-2 written and checked (2026-11-03, Claude)
+
+`mh-2-ranking-suite.md` (runner): `src/evaluation/suites/ranking.py` (`load_ranking_set`, `sort_scores`, `heuristic_ranking`, `profile_query`, `bm25_ranking`, `ndcg_at_k`, `recall_at_k`, `run_ranking_suite`), `tests/unit/test_ranking_suite.py` (14 tests), the registry, one `eval` help example, and the pinned suite names in `test_scam_suite.py`.
+
+- `heuristic` uses the profile's `fresh_grad_mode`; `bm25` indexes the job chunks of the RAG chunker (`config/rag_config.yaml`), queries with `RAGRanker._build_profile_query_text` (so the query bug is measured), and takes each job's best chunk score. The current code has no BM25-only ranking; this method measures the BM25 half of the hybrid ranker.
+- NDCG@10 with the label as the gain; recall@10 of the jobs labeled 2. Ties broken by job ID.
+- Scratch clone (exit codes printed): red is a collection error (exit 2); black reformatted the two new files; ruff clean; 96 tests pass (the new file, the set, scam, CLI, dedupe, and writer command tests); the mypy gate has 0 new errors.
+- Mutants 12 of 12 caught (NDCG discount off by one, ideal order not sorted, recall counts label 1, ties not broken by job ID, heuristic ignores the mode, BM25 keeps the last chunk, BM25 builds its own query, mean is the first profile, missing labels accepted, suite not in the registry, NDCG and recall ignore the cut-off).
+- First numbers on the scratch clone (not the baseline run; the labels were final before it ran):
+
+| Method | NDCG@10 `fresh_ml` | NDCG@10 `mid_backend` | NDCG@10 mean | Recall@10 mean |
+|--------|--------------------|-----------------------|--------------|----------------|
+| heuristic | 0.720 | 0.857 | 0.788 | 0.506 |
+| bm25 | 0.864 | 0.900 | 0.882 | 0.693 |
+
+The heuristic matcher puts 3 of the 8 `apply` jobs of the fresh graduate in its top 10 (recall 0.375).
+
+- Runner test on a fresh clone: the red step failed (exit 2), the 4 checks passed, commit `670c18a` on the clone, and the five files are the same bytes as the checked copies.
+
 ## Blockers / Questions
 - None.
