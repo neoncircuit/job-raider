@@ -1,0 +1,8 @@
+{
+  "fresh_ml": {
+    "fresh_grad_mode": true
+  },
+  "mid_backend": {
+    "fresh_grad_mode": false
+  }
+}

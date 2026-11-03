@@ -1,0 +1,140 @@
+{"profile_id": "fresh_ml", "job_id": "rk-001", "label": 2, "reason": "Fits: entry ML engineer role; has Python, PyTorch, ML, Docker"}
+{"profile_id": "mid_backend", "job_id": "rk-001", "label": 0, "reason": "Machine learning role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-002", "label": 2, "reason": "Fits: entry data scientist; has SQL, Pandas, scikit-learn"}
+{"profile_id": "mid_backend", "job_id": "rk-002", "label": 0, "reason": "Data science role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-003", "label": 2, "reason": "Fits: entry AI role; has Python, LangChain, retrieval project, FastAPI"}
+{"profile_id": "mid_backend", "job_id": "rk-003", "label": 1, "reason": "Backend services in an AI product (FastAPI); entry is one step below"}
+{"profile_id": "fresh_ml", "job_id": "rk-004", "label": 2, "reason": "Fits: entry NLP role; has Transformers, PyTorch, NLP project"}
+{"profile_id": "mid_backend", "job_id": "rk-004", "label": 0, "reason": "Machine learning role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-005", "label": 1, "reason": "ML role, but mid level (3+ years); profile is entry"}
+{"profile_id": "mid_backend", "job_id": "rk-005", "label": 0, "reason": "Machine learning role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-006", "label": 0, "reason": "Senior role, 7+ years; profile is entry level"}
+{"profile_id": "mid_backend", "job_id": "rk-006", "label": 0, "reason": "Machine learning role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-007", "label": 0, "reason": "Lead role, 10+ years; profile is entry level"}
+{"profile_id": "mid_backend", "job_id": "rk-007", "label": 0, "reason": "Data science lead; not a backend target, and two levels off"}
+{"profile_id": "fresh_ml", "job_id": "rk-008", "label": 1, "reason": "Data analyst: next to the data scientist target; has SQL"}
+{"profile_id": "mid_backend", "job_id": "rk-008", "label": 0, "reason": "Analytics role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-009", "label": 1, "reason": "Data engineer: next to the ML target; has Python and SQL, not Spark"}
+{"profile_id": "mid_backend", "job_id": "rk-009", "label": 1, "reason": "Data engineering is next to backend; entry level is one step below"}
+{"profile_id": "fresh_ml", "job_id": "rk-010", "label": 1, "reason": "MLOps: next to the ML target; has Python, Docker, not Kubernetes or CI/CD"}
+{"profile_id": "mid_backend", "job_id": "rk-010", "label": 1, "reason": "Platform work next to the targets; entry level is one step below"}
+{"profile_id": "fresh_ml", "job_id": "rk-011", "label": 1, "reason": "Computer vision is an ML role, but mid level and C++ heavy"}
+{"profile_id": "mid_backend", "job_id": "rk-011", "label": 0, "reason": "Machine learning role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-012", "label": 1, "reason": "ML research role; asks 2-4 years and a graduate degree"}
+{"profile_id": "mid_backend", "job_id": "rk-012", "label": 0, "reason": "Machine learning role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-013", "label": 1, "reason": "AI role, but an internship (one step below a graduate)"}
+{"profile_id": "mid_backend", "job_id": "rk-013", "label": 0, "reason": "Internship; two levels below a mid-level profile"}
+{"profile_id": "fresh_ml", "job_id": "rk-014", "label": 2, "reason": "Fits: graduate data science programme; has Python, SQL, ML projects"}
+{"profile_id": "mid_backend", "job_id": "rk-014", "label": 0, "reason": "Graduate data science programme; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-015", "label": 1, "reason": "BI analytics is next to data science; has some SQL, not Power BI"}
+{"profile_id": "mid_backend", "job_id": "rk-015", "label": 0, "reason": "BI reporting role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-016", "label": 0, "reason": "Quant trading research; not an ML engineering or data science target"}
+{"profile_id": "mid_backend", "job_id": "rk-016", "label": 0, "reason": "Quant research; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-017", "label": 1, "reason": "Applied ML role; asks 3-5 years (one step above entry)"}
+{"profile_id": "mid_backend", "job_id": "rk-017", "label": 0, "reason": "Machine learning role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-018", "label": 2, "reason": "Fits: entry AI role; has Python and an LLM retrieval project"}
+{"profile_id": "mid_backend", "job_id": "rk-018", "label": 0, "reason": "Customer-facing AI role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-019", "label": 0, "reason": "Manual labeling work; not an ML engineering or data science role"}
+{"profile_id": "mid_backend", "job_id": "rk-019", "label": 0, "reason": "Labeling work; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-020", "label": 0, "reason": "Marketing role; not a data or ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-020", "label": 0, "reason": "Marketing role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-021", "label": 0, "reason": "Marketing role; not a data or ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-021", "label": 0, "reason": "Marketing role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-022", "label": 0, "reason": "Training administration; not a data or ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-022", "label": 0, "reason": "Training administration; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-023", "label": 0, "reason": "Retail role; not a data or ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-023", "label": 0, "reason": "Retail role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-024", "label": 1, "reason": "ML platform: next to the ML target, but mid level with Go and Kubernetes"}
+{"profile_id": "mid_backend", "job_id": "rk-024", "label": 2, "reason": "Fits: mid platform engineer; has Go, Kubernetes, AWS, gRPC"}
+{"profile_id": "fresh_ml", "job_id": "rk-025", "label": 1, "reason": "Data scientist role; asks 2-4 years (one step above entry)"}
+{"profile_id": "mid_backend", "job_id": "rk-025", "label": 0, "reason": "Data science role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-026", "label": 1, "reason": "Graduate Python software role; next to the ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-026", "label": 1, "reason": "Software role near backend; entry level is one step below"}
+{"profile_id": "fresh_ml", "job_id": "rk-027", "label": 2, "reason": "Fits: entry NLP data scientist; has Python, Transformers, NLP project"}
+{"profile_id": "mid_backend", "job_id": "rk-027", "label": 0, "reason": "Machine learning role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-028", "label": 0, "reason": "Senior data engineer, 6+ years; profile is entry level"}
+{"profile_id": "mid_backend", "job_id": "rk-028", "label": 1, "reason": "Data engineering next to backend; has Kafka; senior is one step above"}
+{"profile_id": "fresh_ml", "job_id": "rk-029", "label": 0, "reason": "Survey statistics; not an ML engineering or data science target"}
+{"profile_id": "mid_backend", "job_id": "rk-029", "label": 0, "reason": "Statistics role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-030", "label": 1, "reason": "Entry ML role, but asks C++ and TensorFlow Lite (has PyTorch only)"}
+{"profile_id": "mid_backend", "job_id": "rk-030", "label": 0, "reason": "Machine learning role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-031", "label": 0, "reason": "Product management role; not an engineering or data science target"}
+{"profile_id": "mid_backend", "job_id": "rk-031", "label": 0, "reason": "Product management role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-032", "label": 2, "reason": "Fits: entry data scientist; has Python, Pandas, scikit-learn, SQL"}
+{"profile_id": "mid_backend", "job_id": "rk-032", "label": 0, "reason": "Data science role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-033", "label": 1, "reason": "Deep learning role; mid level (2+ years), one step above entry"}
+{"profile_id": "mid_backend", "job_id": "rk-033", "label": 0, "reason": "Machine learning role; not a backend or platform target"}
+{"profile_id": "fresh_ml", "job_id": "rk-034", "label": 1, "reason": "Analytics engineering is next to data science; has SQL, not dbt"}
+{"profile_id": "mid_backend", "job_id": "rk-034", "label": 0, "reason": "Analytics role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-035", "label": 1, "reason": "AI evaluation role next to the ML target; little modelling"}
+{"profile_id": "mid_backend", "job_id": "rk-035", "label": 0, "reason": "Evaluation role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-036", "label": 0, "reason": "Backend role; not an ML or data target, and not in Python"}
+{"profile_id": "mid_backend", "job_id": "rk-036", "label": 2, "reason": "Fits: mid backend; has Java, Spring Boot, PostgreSQL"}
+{"profile_id": "fresh_ml", "job_id": "rk-037", "label": 0, "reason": "Platform role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-037", "label": 2, "reason": "Fits: mid platform engineer; has Go, Kubernetes, AWS"}
+{"profile_id": "fresh_ml", "job_id": "rk-038", "label": 0, "reason": "Backend role; not an ML or data target, and not in Python"}
+{"profile_id": "mid_backend", "job_id": "rk-038", "label": 2, "reason": "Fits: mid backend; has Java, Kafka, PostgreSQL"}
+{"profile_id": "fresh_ml", "job_id": "rk-039", "label": 0, "reason": "Backend role; not an ML or data target, and not in Python"}
+{"profile_id": "mid_backend", "job_id": "rk-039", "label": 2, "reason": "Fits: mid backend; has Go, gRPC, Redis, PostgreSQL"}
+{"profile_id": "fresh_ml", "job_id": "rk-040", "label": 0, "reason": "Senior backend role; not an ML target, and two levels off"}
+{"profile_id": "mid_backend", "job_id": "rk-040", "label": 1, "reason": "Backend target, but senior (6+ years); one step above mid"}
+{"profile_id": "fresh_ml", "job_id": "rk-041", "label": 0, "reason": "Staff platform role, 10+ years; not an ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-041", "label": 0, "reason": "Staff level (10+ years); two levels above mid"}
+{"profile_id": "fresh_ml", "job_id": "rk-042", "label": 0, "reason": "Java backend role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-042", "label": 1, "reason": "Backend target, but junior (entry); one step below mid"}
+{"profile_id": "fresh_ml", "job_id": "rk-043", "label": 1, "reason": "Python software role next to the ML target; mid level, one step above"}
+{"profile_id": "mid_backend", "job_id": "rk-043", "label": 1, "reason": "Backend target, but in Python and Django (has PostgreSQL only)"}
+{"profile_id": "fresh_ml", "job_id": "rk-044", "label": 0, "reason": "Frontend role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-044", "label": 0, "reason": "Frontend JavaScript role; not a backend target (Java is not JavaScript)"}
+{"profile_id": "fresh_ml", "job_id": "rk-045", "label": 0, "reason": "Full-stack JavaScript role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-045", "label": 1, "reason": "Full-stack is next to backend; skills are JavaScript, not Java"}
+{"profile_id": "fresh_ml", "job_id": "rk-046", "label": 0, "reason": "Site reliability role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-046", "label": 1, "reason": "SRE is next to backend; has Kubernetes and Go"}
+{"profile_id": "fresh_ml", "job_id": "rk-047", "label": 0, "reason": "DevOps role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-047", "label": 1, "reason": "DevOps is next to backend; has AWS and Docker, not Terraform"}
+{"profile_id": "fresh_ml", "job_id": "rk-048", "label": 1, "reason": "Data engineer next to the ML target; mid level, one step above"}
+{"profile_id": "mid_backend", "job_id": "rk-048", "label": 1, "reason": "Data engineering next to backend; has Java and Kafka"}
+{"profile_id": "fresh_ml", "job_id": "rk-049", "label": 0, "reason": "Full-stack Java role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-049", "label": 1, "reason": "Full-stack is next to backend; has Java and Spring Boot"}
+{"profile_id": "fresh_ml", "job_id": "rk-050", "label": 0, "reason": "Mobile role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-050", "label": 0, "reason": "Mobile role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-051", "label": 0, "reason": "Support role; not a data or ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-051", "label": 0, "reason": "Support role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-052", "label": 0, "reason": "Sales role; not a data or ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-052", "label": 0, "reason": "Sales role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-053", "label": 0, "reason": "Java backend internship; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-053", "label": 0, "reason": "Internship; two levels below a mid-level profile"}
+{"profile_id": "fresh_ml", "job_id": "rk-054", "label": 0, "reason": "Principal architect, 15+ years; not an ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-054", "label": 0, "reason": "Principal level; three levels above mid"}
+{"profile_id": "fresh_ml", "job_id": "rk-055", "label": 0, "reason": "Backend role; not an ML or data target, and not in Python"}
+{"profile_id": "mid_backend", "job_id": "rk-055", "label": 2, "reason": "Fits: mid backend; has Spring Boot, PostgreSQL, Kafka; Java to Kotlin welcome"}
+{"profile_id": "fresh_ml", "job_id": "rk-056", "label": 0, "reason": "Backend role; not an ML or data target, and not in Python"}
+{"profile_id": "mid_backend", "job_id": "rk-056", "label": 2, "reason": "Fits: mid backend; has Go, gRPC, Redis, Kubernetes"}
+{"profile_id": "fresh_ml", "job_id": "rk-057", "label": 0, "reason": "Cloud operations role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-057", "label": 1, "reason": "Cloud engineering is next to platform; has AWS"}
+{"profile_id": "fresh_ml", "job_id": "rk-058", "label": 0, "reason": "Test automation role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-058", "label": 0, "reason": "Test automation role; not a backend target or next to one"}
+{"profile_id": "fresh_ml", "job_id": "rk-059", "label": 0, "reason": "Integration role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-059", "label": 1, "reason": "Integration work is next to backend; has Java and REST APIs"}
+{"profile_id": "fresh_ml", "job_id": "rk-060", "label": 0, "reason": "Search backend role in Java; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-060", "label": 2, "reason": "Fits: mid backend; has Java and Redis"}
+{"profile_id": "fresh_ml", "job_id": "rk-061", "label": 0, "reason": ".NET backend role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-061", "label": 1, "reason": "Backend target, but in C# and .NET"}
+{"profile_id": "fresh_ml", "job_id": "rk-062", "label": 1, "reason": "Graduate software role open to any language; next to the ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-062", "label": 1, "reason": "Software role near backend; entry level is one step below"}
+{"profile_id": "fresh_ml", "job_id": "rk-063", "label": 0, "reason": "Senior platform role; not an ML target, and two levels off"}
+{"profile_id": "mid_backend", "job_id": "rk-063", "label": 1, "reason": "Platform target, but senior (7+ years); one step above mid"}
+{"profile_id": "fresh_ml", "job_id": "rk-064", "label": 0, "reason": "Lead role; not an ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-064", "label": 0, "reason": "Lead level (8+ years, management); two levels above mid"}
+{"profile_id": "fresh_ml", "job_id": "rk-065", "label": 0, "reason": "Database administration; not an ML or data science target"}
+{"profile_id": "mid_backend", "job_id": "rk-065", "label": 0, "reason": "Database administration; not a backend target or next to one"}
+{"profile_id": "fresh_ml", "job_id": "rk-066", "label": 0, "reason": "Backend role; not an ML or data target, and not in Python"}
+{"profile_id": "mid_backend", "job_id": "rk-066", "label": 2, "reason": "Fits: mid backend, remote; has Java, AWS, REST APIs"}
+{"profile_id": "fresh_ml", "job_id": "rk-067", "label": 0, "reason": "Embedded role; not an ML or data target"}
+{"profile_id": "mid_backend", "job_id": "rk-067", "label": 0, "reason": "Embedded role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-068", "label": 0, "reason": "Backend role; not an ML or data target, and not in Python"}
+{"profile_id": "mid_backend", "job_id": "rk-068", "label": 2, "reason": "Fits: mid backend; has Go and PostgreSQL"}
+{"profile_id": "fresh_ml", "job_id": "rk-069", "label": 0, "reason": "Technical support role; not a data or ML target"}
+{"profile_id": "mid_backend", "job_id": "rk-069", "label": 0, "reason": "Support role; not a backend target"}
+{"profile_id": "fresh_ml", "job_id": "rk-070", "label": 0, "reason": "Backend role; not an ML or data target, and not in Python"}
+{"profile_id": "mid_backend", "job_id": "rk-070", "label": 2, "reason": "Fits: mid backend; has Java and Kafka"}
