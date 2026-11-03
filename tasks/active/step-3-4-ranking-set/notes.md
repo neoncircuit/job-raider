@@ -122,6 +122,9 @@ Next: MH-3, the dense and hybrid methods (local; the embedding model `nomic-embe
 - Scratch clone (exit codes printed): red 9 failed and 1 passed (the test that a run without `--methods` gives no arguments); black reformats only the test; ruff clean; 96 tests pass (the new file, MH-2, the set, CLI, writer command, and RAG ranker tests); the mypy gate has 0 new errors.
 - Mutants: the first run caught 9 of 10. L3 (hybrid ignores the `re_rank` score) survived, because the fake `re_rank` returned its two jobs in job-ID order, so the tie-break gave the same order; the test now returns them against job-ID order. Re-check: 10 of 10 caught (dense does not index the jobs or the profile, hybrid ignores the score or the mode, one shared store folder, no BM25 in the ranker, no embedding model check, embedding client for CI methods, command drops the methods, local methods refused).
 - Runner test on a fresh clone: the red step failed, the 4 checks passed, commit `c8f26e0` on the clone, and the three files are the same bytes as the checked copies.
+- MH-3 applied on the repo (2026-11-03, Claude ran the runner on the user's word "Yes, apply it"): commit `8d71cda`. The red step failed, and the 4 checks passed. The three files are the same bytes as the checked copies.
+
+Next: the baseline run of all four methods, `python main.py eval ranking --methods heuristic,bm25,dense,hybrid` (it loads `nomic-embed-text`, a small embedding model, in Ollama; it needs the user's approval for the GPU time).
 
 ## Blockers / Questions
 - None.
