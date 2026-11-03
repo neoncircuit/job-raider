@@ -25,11 +25,11 @@ flowchart LR
 - [x] Plan and decisions approved by the user (job pool, labeling). (2026-11-03: new constructed set; Claude drafts all labels, the user checks all)
 - [x] Ranking set in `tests/fixtures/eval/ranking/` with a labeling guide; labels checked by the user. (2026-11-03: guide `c0865af`, set and format test `de901a4`; 70 jobs, 140 labels; user answered 12 rule questions, changed rk-003, and left the rest to Claude)
 - [x] Eval suite `ranking`: NDCG@10 and recall@10 for each method, for each profile and in total; heuristic and BM25 deterministic (CI), dense and hybrid local. (heuristic and BM25: MH-2 `e450d91`, 14 tests, 12 of 12 mutants; dense and hybrid: MH-3 `8d71cda`, 10 tests, 10 of 10 mutants)
-- [ ] Baseline run recorded (command, dataset SHA-256, MLflow run ID).
+- [x] Baseline run recorded (command, dataset SHA-256, MLflow run ID). (2026-11-03, MLflow run `3ed51947bcfb4cbe81e4b3d926c54956`: NDCG@10 mean heuristic 0.788, BM25 0.882, dense 0.806, hybrid 0.707)
 - [ ] R4 fix (whole-word matching for keywords and skills; a skill score that does not drop when matches rise), measured.
 - [ ] R5 fix (fuse dense and BM25 at job level; one score scale for jobs inside and outside the hybrid result; the BM25 profile query uses `summary` and `targets`; profile chunks out of the job index), measured.
 - [ ] CI gate on the heuristic and BM25 numbers; docs and the decision-log entry.
 - [ ] Done when: the README can state NDCG@10 for heuristic, BM25, dense, and hybrid on the labeled set, measured after the R5 fix, with the command.
 
 ## Status
-`in-progress` (2026-11-03: the set and the suite with all four methods are in the repository; next: the baseline run)
+`in-progress` (2026-11-03: baseline recorded; next: the R4 fix)

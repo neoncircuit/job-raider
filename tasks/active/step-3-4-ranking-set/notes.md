@@ -124,7 +124,30 @@ Next: MH-3, the dense and hybrid methods (local; the embedding model `nomic-embe
 - Runner test on a fresh clone: the red step failed, the 4 checks passed, commit `c8f26e0` on the clone, and the three files are the same bytes as the checked copies.
 - MH-3 applied on the repo (2026-11-03, Claude ran the runner on the user's word "Yes, apply it"): commit `8d71cda`. The red step failed, and the 4 checks passed. The three files are the same bytes as the checked copies.
 
-Next: the baseline run of all four methods, `python main.py eval ranking --methods heuristic,bm25,dense,hybrid` (it loads `nomic-embed-text`, a small embedding model, in Ollama; it needs the user's approval for the GPU time).
+## Baseline run (2026-11-03, Claude, with the user's approval for the GPU time)
+
+Command (WSL, from `apps/backend-py`), with a VRAM watchdog and no model loaded before the run:
+
+```bash
+.venv/bin/python main.py eval ranking --methods heuristic,bm25,dense,hybrid
+```
+
+Git SHA `559f4ccc3ef44593db8907f3e698805884e70af1` (`git_dirty`: true; the CRLF-only files). Dataset SHA-256 `6f5dbeaa2e70d780b393d310a4ba2a82267bfc74e112692d96bc13d121eb50c1`. 140 labels. MLflow run `3ed51947bcfb4cbe81e4b3d926c54956`. Report `data/eval/ranking/20261103T065210168717Z.json`. 14:49 to 14:52; peak VRAM 2,362 MiB (`nomic-embed-text` only); no model loaded after the run.
+
+| Method | NDCG@10 `fresh_ml` | NDCG@10 `mid_backend` | NDCG@10 mean | Recall@10 `fresh_ml` | Recall@10 `mid_backend` | Recall@10 mean |
+|--------|------|------|------|------|------|------|
+| heuristic | 0.720 | 0.857 | 0.788 | 0.375 | 0.636 | 0.506 |
+| bm25 | 0.864 | 0.900 | 0.882 | 0.750 | 0.636 | 0.693 |
+| dense | 0.681 | 0.932 | 0.806 | 0.500 | 0.727 | 0.614 |
+| hybrid (the pipeline's RAG path) | 0.594 | 0.821 | 0.707 | 0.125 | 0.545 | 0.335 |
+
+What the baseline shows:
+
+- The hybrid ranker, which the pipeline uses, is below each of its parts. For the fresh graduate it puts 1 of 8 `apply` jobs in its top 10 (rk-001); 9 of its top 10 are `maybe` jobs. This fits the R5 findings: no job gets a fused BM25 and dense score, the scores of jobs inside and outside the hybrid result are on different scales, the BM25 query is the skill names only, and the profile's own chunks are in the BM25 index.
+- The heuristic matcher ranks the senior ML role (rk-006, label 0) sixth for the fresh graduate, and leaves out three `apply` jobs that have no skill list (rk-003, rk-018, rk-027): the description path of the skill score gives fewer points when a few skills match than when none match (R4).
+- BM25 alone is the best method on this set (NDCG@10 0.882). The jobs are constructed and clean, so lexical matching may be easier here than on real postings; this is a limit of the set.
+
+Next: the R4 fix (heuristic matcher), then the R5 fix (RAG ranker), each measured with the same command.
 
 ## Blockers / Questions
 - None.
