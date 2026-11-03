@@ -688,6 +688,7 @@ class TestRegistryAndPart:
             "dedupe",
             "structured",
             "writer",
+            "ranking",
         )
         scam_runner, scam_dir = get_suite("scam")
         emscad_runner, emscad_dir = get_suite("emscad")

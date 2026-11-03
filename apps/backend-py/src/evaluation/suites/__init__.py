@@ -6,7 +6,8 @@ Suites are imported only when they run, so ``main.py --help`` stays fast.
 Step 3.3 adds ``scam`` and ``emscad``. Step 3.5 adds ``dedupe``.
 Step 3.7 adds ``structured`` (local only; it needs Ollama).
 Step 3.8 adds ``writer`` (local only; it needs Ollama).
-Later steps add ``ranking`` and ``compare``.
+Step 3.4 adds ``ranking`` (heuristic and BM25 in CI).
+Later steps add ``compare``.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ SUITE_NAMES: Tuple[str, ...] = (
     "dedupe",
     "structured",
     "writer",
+    "ranking",
 )
 
 
@@ -65,4 +67,8 @@ def get_suite(name: str) -> Tuple[SuiteRunner, Path]:
         from .writer import DEFAULT_DATASET_DIR, run_writer_suite
 
         return run_writer_suite, DEFAULT_DATASET_DIR
+    if name == "ranking":
+        from .ranking import DEFAULT_DATASET_DIR, run_ranking_suite
+
+        return run_ranking_suite, DEFAULT_DATASET_DIR
     raise KeyError(f"unknown eval suite: {name}")

@@ -819,6 +819,9 @@ Examples:
   # Compare one cover-letter writer model on the grounding set (local; needs Ollama)
   python main.py eval writer --model qwen2.5:7b
 
+  # Score job ranking (heuristic and BM25) on the committed labeled set
+  python main.py eval ranking
+
   # Use another dataset folder and write only the JSON report
   python main.py eval grounding --dataset path/to/set --no-mlflow
         """,
