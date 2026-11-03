@@ -110,6 +110,9 @@ The ranking set is in the repository and final. Next: MH-2, the `ranking` eval s
 The heuristic matcher puts 3 of the 8 `apply` jobs of the fresh graduate in its top 10 (recall 0.375).
 
 - Runner test on a fresh clone: the red step failed (exit 2), the 4 checks passed, commit `670c18a` on the clone, and the five files are the same bytes as the checked copies.
+- MH-2 applied on the repo (2026-11-03, Claude ran the runner on the user's word "Yes, apply it"): commit `e450d91`. The red step failed, and the 4 checks passed. The two new files are the same bytes as the checked copies, and the three edited files are the same as in the runner test.
+
+Next: MH-3, the dense and hybrid methods (local; the embedding model `nomic-embed-text`). The official baseline runs after MH-3, so all four methods share one code state; MH-3 does not change the heuristic and BM25 methods.
 
 ## Blockers / Questions
 - None.
