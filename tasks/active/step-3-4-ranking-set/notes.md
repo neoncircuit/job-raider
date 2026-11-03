@@ -149,5 +149,40 @@ What the baseline shows:
 
 Next: the R4 fix (heuristic matcher), then the R5 fix (RAG ranker), each measured with the same command.
 
+## R4 plan (2026-11-03, Claude)
+
+Every place where `src/scoring/matcher.py` matches a term with a plain substring (`term in text`):
+
+| Place | Line | Effect today |
+|-------|------|--------------|
+| `_score_keywords` (title, description, requirements) | 232, 238, 244 | "ai" matches email, maintain, retail, training; "java" matches javascript |
+| `_score_skills_from_description` | 318 | "git" matches digital; "go" matches good, going, google, django, mongodb |
+| `_score_projects` (job skill in project text) | 461 | a job skill "C" or "R" matches almost any project text; "java" matches a JavaScript project |
+| `_job_matches_field` (apprenticeship field check) | 633 to 640 | the field "AI/ML" matches "maintain" |
+
+Fix:
+
+1. One helper, `term_in_text(term, text)`: a case-insensitive whole-term match. The term must not have a letter or digit just before or just after it; the spaces in a term match any whitespace; other characters match as written, so "C++", "C#", ".NET", and "Node.js" work. All four places use it.
+2. `_score_skills_from_description` becomes monotonic and keeps its current meaning for "no evidence": no profile skill in the description stays at half the weight (the neutral score that `test_paste_job.py` pins), and each match adds to it: `half + (cap - half) * min(1, matches / 4)` with `cap = 0.85 * weight` as today. With the weight 40: 0 matches 20, 1 match 23, 2 matches 27, 3 matches 30, 4 or more 34. The "4 skills is a full match" constant is set now, before the measurement, and is not tuned to the set.
+
+Known limits: a one-letter term still matches a lone letter in text ("C" in "C-suite"); "SQL" no longer matches "PostgreSQL"; plurals do not match ("API" does not match "APIs").
+
+Not in R4: the fresh-graduate weights rank a senior role sixth for the fresh graduate (rk-006); that is the seniority finding of the backlog (2026-10-31), not a matching bug.
+
+Measure: the same command as the baseline. The heuristic and hybrid numbers can change (hybrid mixes in the heuristic score); BM25 and dense do not. The fix is a correctness fix, so it stays even if a number goes down; the notes record either result.
+
+Handoff: one runner handoff (the helper, the four call sites, the score formula, and tests for each trap of the set and for the monotonic score).
+
+Plan approved by the user ("Yes, write R4").
+
+## R4 written and checked (2026-11-03, Claude)
+
+`mh-4-r4-whole-terms.md` (runner): 7 edits of `src/scoring/matcher.py` (the `re` import, `DESCRIPTION_SKILL_TARGET` and `term_in_text`, the keyword, description skill, project, and field checks, and the new score) and `tests/unit/test_matcher_terms.py` (30 tests: the trap terms, keywords in titles, descriptions, and requirements, description skills, the rising score, project skills, the field check, and the Java/JavaScript trap of the ranking set).
+
+- Scratch clone (exit codes printed): red is a collection error (exit 2); black leaves the matcher edits unchanged and formats the test; ruff clean; 102 tests pass (the new file, scorer, paste job, pipeline stages, cover-letter assess, and the ranking suite tests); the mypy gate has 0 new errors.
+- Mutants: the first run caught 12 of 13. Q13 (no empty-term guard) survived: an empty pattern with the two boundaries matches only where no letter or digit is on either side, and the test text was all letters. The test now also checks an empty text and a text with spaces and a dash. Re-check: 13 of 13 caught (title, description, requirement, description-skill, project, and field checks as substrings; no score progress; a target of 5; no boundary after or before the term; case-sensitive; exact spaces; empty term matches).
+- First look on the scratch clone (not the measured run): heuristic NDCG@10 mean 0.788 to 0.818 (`fresh_ml` 0.720 to 0.767, `mid_backend` 0.857 to 0.869); recall@10 mean 0.506 to 0.568 (`fresh_ml` 0.375 to 0.500).
+- Runner test on a fresh clone: the red step failed (exit 2), the 4 checks passed, commit `22d5ceb` on the clone, and both files are the same bytes as the checked copies.
+
 ## Blockers / Questions
 - None.

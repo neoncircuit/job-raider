@@ -32,4 +32,4 @@ flowchart LR
 - [ ] Done when: the README can state NDCG@10 for heuristic, BM25, dense, and hybrid on the labeled set, measured after the R5 fix, with the command.
 
 ## Status
-`in-progress` (2026-11-03: baseline recorded; next: the R4 fix)
+`in-progress` (2026-11-03: baseline recorded; the R4 handoff (MH-4) ready for the runner)
