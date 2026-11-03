@@ -533,7 +533,7 @@ def run_eval_command(args) -> int:
 
     Args:
         args: Parsed arguments with ``suite``, ``dataset``, ``out``,
-            ``no_mlflow``, ``part``, ``model``, and ``samples``.
+            ``no_mlflow``, ``part``, ``model``, ``samples``, and ``methods``.
 
     Returns:
         Exit code: 0 on success, 1 when the dataset is missing or invalid, or
@@ -567,6 +567,10 @@ def run_eval_command(args) -> int:
             return 1
         runner_kwargs["model"] = args.model
         runner_kwargs["samples"] = args.samples
+    if args.suite == "ranking" and args.methods:
+        runner_kwargs["methods"] = [
+            method.strip() for method in args.methods.split(",") if method.strip()
+        ]
     try:
         report = runner(dataset, **runner_kwargs)
     except (FileNotFoundError, ValueError) as exc:
@@ -822,6 +826,9 @@ Examples:
   # Score job ranking (heuristic and BM25) on the committed labeled set
   python main.py eval ranking
 
+  # Add the dense and hybrid methods (local; needs the embedding model)
+  python main.py eval ranking --methods heuristic,bm25,dense,hybrid
+
   # Use another dataset folder and write only the JSON report
   python main.py eval grounding --dataset path/to/set --no-mlflow
         """,
@@ -861,6 +868,12 @@ Examples:
         type=int,
         default=3,
         help="Letters for each profile-job pair (writer only; default: 3)",
+    )
+    eval_parser.add_argument(
+        "--methods",
+        type=str,
+        default=None,
+        help="Comma-separated ranking methods (ranking only; default: heuristic,bm25)",
     )
 
     return parser

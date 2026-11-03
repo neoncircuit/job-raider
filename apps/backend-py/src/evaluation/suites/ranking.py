@@ -14,9 +14,16 @@ Methods:
   (``modes.json``), as in the pipeline's scoring stage.
 - ``bm25``: BM25 over the job chunks of the RAG chunker, with the RAG
   ranker's profile query. A job's score is its best chunk score.
+- ``dense``: the RAG ranker's semantic similarity between the profile chunks
+  and each job's chunks (embeddings of the configured embedding model).
+- ``hybrid``: the RAG ranker's ``re_rank`` as the pipeline runs it (BM25 and
+  dense retrieval fused by RRF, combined with the heuristic score).
 
-Both methods are deterministic and run in CI. Ties are broken by job ID, so
-a ranking is the same on every run.
+``heuristic`` and ``bm25`` are deterministic and run in CI (``CI_METHODS``).
+``dense`` and ``hybrid`` need the embedding model in Ollama, so they run
+locally. Each profile gets a new temporary vector store and BM25 index, so
+one profile's chunks never reach another profile's search. Ties are broken
+by job ID.
 """
 
 from __future__ import annotations
@@ -24,18 +31,22 @@ from __future__ import annotations
 import json
 import math
 import statistics
-from dataclasses import dataclass
+import tempfile
+from dataclasses import dataclass, replace
+from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from pydantic import BaseModel, Field
 
+from ...llm.embedding_client import EmbeddingClient
 from ...models.job_listing import JobListing
 from ...models.user_profile import UserProfile
 from ...rag.bm25_retriever import BM25Retriever
 from ...rag.chunker import TextChunker
 from ...rag.config import RAGConfig
 from ...rag.ranker import RAGRanker
+from ...rag.vector_store import ChromaStore
 from ...scoring.matcher import JobMatcher
 from ..datasets import load_jsonl
 from ..report import EvalReport
@@ -46,6 +57,8 @@ DEFAULT_DATASET_DIR = BACKEND_DIR / "tests" / "fixtures" / "eval" / "ranking"
 RAG_CONFIG_PATH = BACKEND_DIR / "config" / "rag_config.yaml"
 TOP_K = 10
 CI_METHODS: Tuple[str, ...] = ("heuristic", "bm25")
+LOCAL_METHODS: Tuple[str, ...] = ("dense", "hybrid")
+ALL_METHODS: Tuple[str, ...] = CI_METHODS + LOCAL_METHODS
 
 Ranking = List[Tuple[str, float]]
 """Job ID and score, best first."""
@@ -204,6 +217,126 @@ def bm25_ranking(
 RANKERS: Dict[str, Ranker] = {"heuristic": heuristic_ranking, "bm25": bm25_ranking}
 
 
+def default_embedding_client(config: RAGConfig) -> EmbeddingClient:
+    """
+    The configured embedding client, checked against Ollama.
+
+    Args:
+        config: The RAG configuration.
+
+    Returns:
+        The embedding client of the pipeline's RAG stage.
+
+    Raises:
+        ValueError: When the embedding model is not available in Ollama.
+    """
+    client = EmbeddingClient(
+        model=config.embedding.model,
+        batch_size=config.embedding.batch_size,
+        cache_enabled=config.embedding.cache_enabled,
+        cache_ttl=config.embedding.cache_ttl,
+    )
+    if not client.is_model_available():
+        raise ValueError(
+            f"embedding model {config.embedding.model!r} is not available in Ollama; "
+            "the dense and hybrid methods need it"
+        )
+    return client
+
+
+def rag_ranker(config: RAGConfig, embedding_client: Any, store_dir: Path) -> RAGRanker:
+    """
+    A RAG ranker as the pipeline builds it, on a new vector store.
+
+    Args:
+        config: The RAG configuration.
+        embedding_client: The embedding client.
+        store_dir: An empty folder for the vector store.
+
+    Returns:
+        The ranker, with a new BM25 index and no cross-encoder.
+    """
+    store = ChromaStore(replace(config.vector_store, persist_directory=str(store_dir)))
+    store.initialize()
+    return RAGRanker(
+        config=config,
+        embedding_client=embedding_client,
+        vector_store=store,
+        chunker=TextChunker(config.chunking.get("job_description")),
+        bm25_retriever=BM25Retriever() if config.bm25.enabled else None,
+        cross_encoder=None,
+    )
+
+
+def dense_ranking(
+    profile: UserProfile,
+    mode: Dict[str, bool],
+    jobs: List[JobListing],
+    *,
+    config: RAGConfig,
+    embedding_client: Any,
+) -> Ranking:
+    """
+    Rank jobs by the RAG ranker's semantic similarity to the profile.
+
+    Args:
+        profile: The profile.
+        mode: The profile's matcher settings (not used).
+        jobs: The jobs.
+        config: The RAG configuration.
+        embedding_client: The embedding client.
+
+    Returns:
+        The ranking by semantic similarity.
+    """
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as folder:
+        ranker = rag_ranker(config, embedding_client, Path(folder))
+        ranker.index_profile(profile)
+        ranker.index_jobs(jobs)
+        profile_embeddings = ranker.vector_store.get_profile_embeddings("default")
+        scores = {
+            job.job_id: ranker._compute_semantic_similarity(
+                profile_embeddings or [],
+                ranker.vector_store.get_job_embeddings(job.job_id) or [],
+            )
+            for job in jobs
+        }
+    return sort_scores(scores)
+
+
+def hybrid_ranking(
+    profile: UserProfile,
+    mode: Dict[str, bool],
+    jobs: List[JobListing],
+    *,
+    config: RAGConfig,
+    embedding_client: Any,
+) -> Ranking:
+    """
+    Rank jobs with the RAG ranker's ``re_rank``, as the pipeline does.
+
+    Args:
+        profile: The profile.
+        mode: The profile's matcher settings (for the heuristic part).
+        jobs: The jobs.
+        config: The RAG configuration.
+        embedding_client: The embedding client.
+
+    Returns:
+        The ranking by combined score. Jobs that ``re_rank`` leaves out
+        (below its final limit) follow with the score -1.
+    """
+    matcher = JobMatcher(fresh_grad_mode=bool(mode.get("fresh_grad_mode", False)))
+    scored = [(job, matcher.score_job(job, profile)) for job in jobs]
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as folder:
+        ranker = rag_ranker(config, embedding_client, Path(folder))
+        results = ranker.re_rank(scored, profile)
+    scores = {job.job_id: -1.0 for job in jobs}
+    for result in results:
+        scores[result.job.job_id] = result.combined_score
+    return sort_scores(scores)
+
+
 def ndcg_at_k(
     ranked: Sequence[str], labels: Dict[str, int], k: int = TOP_K
 ) -> Optional[float]:
@@ -267,14 +400,20 @@ def run_ranking_suite(
     *,
     methods: Sequence[str] = CI_METHODS,
     k: int = TOP_K,
+    config: Optional[RAGConfig] = None,
+    embedding_client: Optional[Any] = None,
 ) -> EvalReport:
     """
     Rank every job for each profile with each method and score the rankings.
 
     Args:
         dataset_dir: The ranking set folder.
-        methods: The methods to run (names in ``RANKERS``).
+        methods: The methods to run (names in ``ALL_METHODS``).
         k: The cut-off of NDCG and recall.
+        config: The RAG configuration (default: ``config/rag_config.yaml``).
+        embedding_client: The embedding client of the dense and hybrid
+            methods; the default is the configured client, checked against
+            Ollama. It is made only when a local method runs.
 
     Returns:
         Report with ``<method>_ndcg_at_<k>`` and ``<method>_recall_at_<k>``
@@ -282,12 +421,23 @@ def run_ranking_suite(
         k jobs of each ranking with their scores and labels.
 
     Raises:
-        ValueError: When a method is unknown or the set is not complete.
+        ValueError: When a method is unknown, the set is not complete, or a
+            local method runs without the embedding model.
     """
-    unknown = [method for method in methods if method not in RANKERS]
+    unknown = [method for method in methods if method not in ALL_METHODS]
     if unknown:
         raise ValueError(
-            f"unknown ranking methods: {unknown}; known: {sorted(RANKERS)}"
+            f"unknown ranking methods: {unknown}; known: {list(ALL_METHODS)}"
+        )
+    rankers: Dict[str, Ranker] = dict(RANKERS)
+    if any(method in LOCAL_METHODS for method in methods):
+        config = config or RAGConfig.from_yaml(str(RAG_CONFIG_PATH))
+        client = embedding_client or default_embedding_client(config)
+        rankers["dense"] = partial(
+            dense_ranking, config=config, embedding_client=client
+        )
+        rankers["hybrid"] = partial(
+            hybrid_ranking, config=config, embedding_client=client
         )
     data = load_ranking_set(dataset_dir)
     metrics: Dict[str, Optional[float]] = {}
@@ -297,7 +447,7 @@ def run_ranking_suite(
         recalls: List[Optional[float]] = []
         tops[method] = {}
         for pid, profile in data.profiles.items():
-            ranking = RANKERS[method](profile, data.modes[pid], data.jobs)
+            ranking = rankers[method](profile, data.modes[pid], data.jobs)
             ranked_ids = [job_id for job_id, _ in ranking]
             ndcg = ndcg_at_k(ranked_ids, data.labels[pid], k)
             recall = recall_at_k(ranked_ids, data.labels[pid], k)
