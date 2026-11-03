@@ -88,6 +88,9 @@ Result: rk-003 for `mid_backend` changed from 0 to 1, with a new line in the gui
 - Scratch clone (guide in place): red 4 failed and 1 passed (the guide test); black leaves the test unchanged; ruff clean; 5 passed; the mypy gate has 0 new errors.
 - Data mutants 8 of 8 caught (duplicate job, label 3, missing label, profile without a name, wrong matcher mode, no apply labels for a profile, empty reason, guide without the label-first rule).
 - The guide is committed (`c0865af`). Runner test on a fresh clone at that commit: the red step failed, the 4 checks passed, commit `32d24ce` on the clone, and the five files are the same bytes as the checked copies.
+- MH-1 applied on the repo (2026-11-03, Claude ran the runner on the user's word "Yes, apply it"): commit `de901a4`. The red step failed, and the 4 checks passed. The apply script compared the files with the runner-test clone in WSL `/tmp`, which was gone, so it printed "DIFFERENT" for each file; a second comparison with the sources (the checked test copy and `draft/out/`) shows the five committed files are the same bytes.
+
+The ranking set is in the repository and final. Next: MH-2, the `ranking` eval suite with the heuristic matcher and BM25.
 
 ## Blockers / Questions
 - None.

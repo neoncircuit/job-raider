@@ -23,7 +23,7 @@ flowchart LR
 
 ## Acceptance Criteria
 - [x] Plan and decisions approved by the user (job pool, labeling). (2026-11-03: new constructed set; Claude drafts all labels, the user checks all)
-- [ ] Ranking set in `tests/fixtures/eval/ranking/` with a labeling guide; labels checked by the user.
+- [x] Ranking set in `tests/fixtures/eval/ranking/` with a labeling guide; labels checked by the user. (2026-11-03: guide `c0865af`, set and format test `de901a4`; 70 jobs, 140 labels; user answered 12 rule questions, changed rk-003, and left the rest to Claude)
 - [ ] Eval suite `ranking`: NDCG@10 and recall@10 for each method, for each profile and in total; heuristic and BM25 deterministic (CI), dense and hybrid local.
 - [ ] Baseline run recorded (command, dataset SHA-256, MLflow run ID).
 - [ ] R4 fix (whole-word matching for keywords and skills; a skill score that does not drop when matches rise), measured.
@@ -32,4 +32,4 @@ flowchart LR
 - [ ] Done when: the README can state NDCG@10 for heuristic, BM25, dense, and hybrid on the labeled set, measured after the R5 fix, with the command.
 
 ## Status
-`in-progress` (2026-11-03: labels final; guide committed; MH-1 (the set files) ready for the runner)
+`in-progress` (2026-11-03: the ranking set is in the repository; next: MH-2, the eval suite with heuristic and BM25)
