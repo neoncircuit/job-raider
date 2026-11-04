@@ -107,6 +107,58 @@ Result (2026-10-31): one eval run on 10 real letters (senior roles left out), la
 - Step 3.9 known limits: the rule checks miss a result credited to the wrong work (each word is in the profile), duties that only the job names, and added outcomes; they flag sentences about the employer, some closings, and "aligns with your role" statements; `split_letter_sentences` splits "PTE. LTD.".
 - Steps 3.7 and 3.8: 9 of 10 letters from `qwen2.5:7b` have at least one ungrounded sentence, and 7 of 10 map the work onto duties that only the job names. Compare writer models and prompts on this kind of error, not only on the constructed set.
 
+## Step 3.9 plan (2026-11-05, Claude)
+
+### What Claude checked
+
+- Clean clone of `52c65f3`, `eval` with `--no-mlflow`: the committed sets reproduce. Grounding main set: dataset SHA-256 `92cb028b...`, the Baseline 3b counts (sentence TP 44, FP 242, FN 25). Dedupe: the README values. Scam committed set: false-positive rate 0.0 on the hard negatives. Ranking: the pinned heuristic and BM25 values.
+- Not run again, by their own rules: the grounding holdout ("one time", its README) and the held-out EMSCAD part ("One run", the README). Their numbers come from the recorded runs. The 10 real letters are in `data/` (private), so nobody else can run them. The README must say this.
+- CI run 41868309925 on `52c65f3`: frontend unit 257 tests in 48 files; E2E 42 runs.
+
+### What changes
+
+```mermaid
+flowchart LR
+    R[Recorded runs and<br/>the clean-clone runs] --> T[Source table in notes:<br/>each number, its run, its date]
+    T --> A[README: new sections<br/>and changed numbers]
+    T --> D[docs/index.md and<br/>docs/architecture.md]
+    T --> V[Section 7 of the review:<br/>resume bullets]
+    A --> C[Script: each added<br/>number against its report]
+```
+
+| Place | Today | Change |
+|-------|-------|--------|
+| `docs/architecture.md:261` to `:264` | "Large model ensures high-quality writing", "reduces hallucination", "Deterministic checks prevent fabrication" | No report supports these. The last one is false: the rules find 4 of 26 ungrounded sentences in real letters. Say what each part does, and link the measured limits. |
+| `docs/index.md:284` | "All 199 tests passing" (2026-04-27) | Remove. |
+| `README.md:160` | Stage 6 is "Embedding similarity with ChromaDB" | Dense and BM25 ranks fused, then combined with the heuristic score. |
+| `README.md:39` to `:42` | Two-model text does not name the cover-letter writer | `qwen2.5:7b` still writes resumes. Add that `qwen2.5:3b` is the default cover-letter writer, with a link to the comparison. |
+| `README.md:499`, `:504`, `:509` | 1,067 and 232 tests (2026-10-19) | 2,104 backend tests (2026-11-05, clean clone), 257 frontend tests in 48 files (CI run 41868309925). E2E stays at 21 tests, 42 runs. |
+| `README.md`, new | No section for grounding, ranking, structured output, or the writer | Add "Measured Results" (a summary table that links each section) and the four sections below. The scam and dedupe sections stay as they are. |
+| Section 7 of `tasks/active/review-follow-up/review-2026-10-18.md` (the file moved) | N and "about 1,000" | Real values. |
+
+New README sections, each with the command, the date, and the limits:
+
+1. **Cover Letter Grounding:** precision and recall for each check on 65 constructed letters, 23 holdout letters, and 10 real letters, with the support, because one case moves a holdout value by 0.33 to 1.0. Sentence level: 0.154 and 0.638 (main), 0.104 and 0.727 (holdout), 0.182 and 0.154 (real). Limits: the misses and false flags of the 2026-10-31 run, and the two false-positive classes of the holdout. No letter text from the real letters goes in the README.
+2. **Job Ranking:** the four methods, with BM25 best on this set and the limits of `docs/usage.md`.
+3. **Structured Output:** strict answers 0.845 to 1.000 at the 9 sites, on the fixed set, with its limit.
+4. **Writer Model:** the four models on the secondary rule, and that the evidence is the rule validator only.
+
+Resume bullets, proposed:
+
+- Built a local-first job-search pipeline (FastAPI, Next.js, Ollama). Generation runs on local models by default, and a cloud model is an opt-in fallback.
+- Designed a deterministic grounding validator for LLM cover letters. Measured it per check on 65 constructed letters, a 23-letter holdout, and 10 real letters, tracked in MLflow. It found every injected error in the holdout, but only 4 of 26 ungrounded sentences in real letters.
+- Built hybrid retrieval (BM25, dense embeddings, RRF) and measured it on 140 labeled job pairs. Found and fixed a score-scale fault: NDCG@10 went from 0.707 to 0.851, against 0.818 for the heuristic and 0.915 for BM25 alone.
+- Moved 9 LLM call sites from regex JSON parsing to schema-constrained output: strict answers went from 0.845 to 1.000 on a fixed set.
+- Shipped with 2,104 backend tests and CI gates for lint, types, security scanning, E2E tests, and eval metrics on the grounding, scam, dedupe, and ranking sets.
+
+### How to verify
+
+A scratch script reads each added number from its report or from the clean-clone output and compares it with the README text. Links in the new sections must resolve. The full gate does not apply: only docs change. The commit goes directly, because the README has Mermaid fences.
+
+### Close
+
+When the README is committed, Step 3 is done: move `tasks/active/step-3-measurable-claims/` to `tasks/archive/`, and update `tasks/todo.md` (Step 4 is next). `tasks/active/writer-default-3b/` stays open until the user switches the saved Settings route.
+
 ## Status before the restructure (2026-10-24)
 
 Step 3.2: the D5 fix, Baseline 3b, and the one holdout run are done (see "Holdout run (2026-10-24)"). The CI gate for the grounding suite is done (count pins from Baseline 3b; see its item). Left in Step 3.2: the user-labeled set of about 15 real generated letters (decision 1 of 2026-10-22), which is the realistic false-positive measure. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. D5 and D6 are `5a408f8`, `dee440d`, `7dc3128`. The D5 fix and the holdout labels are `4ddbb5f`, `8508922`. Step 3.1 is pushed (`2a1f202`). The Step 3.2 work up to the CI gate is pushed (`2a1f202..9ef70c5`, 44 commits, 2026-10-24): CI run `40063301388` passed every job (Build Docker Image skipped as usual); the 6 grounding gate tests passed in CI; backend 1209 passed; CI mypy gate 180 known errors and 0 new (182 locally on Python 3.12); vitest 46 files passed; E2E 42 passed with 0 flaky and 0 retries.
