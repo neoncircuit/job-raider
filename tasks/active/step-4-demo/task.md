@@ -25,7 +25,7 @@ flowchart LR
 - This Next.js version differs from older ones. Read `node_modules/next/dist/docs/` before writing frontend code (`apps/frontend-ts/AGENTS.md`).
 
 ## Acceptance Criteria
-- [ ] Plan approved by the user (host and scope).
+- [x] Plan approved by the user (host and scope). (2026-11-05: GitHub Pages)
 - [ ] `npm run build:demo` gives a static site. The normal build keeps the proxy route and has no MSW code.
 - [ ] Seed script and committed demo data, with a test that the data is synthetic and that the types match.
 - [ ] MSW handlers for the core pages (Dashboard, Jobs, Cover Letter, Applications, Profile, Metrics), a demo banner, and a sidebar without the pages that need a backend.
@@ -36,4 +36,4 @@ flowchart LR
 - [ ] Done when: a visitor opens the public URL, follows the core loop with sample data, and sees that it is a demo.
 
 ## Status
-`review` (2026-11-05: plan in `notes.md`, for the user's check)
+`in-progress` (2026-11-05: plan approved; MH-1 ready for the runner)

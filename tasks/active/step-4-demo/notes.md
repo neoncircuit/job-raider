@@ -59,6 +59,30 @@ MH-5 does not depend on the others. Full-code handoffs go through the runner. Do
 - Fixtures for the pages that the demo hides.
 - A live model in the demo.
 
+## Decisions (user, 2026-11-05)
+
+1. Host: GitHub Pages ("Yes, use Pages"). The user answered after the plan, so the plan and its scope are approved. Enabling Pages on the repository and the first publish still need the user's approval at MH-6.
+
+## MH-1 written and checked (2026-11-05, Claude)
+
+`mh-1-two-builds.md` (runner): `next.config.ts`, `src/app/page.tsx`, the `build:demo` script, and 2 test files (6 tests).
+
+Two changes from the plan, both found while checking:
+
+- No rename. The plan renamed the proxy route, but the runner cannot rename or delete a file. Every page and layout is `.tsx`, and the proxy is `route.ts`, so `pageExtensions: ["tsx"]` in the demo build leaves it out with no change to that file.
+- The server build keeps its `redirects` entry. The plan replaced it with a page for both builds, but then Next prerenders `/`, and the server answers 200 with a client redirect, not 307. That breaks the rule that the normal build must not change. The first clone check showed this. So the page is for the demo, and the config answers first in the server build.
+
+Scratch clone (exit codes printed; `npm ci`, because Turbopack refuses a `node_modules` symlink that points out of the project):
+
+- Red fails (5 tests). Prettier, eslint, and tsc pass. All frontend unit tests pass (263 in 50 files).
+- Server build: exit 0; `/api/proxy/[...path]` is still a server route; `/` answers 307 to `/dashboard`.
+- Demo build with `NEXT_PUBLIC_BASE_PATH=/job-raider`: exit 0; no `api` folder in `out`; 17 HTML files; 6.2 MB; 186 asset references with the base path and 0 without.
+- Mutants, with a passing run first: 10 of 10 caught.
+- Real browser (the built-in pane; Playwright has no browser in WSL) on a local server that acts like GitHub Pages: `/job-raider/` lands on `/job-raider/dashboard`, no asset fails, the sidebar links have the base path, and client navigation to Jobs and Cover Letter works. The 4 API calls fail, as expected before MH-3.
+- Runner test on a fresh clone: the red step failed (exit 1), the 4 checks passed, commit `cb75630` on the clone, and the 4 checked files are the same bytes.
+
+For MH-3: the API calls go to `/api/proxy/...` with no base path, because `client.ts` writes that path by hand. The service worker has scope `/job-raider/`, and it sees all requests from pages in its scope, so MSW can answer them, but MH-3 must prove this in a real browser.
+
 ## Blockers / Questions
 
 - None.
