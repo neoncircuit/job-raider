@@ -109,6 +109,6 @@ Picking a clean letter by running the seed again would overstate the writer. The
 
 ## Blockers / Questions
 
-- The user decides how to handle the placeholder defect before MH-2 goes on. Proposal: a deterministic hard check in the validator, so the one rewrite runs; a prompt rule; a before and after count on `qwen2.5:3b`, and a count on `qwen2.5:7b`, which needs the user's approval for the GPU load.
+- MH-2 waits for `tasks/active/writer-placeholders/`. The user chose to fix the defect first, with the `qwen2.5:7b` count (2026-11-05, "Yes, fix it first").
 
 ## Review
