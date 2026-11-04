@@ -550,3 +550,20 @@ flowchart LR
 - [ ] **Agent research layer (optional, on request only):** Evaluate DeerFlow (ByteDance, v2.0 rewrite released February 2026, built on LangGraph and LangChain) or a similar agent harness when it matures. Use cases: verify a specific employer or recruiter contact with cited sources, and periodic research on new scam tactics to propose indicators for human review.
 
 **Agent layer rules:** Never run inside `filter_scams` or cover-letter assess (volume, latency, cost, and non-deterministic output). Findings show as sourced flags to review, never an automatic scam verdict. New indicators need human review before they enter `scam_detector.py`. Re-assess DeerFlow maturity, sandbox security (bash access), and local-model performance before any spike. Borrowing ideas (Markdown skills, isolated research sub-agents) without the framework is also an option.
+
+### Ideas from a LinkedIn job extension post (2026-11-04)
+
+The user saw a LinkedIn post about a free browser extension. It reads the job results page in the signed-in browser and exports the job descriptions. The user then pastes them into a hosted chat model with a CV and asks for a ranking. Job Raider does not copy that last step: it keeps the CV local, and its ranking is measured on a labeled set.
+
+```mermaid
+flowchart LR
+    B[Job page open in<br/>the signed-in browser] --> E[Small extension]
+    E --> A[Local API:<br/>paste job path]
+    A --> P[Scoring and ranking]
+    B --> X[Private export of<br/>real postings]
+    X --> L[Private labels]
+    L --> R[Ranking check<br/>on real postings]
+```
+
+- [ ] **Browser intake:** A small extension sends the jobs on the open page to the local API, which can reuse `src/extractors/paste_job.py`. This removes the stored LinkedIn password from this path, and it needs no separate Playwright session. Limits: it still breaks when LinkedIn changes its page layout. Check the current LinkedIn terms before any work, because they restrict extensions that scrape. Keep dry run as the default.
+- [ ] **Ranking check on real postings:** Export about 50 real postings, label them with the rules in `tests/fixtures/eval/ranking/README.md`, and run the ranking suite on them. This shows whether BM25 still leads hybrid on real postings, or only on the clean constructed set. Start after Step 3.4. The postings and labels stay out of the repository, because they are copied text and they show the user's own job search.
