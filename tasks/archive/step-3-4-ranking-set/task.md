@@ -28,8 +28,8 @@ flowchart LR
 - [x] Baseline run recorded (command, dataset SHA-256, MLflow run ID). (2026-11-03, MLflow run `3ed51947bcfb4cbe81e4b3d926c54956`: NDCG@10 mean heuristic 0.788, BM25 0.882, dense 0.806, hybrid 0.707)
 - [x] R4 fix (whole-word matching for keywords and skills; a skill score that does not drop when matches rise), measured. (`e079e48`, 30 tests, 13 of 13 mutants; MLflow run `2d49f5e547b148bcb5ffb2c3922ec967`: heuristic NDCG@10 mean 0.788 to 0.818)
 - [x] R5 fix (fuse dense and BM25 at job level; one score scale for all candidate jobs; the BM25 profile query uses `summary` and `targets`; the BM25 index holds the chunks of the candidate jobs only, on each run), measured. (`0794d5c`, 25 tests, 29 of 29 mutants; MLflow run `d0cc16f055ba4dd1a9fa5982cde70743`: hybrid NDCG@10 mean 0.707 to 0.851, BM25 0.882 to 0.915)
-- [ ] CI gate on the heuristic and BM25 numbers; docs and the decision-log entry.
-- [ ] Done when: the README can state NDCG@10 for heuristic, BM25, dense, and hybrid on the labeled set, measured after the R5 fix, with the command.
+- [x] CI gate on the heuristic and BM25 numbers; docs and the decision-log entry. (`4dfcfa8`, 10 tests, 16 of 16 mutants, 4 real regressions caught; docs `1da18d7`)
+- [x] Done when: the README can state NDCG@10 for heuristic, BM25, dense, and hybrid on the labeled set, measured after the R5 fix, with the command. (2026-11-05: `docs/usage.md`, "Ranking Suite", has the numbers and the command; Step 3.9 writes them in the README; full backend gate 2104 passed)
 
 ## Status
-`in-progress` (2026-11-05: docs committed; the gate handoff (MH-6) ready for the runner)
+`done` (2026-11-05: NDCG@10 after R5: BM25 0.915, hybrid 0.851, heuristic 0.818, dense 0.806; CI gate on heuristic and BM25; full backend gate 2104 passed; archived)

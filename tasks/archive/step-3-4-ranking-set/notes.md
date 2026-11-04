@@ -320,6 +320,16 @@ The user approved this step ("Yes, write them"). The gate follows the grounding,
 - Mutants, with the same script as R5 (the unchanged code passes, then a control passes in the mutant setup; the control has 10 tests): the first run caught 14 of 15. G8 (the gate assertion removed) survived: on healthy code there is no violation, so nothing fails. The assertion moved into `assert_pins_met`, and two tests now check that a violation fails it and that a better metric gives a warning. Re-check: 16 of 16 caught.
 - Real regressions, each caught by the gate test with a clear message: the query without the summary (`bm25_fresh_ml_ndcg_at_10` 0.8603, pin 0.8638), the query without target keywords (`bm25_mid_backend_ndcg_at_10` 0.9335, pin 0.9669), the matcher with substrings (`heuristic_mid_backend_ndcg_at_10` 0.8567, pin 0.8685), and one changed label (dataset changed).
 - Runner test on a fresh clone: the red step failed (exit 1), the 4 checks passed, commit `54b822e` on the clone, and both files are the same bytes as the checked copies.
+- Gate applied on the repo (2026-11-05, Claude ran the runner on the user's word "Yes, apply it"): commit `4dfcfa8`. The red step failed, and the 4 checks passed. Both files are the same bytes as the checked copies.
+- Full backend gate on a clean clone of `4dfcfa8`: black exit 0 (336 files), ruff exit 0, `pytest tests/` exit 0 (2104 passed). The mypy gate has 0 new errors. The frontend did not change.
+
+## Review (2026-11-05, Claude)
+
+- Delivered: the ranking set (70 constructed jobs, 140 labels, checked by the user), the `ranking` suite, the R4 and R5 fixes, each measured on the same set, and a CI gate on the deterministic methods.
+- Result: hybrid, the pipeline's method, goes from NDCG@10 0.707 to 0.851 and from recall@10 0.335 to 0.739. BM25 alone is 0.915 and stays the best on this set. The decision log records why the pipeline keeps hybrid.
+- Found on the way, not in the review: the repeated dense entries for one job, jobs already in the store with no BM25 score, and jobs of earlier runs in the dense query. The last two only show with a persistent store, so the set cannot see them; unit tests cover them.
+- Claude's errors, all corrected before this review: one wrong count in the R4 note, a mutant run on a failing test (void; `docs/lessons.md` updated), and a gate assertion that no test covered (G8).
+- Open: Step 3.9 states the numbers in the README. The private check on real postings and the browser intake are in `tasks/backlog.md`.
 
 ## Blockers / Questions
 - None.
