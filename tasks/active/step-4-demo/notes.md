@@ -85,8 +85,30 @@ Scratch clone (exit codes printed; `npm ci`, because Turbopack refuses a `node_m
 
 For MH-3: the API calls go to `/api/proxy/...` with no base path, because `client.ts` writes that path by hand. The service worker has scope `/job-raider/`, and it sees all requests from pages in its scope, so MSW can answer them, but MH-3 must prove this in a real browser.
 
+## MH-2 in progress: a writer defect found (2026-11-05, Claude)
+
+The seed script works on a clean clone (peak VRAM 4,643 MiB, no model loaded after): 20 ranked jobs from 70, and one letter. The script stops when `data/` has files, so no personal data and no saved setting can reach the output. It is not in the repository yet.
+
+Changes from the plan: every constructed company gets an `Example` name, because Claude cannot vouch for each name against real firms. The profile gets a sample name. Only the demo data changes.
+
+The letter from the first run has literal placeholders: `[Company]`, `[Plant Disease Classifier]`, and `[Research Engineer, Machine Learning]`. The validator gives `is_valid: True`, score 76, `needs_revision`.
+
+Claude first suspected its own rename: the word "Example" could read as a template. A trial (`qwen2.5:3b`, 3 jobs, 2 name sets, 8 letters each, counts only) does not support this as the main cause:
+
+| Company names | Letters with a `[...]` token | Letters without the company name |
+|---------------|------|------|
+| Constructed | 7 of 24 | 0 of 24 |
+| `Example` | 10 of 24 | 1 of 24 |
+
+- The writer prompt has no brackets: the rules, the job context, the selection context, and the profile context. The model writes them by itself.
+- `missing_company` in the writer runs of Step 3.8: `qwen2.5:3b` 6 of 195, `qwen2.5:7b` 1 of 195. Those reports hold no letter text, so a bracket count for them is not possible.
+- The validator has no check for a placeholder, so Step 3.8 could not see this, and its recommendation of `qwen2.5:3b` did not weigh it. Whether `qwen2.5:7b` does the same is not measured.
+- The sample is small. It shows that the defect is common, not its exact rate.
+
+Picking a clean letter by running the seed again would overstate the writer. The plan says that the letter stays as written.
+
 ## Blockers / Questions
 
-- None.
+- The user decides how to handle the placeholder defect before MH-2 goes on. Proposal: a deterministic hard check in the validator, so the one rewrite runs; a prompt rule; a before and after count on `qwen2.5:3b`, and a count on `qwen2.5:7b`, which needs the user's approval for the GPU load.
 
 ## Review
