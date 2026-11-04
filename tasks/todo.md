@@ -2,7 +2,7 @@
 
 ## Active Focus
 - [ ] Make `qwen2.5:3b` the default cover-letter writer (`tasks/active/writer-default-3b/`; applied as `fa8dcb0`; next: the user switches the saved Settings route)
-- [ ] Step 3.4: ranking set, then the R4 and R5 fixes (`tasks/active/step-3-4-ranking-set/`; baseline recorded: hybrid 0.707 is below BM25 0.882; next: the R4 fix)
+- [ ] Step 3.4: ranking set, then the R4 and R5 fixes (`tasks/active/step-3-4-ranking-set/`; R4 done: heuristic NDCG@10 0.818; hybrid 0.707 is still below BM25 0.882; next: the R5 fix)
 - [ ] Then Step 3.9: README and resume numbers (`tasks/active/step-3-measurable-claims/`)
 
 ## Next Up

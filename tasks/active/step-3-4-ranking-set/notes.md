@@ -183,6 +183,24 @@ Plan approved by the user ("Yes, write R4").
 - Mutants: the first run caught 12 of 13. Q13 (no empty-term guard) survived: an empty pattern with the two boundaries matches only where no letter or digit is on either side, and the test text was all letters. The test now also checks an empty text and a text with spaces and a dash. Re-check: 13 of 13 caught (title, description, requirement, description-skill, project, and field checks as substrings; no score progress; a target of 5; no boundary after or before the term; case-sensitive; exact spaces; empty term matches).
 - First look on the scratch clone (not the measured run): heuristic NDCG@10 mean 0.788 to 0.818 (`fresh_ml` 0.720 to 0.767, `mid_backend` 0.857 to 0.869); recall@10 mean 0.506 to 0.568 (`fresh_ml` 0.375 to 0.500).
 - Runner test on a fresh clone: the red step failed (exit 2), the 4 checks passed, commit `22d5ceb` on the clone, and both files are the same bytes as the checked copies.
+- R4 applied on the repo (2026-11-04, Claude ran the runner on the user's word "Yes, apply it"): commit `e079e48`. The red step failed, and the 4 checks passed. Both files are the same bytes as the checked copies.
+
+## After R4 (2026-11-04, Claude, the measurement of the approved R4 plan)
+
+Same command and dataset SHA-256 as the baseline. Git SHA `e079e483062307ab186a060f83f8b81c5a5ee2ba` (`git_dirty`: true; the CRLF-only files). MLflow run `2d49f5e547b148bcb5ffb2c3922ec967`. Report `data/eval/ranking/20261104T132510121254Z.json`. 21:23 to 21:25; peak VRAM 2,454 MiB; no model loaded after the run.
+
+| Method | NDCG@10 mean: baseline | after R4 | Recall@10 mean: baseline | after R4 |
+|--------|------|------|------|------|
+| heuristic | 0.788 | 0.818 | 0.506 | 0.568 |
+| bm25 | 0.882 | 0.882 | 0.693 | 0.693 |
+| dense | 0.806 | 0.806 | 0.614 | 0.614 |
+| hybrid | 0.707 | 0.707 | 0.335 | 0.335 |
+
+- Heuristic: `fresh_ml` NDCG@10 0.720 to 0.767 and recall@10 0.375 to 0.500 (two `apply` jobs without a skill list now reach the top 10, among them rk-003); `mid_backend` NDCG@10 0.857 to 0.869, and the internship rk-053 (label 0) leaves the top 6.
+- BM25 and dense are the same, as the plan said: they do not use the matcher.
+- Hybrid has the same metrics to four places, so Claude checked the reports: the scores of both profiles and the order of `fresh_ml` changed, but only lower in the top 10, with the same label at each rank. The new heuristic scores do reach `re_rank`. The weakness of hybrid is not in the matcher, which fits the R5 findings.
+
+Next: the R5 fix (RAG ranker).
 
 ## Blockers / Questions
 - None.
