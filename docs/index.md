@@ -281,7 +281,6 @@ This release rolls up the LinkedIn Profile Analyzer feature plus the frontend an
 - Fixed ChromaDB numpy ndarray truthiness bug: `if results["embeddings"]:` raised ValueError on ndarray, silently caught by bare `except`
 - Fixed RAG ranker fallback path: `_fallback_to_heuristic()` now sorts by combined_score descending, matching main path contract
 - Converted ChromaDB ndarray returns to Python lists for consistent type handling
-- All 199 tests passing (144 backend + 55 frontend)
 
 ### RAG / Semantic Matching
 

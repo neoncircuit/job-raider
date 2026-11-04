@@ -20,8 +20,8 @@ Every number in the README and in the resume framing (review section 7) comes fr
 - [x] 3.6 Real cost and usage tracking (`tasks/archive/step-3-6-cost-tracking/`; done 2026-10-28: every router call recorded with real token counts, a run file and an MLflow run for each pipeline run, real tokens on the Metrics page, one dated price table).
 - [x] 3.7 Schema-constrained output and context size (`tasks/archive/step-3-7-structured-output/`; done 2026-11-02: every JSON task sends its schema and parses strictly; strict answers 0.845 to 1.000 at all 9 sites on the fixed set, MLflow runs `ade9802558bf497ea05c2eceeaf40661` and `3882e8625b774a89bd32be9d891191e1`; two broken LLM calls fixed).
 - [x] 3.8 Model comparison on the grounding set (`tasks/archive/step-3-8-writer-models/`; done 2026-11-02: four local writers, 65 pairs with 3 letters each; the planned letter-level metric was at its ceiling, so the secondary analysis decided; `qwen2.5:3b` recommended in `docs/decision-log.md`; MLflow runs in the decision log).
-- [ ] 3.9 README and resume numbers, with the known limits of the grounding rules (`tasks/archive/step-3-2-grounding-validator/notes.md`).
-- [ ] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it.
+- [x] 3.9 README and resume numbers, with the known limits of the grounding rules (`tasks/archive/step-3-2-grounding-validator/notes.md`). (2026-11-05: `README.md`, "Measured Results" and four new sections; 60 checks against the reports; section 7 of the review updated)
+- [x] Done when: the README can say "grounding validator: precision P and recall R per check on N labeled letters", with the command that reproduces it. (2026-11-05: "Cover Letter Grounding": each check on 65 constructed, 23 holdout, and 10 real letters)
 
 ## Status
-`in-progress`
+`done` (2026-11-05: every README number traced to a command or a named one-run or private set; CI gates on grounding, scam, dedupe, and ranking; archived)

@@ -259,9 +259,9 @@ sequenceDiagram
 
 **Benefits:**
 - **Cost:** Both models run locally on Ollama by default, so a default local route has no per-token API cost. The Metrics page shows the recorded cost.
-- **Quality:** Large model ensures high-quality writing
-- **Context Control:** Small model extracts signal, reduces hallucination
-- **Validation:** Deterministic checks prevent fabrication
+- **Writing:** The large model writes the resume text. The default cover-letter writer is `qwen2.5:3b`; `docs/decision-log.md` has the comparison (2026-11-02).
+- **Context Control:** The small model selects the projects and keywords, so the large model gets a short prompt.
+- **Validation:** Deterministic checks flag some unsupported claims, but they do not stop all of them. On 10 real letters they found 4 of 26 ungrounded sentences (2026-10-31). The README ("Cover Letter Grounding") has the measured results and the limits.
 
 ### Model Selection for 8GB VRAM
 

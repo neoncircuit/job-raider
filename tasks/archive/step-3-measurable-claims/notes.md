@@ -159,6 +159,23 @@ A scratch script reads each added number from its report or from the clean-clone
 
 When the README is committed, Step 3 is done: move `tasks/active/step-3-measurable-claims/` to `tasks/archive/`, and update `tasks/todo.md` (Step 4 is next). `tasks/active/writer-default-3b/` stays open until the user switches the saved Settings route.
 
+Plan approved by the user ("Yes, write it").
+
+## Step 3.9 written and checked (2026-11-05, Claude)
+
+- `README.md`: "Measured Results" (summary table), "Job Ranking", "Cover Letter Grounding", "Structured Output", and "Writer Model", each with the command, the date, and the limits. Stage 6 and the test counts changed. The scam and dedupe sections did not change.
+- `docs/architecture.md`: the three claims with no report are gone. The validation line now says that the checks do not stop all unsupported claims, with the real-letter result. `docs/index.md`: the old test count is gone.
+- Section 7 of the review has the real values. The user accepted the proposed bullets, which keep the weak numbers (4 of 26, and BM25 above hybrid).
+- Verify: a scratch script rebuilds the grounding, ranking, and dedupe numbers from the reports, compares the writer and structured tables with `docs/decision-log.md` and `docs/usage.md`, and checks the anchors, the cited files, and the removed text. The first run found one error by Claude: the micro row had 67 and 0.654. The counts sum to 68, and the exact precision is 66 of 101, 0.653 (the older notes rounded 0.6535). After the fix, all 60 checks pass.
+- No code changed, so the full gate of 2026-11-05 still applies (`4dfcfa8`: 2104 passed).
+
+## Review of Step 3 (2026-11-05, Claude)
+
+- Goal met: each number in the README comes from a command in this repository, or from a named one-run or private set, with its date and limits. No cost-saving claim is in the README.
+- What the numbers show is not all good, and the README says so. The grounding rules find few errors in real letters (sentence recall 0.154), the scam rules detect no EMSCAD frauds at this operating point, and BM25 alone beats the pipeline's hybrid ranker on the ranking set.
+- CI gates: grounding, scam, dedupe, and ranking.
+- Open: the writer-default task waits for the user's Settings switch. The ideas for real postings and browser intake are in `tasks/backlog.md`. Step 4 is next.
+
 ## Status before the restructure (2026-10-24)
 
 Step 3.2: the D5 fix, Baseline 3b, and the one holdout run are done (see "Holdout run (2026-10-24)"). The CI gate for the grounding suite is done (count pins from Baseline 3b; see its item). Left in Step 3.2: the user-labeled set of about 15 real generated letters (decision 1 of 2026-10-22), which is the realistic false-positive measure. F1 to F3 are `972bdde`, `9b48608`, `635a1ed`. F4 to F7 are `b10e04e`, `b0ca3aa`, `20b472d`, `115fcd9`. F5a, F6a, and S1 are `27bd81f`, `ec82fb2`, `aaf0fdf`. F5b and F6b are `96d0f94`, `cfca1a0`. D5 and D6 are `5a408f8`, `dee440d`, `7dc3128`. The D5 fix and the holdout labels are `4ddbb5f`, `8508922`. Step 3.1 is pushed (`2a1f202`). The Step 3.2 work up to the CI gate is pushed (`2a1f202..9ef70c5`, 44 commits, 2026-10-24): CI run `40063301388` passed every job (Build Docker Image skipped as usual); the 6 grounding gate tests passed in CI; backend 1209 passed; CI mypy gate 180 known errors and 0 new (182 locally on Python 3.12); vitest 46 files passed; E2E 42 passed with 0 flaky and 0 retries.

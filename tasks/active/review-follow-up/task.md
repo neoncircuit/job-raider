@@ -12,7 +12,7 @@ Do the six steps of section 6 of `review-2026-10-18.md` (in this folder): the co
 - [x] Step 0: Push and stabilize (`tasks/archive/step-0-push-and-stabilize/`).
 - [ ] Step 1: Make the core flow run (`tasks/active/step-1-core-flow/`; only the manual dry run is open).
 - [x] Step 2: Make local-first true (`tasks/archive/step-2-local-first/`).
-- [ ] Step 3: Make claims measurable (`tasks/active/step-3-measurable-claims/`).
+- [x] Step 3: Make claims measurable (`tasks/archive/step-3-measurable-claims/`; done 2026-11-05).
 - [ ] Step 4: Make it demo-able (checklist in `review-2026-10-18.md`, section 6).
 - [ ] Step 5: Focus and prune (checklist in `review-2026-10-18.md`, section 6).
 

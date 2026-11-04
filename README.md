@@ -23,6 +23,21 @@ Local-first job search pipeline. It collects listings from several job boards, f
 - **Local Models by Default**: Generation runs on Ollama on your machine; a cloud model is used only as a fallback when you set an API key
 - **Application Tracking**: Track applications from submission to offer with custom statuses
 
+## Measured Results
+
+Each number comes from a labeled set and a command in this repository, except the real letters, which are private. The sections have the commands and the limits. Read the limits: on real letters, the grounding rules find few of the errors, and the scam rules do not detect the frauds in EMSCAD.
+
+| Part | Set | Result | Date |
+|------|-----|--------|------|
+| [Cover letter grounding](#cover-letter-grounding) | 65 constructed letters | Sentence precision 0.154, recall 0.638 | 2026-11-05 |
+| | 23 holdout letters, one run | Sentence precision 0.104, recall 0.727 | 2026-10-24 |
+| | 10 real letters, private | Sentence precision 0.182, recall 0.154 | 2026-10-31 |
+| [Job ranking](#job-ranking) | 140 labeled pairs | NDCG@10: BM25 0.915, hybrid 0.851, heuristic 0.818, dense 0.806 | 2026-11-04 |
+| [Duplicate detection](#duplicate-detection) | 31 labeled pairs | Identified precision 0.833, recall 0.938 | 2026-11-05 |
+| [Scam detection](#scam-detection) | 8,940 held-out postings, one run | 0 of 433 frauds found; false-positive rate 0.0027 | 2026-10-26 |
+| [Structured output](#structured-output) | 43 cases at 9 call sites | Strict answers 0.845 before, 1.000 after | 2026-11-01 |
+| [Writer model](#writer-model) | 65 pairs, 3 letters each, 4 models | `qwen2.5:3b` chosen | 2026-11-02 |
+
 ## Architecture
 
 ```mermaid
@@ -40,6 +55,8 @@ graph LR
 2. **Large Model (qwen2.5:7b)** - Writes tailored resumes
 
 The small model does the selection step, so the large model gets a short, focused prompt. Both run locally on Ollama by default, so a default local route has no per-token API cost. The Metrics page shows the recorded cost when a cloud fallback or a cloud route is used.
+
+Cover letters use `qwen2.5:3b` by default; see [Writer Model](#writer-model).
 
 ## Cost and usage tracking
 
@@ -157,7 +174,7 @@ Each value after `--keywords` or `--locations` is one search term. Quote a term 
 | 3. Filter Scams | Flag likely scams; flagged postings are kept | Flagged listings |
 | 4. Filter by Profile | Match user preferences | Relevant listings |
 | 5. Score & Rank | Heuristic relevance scoring (0-100) | Ranked listings |
-| 6. Semantic Re-Rank | Embedding similarity with ChromaDB | Re-ranked listings |
+| 6. Hybrid Re-Rank | Fuse the dense and BM25 ranks of each job, then combine with the heuristic score | Re-ranked listings |
 | 7. Detect Apply Method | Record how each job is applied to | Apply method per job |
 | 8. LinkedIn Check | Check only whether LinkedIn credentials are set | Status |
 | 9. Present Selection | Take the top-ranked jobs | Selected jobs |
@@ -219,6 +236,68 @@ flowchart LR
 | Experience | 20 | Experience level alignment |
 | Location | 10 | Location preference match |
 | **Total** | **100** | **Threshold: 60 to apply** |
+
+## Job Ranking
+
+Each method ranks all 70 jobs for each profile. The set has 2 synthetic
+profiles, 70 constructed jobs, and 140 labels: apply, maybe, or not
+relevant. NDCG@10 uses the label as the gain. Recall@10 is the share of
+the `apply` jobs in the top 10.
+
+Run of 2026-11-04 (git `0794d5c`, MLflow run
+`d0cc16f055ba4dd1a9fa5982cde70743`):
+
+| Method | NDCG@10 | Recall@10 | NDCG@10 before the fixes | Runs in |
+|--------|---------|-----------|--------------------------|---------|
+| BM25 | 0.915 | 0.784 | 0.882 | CI and local |
+| Hybrid, used by the pipeline | 0.851 | 0.739 | 0.707 | Local |
+| Heuristic | 0.818 | 0.568 | 0.788 | CI and local |
+| Dense | 0.806 | 0.614 | 0.806 | Local |
+
+What the numbers mean: BM25 alone is the best method on this set. The
+pipeline keeps hybrid, because the set is small and clean, and lexical
+matching can be easier on clean text. Before the fixes, hybrid ranked
+below each of its parts: jobs inside the hybrid result and jobs outside
+it had scores on two scales. `docs/decision-log.md` has the causes.
+
+```mermaid
+flowchart LR
+    C[Candidate jobs] --> D[Dense rank of each job]
+    C --> B[BM25 rank of each job,<br/>by its best chunk]
+    D --> R[RRF at job level]
+    B --> R
+    R --> M[0.4 heuristic +<br/>0.6 fused score]
+    M --> O[Ordered jobs]
+```
+
+How to run the heuristic and BM25 methods (no model needed):
+
+```bash
+cd apps/backend-py
+.venv/bin/python main.py eval ranking
+```
+
+How to run all four methods (WSL; the embedding model loads on the GPU):
+
+```bash
+cd apps/backend-py
+.venv/bin/python main.py eval ranking --methods heuristic,bm25,dense,hybrid
+```
+
+CI fails when the heuristic or BM25 metrics fall below their pins in
+`tests/fixtures/eval/ranking/thresholds.json`. Dense and hybrid need the
+embedding model, so they are not in the CI gate.
+
+Limits:
+
+- The set has 2 profiles and 70 clean constructed jobs, so these numbers
+  compare the methods on this set only.
+- No weight or constant is tuned on this set.
+- The suite ranks all 70 jobs. The pipeline ranks only the jobs that pass
+  the heuristic gate.
+- The hybrid score comes from ranks, so the best job of a weak group gets
+  a fused score of 1.0.
+- The cross-encoder is off by default and is not measured.
 
 ## Scam Detection
 
@@ -285,6 +364,145 @@ flowchart LR
     D -->|below 1.00| K[Posting kept]
     F --> R[Posting kept with the flag]
 ```
+
+## Cover Letter Grounding
+
+Deterministic rules check each generated letter against the profile,
+with no LLM. A hard finding causes one rewrite. When the rewrite still
+has a hard finding, the letter is held for review.
+
+```mermaid
+flowchart LR
+    L[Generated letter] --> C[Deterministic checks]
+    C --> H{Hard finding?}
+    H -->|no| K[Keep the letter]
+    H -->|yes| W[One rewrite]
+    W --> R{Hard finding?}
+    R -->|no| K
+    R -->|yes| V[Hold for review]
+```
+
+Precision and recall for each check on three sets. A letter has the
+label or it does not, except for the last row, which counts sentences.
+"Count" is the number of letters (or sentences) with the error, and n/a
+means that the check found nothing, or that the set has no such error.
+
+| Check | 65 constructed: precision | Recall | Count | 23 holdout: precision | Recall | Count | 10 real: precision | Recall | Count |
+|-------|------|------|------|------|------|------|------|------|------|
+| `fabricated_technology` | 0.800 | 1.000 | 8 | 1.000 | 1.000 | 3 | n/a | 0.000 | 1 |
+| `inflated_duration` | 1.000 | 1.000 | 5 | 1.000 | 1.000 | 2 | n/a | n/a | 0 |
+| `inconsistent_metric` | 1.000 | 1.000 | 3 | 1.000 | 1.000 | 1 | n/a | n/a | 0 |
+| `fabricated_experience` | 0.857 | 0.750 | 8 | 0.500 | 1.000 | 2 | 0.000 | n/a | 0 |
+| `analogical_claim` | 1.000 | 1.000 | 3 | 1.000 | 1.000 | 1 | n/a | 0.000 | 7 |
+| `scope_inflation` | 1.000 | 1.000 | 4 | 0.500 | 1.000 | 1 | 1.000 | 1.000 | 2 |
+| `technique_mismatch` | 0.750 | 1.000 | 3 | 1.000 | 1.000 | 1 | n/a | n/a | 0 |
+| `ungrounded_claims` | 0.523 | 1.000 | 34 | 0.500 | 1.000 | 11 | 0.875 | 0.778 | 9 |
+| All checks (micro) | 0.653 | 0.971 | 68 | 0.611 | 1.000 | 22 | 0.818 | 0.474 | 19 |
+| `ungrounded_claims`, sentences | 0.154 | 0.638 | 69 | 0.104 | 0.727 | 11 | 0.182 | 0.154 | 26 |
+
+Clean false-positive rate (clean letters with at least one flag): 1.000
+on the constructed set (29 of 29) and 0.909 on the holdout (10 of 11).
+
+What the numbers mean: the constructed sets put one clear error in each
+letter, and the rules find nearly all of those errors. Real errors are
+different. On the real letters, the rules find 4 of 26 ungrounded
+sentences and 0 of 7 duties that only the job names. Most flagged
+sentences are false flags on every set. So the rules are a guard against
+some clear errors, not proof that a letter is correct. Read each letter
+before you send it.
+
+How to run the constructed set (no model needed):
+
+```bash
+cd apps/backend-py
+.venv/bin/python main.py eval grounding
+```
+
+CI fails when a count goes above its pin in
+`tests/fixtures/eval/grounding/thresholds.json`.
+
+The other two sets:
+
+- Holdout: one run on 2026-10-24 (MLflow run
+  `cb3e608baa354a21844913f2c8a5dd2f`). A set that is run again after a
+  fix no longer tests that fix, so it is not for routine runs. Its
+  README has the command.
+- Real letters: one run on 2026-10-31 (MLflow run
+  `6759197d7a2548ff8315a5cf7331a5fe`). The letters were written by
+  `qwen2.5:7b` for a real profile, so they stay in `data/` (gitignored),
+  and nobody else can run this set. The labels were drafted by Claude
+  and checked by the user.
+
+Limits:
+
+- The rules miss a result credited to the wrong work, because each word
+  is in the profile. They also miss duties that only the job names, and
+  added outcomes.
+- The rules flag sentences about the employer, some closings, plans, and
+  statements such as "aligns with your role".
+- `split_letter_sentences` splits a company name after "PTE." in
+  "PTE. LTD.".
+- On the holdout, a short employer name gave false `fabricated_experience`
+  findings, and an object before the verb gave a false `scope_inflation`
+  finding.
+- The constructed letters use a repeated frame (36 of 65 letters), so the
+  sentence precision and the clean false-positive rate describe those
+  letters.
+- The counts are small. On the holdout, one case moves a value for a
+  specific check by 0.33 to 1.0.
+
+## Structured Output
+
+Each LLM task that answers in JSON sends its schema to Ollama, and the
+answer must match the schema as a whole. The suite ran the 9 call sites
+on 43 synthetic cases, 3 times for each case.
+
+| Run | MLflow run | Strict | Rescued by the old regex | Failed |
+|-----|------------|--------|--------------------------|--------|
+| Before, 2026-11-01 | `ade9802558bf497ea05c2eceeaf40661` | 0.845 | 0.132 | 0.023 |
+| After, 2026-11-01 | `3882e8625b774a89bd32be9d891191e1` | 1.000 | 0 | 0 |
+
+How to run the suite (it needs Ollama, and it loads models on the GPU):
+
+```bash
+cd apps/backend-py
+.venv/bin/python main.py eval structured
+```
+
+Limit: the inputs of the set are short (the longest prompt is about
+1,330 tokens), so the set measures the answer format, not long inputs.
+
+## Writer Model
+
+Four local models wrote 3 letters for each of 65 profile-job pairs, and
+the grounding validator checked each letter. `qwen2.5:3b` is the default
+cover-letter writer.
+
+| Model | Flagged sentences in a letter | Words (median) | Mean score | Latency (median) | Peak VRAM | Decision |
+|-------|------|------|------|------|------|------|
+| `qwen2.5:7b` | 3.96 | 243 | 90.5 | 2.9 s | 6,656 MiB | Baseline |
+| `qwen3.5:4b` | 2.97 | 185 | 85.5 | 2.0 s | 5,848 MiB | Keep the baseline |
+| `qwen2.5:3b` | 3.10 | 223 | 92.0 | 1.6 s | 4,189 MiB | Switch; chosen |
+| `gemma3:4b` | 1.71 | 160 | 82.7 | 1.8 s | 5,890 MiB | Switch by the rule; letters too short |
+
+How to run one model (WSL; the model loads on the GPU):
+
+```bash
+cd apps/backend-py
+.venv/bin/python main.py eval writer --model qwen2.5:3b
+```
+
+Limits:
+
+- The evidence is the rule validator only. Most flagged sentences are
+  false flags, so the numbers show how often the rules fire, not an error
+  rate.
+- The runs use 3 synthetic profiles and measure the first draft only.
+- `qwen2.5:3b` has more `technique_mismatch` findings than `qwen2.5:7b`
+  (13 of 195 letters against 2), and more letters that leave out a
+  selected project (20 against 6).
+
+`docs/decision-log.md` has the rule and the MLflow runs.
 
 ## Project Structure
 
@@ -496,12 +714,12 @@ The sidebar has 13 pages: Dashboard (overview), Pipeline (run/monitor), Jobs (se
 # Backend tests
 cd apps/backend-py
 .venv/bin/python -m pytest tests/
-# Expected: all pass (1,067 tests on 2026-10-19)
+# Expected: all pass (2,104 tests on 2026-11-05)
 
 # Frontend unit tests
 cd apps/frontend-ts
 npm run test -- --run
-# Expected: all pass (232 tests in 41 files on 2026-10-19)
+# Expected: all pass (257 tests in 48 files on 2026-11-05)
 
 # Frontend E2E tests
 cd apps/frontend-ts
