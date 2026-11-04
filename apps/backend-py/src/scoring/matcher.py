@@ -8,6 +8,7 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -18,6 +19,34 @@ from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
 from ..utils.source_geography import listing_matches_requested_locations
 from .filter import JobFilter
+
+# Matches of profile skills in a description that count as a full match
+# when the job has no skill list (Step 3.4, R4).
+DESCRIPTION_SKILL_TARGET = 4
+
+
+def term_in_text(term: str, text: str) -> bool:
+    """
+    Check whether a term occurs in a text as a whole term.
+
+    The match ignores case. No letter or digit may come just before or just
+    after the term, so "ai" does not match "email" and "java" does not match
+    "javascript". A space in the term matches any whitespace; every other
+    character matches as written, so "c++", "c#", ".net", and "node.js" work.
+
+    Args:
+        term: The term, for example a keyword or a skill name.
+        text: The text to search.
+
+    Returns:
+        True when the term occurs as a whole term.
+    """
+    words = term.strip().split()
+    if not words:
+        return False
+    pattern = r"\s+".join(re.escape(word) for word in words)
+    found = re.search(rf"(?<![a-z0-9]){pattern}(?![a-z0-9])", text, re.IGNORECASE)
+    return found is not None
 
 
 class ScoreCategory(str, Enum):
@@ -229,19 +258,19 @@ class JobMatcher:
 
         # Check title
         for keyword in target_keywords:
-            if keyword in job.title.lower():
+            if term_in_text(keyword, job.title):
                 matched.add(keyword)
 
         # Check description
         if job.description:
             for keyword in target_keywords:
-                if keyword in job.description.lower():
+                if term_in_text(keyword, job.description):
                     matched.add(keyword)
 
         # Check requirements
         for req in job.requirements:
             for keyword in target_keywords:
-                if keyword in req.text.lower():
+                if term_in_text(keyword, req.text):
                     matched.add(keyword)
 
         # Calculate score (proportional to matches)
@@ -295,9 +324,11 @@ class JobMatcher:
         """
         Score skills when the listing has no structured required skills.
 
-        Used for pasted JDs that only provide a description blob. Mentions of
-        the candidate's skills in the description raise the score; absence of
-        structure never awards the full skills weight.
+        Used for pasted JDs that only provide a description blob. With no
+        mention of the candidate's skills, the score is half the weight (no
+        evidence either way). Each mention raises it, up to 85% of the weight
+        at ``DESCRIPTION_SKILL_TARGET`` mentions; absence of structure never
+        awards the full skills weight. Skills match as whole terms.
 
         Args:
             job: Job listing (typically paste-built, skills empty).
@@ -315,15 +346,15 @@ class JobMatcher:
             return weight // 2, []
 
         matched = {
-            skill for skill in user_skills if len(skill) >= 2 and skill in description
+            skill
+            for skill in user_skills
+            if len(skill) >= 2 and term_in_text(skill, description)
         }
-        if not matched:
-            return weight // 2, []
-
+        half = weight // 2
         # Cap below full weight: structured required skills are more reliable.
-        match_ratio = len(matched) / max(len(user_skills), 1)
-        score = int(weight * min(match_ratio, 0.85))
-        return max(score, weight // 4), []
+        cap = int(weight * 0.85)
+        progress = min(len(matched) / DESCRIPTION_SKILL_TARGET, 1.0)
+        return half + int((cap - half) * progress), []
 
     def _score_experience(
         self,
@@ -458,7 +489,7 @@ class JobMatcher:
             # Count matching skills
             matching_skills = 0
             for job_skill in job_skills_lower:
-                if job_skill in proj_text:
+                if term_in_text(job_skill, proj_text):
                     matching_skills += 1
 
             if matching_skills >= 2:
@@ -635,7 +666,7 @@ class JobMatcher:
         for skill in job.skills:
             searchable += f" {skill.name.lower()}"
 
-        return any(term in searchable for term in field_terms)
+        return any(term_in_text(term, searchable) for term in field_terms)
 
     def _get_recommendation(
         self,
