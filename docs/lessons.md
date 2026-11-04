@@ -3652,3 +3652,5 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 **How to apply:**
 - In a check script, print the exit code of each red, green, and gate command, and confirm that the unchanged code exits with 0 before running mutants.
 - When a command exits non-zero with passing tests, find the cause before using it as a red or mutant signal.
+- Do not rely on memory for the green run. In the R5 check (2026-11-04), Claude changed a test, started the mutants, and each mutant showed as caught because the unchanged code failed. Make the mutant script stop by itself unless the unchanged code passes.
+- When the mutants run in a different setup from the normal test run (for example, forked after a module load), run the unchanged code as a control in that same setup. Print the test that catches each mutant, so a wrong reason for a catch is visible.

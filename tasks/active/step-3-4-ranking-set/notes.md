@@ -272,5 +272,18 @@ Measure: the same command as the baseline. Expected: heuristic and dense do not 
 
 Handoff: one runner handoff, `mh-5-r5-job-fusion.md` (`src/rag/ranker.py`, `src/rag/config.py`, `config/rag_config.yaml`, new `tests/unit/test_rag_hybrid.py`). Tests for each cause: one job in each list; a job found by retrieval never below a job that is last in both lists; every candidate on one scale; no profile chunks in the BM25 index; jobs already in the store still get a BM25 rank; jobs from earlier runs do not change the result; the three query fields; no BM25 rank without a term match; a job without embeddings; a BM25 failure; the cross-encoder `top_k`; the dense-only path stays the same. Mutants for each of these.
 
+Plan approved by the user ("Yes, write R5").
+
+## R5 written and checked (2026-11-04, Claude)
+
+`mh-5-r5-job-fusion.md` (runner): 7 edits of `src/rag/ranker.py`, 3 of `src/rag/config.py`, 1 of `config/rag_config.yaml`, and `tests/unit/test_rag_hybrid.py` (25 tests).
+
+- Scratch clone (exit codes printed): the red step fails (exit 1); black changes one line of the test and no source edit; ruff is clean; the 6 test files pass (77 tests); the mypy gate has 0 new errors. The gate also reports 3 fixed baseline errors. The baseline file stays as it is.
+- The first mutant run is void. Claude added an assertion to `test_every_candidate_is_on_one_scale` and started the mutants without a green run, and the unchanged code failed. The cause was the test data: "kafka" was in exactly half of the chunks, so its IDF is 0 and `_bm25_job_scores` returned nothing. So the old form of that test never used BM25. The fix is in the test data (30 matching jobs and 40 other jobs), not in the source. Claude stopped the run, because each "caught" came from the broken test.
+- The mutant script now stops unless the unchanged code passes, and stops unless a control run of the unchanged code passes after the module load, in the same setup as the mutants. It also prints the test that catches each mutant.
+- Mutants: control passes (25 tests); 29 of 29 caught, each by the test written for it (query fields, profile chunks, index kept between calls, last chunk wins, no term match, tie order, sort direction, BM25 failure, each list empty, `k` and each weight fixed, no min-max, no spread, missing job score, hybrid never runs, each setting ignored, job without embeddings, cross-encoder document, `top_k`, and query, no retriever guard, BM25 limit of 20).
+- Runner test on a fresh clone: the red step failed (exit 1), the 4 checks passed, commit `5707871` on the clone, and the 3 changed Python files are the same bytes as the checked copies. `rag_config.yaml` has no `n_results`.
+- First look on the clone (no model; not the measured run): BM25 NDCG@10 0.8638, 0.9669, mean 0.9153; recall@10 mean 0.7841. These are the trial numbers. Heuristic mean stays at 0.8176. Hybrid and dense need the embedding model, so the measured run after the apply gives them.
+
 ## Blockers / Questions
 - None.
