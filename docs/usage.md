@@ -449,7 +449,7 @@ flowchart LR
     F -->|No| W[Warning; report kept]
 ```
 
-Suites available now: `grounding` (the deterministic cover-letter grounding validator), `scam`, `emscad`, and `dedupe` (deterministic; `python main.py eval --help` shows an example for each), and `structured` and `writer` (LLM output; they need Ollama, see "Structured-Output Suite" and "Writer Model Comparison" below). The default dataset of `grounding` is the labeled main set in `tests/fixtures/eval/grounding`. The holdout set in `tests/fixtures/eval/grounding_holdout` is not for routine runs: it ran one time, and its README explains why.
+Suites available now: `grounding` (the deterministic cover-letter grounding validator), `scam`, `emscad`, and `dedupe` (deterministic; `python main.py eval --help` shows an example for each), `ranking` (job ranking, see "Ranking Suite" below), and `structured` and `writer` (LLM output; they need Ollama, see "Structured-Output Suite" and "Writer Model Comparison" below). The default dataset of `grounding` is the labeled main set in `tests/fixtures/eval/grounding`. The holdout set in `tests/fixtures/eval/grounding_holdout` is not for routine runs: it ran one time, and its README explains why.
 
 Run the grounding suite on the main set (from `apps/backend-py`):
 
@@ -591,6 +591,79 @@ python scripts/compare_writer_reports.py data/eval/writer/BASELINE.json data/eva
 It compares the mean count of flagged ungrounded sentences in a letter (S1) and the share of letters with `scope_inflation` (S2), pair by pair with the same bootstrap. It prints `switch` only when the S1 interval is below 0, the S2 interval is not above 0, and the `fabricated_technology` rate is not higher. Also compare the word counts and the structure checks in the reports: a model with short letters has fewer sentences to flag. The results and the decision for the default writer are in `docs/decision-log.md`.
 
 Limits: the validator does not find analogical claims (work credited to duties that only the job names), which is the most common error in real letters. The suite measures the first draft only, without the review pass.
+
+### Ranking Suite
+
+The `ranking` suite measures how well each method ranks jobs for a profile. The set in `tests/fixtures/eval/ranking` has 2 synthetic profiles, 70 constructed jobs, and 140 labels: `2` (apply), `1` (maybe), and `0` (not relevant). Each method ranks all 70 jobs for each profile. The suite reports NDCG@10 (the label is the gain) and recall@10 (the share of the jobs labeled `2` that are in the top 10), for each profile and as the mean.
+
+```mermaid
+flowchart LR
+    S[Ranking set:<br/>2 profiles, 70 jobs,<br/>140 labels] --> H[heuristic]
+    S --> B[bm25]
+    S --> D[dense]
+    H --> F[hybrid: RRF of dense and<br/>BM25, then 0.4 heuristic<br/>+ 0.6 fused score]
+    B --> F
+    D --> F
+    H --> M[NDCG@10 and recall@10]
+    B --> M
+    D --> M
+    F --> M
+    M --> G{heuristic and BM25<br/>at or above their pins?}
+    G -->|No| X[CI fails]
+    G -->|Yes| P[CI passes]
+```
+
+| Method | What it ranks by | Where it runs |
+|--------|------------------|---------------|
+| `heuristic` | The score of `JobMatcher`, with the profile's matcher mode | CI and local |
+| `bm25` | BM25 over the job chunks; a job has the score of its best chunk | CI and local |
+| `dense` | The similarity between the profile chunks and the job chunks | Local; needs `nomic-embed-text` |
+| `hybrid` | `RAGRanker.re_rank`, as the pipeline runs it | Local; needs `nomic-embed-text` |
+
+Run the heuristic and BM25 methods (from `apps/backend-py`; this needs no model):
+
+```bash
+python main.py eval ranking
+```
+
+Run all four methods (WSL, from `apps/backend-py`; the embedding model loads on the GPU):
+
+```bash
+python main.py eval ranking --methods heuristic,bm25,dense,hybrid
+```
+
+Results on 2026-11-04, after the R4 and R5 fixes (git `0794d5c`, dataset SHA-256 `6f5dbeaa...50c1`, MLflow run `d0cc16f055ba4dd1a9fa5982cde70743`, peak VRAM 2,652 MiB):
+
+| Method | NDCG@10 mean | Recall@10 mean | `fresh_ml` NDCG@10 | `mid_backend` NDCG@10 |
+|--------|------|------|------|------|
+| bm25 | 0.915 | 0.784 | 0.864 | 0.967 |
+| hybrid | 0.851 | 0.739 | 0.766 | 0.935 |
+| heuristic | 0.818 | 0.568 | 0.767 | 0.869 |
+| dense | 0.806 | 0.614 | 0.681 | 0.932 |
+
+Hybrid is the method that the pipeline uses. BM25 alone is the best method on this set. Before the fixes, hybrid had NDCG@10 0.707; `docs/decision-log.md` has the causes and the reason that the pipeline keeps hybrid.
+
+Limits:
+
+- The set has 2 profiles and 70 clean constructed jobs. Lexical matching can be easier on clean text than on real postings, so these numbers compare the methods on this set only.
+- No weight or constant is tuned on this set.
+- The suite ranks all 70 jobs. The pipeline ranks only the jobs that pass the heuristic gate (60), so its group of candidates is smaller.
+- The hybrid score comes from ranks. The best job of a weak group gets a fused score of 1.0.
+- The cross-encoder is off by default, and the suite does not measure it.
+
+CI fails when a change makes the heuristic or BM25 ranking worse. The two methods are deterministic, so the gate pins NDCG@10 and recall@10 for each profile with no margin: each metric must stay at or above its pin in `tests/fixtures/eval/ranking/thresholds.json`. The file also pins the SHA-256 of the set, so a changed set fails before any metric is compared. Dense and hybrid need the embedding model, so they are not in this gate; unit tests with fixed scores cover the hybrid logic (`tests/unit/test_rag_hybrid.py`).
+
+The CI backend job runs the gate as part of `pytest tests/`. Run only the gate (from `apps/backend-py`):
+
+```bash
+python -m pytest tests/unit/test_ranking_thresholds.py -q
+```
+
+Change a pin only in the same commit as the change that moves it:
+
+1. Run all four methods and note the MLflow run.
+2. Edit the metric in `thresholds.json`. When the set changed, also set the new `dataset_sha256`.
+3. Add an entry to `changes` with the date, the reason, and the MLflow run. A pin that goes down accepts a worse ranking, so its reason must say why.
 
 ## Multi-Agent API
 

@@ -1,5 +1,65 @@
 # Job Raider Decision Log
 
+## 2026-11-04 - Job ranking measured on a labeled set; hybrid fused at job level
+
+### Context
+
+Review items R4 and R5 said that the heuristic matcher and the hybrid ranker had faults, but no labeled set could show the effect. Step 3.4 added a set (`tests/fixtures/eval/ranking`: 2 synthetic profiles, 70 constructed jobs, 140 labels that the user checked) and the `ranking` suite, and measured before and after each fix.
+
+The baseline showed that hybrid, the pipeline's method, ranked below each of its parts (NDCG@10 0.707; BM25 0.882, dense 0.806, heuristic 0.788). The main cause was two score scales: jobs inside the hybrid result had a min-max RRF score (median 0.138), and jobs outside had a cosine similarity (median 0.570 for the graduate profile). So a job that retrieval found could get a lower score than a job that it did not find. Other causes:
+
+- Dense results used job IDs and BM25 results used chunk IDs, so no job had a score from both lists.
+- The dense query returned chunks, so one job could be in the list more than once, and RRF added each entry.
+- The BM25 query read two fields that do not exist, so it held the skill names only.
+- Profile chunks were in the job BM25 index.
+- `index_jobs` skipped jobs that were already in the persistent store before it reached the in-memory BM25 step, so after the first pipeline run those jobs had no BM25 score.
+- The dense query had no filter, so jobs of earlier runs could take places in the top 20.
+
+### Decision
+
+- R4: the matcher matches keywords and skills as whole terms, and the description skill score no longer falls when a few skills match (`e079e48`).
+- R5: every candidate job gets a dense rank and a BM25 rank, with its best chunk, and one fused score from RRF, scaled to 0-1 over the candidates. The BM25 index is built on each call from the candidates only. The query reads `summary`, the skill names, and `targets.keywords` (`0794d5c`).
+- The configured values do not change: `k` 60, RRF weights 0.5 and 0.5, combined weights 0.4 and 0.6, and the `apply` and `maybe` limits 0.7 and 0.5. The set gives the reported number, so no value is tuned on it. The R5 design was fixed before its trial, and only that one design was tried.
+- The pipeline keeps hybrid. BM25 alone is higher on this set, but the set is small and clean, and lexical matching can be easier on clean text. A private check on real postings is in `tasks/backlog.md`.
+- CI gate: the heuristic and BM25 metrics of each profile are pinned with no margin, with the dataset SHA-256. Dense and hybrid need the embedding model, so unit tests with fixed scores cover the hybrid logic.
+
+| Method | NDCG@10 mean: baseline | after R4 | after R5 | Recall@10 mean: baseline | after R4 | after R5 |
+|--------|------|------|------|------|------|------|
+| heuristic | 0.788 | 0.818 | 0.818 | 0.506 | 0.568 | 0.568 |
+| bm25 | 0.882 | 0.882 | 0.915 | 0.693 | 0.693 | 0.784 |
+| dense | 0.806 | 0.806 | 0.806 | 0.614 | 0.614 | 0.614 |
+| hybrid | 0.707 | 0.707 | 0.851 | 0.335 | 0.335 | 0.739 |
+
+MLflow runs (experiment `job_raider_eval`, dataset SHA-256 `6f5dbeaa2e70d780b393d310a4ba2a82267bfc74e112692d96bc13d121eb50c1`): baseline `3ed51947bcfb4cbe81e4b3d926c54956`, after R4 `2d49f5e547b148bcb5ffb2c3922ec967`, after R5 `d0cc16f055ba4dd1a9fa5982cde70743`. Task folder: `tasks/archive/step-3-4-ranking-set/`.
+
+Run all four methods (WSL, from `apps/backend-py`; the embedding model loads on the GPU):
+
+```bash
+python main.py eval ranking --methods heuristic,bm25,dense,hybrid
+```
+
+### Consequences
+
+- For the graduate profile, hybrid puts 6 of 8 `apply` jobs in its top 10 (it had 1).
+- Users see a change: `relevance_score` is the combined score, so it changes, and so does `recommendation`. For all 70 jobs, the `apply`, `maybe`, and `skip` counts go from 4, 19, 47 to 9, 16, 45 (`fresh_ml`), and from 6, 22, 42 to 11, 12, 47 (`mid_backend`).
+- The fused score comes from ranks, so the best job of a weak group gets 1.0. This was already true for jobs inside the old hybrid result.
+- `bm25.n_results` is gone from the configuration, because every candidate now gets a rank.
+- Limits: the suite ranks all 70 jobs, but the pipeline ranks only the jobs that pass the heuristic gate (60). For the graduate profile, hybrid NDCG@10 (0.766) is level with the heuristic and below BM25 (0.864). The cross-encoder is off by default and is not measured. The set cannot show the two store faults, because each run uses a new store, so unit tests cover them.
+
+### Flow
+
+```mermaid
+flowchart LR
+    C[Candidate jobs] --> D[Dense similarity<br/>of each job]
+    C --> I[BM25 index of the<br/>candidate chunks]
+    I --> B[Best chunk<br/>of each job]
+    D --> R[RRF at job level]
+    B --> R
+    R --> N[Min-max over<br/>the candidates]
+    N --> M[0.4 heuristic +<br/>0.6 fused score]
+    M --> O[Order and<br/>final limit]
+```
+
 ## 2026-11-02 - Cover-letter writer model chosen on the grounding set
 
 ### Context

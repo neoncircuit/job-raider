@@ -25,6 +25,7 @@ flowchart LR
 | `modes.json` | Profile ID to the matcher settings that the pipeline uses for that profile (`fresh_grad_mode`). |
 | `jobs.jsonl` | One constructed `JobListing` for each line. No job copies a real posting. |
 | `labels.jsonl` | One label for each profile and job: `profile_id`, `job_id`, `label`, and `reason`. |
+| `thresholds.json` | The pins of the CI gate (`docs/usage.md`, "Ranking Suite"). It is not part of the dataset SHA-256. |
 
 Each profile is ranked against every job in `jobs.jsonl`, so each profile has a label for every job.
 
@@ -87,3 +88,4 @@ Write one short line that names the deciding point, for example "Fits: entry ML 
 
 - 2026-11-03: First version (Step 3.4).
 - 2026-11-03: Before any ranker ran, the user's check: backend services inside an AI or data product are next to a backend target. Relabeled: rk-003 for `mid_backend` from 0 to 1. No other label changes: rk-010, rk-024, and rk-026 already had this reading.
+- 2026-11-04: Added `thresholds.json` for the CI gate. No label changed.

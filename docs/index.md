@@ -290,14 +290,16 @@ The pipeline includes a RAG (Retrieval-Augmented Generation) stage that enhances
 1. **Text Chunking** - Job descriptions and resumes are split into embedding-ready chunks
 2. **Embedding Generation** - Chunks are embedded using `nomic-embed-text` via Ollama
 3. **Vector Storage** - Embeddings stored in ChromaDB with metadata filtering
-4. **Semantic Re-Ranking** - Combined heuristic (40%) + semantic (60%) scoring for final ranking
+4. **Hybrid Re-Ranking** - The dense and BM25 ranks of each job are fused with RRF, then combined: heuristic (40%) + fused score (60%). `docs/usage.md` ("Ranking Suite") has the measured results
 5. **Fallback** - Gracefully degrades to heuristic-only when embeddings are unavailable
 
 Components:
 - `src/rag/chunker.py` - Text chunking for jobs and profiles
 - `src/rag/embedding_client.py` - Ollama embedding client with batch support
 - `src/rag/vector_store.py` - ChromaDB persistent vector store
-- `src/rag/ranker.py` - Semantic re-ranking with heuristic fallback
+- `src/rag/ranker.py` - Hybrid re-ranking with heuristic fallback
+- `src/rag/bm25_retriever.py` - In-memory BM25 index of the candidate job chunks
+- `src/rag/rrf_fusion.py` - Reciprocal Rank Fusion of the dense and BM25 rankings
 - `src/rag/config.py` - RAG configuration models
 
 ### Recent Updates (Phase 23 - 2026-04-26)
