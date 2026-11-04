@@ -202,5 +202,75 @@ Same command and dataset SHA-256 as the baseline. Git SHA `e079e483062307ab186a0
 
 Next: the R5 fix (RAG ranker).
 
+## R5 plan (2026-11-04, Claude)
+
+### What the code does today
+
+Claude read `src/rag/ranker.py`, `rrf_fusion.py`, `bm25_retriever.py`, and `vector_store.py`, then ran a diagnostic on the current code (`nomic-embed-text` only; peak VRAM 2,355 MiB; no model loaded after). The diagnostic gives the same hybrid numbers as the measured run (`fresh_ml` 0.5936 and 0.1250, `mid_backend` 0.8209 and 0.5455), and the same BM25 NDCG@10 (0.8639 and 0.9003). It is not a measured run, so it has no MLflow entry.
+
+| # | Cause | Where | Evidence |
+|---|-------|-------|----------|
+| 1 | Dense results use the job ID and BM25 results use chunk IDs, so RRF never gives a job a score from both lists. | `ranker.py:408`, `:160` | Review item R5 |
+| 2 | The dense query returns chunks, so one job can be in the dense list more than once, and RRF adds each entry. A job with many chunks takes the top of the scale, and min-max pushes the other jobs down. New finding. | `ranker.py:406`, `rrf_fusion.py:74` | Median score inside the result: 0.138 for both profiles |
+| 3 | Jobs inside the hybrid result have a min-max RRF score. Jobs outside have a cosine similarity. This is the main cause: a job that retrieval finds can get a lower score than a job that retrieval does not find. | `ranker.py:292` to `:302` | `fresh_ml`: all 8 `apply` jobs are inside, with a median of 0.138. The 52 jobs outside have a median of 0.570. |
+| 4 | The query reads `professional_summary` and `target_job`, which do not exist, so the BM25 query is the skill names only. | `ranker.py:527`, `:543` | Plan of 2026-11-03 |
+| 5 | The profile's own chunks are in the job BM25 index. | `ranker.py:212` | 4 and 3 of the BM25 top 20 chunks are profile chunks |
+| 6 | The BM25 index is in memory, but `index_jobs` skips jobs that are already in the persistent vector store before it reaches the BM25 step. After the first pipeline run, jobs seen before have no BM25 score. New finding. | `ranker.py:112`, `:154` | Second process on the same store: 70 jobs skipped, 0 BM25 documents |
+| 7 | The dense query has no filter, so jobs from earlier runs in the persistent store take places in the top 20. New finding. | `ranker.py:401` | Read from the code; not measured |
+
+The ranking suite cannot see causes 6 and 7, because each run uses a new store. Unit tests must cover them.
+
+### Fix
+
+```mermaid
+flowchart LR
+    C[Candidate jobs] --> D[Dense similarity<br/>of each job]
+    C --> I[BM25 index of the<br/>candidate chunks]
+    I --> B[Best chunk<br/>of each job]
+    D --> R[RRF at job level]
+    B --> R
+    R --> N[Min-max over<br/>the candidates]
+    N --> M[0.4 heuristic +<br/>0.6 fused score]
+    M --> O[Order and<br/>final limit]
+```
+
+1. `re_rank` computes the dense similarity of every candidate job (the score of the `dense` method). The hybrid step ranks the candidates by this score. The query on the whole store and `_get_profile_query_embedding` go away (causes 2 and 7).
+2. The hybrid step builds the BM25 index again on each call, from the chunks of the candidates only, with `index_documents`. The BM25 code goes out of `index_jobs` and `index_profile` (causes 5 and 6).
+3. Each job is in each list at most once, with its best chunk. A job with no term match has no BM25 rank (cause 1).
+4. Each candidate gets one fused score: min-max over the candidates. A job that is not in the fused result gets 0.0 (cause 3).
+5. The query is the summary, the skill names, and `targets.keywords` (cause 4). `TargetJob` has no title field.
+6. The cross-encoder (off by default) gets one document for each job. Jobs outside its `top_k` get 0.0.
+7. `bm25.n_results` has no use after this change, so it goes out of the configuration.
+
+The configured values stay: `k` 60, RRF weights 0.5 and 0.5, combined weights 0.4 and 0.6, and the `apply` and `maybe` limits 0.7 and 0.5. The ranking set gives the reported number, so Claude does not tune a value on it.
+
+### Trial of this design
+
+Claude fixed the design above before the trial and tried this one design only. The trial used a scratch script and did not change the repository.
+
+| Method | `fresh_ml` NDCG@10 | `mid_backend` NDCG@10 | Mean NDCG@10 | Mean recall@10 |
+|--------|------|------|------|------|
+| Hybrid today | 0.594 | 0.821 | 0.707 | 0.335 |
+| Hybrid, this design | 0.766 | 0.935 | 0.851 | 0.739 |
+| BM25 today | 0.864 | 0.900 | 0.882 | 0.693 |
+| BM25, this query | 0.864 | 0.967 | 0.915 | 0.784 |
+
+- Most of the hybrid gain comes from the fusion. With the fusion fix and the old query, hybrid has 0.765 and 0.932.
+- `fresh_ml` recall@10 goes from 0.125 to 0.750.
+
+### Known limits
+
+- Hybrid stays below BM25 alone on this set (0.851 against 0.915). The README must state this. The set has 2 profiles and 70 clean constructed jobs, so a weight tuned on it would fit this set and tell nothing about real postings.
+- The fused score comes from ranks. The best job of a weak group gets 1.0. This was already true for jobs inside the hybrid result.
+- The suite ranks all 70 jobs. The pipeline ranks only the jobs that pass the heuristic gate (60), so its min-max group is smaller.
+- The cross-encoder path has unit tests only. It is off by default and the suite does not measure it.
+- Users see a change: `relevance_score` is the combined score, so it changes, and so does `recommendation`. For all 70 jobs, the `apply`, `maybe`, and `skip` counts go from 4, 19, 47 to 9, 16, 45 (`fresh_ml`), and from 6, 22, 42 to 11, 12, 47 (`mid_backend`).
+
+### Measure and tests
+
+Measure: the same command as the baseline. Expected: heuristic and dense do not change; BM25 and hybrid have the trial numbers. A difference needs an explanation. The fix is a correctness fix, so it stays even if a number goes down; the notes record either result.
+
+Handoff: one runner handoff, `mh-5-r5-job-fusion.md` (`src/rag/ranker.py`, `src/rag/config.py`, `config/rag_config.yaml`, new `tests/unit/test_rag_hybrid.py`). Tests for each cause: one job in each list; a job found by retrieval never below a job that is last in both lists; every candidate on one scale; no profile chunks in the BM25 index; jobs already in the store still get a BM25 rank; jobs from earlier runs do not change the result; the three query fields; no BM25 rank without a term match; a job without embeddings; a BM25 failure; the cross-encoder `top_k`; the dense-only path stays the same. Mutants for each of these.
+
 ## Blockers / Questions
 - None.
