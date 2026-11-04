@@ -1,0 +1,23 @@
+{
+  "suite": "ranking",
+  "dataset_sha256": "6f5dbeaa2e70d780b393d310a4ba2a82267bfc74e112692d96bc13d121eb50c1",
+  "baseline": "after-r5",
+  "mlflow_run": "d0cc16f055ba4dd1a9fa5982cde70743",
+  "minimums": {
+    "bm25_fresh_ml_ndcg_at_10": 0.8638,
+    "bm25_fresh_ml_recall_at_10": 0.75,
+    "bm25_mid_backend_ndcg_at_10": 0.9669,
+    "bm25_mid_backend_recall_at_10": 0.8182,
+    "heuristic_fresh_ml_ndcg_at_10": 0.7667,
+    "heuristic_fresh_ml_recall_at_10": 0.5,
+    "heuristic_mid_backend_ndcg_at_10": 0.8685,
+    "heuristic_mid_backend_recall_at_10": 0.6364
+  },
+  "changes": [
+    {
+      "date": "2026-11-04",
+      "reason": "First pins, from the run after the R5 fix. The heuristic and BM25 metrics of each profile are pinned with no margin. Dense and hybrid need the embedding model, so they are not in this gate.",
+      "mlflow_run": "d0cc16f055ba4dd1a9fa5982cde70743"
+    }
+  ]
+}
