@@ -311,5 +311,15 @@ Same command and dataset SHA-256 as the baseline. Git SHA `0794d5cc912efb502eb54
 
 Next: the CI gate on the heuristic and BM25 numbers, the docs, and the decision-log entry.
 
+## Gate and docs written and checked (2026-11-05, Claude)
+
+The user approved this step ("Yes, write them"). The gate follows the grounding, scam, and dedupe gates: `tests/fixtures/eval/ranking/thresholds.json` and `tests/unit/test_ranking_thresholds.py` (10 tests), which CI runs as part of `pytest tests/`. It pins NDCG@10 and recall@10 of `heuristic` and `bm25` for each profile, with no margin, and the dataset SHA-256. The metrics are rounded to 4 places, so the pins are stable.
+
+- Docs commit `1da18d7`: `docs/usage.md` ("Ranking Suite"), `docs/decision-log.md`, `docs/index.md`, and the set guide. `usage.md` has a Mermaid fence, so the runner cannot carry it. The decision-log entry states that the pipeline keeps hybrid although BM25 alone is higher on this set, and why.
+- `mh-6-ranking-gate.md` (runner). Scratch clone (exit codes printed): the red step fails (exit 1; no `thresholds.json`); black formats the test; ruff is clean; the 3 test files pass (29 tests).
+- Mutants, with the same script as R5 (the unchanged code passes, then a control passes in the mutant setup; the control has 10 tests): the first run caught 14 of 15. G8 (the gate assertion removed) survived: on healthy code there is no violation, so nothing fails. The assertion moved into `assert_pins_met`, and two tests now check that a violation fails it and that a better metric gives a warning. Re-check: 16 of 16 caught.
+- Real regressions, each caught by the gate test with a clear message: the query without the summary (`bm25_fresh_ml_ndcg_at_10` 0.8603, pin 0.8638), the query without target keywords (`bm25_mid_backend_ndcg_at_10` 0.9335, pin 0.9669), the matcher with substrings (`heuristic_mid_backend_ndcg_at_10` 0.8567, pin 0.8685), and one changed label (dataset changed).
+- Runner test on a fresh clone: the red step failed (exit 1), the 4 checks passed, commit `54b822e` on the clone, and both files are the same bytes as the checked copies.
+
 ## Blockers / Questions
 - None.
