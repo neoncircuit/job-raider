@@ -42,7 +42,6 @@ re_ranking:
 bm25:
   enabled: true
   algorithm: "okapi"
-  n_results: 20
 
 # Reciprocal Rank Fusion of dense and sparse results
 rrf:

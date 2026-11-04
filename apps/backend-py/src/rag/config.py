@@ -104,12 +104,10 @@ class BM25Config:
     Attributes:
         enabled: Whether BM25 retrieval is active.
         algorithm: BM25 variant to use ("okapi" or "plus").
-        n_results: Maximum BM25 results per query.
     """
 
     enabled: bool = True
     algorithm: str = "okapi"
-    n_results: int = 20
 
 
 @dataclass
@@ -261,7 +259,6 @@ class RAGConfig:
             bm25=BM25Config(
                 enabled=bm25_raw.get("enabled", True),
                 algorithm=bm25_raw.get("algorithm", "okapi"),
-                n_results=bm25_raw.get("n_results", 20),
             ),
             rrf=RRFFusionConfig(
                 enabled=rrf_raw.get("enabled", True),
