@@ -196,7 +196,7 @@ Same command and dataset SHA-256 as the baseline. Git SHA `e079e483062307ab186a0
 | dense | 0.806 | 0.806 | 0.614 | 0.614 |
 | hybrid | 0.707 | 0.707 | 0.335 | 0.335 |
 
-- Heuristic: `fresh_ml` NDCG@10 0.720 to 0.767 and recall@10 0.375 to 0.500 (two `apply` jobs without a skill list now reach the top 10, among them rk-003); `mid_backend` NDCG@10 0.857 to 0.869, and the internship rk-053 (label 0) leaves the top 6.
+- Heuristic: `fresh_ml` NDCG@10 0.720 to 0.767 and recall@10 0.375 to 0.500 (3 to 4 of the 8 `apply` jobs: rk-003, which has no skill list, moves into the top 10 at rank 6); `mid_backend` NDCG@10 0.857 to 0.869 with the same recall@10, and the internship rk-053 (label 0) moves from rank 6 to rank 10.
 - BM25 and dense are the same, as the plan said: they do not use the matcher.
 - Hybrid has the same metrics to four places, so Claude checked the reports: the scores of both profiles and the order of `fresh_ml` changed, but only lower in the top 10, with the same label at each rank. The new heuristic scores do reach `re_rank`. The weakness of hybrid is not in the matcher, which fits the R5 findings.
 
