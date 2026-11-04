@@ -1198,4 +1198,6 @@ from the candidates only, so jobs already in the vector store get a
 rank, and profile chunks stay out. Jobs of earlier runs no longer reach
 the fusion. The BM25 query reads summary and targets.keywords. The
 configured weights do not change (Step 3.4, R5).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ```

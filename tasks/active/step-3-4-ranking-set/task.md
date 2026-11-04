@@ -27,9 +27,9 @@ flowchart LR
 - [x] Eval suite `ranking`: NDCG@10 and recall@10 for each method, for each profile and in total; heuristic and BM25 deterministic (CI), dense and hybrid local. (heuristic and BM25: MH-2 `e450d91`, 14 tests, 12 of 12 mutants; dense and hybrid: MH-3 `8d71cda`, 10 tests, 10 of 10 mutants)
 - [x] Baseline run recorded (command, dataset SHA-256, MLflow run ID). (2026-11-03, MLflow run `3ed51947bcfb4cbe81e4b3d926c54956`: NDCG@10 mean heuristic 0.788, BM25 0.882, dense 0.806, hybrid 0.707)
 - [x] R4 fix (whole-word matching for keywords and skills; a skill score that does not drop when matches rise), measured. (`e079e48`, 30 tests, 13 of 13 mutants; MLflow run `2d49f5e547b148bcb5ffb2c3922ec967`: heuristic NDCG@10 mean 0.788 to 0.818)
-- [ ] R5 fix (fuse dense and BM25 at job level; one score scale for all candidate jobs; the BM25 profile query uses `summary` and `targets`; the BM25 index holds the chunks of the candidate jobs only, on each run), measured.
+- [x] R5 fix (fuse dense and BM25 at job level; one score scale for all candidate jobs; the BM25 profile query uses `summary` and `targets`; the BM25 index holds the chunks of the candidate jobs only, on each run), measured. (`0794d5c`, 25 tests, 29 of 29 mutants; MLflow run `d0cc16f055ba4dd1a9fa5982cde70743`: hybrid NDCG@10 mean 0.707 to 0.851, BM25 0.882 to 0.915)
 - [ ] CI gate on the heuristic and BM25 numbers; docs and the decision-log entry.
 - [ ] Done when: the README can state NDCG@10 for heuristic, BM25, dense, and hybrid on the labeled set, measured after the R5 fix, with the command.
 
 ## Status
-`in-progress` (2026-11-04: baseline and R4 measured; the R5 handoff (MH-5) ready for the runner)
+`in-progress` (2026-11-04: baseline, R4, and R5 measured; next: the CI gate and the docs)

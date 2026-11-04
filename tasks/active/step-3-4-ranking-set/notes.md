@@ -284,6 +284,32 @@ Plan approved by the user ("Yes, write R5").
 - Mutants: control passes (25 tests); 29 of 29 caught, each by the test written for it (query fields, profile chunks, index kept between calls, last chunk wins, no term match, tie order, sort direction, BM25 failure, each list empty, `k` and each weight fixed, no min-max, no spread, missing job score, hybrid never runs, each setting ignored, job without embeddings, cross-encoder document, `top_k`, and query, no retriever guard, BM25 limit of 20).
 - Runner test on a fresh clone: the red step failed (exit 1), the 4 checks passed, commit `5707871` on the clone, and the 3 changed Python files are the same bytes as the checked copies. `rag_config.yaml` has no `n_results`.
 - First look on the clone (no model; not the measured run): BM25 NDCG@10 0.8638, 0.9669, mean 0.9153; recall@10 mean 0.7841. These are the trial numbers. Heuristic mean stays at 0.8176. Hybrid and dense need the embedding model, so the measured run after the apply gives them.
+- R5 applied on the repo (2026-11-04, Claude ran the runner on the user's word "Yes, apply it"): commit `0794d5c`. The red step failed, and the 4 checks passed. The 3 changed Python files are the same bytes as the checked copies. The one change after the check: the attribution line in the handoff's commit block.
+
+## After R5 (2026-11-04, Claude, the measurement of the approved R5 plan)
+
+Same command and dataset SHA-256 as the baseline. Git SHA `0794d5cc912efb502eb5458d113b701c8052d634` (`git_dirty`: true; the CRLF-only files and the handoff's attribution line). MLflow run `d0cc16f055ba4dd1a9fa5982cde70743`. Report `data/eval/ranking/20261104T153318500158Z.json`. 23:31 to 23:33; peak VRAM 2,652 MiB; no model loaded after the run.
+
+| Method | NDCG@10 mean: baseline | after R4 | after R5 | Recall@10 mean: baseline | after R4 | after R5 |
+|--------|------|------|------|------|------|------|
+| heuristic | 0.788 | 0.818 | 0.818 | 0.506 | 0.568 | 0.568 |
+| bm25 | 0.882 | 0.882 | 0.915 | 0.693 | 0.693 | 0.784 |
+| dense | 0.806 | 0.806 | 0.806 | 0.614 | 0.614 | 0.614 |
+| hybrid | 0.707 | 0.707 | 0.851 | 0.335 | 0.335 | 0.739 |
+
+| Method | `fresh_ml` NDCG@10 | `mid_backend` NDCG@10 | `fresh_ml` recall@10 | `mid_backend` recall@10 |
+|--------|------|------|------|------|
+| heuristic | 0.767 | 0.869 | 0.500 | 0.636 |
+| bm25 | 0.864 | 0.967 | 0.750 | 0.818 |
+| dense | 0.681 | 0.932 | 0.500 | 0.727 |
+| hybrid | 0.766 | 0.935 | 0.750 | 0.727 |
+
+- The result is the same as the trial to four places (hybrid 0.7664 and 0.9351; BM25 0.8638 and 0.9669). Heuristic and dense do not change, as the plan said.
+- Hybrid, the pipeline's method, is now above the heuristic and dense means. For `fresh_ml` it puts 6 of 8 `apply` jobs in its top 10 (it had 1).
+- BM25 alone stays the best method on this set: 0.915 against 0.851 for hybrid. The README must state this, with the limit of the set (2 profiles, 70 clean constructed jobs). No weight was tuned on the set.
+- For `fresh_ml`, hybrid NDCG@10 (0.766) is level with the heuristic (0.767) and below BM25 (0.864). The weakest part is dense for this profile (0.681).
+
+Next: the CI gate on the heuristic and BM25 numbers, the docs, and the decision-log entry.
 
 ## Blockers / Questions
 - None.
