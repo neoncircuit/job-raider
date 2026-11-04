@@ -26,7 +26,7 @@ flowchart LR
 
 ## Acceptance Criteria
 - [x] Plan approved by the user (host and scope). (2026-11-05: GitHub Pages)
-- [ ] `npm run build:demo` gives a static site. The normal build keeps the proxy route and has no MSW code.
+- [x] `npm run build:demo` gives a static site. The normal build keeps the proxy route and has no MSW code. (`30d2360`, 6 tests, 10 of 10 mutants; works on the Pages base path in a real browser; MH-4 gates this in CI)
 - [ ] Seed script and committed demo data, with a test that the data is synthetic and that the types match.
 - [ ] MSW handlers for the core pages (Dashboard, Jobs, Cover Letter, Applications, Profile, Metrics), a demo banner, and a sidebar without the pages that need a backend.
 - [ ] E2E tests on the exported site in CI: each core page shows data, the banner is there, and no request fails.
@@ -36,4 +36,4 @@ flowchart LR
 - [ ] Done when: a visitor opens the public URL, follows the core loop with sample data, and sees that it is a demo.
 
 ## Status
-`in-progress` (2026-11-05: plan approved; MH-1 ready for the runner)
+`in-progress` (2026-11-05: MH-1 applied; next: MH-2, the seed script and demo data)

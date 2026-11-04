@@ -81,6 +81,8 @@ Scratch clone (exit codes printed; `npm ci`, because Turbopack refuses a `node_m
 - Real browser (the built-in pane; Playwright has no browser in WSL) on a local server that acts like GitHub Pages: `/job-raider/` lands on `/job-raider/dashboard`, no asset fails, the sidebar links have the base path, and client navigation to Jobs and Cover Letter works. The 4 API calls fail, as expected before MH-3.
 - Runner test on a fresh clone: the red step failed (exit 1), the 4 checks passed, commit `cb75630` on the clone, and the 4 checked files are the same bytes.
 
+- MH-1 applied on the repo (2026-11-05, Claude ran the runner on the user's word "Yes, apply it"): commit `30d2360`. The red step failed, and the 4 checks passed. The 4 checked files are the same bytes as the checked copies.
+
 For MH-3: the API calls go to `/api/proxy/...` with no base path, because `client.ts` writes that path by hand. The service worker has scope `/job-raider/`, and it sees all requests from pages in its scope, so MSW can answer them, but MH-3 must prove this in a real browser.
 
 ## Blockers / Questions
