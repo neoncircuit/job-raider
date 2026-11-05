@@ -52,8 +52,33 @@ Command: `python main.py eval writer --model <model>`. Git SHA `c10781638b65` (`
 - VRAM: the GPU holds about 2.7 GB with no model loaded (Windows and desktop apps). So peak VRAM here is higher than in Step 3.8 (6,656 MiB for `qwen2.5:7b`). The R2 peak of 7,733 MiB is above the watchdog limit of 7,700, but not for 3 samples in a row.
 - In R2, 194 of 195 letters logged the app's guard, "VRAM usage at 9x%, falling back to CPU" (`ollama_client.py`, limit 90%). So R2 took 21 min, not 13, and its latency is not comparable. The model is the same, so the letter counts stand. On this host today, `qwen2.5:7b` does not fit well.
 
+## Change to the plan: R4 skipped (2026-11-05, user's decision, "Yes, skip R4")
+
+R4 would run `qwen2.5:7b` with the rule. It is skipped, and R2 stands in for it in the rule. Reasons: R2 is 1 of 195, so R4 can only move the comparison by about 0.005; and R4 repeats a load of about 7.7 GB on a host where heavy GPU load has caused blue screens. Limit: nothing measures the rule on `qwen2.5:7b`. If the default ever goes back to `qwen2.5:7b`, run R4 first, with GPU-heavy apps closed.
+
+## R3 and R5, with the prompt rule (2026-11-05, Claude)
+
+The prompt rule is applied: `mh-2-prompt-rule.md`, commit `55d5d53`, on the user's word "Yes, skip R4". The red step failed (exit 1), and the 3 checks passed. On a fresh clone before that: both mutants caught, with a passing control.
+
+R3: `python main.py eval writer --model qwen2.5:3b`, 13:52 to 14:01. Git SHA `55d5d53fbe7d` (`git_dirty`: true; the CRLF-only files). Dataset SHA-256 `92cb028b...`. MLflow run `a77fe8b778724e7f82bcbb1b62e97588`. Peak VRAM 5,299 MiB, 0 CPU fallback lines in the app log of R5, no model loaded after.
+
+| Run | Model | Prompt rule | Letters with placeholders | Share | Valid share | Mean score | Words (median) | Time |
+|-----|-------|------|------|------|------|------|------|------|
+| R1 | `qwen2.5:3b` | No | 81 of 195 | 0.415 | 0.508 | 91.87 | 230 | 13 min |
+| R3 | `qwen2.5:3b` | Yes | 18 of 195 | 0.092 | 0.779 | 92.7 | 217 | 9 min |
+| R2 | `qwen2.5:7b` | No | 1 of 195 | 0.005 | 0.815 | 90.56 | 242 | 21 min, on the CPU guard |
+
+R5, the real service with the rewrite, `qwen2.5:3b`, a clean clone at `55d5d53`, 3 jobs of the ranking set, 8 letters each, counts only: 0 of 24 final letters have a token (Wilson upper limit 0.138). The rewrite ran on 5 of 24. 20 of 24 final letters are valid. No other model wrote a letter. Peak VRAM 5,421 MiB.
+
+The rule, as fixed before any run:
+
+- **The prompt rule stays.** R3 minus R1: -0.323 (95% interval -0.400 to -0.251), below 0.
+- **The default goes to the user.** R3 minus R2, with R2 in place of R4: 0.087 (95% interval 0.041 to 0.138), above 0. `qwen2.5:3b` is still worse on first drafts, so Claude does not change the default.
+
+Claude's recommendation: keep `qwen2.5:3b`. A user gets the final letter, not the first draft. In R5 no final letter has a token, and a letter that keeps one fails validation and is held. `qwen2.5:7b` no longer fits this host: it peaks at 7,733 MiB and runs under the CPU guard. Limits: 24 letters is a small sample, so the rate of final letters with a token can be up to 0.138. About 1 in 5 letters needs one more model call. The other trade-offs of `qwen2.5:3b` from Step 3.8 remain.
+
 ## Blockers / Questions
 
-- None.
+- The user decides the default writer.
 
 ## Review
