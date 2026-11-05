@@ -77,8 +77,22 @@ The rule, as fixed before any run:
 
 Claude's recommendation: keep `qwen2.5:3b`. A user gets the final letter, not the first draft. In R5 no final letter has a token, and a letter that keeps one fails validation and is held. `qwen2.5:7b` no longer fits this host: it peaks at 7,733 MiB and runs under the CPU guard. Limits: 24 letters is a small sample, so the rate of final letters with a token can be up to 0.138. About 1 in 5 letters needs one more model call. The other trade-offs of `qwen2.5:3b` from Step 3.8 remain.
 
+## Decision (user, 2026-11-05)
+
+The default writer goes back to `qwen2.5:7b` ("Switch back to 7b"). This is against Claude's recommendation to keep `qwen2.5:3b`, and it reverses the decision of 2026-11-02. Claude said that R4 runs first in this case, with GPU-heavy apps closed, because the rule has no measure on `qwen2.5:7b`.
+
+## MH-3 written and checked (2026-11-05, Claude)
+
+`mh-3-restore-7b.md` (runner) reverses the default of `fa8dcb0`: the route, both tier lists, and their tests. A saved Settings route still wins.
+
+- The first scratch check is void for the frontend. `/tmp` was wiped between WSL sessions, so the copied `node_modules` was empty, and eslint, tsc, vitest, and mutant W4 did not really run. The check now uses `npm ci` and stops when that fails.
+- Repeat, in one session: red fails on both sides (backend 5 tests, frontend 1 test); black and ruff pass; 2,124 backend tests and 263 frontend tests pass; prettier, eslint, and tsc pass; 4 of 4 mutants caught (route, large set, small set, frontend large list).
+- Runner test on a fresh clone: both red steps failed, the 7 checks passed, commit `fc54daa` on the clone. Its file comparison is void, because the clone it compared with was gone. The apply compares the files with the edits, in one session.
+
+The GPU at idle is 2,936 MiB: `dwm` 1,677 MiB, and `rs2client` (the RuneScape client) 1,006 MiB. R4 waits for the user to close it. With `rs2client` closed, R4 should peak near 6.9 GB.
+
 ## Blockers / Questions
 
-- The user decides the default writer.
+- R4 waits for the user to close `rs2client`.
 
 ## Review
