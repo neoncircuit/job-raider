@@ -19,10 +19,10 @@ const OLLAMA_SMALL_TASKS = [
   "question_answering",
   "trust_analysis",
   "cover_letter_review",
-  "cover_letter_writing",
 ] as const;
 
 const OLLAMA_LARGE_TASKS = [
+  "cover_letter_writing",
   "jd_extraction",
   "resume_writing",
   "resume_parsing",

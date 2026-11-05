@@ -40,13 +40,13 @@ OLLAMA_SMALL_TASKS = frozenset(
         "question_answering",
         "trust_analysis",
         "cover_letter_review",
-        "cover_letter_writing",
     }
 )
 
 # Tasks that use the "large / quality" Ollama primary in DEFAULT_ROUTES.
 OLLAMA_LARGE_TASKS = frozenset(
     {
+        "cover_letter_writing",
         "jd_extraction",
         "resume_writing",
         "resume_parsing",

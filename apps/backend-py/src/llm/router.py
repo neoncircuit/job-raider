@@ -220,8 +220,8 @@ class LLMRouter:
         TaskType.COVER_LETTER_WRITING: RouteConfig(
             task_type=TaskType.COVER_LETTER_WRITING,
             primary_provider="ollama",
-            # Step 3.8: chosen on the grounding set (decision log 2026-11-02).
-            primary_model="qwen2.5:3b",
+            # Back on 2026-11-05: qwen2.5:3b drafts had placeholders (decision log).
+            primary_model="qwen2.5:7b",
             fallback_provider=None,
             fallback_model=None,
         ),
