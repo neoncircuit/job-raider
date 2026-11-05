@@ -91,7 +91,9 @@ _COVER_LETTER_RULES = (
     "the company and role, (2-3) one grounded evidence paragraph each, "
     "(final) brief CTA that restates facts already used. Do not pad "
     "with soft-sell filler\n"
-    "18. Return ONLY the letter body as plain text, no JSON"
+    "18. Return ONLY the letter body as plain text, no JSON\n"
+    "19. Never use square brackets or placeholders. Write the real "
+    "company, role, and project names as plain text"
 )
 
 _COVER_LETTER_SYSTEM = (
@@ -163,7 +165,9 @@ _CLASSIC_COVER_LETTER_RULES = (
     "16. Keep the traditional structure tight: salutation, role line, "
     "two grounded evidence paragraphs, short closing, Sincerely + name. "
     "Do not pad with soft-sell filler\n"
-    "17. Return ONLY the letter body as plain text, no JSON"
+    "17. Return ONLY the letter body as plain text, no JSON\n"
+    "18. Never use square brackets or placeholders. Write the real "
+    "company, role, and project names as plain text"
 )
 
 _CLASSIC_COVER_LETTER_SYSTEM = (
@@ -182,6 +186,7 @@ _SHARED_GROUNDING_MARKERS = (
     "Do not analogize across domains",
     "only to job requirements that also appear on the",
     "Do not pad with soft-sell filler",
+    "Never use square brackets or placeholders",
 )
 
 _DOMAIN_MISMATCH_RULES = (
