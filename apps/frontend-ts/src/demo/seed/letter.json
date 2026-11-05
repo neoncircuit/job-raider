@@ -1,0 +1,135 @@
+{
+  "cover_letter": {
+    "content": "At Example AI Institute, I am excited about the opportunity to contribute to your cutting-edge research in machine learning. My project, the Plant Disease Classifier, aligns closely with the institute's focus on developing robust and scalable solutions for data analysis tasks. \n\nIn my role, I successfully trained and deployed an image classifier for plant diseases using PyTorch, achieving 91% accuracy on a held-out set of 2,000 images. This project not only honed my skills in PyTorch but also underscored my ability to apply machine learning techniques to real-world problems. By leveraging PyTorch, I was able to develop a more robust and scalable solution for data analysis, which is a critical skill for this position.\n\nAdditionally, my project, the Review Sentiment Tagger, fine-tuned a BERT model on 20,000 labeled reviews, significantly improving the accuracy and efficiency of product review tagging. This experience with Hugging Face Transformers and Python demonstrated my proficiency in implementing advanced ML models, aligning well with the Research Engineer role's requirement to work with new learning methods and large-scale training.\n\nThese projects, coupled with my background in Python and PyTorch, make me confident in my ability to contribute to your team's mission of advancing machine learning methods and turning them into reproducible experiments. I look forward to the possibility of working with your team and further developing my skills in this exciting field.\n\nThank you for considering my application. I am eager to discuss how my experience can contribute to the success of the Research Engineer role at Example AI Institute.",
+    "highlighted_experiences": [
+      {
+        "name": "Plant Disease Classifier",
+        "reason": "Focuses on ML research in PyTorch, aligns with required skills and job requirements."
+      },
+      {
+        "name": "Review Sentiment Tagger",
+        "reason": "Uses Hugging Face Transformers, relevant to ML research and Python skills."
+      }
+    ],
+    "model_used": "qwen2.5:7b",
+    "provider_used": "ollama",
+    "style": "modern",
+    "timing": {
+      "generation_ms": 19244.0,
+      "grounding_rewrite_ms": null,
+      "mission_ms": null,
+      "review_ms": null,
+      "rewrite_ms": null,
+      "selection_ms": 15521.9,
+      "total_ms": 34827.0,
+      "validation_ms": 60.6
+    },
+    "token_usage": {
+      "completion_tokens": 637,
+      "generation_tokens": 1728,
+      "grounding_rewrite_tokens": null,
+      "prompt_tokens": 1882,
+      "review_tokens": null,
+      "rewrite_tokens": null,
+      "selection_tokens": 791,
+      "total_tokens": 2519
+    },
+    "word_count": 253
+  },
+  "instructions_context": {
+    "detected": {
+      "inclusions": [],
+      "why_interest": null
+    },
+    "inclusion_checks": [],
+    "inclusion_urls": {},
+    "length_count": null,
+    "length_ok": null,
+    "short_answer_mode": false
+  },
+  "job_id": "rk-012",
+  "mission_context": {
+    "status": "disabled"
+  },
+  "success": true,
+  "validation": {
+    "content_score": 80,
+    "details": {
+      "analogical_claims": [],
+      "claim_overclaims": [],
+      "company_mentioned": true,
+      "fabricated_technologies": [],
+      "grounding_penalty": {
+        "analogical_claim": 0,
+        "capped_penalty": 0,
+        "fabricated_tech": 0,
+        "hard_ungrounded": 0,
+        "inconsistent_metric": 0,
+        "inflated_duration": 0,
+        "raw_penalty": 0,
+        "scope_inflation": 0,
+        "soft_ungrounded": 0,
+        "technique_mismatch": 0,
+        "weights": {
+          "analogical_claim": 12,
+          "fabricated_tech": 10,
+          "hard_ungrounded": 10,
+          "inconsistent_metric": 10,
+          "inflated_duration": 10,
+          "max_penalty": 50,
+          "scope_inflation": 12,
+          "soft_ungrounded": 3,
+          "technique_mismatch": 10
+        }
+      },
+      "has_call_to_action": true,
+      "has_generic_opening": false,
+      "inconsistent_percent_claims": [],
+      "inflated_duration_claims": [],
+      "instructions_context": {
+        "detected": {
+          "inclusions": [],
+          "why_interest": null
+        },
+        "inclusion_checks": [],
+        "inclusion_urls": {},
+        "length_count": null,
+        "length_ok": null,
+        "short_answer_mode": false
+      },
+      "jd_coverage": {
+        "matched": [
+          "Python",
+          "PyTorch"
+        ],
+        "missing": [
+          "Machine Learning Research"
+        ],
+        "source": "structured"
+      },
+      "job_title_mentioned": false,
+      "mission_context": {
+        "status": "disabled"
+      },
+      "paragraph_count": 5,
+      "referenced_projects": [
+        "Plant Disease Classifier",
+        "Review Sentiment Tagger"
+      ],
+      "short_answer_mode": false,
+      "style": "modern",
+      "unfilled_placeholders": [],
+      "ungrounded_sentences": [],
+      "word_count": 253
+    },
+    "is_valid": true,
+    "issues": [
+      "missing_job_title"
+    ],
+    "recommendation": "approve",
+    "score": 92,
+    "structure_score": 100,
+    "tone_score": 100,
+    "word_count": 253
+  }
+}

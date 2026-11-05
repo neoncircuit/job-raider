@@ -1,0 +1,1146 @@
+{
+  "created_at": "2026-11-04T12:00:00",
+  "jobs": [
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example AI Institute",
+      "days_since_posted": null,
+      "description": "Work with research scientists to turn new learning methods into reproducible experiments. You will implement papers in PyTorch, run large-scale training, and co-author publications. A master's or PhD with two to four years of research experience is preferred.",
+      "experience_level": "Mid Level",
+      "is_remote": false,
+      "job_id": "rk-012",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 4,
+        "location": 5,
+        "projects": 16,
+        "skills": 20
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "machine learning research"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Strong match (60/100). Keywords and skills align well. Strong semantic alignment between profile and job description.",
+      "recommendation": "apply",
+      "relevance_score": 84.0,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "PyTorch",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Machine Learning Research",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Research Engineer, Machine Learning",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Labs",
+      "days_since_posted": null,
+      "description": "Help us build text classification and entity extraction models for legal documents. You will fine-tune transformer models with Hugging Face Transformers and PyTorch, clean and label training data, and measure model quality. A degree in computing and a natural language processing project are required.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-004",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 18,
+        "skills": 30
+      },
+      "matched_keywords": [],
+      "missing_skills": [],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Strong match (78/100). Keywords and skills align well. Strong semantic alignment between profile and job description.",
+      "recommendation": "apply",
+      "relevance_score": 80.22549940382058,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Hugging Face Transformers",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "PyTorch",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Natural Language Processing",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Associate NLP Engineer",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Media",
+      "days_since_posted": null,
+      "description": "Join a product team that builds data tools for editors. You will write Python services, small APIs, and tests, and work with data scientists on the features they need. Any computing graduate with Python projects is welcome.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-026",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 16,
+        "skills": 30
+      },
+      "matched_keywords": [],
+      "missing_skills": [],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Strong match (76/100). Keywords and skills align well. Strong semantic alignment between profile and job description.",
+      "recommendation": "apply",
+      "relevance_score": 76.64693461832766,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": false,
+          "name": "FastAPI",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": false,
+          "name": "SQL",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Graduate Software Engineer, Python",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Software",
+      "days_since_posted": null,
+      "description": "We build assistants for customer service teams on top of large language models. As an AI engineer you will design retrieval-augmented generation pipelines, write prompt and evaluation code in Python, and expose features through FastAPI services. Experience with LangChain or a similar framework, and with vector search, is a strong plus. This role suits a graduate with zero to two years of experience and real projects.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-003",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 8,
+        "skills": 22
+      },
+      "matched_keywords": [],
+      "missing_skills": [],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Strong match (60/100). Keywords and skills align well. Strong semantic alignment between profile and job description.",
+      "recommendation": "apply",
+      "relevance_score": 75.1753651643856,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [],
+      "source": "other",
+      "source_url": null,
+      "title": "AI Engineer, LLM Applications",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Mobility",
+      "days_since_posted": null,
+      "description": "We need a machine learning engineer with at least three years of experience to own our demand forecasting and dispatch models in production. You will run training jobs on Kubernetes, build MLOps tooling for model monitoring, and work with backend engineers on low-latency serving. Strong PyTorch and production experience required.",
+      "experience_level": "Mid Level",
+      "is_remote": false,
+      "job_id": "rk-005",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 4,
+        "location": 5,
+        "projects": 16,
+        "skills": 15
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "kubernetes",
+        "mlops"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (55/100). Meets minimum threshold. Strong semantic alignment between profile and job description.",
+      "recommendation": "apply",
+      "relevance_score": 70.21772919793494,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "PyTorch",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "MLOps",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Kubernetes",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Machine Learning Engineer",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Fictional General Hospital",
+      "days_since_posted": null,
+      "description": "Build models that predict hospital readmission and explain them to clinicians. You will use Python, Pandas, scikit-learn, and SQL on anonymised patient records. A degree and machine learning projects are required; healthcare knowledge is a plus.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-032",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 14,
+        "skills": 30
+      },
+      "matched_keywords": [],
+      "missing_skills": [],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Strong match (74/100). Keywords and skills align well. Moderate semantic similarity detected.",
+      "recommendation": "maybe",
+      "relevance_score": 68.8189014672297,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Pandas",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "scikit-learn",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "SQL",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Junior Data Scientist, Healthcare",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Mobility",
+      "days_since_posted": null,
+      "description": "Lead the design of our next forecasting platform. You bring seven or more years of building machine learning systems, have led a team of engineers, and can set technical direction for model training, evaluation, and serving at scale.",
+      "experience_level": "Senior",
+      "is_remote": false,
+      "job_id": "rk-006",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 1,
+        "location": 5,
+        "projects": 16,
+        "skills": 22
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "distributed systems"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (59/100). Meets minimum threshold. Strong semantic alignment between profile and job description.",
+      "recommendation": "maybe",
+      "relevance_score": 68.30092790777383,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "PyTorch",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Machine Learning",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Distributed Systems",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Senior Machine Learning Engineer",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Labs",
+      "days_since_posted": null,
+      "description": "Build models that sort customer messages in English and Chinese. You will clean text data, fine-tune transformer models, and measure accuracy for each language. Zero to two years of experience, Python, and a natural language processing project are required.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-027",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 8,
+        "skills": 20
+      },
+      "matched_keywords": [],
+      "missing_skills": [],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (58/100). Meets minimum threshold. Strong semantic alignment between profile and job description.",
+      "recommendation": "maybe",
+      "relevance_score": 66.12875042823114,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [],
+      "source": "other",
+      "source_url": null,
+      "title": "NLP Data Scientist",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Bank",
+      "days_since_posted": null,
+      "description": "A two-year rotation programme for new graduates across fraud, marketing, and credit analytics. Each rotation builds models in Python and SQL with a senior data scientist as your mentor. We look for strong statistics, machine learning coursework, and at least one end-to-end project.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-014",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 14,
+        "skills": 22
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "statistics"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Strong match (66/100). Keywords and skills align well. Moderate semantic similarity detected.",
+      "recommendation": "maybe",
+      "relevance_score": 65.7806876187592,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "SQL",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Machine Learning",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Statistics",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Data Science Graduate Programme",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Analytics",
+      "days_since_posted": null,
+      "description": "Our platform team is hiring a graduate to automate model training and deployment. You will write Python tooling, maintain CI/CD pipelines, build Docker images, and run workloads on Kubernetes. Interest in machine learning systems is expected; deep modelling skills are not.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-010",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 14,
+        "skills": 15
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "kubernetes",
+        "ci/cd"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (59/100). Meets minimum threshold. Moderate semantic similarity detected.",
+      "recommendation": "maybe",
+      "relevance_score": 63.50326696537194,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Docker",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Kubernetes",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "CI/CD",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Graduate MLOps Engineer",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Media",
+      "days_since_posted": null,
+      "description": "Improve the ranking models behind our video feed. You will design experiments, build features, and train deep learning recommenders in PyTorch. We expect three to five years of applied machine learning experience and strong statistics.",
+      "experience_level": "Mid Level",
+      "is_remote": false,
+      "job_id": "rk-017",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 4,
+        "location": 5,
+        "projects": 16,
+        "skills": 15
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "recommender systems",
+        "statistics"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (55/100). Meets minimum threshold. Moderate semantic similarity detected.",
+      "recommendation": "maybe",
+      "relevance_score": 62.352708921297406,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "PyTorch",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Recommender Systems",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Statistics",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Applied Scientist, Recommendations",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Cloud",
+      "days_since_posted": null,
+      "description": "Help customers build their first generative AI features. You will build demos in Python that call large language model APIs, write small retrieval prototypes, and explain them to client teams. Clear speaking and a portfolio of AI projects matter more than years of experience.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-018",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 8,
+        "skills": 17
+      },
+      "matched_keywords": [],
+      "missing_skills": [],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (55/100). Meets minimum threshold. Moderate semantic similarity detected.",
+      "recommendation": "maybe",
+      "relevance_score": 58.87396746282866,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [],
+      "source": "other",
+      "source_url": null,
+      "title": "Junior AI Solutions Engineer",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Software",
+      "days_since_posted": null,
+      "description": "Own A/B testing for our product teams. You will design experiments, analyse results in Python and SQL, and coach product managers on statistics. Two to four years of data science experience are required.",
+      "experience_level": "Mid Level",
+      "is_remote": false,
+      "job_id": "rk-025",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 4,
+        "location": 5,
+        "projects": 14,
+        "skills": 15
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "statistics",
+        "experimentation"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (53/100). Meets minimum threshold. Moderate semantic similarity detected.",
+      "recommendation": "maybe",
+      "relevance_score": 57.17128864072658,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "SQL",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Statistics",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Experimentation",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Data Scientist, Experimentation",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Robotics",
+      "days_since_posted": null,
+      "description": "Make our models run on small devices. You will quantise PyTorch models, convert them to TensorFlow Lite, and write C++ code to call them on embedded boards. A graduate with machine learning projects and some C++ is ideal.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-030",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 16,
+        "skills": 10
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "tensorflow lite",
+        "c++"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (56/100). Meets minimum threshold. Partial semantic overlap with job requirements.",
+      "recommendation": "maybe",
+      "relevance_score": 50.83954455087657,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "PyTorch",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "TensorFlow Lite",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "C++",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": false,
+          "name": "Python",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Junior ML Engineer, Edge Devices",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Media",
+      "days_since_posted": null,
+      "description": "Build and maintain the batch pipelines that feed our recommendation models. You will write Spark jobs in Python, schedule them with Airflow, and model tables in SQL. This is a junior role for someone with up to two years of experience who enjoys data quality work.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-009",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 14,
+        "skills": 15
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "spark",
+        "airflow"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (59/100). Meets minimum threshold. Partial semantic overlap with job requirements.",
+      "recommendation": "skip",
+      "relevance_score": 47.81215669866234,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Python",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Spark",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Airflow",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "SQL",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Junior Data Engineer",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example AI Institute",
+      "days_since_posted": null,
+      "description": "Label images and short texts that train our AI models. You will follow detailed guidelines, maintain labeling quality above our target, and flag unclear cases. No programming is needed; care and consistency are.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-019",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 8,
+        "skills": 15
+      },
+      "matched_keywords": [],
+      "missing_skills": [],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (53/100). Meets minimum threshold. Partial semantic overlap with job requirements.",
+      "recommendation": "skip",
+      "relevance_score": 40.781601301283224,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [],
+      "source": "other",
+      "source_url": null,
+      "title": "Data Annotation Specialist",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Labs",
+      "days_since_posted": null,
+      "description": "Check the quality of our language model outputs. You will write test prompts, score answers against guidelines, and script simple checks in Python. A background in linguistics or computing suits this role.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-035",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 14,
+        "skills": 17
+      },
+      "matched_keywords": [],
+      "missing_skills": [],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Strong match (61/100). Keywords and skills align well. Low semantic similarity between profile and job.",
+      "recommendation": "skip",
+      "relevance_score": 39.85731124728823,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": false,
+          "name": "Python",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "LLM Evaluation Analyst",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Retail",
+      "days_since_posted": null,
+      "description": "Turn sales and inventory data into weekly reports for store managers. You will write SQL queries, build Tableau dashboards, and answer ad hoc questions from the merchandising team. Strong Excel skills and attention to detail are needed; Python is a bonus.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-008",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 14,
+        "skills": 10
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "excel",
+        "tableau"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (54/100). Meets minimum threshold. Low semantic similarity between profile and job.",
+      "recommendation": "skip",
+      "relevance_score": 36.99540885646074,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "SQL",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Tableau",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "Excel",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": false,
+          "name": "Python",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Data Analyst",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Fictional Government Technology Office",
+      "days_since_posted": null,
+      "description": "Our graduate programme takes engineers in any language. You will rotate through two product teams, mostly writing Java services, and learn our engineering practices. A computing degree and coding projects are needed.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-062",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 8,
+        "skills": 15
+      },
+      "matched_keywords": [],
+      "missing_skills": [],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (53/100). Meets minimum threshold. Low semantic similarity between profile and job.",
+      "recommendation": "skip",
+      "relevance_score": 35.5179677913381,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": false,
+          "name": "Java",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Graduate Software Engineer",
+      "url": null
+    },
+    {
+      "already_applied": false,
+      "application_deadline": null,
+      "apply_method": "easy_apply",
+      "company": "Example Insurance",
+      "days_since_posted": null,
+      "description": "Model our warehouse tables in dbt and SQL so that analysts get clean, tested data. You will write transformations, document models, and add data tests. Up to two years of experience.",
+      "experience_level": "Entry Level",
+      "is_remote": false,
+      "job_id": "rk-034",
+      "job_type": "Full-time",
+      "last_seen_at": "2026-11-04T12:00:00",
+      "listing_status": "active",
+      "location": "Singapore, SG",
+      "match_breakdown": {
+        "education": 15,
+        "experience": 10,
+        "location": 5,
+        "projects": 8,
+        "skills": 15
+      },
+      "matched_keywords": [],
+      "missing_skills": [
+        "dbt"
+      ],
+      "passed_threshold": true,
+      "posted_date": null,
+      "reasoning": "Good match (53/100). Meets minimum threshold. Low semantic similarity between profile and job.",
+      "recommendation": "skip",
+      "relevance_score": 34.227941935005894,
+      "remote": false,
+      "salary_range": null,
+      "scraped_at": "2026-11-04T12:00:00",
+      "scraped_today": false,
+      "skills": [
+        {
+          "category": null,
+          "is_required": true,
+          "name": "SQL",
+          "proficiency": null
+        },
+        {
+          "category": null,
+          "is_required": true,
+          "name": "dbt",
+          "proficiency": null
+        }
+      ],
+      "source": "other",
+      "source_url": null,
+      "title": "Analytics Engineer",
+      "url": null
+    }
+  ],
+  "jobs_scraped": 70,
+  "keywords": [
+    "machine learning engineer",
+    "data scientist",
+    "AI"
+  ],
+  "locations": [
+    "Singapore"
+  ],
+  "mode": "discover",
+  "run_id": "demo-run",
+  "total": 20
+}

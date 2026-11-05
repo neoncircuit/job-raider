@@ -1,0 +1,44 @@
+{
+  "cost": {
+    "completion_tokens": 637,
+    "estimated_counts": 0,
+    "last_run": {
+      "calls": 1,
+      "completion_tokens": 637,
+      "end_time": "2026-11-04T12:00:00",
+      "prompt_tokens": 1882,
+      "run_id": "demo-run",
+      "total_tokens": 2519
+    },
+    "local_usage_percent": 100,
+    "per_application": 0.0,
+    "prompt_tokens": 1882,
+    "total_calls": 1,
+    "total_tokens": 2519,
+    "total_usd": 0.0
+  },
+  "health": {
+    "degraded": 0,
+    "healthy": 4,
+    "status": "healthy",
+    "unhealthy": 0
+  },
+  "outcomes": {
+    "acceptance_rate": 0.0,
+    "offer_rate": 0.0,
+    "screening_rate": 0.4,
+    "total_applications": 5
+  },
+  "recent_calls": [
+    {
+      "completion_tokens": 637,
+      "cost_usd": 0.0,
+      "model": "qwen2.5:7b",
+      "prompt_tokens": 1882,
+      "provider": "ollama",
+      "task_type": "cover_letter_writing",
+      "timestamp": "2026-11-04T12:00:00",
+      "total_tokens": 2519
+    }
+  ]
+}

@@ -1,0 +1,214 @@
+{
+  "apprenticeship": null,
+  "certifications": [],
+  "contact_info": {
+    "email": "sample.candidate@example.com",
+    "github_url": null,
+    "linkedin_url": null,
+    "location": "Singapore",
+    "name": "Sample Candidate",
+    "phone": null,
+    "portfolio_url": null,
+    "website_url": null
+  },
+  "core_skills": [
+    "Python",
+    "PyTorch",
+    "Machine Learning",
+    "SQL"
+  ],
+  "created_at": "2026-11-04T12:00:00",
+  "education": [
+    {
+      "coursework": [
+        "Machine Learning",
+        "Databases",
+        "Data Structures"
+      ],
+      "degree": "Bachelor of Computing in Computer Science",
+      "field_of_study": null,
+      "gpa": null,
+      "graduation_date": "2025-06-01T00:00:00",
+      "honors": [],
+      "institution": "Fictional Marina University"
+    }
+  ],
+  "languages": [],
+  "notice_period_weeks": null,
+  "original_filename": "sample-resume.pdf",
+  "preferred_work_locations": [],
+  "profile_id": "demo",
+  "projects": [
+    {
+      "description": "A retrieval-augmented question answering app over lecture notes.",
+      "end_date": "2025-04-01T00:00:00",
+      "highlights": [
+        "Indexed 400 pages of notes and answered questions with source links."
+      ],
+      "name": "Course Notes Assistant",
+      "role": "Developer",
+      "start_date": "2025-01-01T00:00:00",
+      "technologies": [
+        "Python",
+        "LangChain",
+        "FAISS",
+        "FastAPI"
+      ],
+      "url": null
+    },
+    {
+      "description": "An image classifier for leaf diseases, trained in PyTorch.",
+      "end_date": "2024-12-01T00:00:00",
+      "highlights": [
+        "Reached 91% accuracy on a held-out set of 2,000 images."
+      ],
+      "name": "Plant Disease Classifier",
+      "role": "Developer",
+      "start_date": "2024-08-01T00:00:00",
+      "technologies": [
+        "Python",
+        "PyTorch"
+      ],
+      "url": null
+    },
+    {
+      "description": "A fine-tuned transformer that tags product reviews by sentiment.",
+      "end_date": "2025-05-01T00:00:00",
+      "highlights": [
+        "Fine-tuned a small BERT model on 20,000 labeled reviews."
+      ],
+      "name": "Review Sentiment Tagger",
+      "role": "Developer",
+      "start_date": "2025-02-01T00:00:00",
+      "technologies": [
+        "Python",
+        "Hugging Face Transformers"
+      ],
+      "url": null
+    }
+  ],
+  "resume_parse": null,
+  "resume_path": "sample-resume.pdf",
+  "salary_currency": "USD",
+  "salary_expectation_max": null,
+  "salary_expectation_min": null,
+  "skills": [
+    {
+      "category": "programming_language",
+      "name": "Python",
+      "proficiency": "Advanced",
+      "years_of_experience": 4.0
+    },
+    {
+      "category": "framework",
+      "name": "PyTorch",
+      "proficiency": "Intermediate",
+      "years_of_experience": 2.0
+    },
+    {
+      "category": "framework",
+      "name": "scikit-learn",
+      "proficiency": "Intermediate",
+      "years_of_experience": 2.0
+    },
+    {
+      "category": "framework",
+      "name": "Pandas",
+      "proficiency": "Advanced",
+      "years_of_experience": 3.0
+    },
+    {
+      "category": "programming_language",
+      "name": "SQL",
+      "proficiency": "Intermediate",
+      "years_of_experience": 2.0
+    },
+    {
+      "category": "framework",
+      "name": "FastAPI",
+      "proficiency": "Intermediate",
+      "years_of_experience": 1.0
+    },
+    {
+      "category": "framework",
+      "name": "LangChain",
+      "proficiency": "Intermediate",
+      "years_of_experience": 1.0
+    },
+    {
+      "category": "framework",
+      "name": "Hugging Face Transformers",
+      "proficiency": "Intermediate",
+      "years_of_experience": 1.0
+    },
+    {
+      "category": "tool",
+      "name": "Docker",
+      "proficiency": "Beginner",
+      "years_of_experience": 1.0
+    },
+    {
+      "category": "tool",
+      "name": "Git",
+      "proficiency": "Intermediate",
+      "years_of_experience": 3.0
+    },
+    {
+      "category": "domain",
+      "name": "Machine Learning",
+      "proficiency": "Intermediate",
+      "years_of_experience": 2.0
+    },
+    {
+      "category": "domain",
+      "name": "Natural Language Processing",
+      "proficiency": "Intermediate",
+      "years_of_experience": 1.0
+    }
+  ],
+  "summary": "Computer science graduate who builds machine learning and retrieval applications in Python, from data preparation to a small API.",
+  "target_job": {
+    "constraint_mode": "boost",
+    "exclude_internships": false,
+    "experience_levels": [
+      "Entry Level"
+    ],
+    "industries": [],
+    "keywords": [
+      "machine learning engineer",
+      "data scientist",
+      "AI"
+    ],
+    "locations": [
+      "Singapore"
+    ],
+    "remote_preference": true,
+    "salary_min": null
+  },
+  "updated_at": "2026-11-04T12:00:00",
+  "visa_expiration_date": null,
+  "visa_status": null,
+  "willing_to_relocate": false,
+  "work_experience": [
+    {
+      "company": "Example Logistics",
+      "current": false,
+      "description": "Built demand forecasts for the warehouse planning team.",
+      "end_date": "2024-11-01T00:00:00",
+      "highlights": [
+        "Built a gradient boosting forecast in scikit-learn for weekly parcel volume.",
+        "Cleaned two years of shipment records in Pandas and SQL."
+      ],
+      "location": "Singapore",
+      "start_date": "2024-05-01T00:00:00",
+      "technologies": [
+        "Python",
+        "scikit-learn",
+        "Pandas",
+        "SQL"
+      ],
+      "title": "Data Science Intern"
+    }
+  ],
+  "years_of_experience": 0.5
+}

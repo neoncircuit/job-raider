@@ -1,0 +1,100 @@
+{
+  "applications": [
+    {
+      "application_id": "demo-rk-012",
+      "application_method": "external",
+      "applied_date": "2026-11-04T12:00:00",
+      "company": "Example AI Institute",
+      "current_status": "technical_scheduled",
+      "custom_status": null,
+      "days_since_application": 14,
+      "has_job_description": true,
+      "is_bookmarked": false,
+      "is_hidden": false,
+      "job_title": "Research Engineer, Machine Learning",
+      "listing_status": "active",
+      "previous_status": null,
+      "source_url": null
+    },
+    {
+      "application_id": "demo-rk-004",
+      "application_method": "external",
+      "applied_date": "2026-11-04T12:00:00",
+      "company": "Example Labs",
+      "current_status": "screening_completed",
+      "custom_status": null,
+      "days_since_application": 10,
+      "has_job_description": true,
+      "is_bookmarked": false,
+      "is_hidden": false,
+      "job_title": "Associate NLP Engineer",
+      "listing_status": "active",
+      "previous_status": null,
+      "source_url": null
+    },
+    {
+      "application_id": "demo-rk-026",
+      "application_method": "external",
+      "applied_date": "2026-11-04T12:00:00",
+      "company": "Example Media",
+      "current_status": "under_review",
+      "custom_status": null,
+      "days_since_application": 6,
+      "has_job_description": true,
+      "is_bookmarked": false,
+      "is_hidden": false,
+      "job_title": "Graduate Software Engineer, Python",
+      "listing_status": "active",
+      "previous_status": null,
+      "source_url": null
+    },
+    {
+      "application_id": "demo-rk-003",
+      "application_method": "external",
+      "applied_date": "2026-11-04T12:00:00",
+      "company": "Example Software",
+      "current_status": "applied",
+      "custom_status": null,
+      "days_since_application": 2,
+      "has_job_description": true,
+      "is_bookmarked": false,
+      "is_hidden": false,
+      "job_title": "AI Engineer, LLM Applications",
+      "listing_status": "active",
+      "previous_status": null,
+      "source_url": null
+    },
+    {
+      "application_id": "demo-rk-005",
+      "application_method": "external",
+      "applied_date": "2026-11-04T12:00:00",
+      "company": "Example Mobility",
+      "current_status": "rejected",
+      "custom_status": null,
+      "days_since_application": 21,
+      "has_job_description": true,
+      "is_bookmarked": false,
+      "is_hidden": false,
+      "job_title": "Machine Learning Engineer",
+      "listing_status": "active",
+      "previous_status": null,
+      "source_url": null
+    }
+  ],
+  "custom_statuses": [],
+  "filters_applied": {},
+  "summary": {
+    "bookmarked": 0,
+    "by_status": {
+      "applied": 1,
+      "rejected": 1,
+      "screening_completed": 1,
+      "technical_scheduled": 1,
+      "under_review": 1
+    },
+    "expired": 0,
+    "external": 5,
+    "hidden": 0,
+    "total_applications": 5
+  }
+}

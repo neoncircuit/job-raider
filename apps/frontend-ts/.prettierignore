@@ -9,3 +9,4 @@ test-results
 __tests__
 *.min.*
 package-lock.json
+src/demo/seed
