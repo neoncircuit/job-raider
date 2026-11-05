@@ -91,6 +91,19 @@ The default writer goes back to `qwen2.5:7b` ("Switch back to 7b"). This is agai
 
 The GPU at idle is 2,936 MiB: `dwm` 1,677 MiB, and `rs2client` (the RuneScape client) 1,006 MiB. R4 waits for the user to close it. With `rs2client` closed, R4 should peak near 6.9 GB.
 
+## Paused (2026-11-05)
+
+The user will go on later, from home. Nothing is running. When the user says that RuneScape is closed:
+
+1. Apply `mh-3-restore-7b.md`, then compare each file with HEAD~1 plus the edits, in one WSL session.
+2. Read the idle GPU memory. Stop if it is above about 2.3 GB.
+3. Run R4: `qwen2.5:7b` with the rule. Compare it with R3 (`compare_runs`, the same bootstrap).
+4. Write the decision-log entry of 2026-11-05, with a pointer in the entry of 2026-11-02. Update the README ("Measured Results", "Two-Model Approach", "Writer Model") and `docs/architecture.md` (the writing line and the model table).
+5. Close this task, and close `tasks/active/writer-default-3b/` as replaced. Its open item, the saved Settings route, no longer applies.
+6. Go back to Step 4, MH-2: set `WRITER_MODEL` to `qwen2.5:7b` in the seed script, write the tests, and run the seed once, on a clean clone, with RuneScape closed. Keep the letter as it comes.
+
+The seed script and its first output are in the session scratchpad, not in the repository. If that is gone, write the script again from the design in `tasks/active/step-4-demo/notes.md`.
+
 ## Blockers / Questions
 
 - R4 waits for the user to close `rs2client`.

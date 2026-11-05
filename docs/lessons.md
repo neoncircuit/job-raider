@@ -3654,3 +3654,29 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - When a command exits non-zero with passing tests, find the cause before using it as a red or mutant signal.
 - Do not rely on memory for the green run. In the R5 check (2026-11-04), Claude changed a test, started the mutants, and each mutant showed as caught because the unchanged code failed. Make the mutant script stop by itself unless the unchanged code passes.
 - When the mutants run in a different setup from the normal test run (for example, forked after a module load), run the unchanged code as a control in that same setup. Print the test that catches each mutant, so a wrong reason for a catch is visible.
+
+## Writer placeholders (2026-11-05)
+
+### Read real output before you recommend a model
+
+**Lesson:** In Step 3.8, Claude recommended `qwen2.5:3b` as the default writer on validator numbers alone, and recorded "no blind read of the letters" as a limit. A later seed run gave a letter with literal `[Company]` text. The count then showed placeholders in 81 of 195 first drafts, against 1 of 195 for `qwen2.5:7b`. The validator had no check for this, so the comparison could not see it, and the default was already on `main`.
+
+**Why:**
+- A metric shows only what its checks look for. A model can win on every metric and still write text that no user would send.
+- A limit in a note does not protect the user. The recommendation still changed the default.
+
+**How to apply:**
+- Before recommending a model or a prompt, read a sample of its real output, about 10 items, and write down what you saw.
+- When output shows a defect that no check finds, add the check first, then count. Do not re-run until a clean sample appears.
+- Fix the decision rule and commit it before the runs, and report when the result goes against your recommendation.
+
+### WSL /tmp does not last between sessions
+
+**Lesson:** A check copied `node_modules` from a clone in `/tmp`, but WSL had wiped `/tmp`, so the copy was empty. eslint, tsc, and vitest failed to start, and a mutant showed as caught for that reason. Later, a file comparison printed `DIFFERENT` for each file, because the other clone was gone.
+
+**Why:** The WSL instance stops when no session is open, and `/tmp` goes with it. A check that fails to start looks the same as a check that fails.
+
+**How to apply:**
+- Do all the work on a scratch clone in one `wsl.exe` call. Keep what must last in the scratchpad.
+- Install frontend dependencies with `npm ci` in each clone, and stop the script when it fails. Turbopack also refuses a `node_modules` symlink that points out of the project.
+- When every result of a tool is a failure, first check that the tool ran.

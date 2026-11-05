@@ -1,8 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Make `qwen2.5:3b` the default cover-letter writer (`tasks/active/writer-default-3b/`; applied as `fa8dcb0`; next: the user switches the saved Settings route)
-- [ ] Stop unfilled placeholders in cover letters (`tasks/active/writer-placeholders/`; found in Step 4, MH-2)
+- [ ] Stop unfilled placeholders in cover letters (`tasks/active/writer-placeholders/`; check and prompt rule applied; waits for the user to close RuneScape, then restore `qwen2.5:7b` and run R4)
 - [ ] Step 4: Make it demo-able (`tasks/active/step-4-demo/`; MH-1 applied; MH-2 waits for the placeholder fix)
 
 ## Next Up
