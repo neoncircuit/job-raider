@@ -59,6 +59,7 @@ CHECKS: tuple[str, ...] = (
     "fabricated_technology",
     "fabricated_experience",
     "scope_inflation",
+    "unfilled_placeholder",
 )
 # Local models of 7B or smaller that the user approved for this host (Step 3.8).
 WRITER_MODELS: tuple[str, ...] = ("qwen2.5:7b", "qwen3.5:4b", "qwen2.5:3b", "gemma3:4b")

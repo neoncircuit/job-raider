@@ -28,6 +28,7 @@ from .cover_letter_grounding import (
     flag_fabricated_technologies,
     flag_inconsistent_percent_claims,
     flag_inflated_duration_claims,
+    flag_unfilled_placeholders,
     flag_ungrounded_sentences,
     flag_unsupported_number_sentences,
 )
@@ -62,6 +63,7 @@ class CoverLetterIssue(str, Enum):
     INFLATED_DURATION = "inflated_duration"
     INCONSISTENT_METRIC = "inconsistent_metric"
     ANALOGICAL_CLAIM = "analogical_claim"
+    UNFILLED_PLACEHOLDER = "unfilled_placeholder"
     INSTRUCTION_LENGTH_MISMATCH = "instruction_length_mismatch"
     MISSING_REQUIRED_INCLUSION = "missing_required_inclusion"
 
@@ -73,6 +75,7 @@ HARD_FAIL_ISSUES: frozenset[CoverLetterIssue] = frozenset(
         CoverLetterIssue.INCONSISTENT_METRIC,
         CoverLetterIssue.FABRICATED_EXPERIENCE,
         CoverLetterIssue.ANALOGICAL_CLAIM,
+        CoverLetterIssue.UNFILLED_PLACEHOLDER,
     }
 )
 
@@ -163,6 +166,12 @@ def build_grounding_rewrite_critique(
         if flags:
             prefix = f"{sentence} — " if sentence else ""
             lines.append(prefix + "; ".join(str(flag) for flag in flags))
+    placeholders = details.get("unfilled_placeholders") or []
+    if placeholders:
+        lines.append(
+            "Replace these placeholders with the real names as plain text, "
+            "with no square brackets: " + ", ".join(str(item) for item in placeholders)
+        )
     return "\n".join(lines)
 
 
@@ -324,6 +333,7 @@ class CoverLetterValidator:
         fabricated_technologies = flag_fabricated_technologies(content, profile)
         inflated_duration_claims = flag_inflated_duration_claims(content, profile)
         inconsistent_percent_claims = flag_inconsistent_percent_claims(content)
+        unfilled_placeholders = flag_unfilled_placeholders(content)
         grounding_issues: List[CoverLetterIssue] = []
         if ungrounded_sentences:
             grounding_issues.append(CoverLetterIssue.UNGROUNDED_CLAIMS)
@@ -345,6 +355,8 @@ class CoverLetterValidator:
             grounding_issues.append(CoverLetterIssue.INFLATED_DURATION)
         if inconsistent_percent_claims:
             grounding_issues.append(CoverLetterIssue.INCONSISTENT_METRIC)
+        if unfilled_placeholders:
+            grounding_issues.append(CoverLetterIssue.UNFILLED_PLACEHOLDER)
         issues.extend(grounding_issues)
 
         instruction_issues, instructions_context = self._check_instructions(
@@ -424,6 +436,7 @@ class CoverLetterValidator:
             "inflated_duration_claims": inflated_duration_claims,
             "inconsistent_percent_claims": inconsistent_percent_claims,
             "analogical_claims": analogical_claims,
+            "unfilled_placeholders": unfilled_placeholders,
             "grounding_penalty": grounding_penalty_breakdown,
             "instructions_context": instructions_context,
         }

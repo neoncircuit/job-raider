@@ -308,6 +308,7 @@ export type CoverLetterIssue =
   | "inflated_duration"
   | "inconsistent_metric"
   | "analogical_claim"
+  | "unfilled_placeholder"
   | "poor_structure"
   | "tone_too_informal"
   | "tone_too_formal"

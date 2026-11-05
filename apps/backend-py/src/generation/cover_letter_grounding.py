@@ -1278,6 +1278,22 @@ def flag_inflated_duration_claims(
     return findings
 
 
+def flag_unfilled_placeholders(letter_text: str) -> List[str]:
+    """
+    Flag template text that the writer left in a letter.
+
+    A token is square brackets around 2 to 80 characters on one line, such
+    as ``[Company]``. Small models write these with no cue in the prompt.
+
+    Args:
+        letter_text: Generated cover letter body.
+
+    Returns:
+        Each token once, in order of first use.
+    """
+    return list(dict.fromkeys(re.findall(r"\[[^\[\]\n]{2,80}\]", letter_text)))
+
+
 def flag_inconsistent_percent_claims(letter_text: str) -> List[dict]:
     """
     Flag percentage gains that disagree with stated from/to endpoints.
