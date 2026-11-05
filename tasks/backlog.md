@@ -567,3 +567,9 @@ flowchart LR
 
 - [ ] **Browser intake:** A small extension sends the jobs on the open page to the local API, which can reuse `src/extractors/paste_job.py`. This removes the stored LinkedIn password from this path, and it needs no separate Playwright session. Limits: it still breaks when LinkedIn changes its page layout. Check the current LinkedIn terms before any work, because they restrict extensions that scrape. Keep dry run as the default.
 - [ ] **Ranking check on real postings:** Export about 50 real postings, label them with the rules in `tests/fixtures/eval/ranking/README.md`, and run the ranking suite on them. This shows whether BM25 still leads hybrid on real postings, or only on the clean constructed set. Start after Step 3.4. The postings and labels stay out of the repository, because they are copied text and they show the user's own job search.
+
+### Validator gap found by the demo letter (2026-11-05)
+
+The demo letter says "deployed", and the profile does not. The validator gave it 92 and `approve`, although rule 10 of the writer forbids deployed, production, launched, and shipped unless the profile has them.
+
+- [ ] Add a deterministic check for these words: flag a sentence that uses one when the profile does not. Count it on the writer suite, as for `unfilled_placeholder`, before it becomes a hard failure.

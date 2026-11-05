@@ -25,7 +25,7 @@ So one file rename and one conditional in `next.config.ts` separate the two buil
 2. **MSW in the browser, as the review says.** `src/demo/` holds the handlers, the data, and the start function. `providers.tsx` waits for the worker before it shows the app, so no query runs first. The code is behind a dynamic import and `process.env.NEXT_PUBLIC_DEMO_MODE`, so the normal build drops it. `build:demo` generates `mockServiceWorker.js`, and it is not committed.
 3. **Requests in the demo.** Reads return the seed data. Writes change memory only, for the session. Generating a cover letter returns the seeded letter. Any other request returns a readable "not in the demo" error, so no page waits for ever.
 4. **Pages in the demo.** Dashboard, Jobs, Cover Letter, Applications, Profile, and Metrics have data. Pipeline shows its history, and Start is off, with the reason. Settings is read-only. The sidebar hides Career Coach, Assessment, Resume Analysis, LinkedIn Analysis, Logs, and Lab: they need a backend, and fixtures for them add little.
-5. **Seed: real output on synthetic input.** `scripts/build_demo_data.py` reads the `fresh_ml` profile and the ranking jobs, then runs `JobMatcher` and `RAGRanker.re_rank` and serializes with the API code. It writes one letter with `qwen2.5:3b` and runs the real validator on it. The letter stays as written, flags included: the demo must show the validator as it is. Application records and metrics are constructed sample data. The output goes to `apps/frontend-ts/src/demo/data/`, and the script runs by hand, not in CI.
+5. **Seed: real output on synthetic input.** `scripts/build_demo_data.py` reads the `fresh_ml` profile and the ranking jobs, then runs `JobMatcher` and `RAGRanker.re_rank` and serializes with the API code. It writes one letter with `qwen2.5:3b` and runs the real validator on it. The letter stays as written, flags included: the demo must show the validator as it is. Application records and metrics are constructed sample data. The output goes to `apps/frontend-ts/src/demo/seed/`, and the script runs by hand, not in CI.
 6. **Onboarding checklist.** This one is for real users, not the demo. A dashboard card reads existing endpoints: backend reachable, local model available, profile added, first search run, shortlist reviewed, first application tracked. Each open item links to its page. The card hides when all items are done. A user can dismiss it (`localStorage`).
 7. **CI.** A new job builds the demo and runs Playwright on the exported files: each core page shows seed data and the banner, and no request fails. Another check reads the normal build output: no `msw` and no demo data.
 8. **Deploy.** GitHub Pages from a workflow on `main`. It is free for a public repository, it needs no new account, and the site is static. Recommended over Vercel, which needs an account link and a project.
@@ -107,8 +107,20 @@ Claude first suspected its own rename: the word "Example" could read as a templa
 
 Picking a clean letter by running the seed again would overstate the writer. The plan says that the letter stays as written.
 
+## MH-2a and MH-2 written and checked (2026-11-05, Claude)
+
+The defect is fixed in `tasks/archive/writer-placeholders/`, and the default writer is `qwen2.5:7b` again, so the seed uses it.
+
+- **The seed found another bug.** The first `qwen2.5:7b` run stopped on the check in `check_letter`: `provider_used` was empty. `rewrite` and `write_why_interest_block` drop the provider, so a cloud rewrite shows no Cloud badge, and `cloud_documents` is too low. `mh-2a-rewrite-provider.md` fixes this (4 tests; red fails 2; 2 of 2 mutants caught).
+- **The seed ran once more, with the fix, on a clean clone:** idle GPU 1,669 MiB, peak 6,367 MiB, no model loaded after. That run was needed for the bug, not to pick a better letter. Its letter is committed as written.
+- **Claude read the letter, as the lesson of 2026-11-05 asks.** It names the company, and it has no placeholder. The validator gives 92, `approve`, and no ungrounded sentence. But the letter has claims with no support: "deployed" is not in the profile, and neither the profile nor the job says "robust" or "scalable". This is the known limit of the rules. MH-3 shows a note about it on the Cover Letter page, so the demo does not overstate the validator.
+- **The folder is `src/demo/seed`, not `src/demo/data`.** The repository `.gitignore` has `data/`, so the first runner test stopped at `git add`, and the runner restored the files. Every check before that had passed, so only the commit step showed this.
+- `mh-2-demo-data.md` (runner): the script, 6 JSON files, and `tests/unit/test_demo_data.py` (22 tests). A test failed once on the order of `missing_skills`: the matcher builds that list from a set, so the test compares sorted lists. The mutant script refused to run on that failure, as it should.
+- Check on a scratch clone, in one session, on the final path: red fails (exit 2); black and ruff pass; 2,150 backend tests pass; the unchanged code and the control pass (22 tests); 21 of 21 mutants caught, among them a constructed name, a changed score, a placeholder, a real mail domain, and a web address in the data; the mypy gate has 0 new errors.
+- Runner test on one fresh clone, both handoffs in order: the red steps failed, all checks passed, commits `4045a01` and `8858450` on the clone, and the 9 checked files are the same bytes as the copies.
+
 ## Blockers / Questions
 
-- None. The placeholder defect is fixed (`tasks/archive/writer-placeholders/`), and the default writer is `qwen2.5:7b` again, so the seed uses it.
+- None.
 
 ## Review
