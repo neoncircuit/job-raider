@@ -118,6 +118,9 @@ The defect is fixed in `tasks/archive/writer-placeholders/`, and the default wri
 - `mh-2-demo-data.md` (runner): the script, 6 JSON files, and `tests/unit/test_demo_data.py` (22 tests). A test failed once on the order of `missing_skills`: the matcher builds that list from a set, so the test compares sorted lists. The mutant script refused to run on that failure, as it should.
 - Check on a scratch clone, in one session, on the final path: red fails (exit 2); black and ruff pass; 2,150 backend tests pass; the unchanged code and the control pass (22 tests); 21 of 21 mutants caught, among them a constructed name, a changed score, a placeholder, a real mail domain, and a web address in the data; the mypy gate has 0 new errors.
 - Runner test on one fresh clone, both handoffs in order: the red steps failed, all checks passed, commits `4045a01` and `8858450` on the clone, and the 9 checked files are the same bytes as the copies.
+- Both applied on the repo (2026-11-05, Claude ran the runner on the user's word "Yes, apply them"): `fbd7c88` (MH-2a) and `2b2bdd8` (MH-2). The red steps failed, all checks passed, and the 9 checked files are the same bytes as the copies.
+
+Next: MH-3 needs typed exports of this data, so the type part of the MH-2 criterion closes there. It must also show the note on what the validator missed in the demo letter.
 
 ## Blockers / Questions
 
