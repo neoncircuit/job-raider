@@ -122,6 +122,51 @@ The defect is fixed in `tasks/archive/writer-placeholders/`, and the default wri
 
 Next: MH-3 needs typed exports of this data, so the type part of the MH-2 criterion closes there. It must also show the note on what the validator missed in the demo letter.
 
+## MH-3 written and checked (2026-11-06, Claude)
+
+`mh-3-demo-handlers.md` (runner) is ready. It is not applied.
+
+Changes to the plan:
+
+- Each write returns a 501 with a message, and the demo keeps no state. Pipeline Start and Settings use the same 501, with no special disabled state.
+- The type part of the MH-2 criterion closes here: `src/demo/data.ts` has typed exports, and `tsc` passes.
+
+Corrections to earlier notes:
+
+- The built-in browser pane cannot register a service worker. The file loads (200, `text/javascript`), but `register` fails with "An unknown error occurred when fetching the script". The same build works in Chromium, so this is a limit of the pane, not a defect of the demo.
+- The MH-1 note says that Playwright has no browser in WSL. A browser is there, at a newer build: `~/.cache/ms-playwright/chromium_headless_shell-1243`. Playwright looks for build 1223, so give the path in `executablePath`. CI installs its own browser in MH-4.
+
+Check in Chromium, on a local server that acts like GitHub Pages under `/job-raider`:
+
+- The worker controls the page, with scope `/job-raider/`, and each API call comes from the worker.
+- Dashboard, Pipeline, Jobs, Applications, Cover Letter, Profile, Metrics, and Settings all load. A deep link on a first visit and a reload work. Client navigation keeps the base path. A phone width has no sideways scroll.
+- The sample letter opens on the first job with its note. Each other action shows its message, with no retry.
+
+The check found four defects, and MH-3 fixes them:
+
+| Defect | Cause | Fix |
+|---|---|---|
+| A score showed as `80.22549940382058/100` | The rows wrote the raw float | `Math.round` on the job row and the job panel |
+| A letter for a second job said "Upload a resume first" | The Jobs hooks replaced the API detail with fixed text | The five hooks and the Cover Letter page use `getApiErrorMessage` |
+| A date of Nov 4 sat next to "14d ago" | The seed gave each row the time of the run | The date is the run time minus the age. No model ran |
+| The server build kept a 298 KB chunk with MSW and the seed data | Next.js does not inline an undefined `NEXT_PUBLIC_*` variable, so the import stayed | The server build sets `env: { NEXT_PUBLIC_DEMO_MODE: "" }`. All 6 search words now appear in 0 files |
+
+Results:
+
+- 311 frontend tests pass in 56 files, 3 full runs of 3. 23 seed tests pass. `tsc`, eslint, prettier, black, and ruff pass.
+- One full run failed on a timeout. An existing Cover Letter test takes 6 to 7 s of its 10 s limit, and that run started cold. MH-3 gives this test a limit of 20 s, because a failed check makes the runner undo all changes.
+- Mutants: the unchanged code and the control pass, and 51 of 51 are caught, each by a named test.
+- Runner: the dry run passes, both red steps fail, and the 7 checks pass.
+
+Limits:
+
+- Unit tests do not cover the wires in `providers.tsx`, `AppShell.tsx`, and `SidebarContent.tsx`. The MH-4 E2E tests must cover them. MH-4 must also add the search of the server build to CI.
+- The Applications and Settings pages keep fixed messages, such as "Failed to update status". These messages are true, and the banner explains them.
+- Metrics and Settings show a line such as "Could not load models: This needs the local backend, so it is not in the demo." at the sections with no data.
+- A page that the sidebar hides still opens by its URL, and its actions get the same 501.
+
+Incident (2026-11-06): the runner test used the handoff on `D:` from a clone, and the runner takes its repository from the handoff path. It ran on the real repository and made commit `8f892ba` on local `main`, before the user said "Yes, apply it". Nothing was pushed. Claude removed the commit with `git reset --keep aa7f323`, and the user's 14 modified files did not change. Before the reset, the commit matched the checked copies, except for the 20 s limit, which came after that check. See `docs/lessons.md`.
+
 ## Blockers / Questions
 
 - None.

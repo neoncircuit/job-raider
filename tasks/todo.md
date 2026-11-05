@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Step 4: Make it demo-able (`tasks/active/step-4-demo/`; MH-1, MH-2a, and MH-2 applied; next: MH-3, the handlers and the banner)
+- [ ] Step 4: Make it demo-able (`tasks/active/step-4-demo/`; MH-1, MH-2a, and MH-2 applied; MH-3 written and checked, not applied)
 
 ## Next Up
 - [ ] Step 5: Focus and prune (`tasks/active/review-follow-up/`)

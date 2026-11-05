@@ -3680,3 +3680,26 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - Do all the work on a scratch clone in one `wsl.exe` call. Keep what must last in the scratchpad.
 - Install frontend dependencies with `npm ci` in each clone, and stop the script when it fails. Turbopack also refuses a `node_modules` symlink that points out of the project.
 - When every result of a tool is a failure, first check that the tool ran.
+
+## Demo handlers (2026-11-06)
+
+### The runner uses the repository of the handoff file
+
+**Lesson:** To test MH-3 on a scratch clone, Claude ran the runner from the clone with the path of the handoff on `D:`. The runner takes its repository from the handoff path, so it applied the handoff to the real repository and committed on `main`, before the user approved it. The clone did not change, and the report still printed a line for the check.
+
+**Why:** The working folder does not choose the repository. The handoff path chooses it. A commit on `main` without approval is the step that the "Yes, apply it" rule exists to stop.
+
+**How to apply:**
+- For a runner test, copy the handoff into the clone, and give the runner that copy.
+- In the test script, stop unless `git rev-parse --show-toplevel`, run in the folder of the handoff, is the clone.
+- After a test, read the HEAD of the clone. The line "Committed" does not say where.
+- If this happens again, tell the user at once. Compare the commit with the checked copies, remove it, and check that `origin/main` did not move.
+
+### Test a demo in a browser that has the feature
+
+**Lesson:** The built-in browser pane cannot register a service worker, so the demo showed its failure message there. Headless Chromium proved that the build works, and it also found four defects that the unit tests did not find.
+
+**How to apply:**
+- When a browser check fails, read the real error, and try a second browser before you change the code.
+- Drive the actions on each page as a visitor would. A page that loads can still show a false message.
+- Search the build output for what must not be in it. A check on a literal `process.env.NEXT_PUBLIC_*` value removes dead code only when the variable has a value at build time.
