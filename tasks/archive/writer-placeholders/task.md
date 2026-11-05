@@ -23,10 +23,10 @@ flowchart LR
 - [x] Rule and plan committed before any run. (`4459f04`)
 - [x] Validator check `unfilled_placeholder`, as a hard failure, with its tokens in the rewrite critique, and the writer suite counts it. (`c107816`, 14 of 14 mutants)
 - [x] First-draft counts on `qwen2.5:3b` and `qwen2.5:7b` before the prompt rule, in MLflow. (R1 81 of 195, R2 1 of 195)
-- [ ] Prompt rule, then the same counts again, in MLflow. (`55d5d53`; R3 18 of 195; R4 waits: it is needed now, because the user chose `qwen2.5:7b`)
+- [x] Prompt rule, then the same counts again, in MLflow. (`55d5d53`; R3 18 of 195; R4 0 of 195)
 - [x] Final-letter count through the real service, with the rewrite, on `qwen2.5:3b`. (R5: 0 of 24 with a token)
-- [ ] The default writer decided by the rule; `docs/decision-log.md` and the README updated. (The user chose `qwen2.5:7b`; `mh-3-restore-7b.md` is ready; docs not done)
-- [ ] Done when: the MH-2 seed can run on the fixed code, and the README states the placeholder rate and its limits.
+- [x] The default writer decided by the rule; `docs/decision-log.md` and the README updated. (The user chose `qwen2.5:7b`; `8679ac9`)
+- [x] Done when: the MH-2 seed can run on the fixed code, and the README states the placeholder rate and its limits. (2026-11-05)
 
 ## Status
-`blocked` (2026-11-05: waits for the user to close RuneScape; resume steps in `notes.md`, "Paused")
+`done` (2026-11-05: `qwen2.5:7b` is the default again; first drafts with placeholders 0 of 195; archived)

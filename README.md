@@ -36,7 +36,7 @@ Each number comes from a labeled set and a command in this repository, except th
 | [Duplicate detection](#duplicate-detection) | 31 labeled pairs | Identified precision 0.833, recall 0.938 | 2026-11-05 |
 | [Scam detection](#scam-detection) | 8,940 held-out postings, one run | 0 of 433 frauds found; false-positive rate 0.0027 | 2026-10-26 |
 | [Structured output](#structured-output) | 43 cases at 9 call sites | Strict answers 0.845 before, 1.000 after | 2026-11-01 |
-| [Writer model](#writer-model) | 65 pairs, 3 letters each, 4 models | `qwen2.5:3b` chosen | 2026-11-02 |
+| [Writer model](#writer-model) | 65 pairs, 3 letters each | First drafts with placeholders: `qwen2.5:7b` 0 of 195, `qwen2.5:3b` 18 of 195 | 2026-11-05 |
 
 ## Architecture
 
@@ -56,7 +56,7 @@ graph LR
 
 The small model does the selection step, so the large model gets a short, focused prompt. Both run locally on Ollama by default, so a default local route has no per-token API cost. The Metrics page shows the recorded cost when a cloud fallback or a cloud route is used.
 
-Cover letters use `qwen2.5:3b` by default; see [Writer Model](#writer-model).
+Cover letters also use `qwen2.5:7b` by default; see [Writer Model](#writer-model).
 
 ## Cost and usage tracking
 
@@ -369,7 +369,9 @@ flowchart LR
 
 Deterministic rules check each generated letter against the profile,
 with no LLM. A hard finding causes one rewrite. When the rewrite still
-has a hard finding, the letter is held for review.
+has a hard finding, the letter is held for review. An unfilled
+placeholder such as `[Company]` is also a hard finding: [Writer
+Model](#writer-model) has its counts.
 
 ```mermaid
 flowchart LR
@@ -474,22 +476,39 @@ Limit: the inputs of the set are short (the longest prompt is about
 
 ## Writer Model
 
-Four local models wrote 3 letters for each of 65 profile-job pairs, and
-the grounding validator checked each letter. `qwen2.5:3b` is the default
-cover-letter writer.
+`qwen2.5:7b` is the default cover-letter writer. `qwen2.5:3b` was the
+default from 2026-11-02 to 2026-11-05, on a comparison that could not see
+one defect: it writes literal placeholders such as `[Company]`.
 
-| Model | Flagged sentences in a letter | Words (median) | Mean score | Latency (median) | Peak VRAM | Decision |
-|-------|------|------|------|------|------|------|
-| `qwen2.5:7b` | 3.96 | 243 | 90.5 | 2.9 s | 6,656 MiB | Baseline |
-| `qwen3.5:4b` | 2.97 | 185 | 85.5 | 2.0 s | 5,848 MiB | Keep the baseline |
-| `qwen2.5:3b` | 3.10 | 223 | 92.0 | 1.6 s | 4,189 MiB | Switch; chosen |
-| `gemma3:4b` | 1.71 | 160 | 82.7 | 1.8 s | 5,890 MiB | Switch by the rule; letters too short |
+First drafts with an unfilled placeholder, 3 letters for each of 65
+profile-job pairs (2026-11-05):
 
-How to run one model (WSL; the model loads on the GPU):
+| Model | Prompt rule | Letters with placeholders | Valid share |
+|-------|-------------|---------------------------|-------------|
+| `qwen2.5:3b` | No | 81 of 195 | 0.508 |
+| `qwen2.5:3b` | Yes | 18 of 195 | 0.779 |
+| `qwen2.5:7b` | No | 1 of 195 | 0.815 |
+| `qwen2.5:7b` | Yes | 0 of 195 | 0.810 |
+
+A letter with a placeholder now fails validation, so the service rewrites
+it one time, and the prompt forbids them. Through the service with
+`qwen2.5:3b`, 0 of 24 final letters had one.
+
+The comparison of 2026-11-02, before the placeholder check:
+
+| Model | Flagged sentences in a letter | Words (median) | Mean score | Latency (median) | Peak VRAM |
+|-------|------|------|------|------|------|
+| `qwen2.5:7b` | 3.96 | 243 | 90.5 | 2.9 s | 6,656 MiB |
+| `qwen3.5:4b` | 2.97 | 185 | 85.5 | 2.0 s | 5,848 MiB |
+| `qwen2.5:3b` | 3.10 | 223 | 92.0 | 1.6 s | 4,189 MiB |
+| `gemma3:4b` | 1.71 | 160 | 82.7 | 1.8 s | 5,890 MiB |
+
+How to run one model (WSL; the model loads on the GPU, so close other
+GPU-heavy apps first):
 
 ```bash
 cd apps/backend-py
-.venv/bin/python main.py eval writer --model qwen2.5:3b
+.venv/bin/python main.py eval writer --model qwen2.5:7b
 ```
 
 Limits:
@@ -497,12 +516,15 @@ Limits:
 - The evidence is the rule validator only. Most flagged sentences are
   false flags, so the numbers show how often the rules fire, not an error
   rate.
-- The runs use 3 synthetic profiles and measure the first draft only.
-- `qwen2.5:3b` has more `technique_mismatch` findings than `qwen2.5:7b`
-  (13 of 195 letters against 2), and more letters that leave out a
-  selected project (20 against 6).
+- The placeholder check finds square brackets only. It misses `<Company>`
+  and `XYZ Corp`.
+- The runs use 3 synthetic profiles and measure the first draft only. No
+  run measures final letters on `qwen2.5:7b`.
+- `qwen2.5:7b` needs room on an 8 GB GPU. When other apps hold GPU memory,
+  a guard moves the work to the CPU, and a run takes about 1.5 times as
+  long.
 
-`docs/decision-log.md` has the rule and the MLflow runs.
+`docs/decision-log.md` has the rules and the MLflow runs.
 
 ## Project Structure
 

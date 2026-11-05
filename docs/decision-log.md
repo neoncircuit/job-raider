@@ -1,5 +1,56 @@
 # Job Raider Decision Log
 
+## 2026-11-05 - Cover-letter writer back to qwen2.5:7b; unfilled placeholders are a hard failure
+
+### Context
+
+The entry of 2026-11-02 made `qwen2.5:3b` the default writer, on validator numbers alone. While Claude seeded the public demo (Step 4), one letter had literal `[Company]` and `[Plant Disease Classifier]` text, and the validator passed it (`is_valid` true, score 76). The prompt has no brackets, so the model writes them by itself. The validator had no check for this, so the comparison of 2026-11-02 could not see it. The writer reports hold no letter text, so the old runs cannot be counted again.
+
+Claude fixed a decision rule and committed it before any run (`4459f04`).
+
+### Decision
+
+- New hard issue `unfilled_placeholder`: a token is square brackets around 2 to 80 characters on one line. The letter is not valid, the existing one rewrite runs, and the critique names the tokens (`c107816`).
+- New rule in both letter styles: never use square brackets or placeholders (`55d5d53`). It stays: it lowers the `qwen2.5:3b` rate by 0.323 (95% interval 0.251 to 0.400).
+- The default writer goes back to `qwen2.5:7b` (`8679ac9`): the built-in route, and the large tier in the backend and the frontend. A saved Settings route still wins. With the prompt rule, `qwen2.5:3b` is still higher on first drafts, by 0.092 (95% interval 0.046 to 0.138). By the fixed rule this went to the user, and the user chose `qwen2.5:7b`. Claude had recommended `qwen2.5:3b`, because the check and the rewrite cleaned the final letters.
+
+First-draft counts on the grounding pairs (65 pairs, 3 letters each), with the production writer. All runs: dataset SHA-256 `92cb028b...`, no fallback letter, no error.
+
+| Run | Model | Prompt rule | Letters with placeholders | Valid share | Mean score | Words (median) | Peak VRAM | MLflow run |
+|-----|-------|------|------|------|------|------|------|------|
+| R1 | `qwen2.5:3b` | No | 81 of 195 (0.415) | 0.508 | 91.87 | 230 | 5,674 MiB | `3811465f2e4a43a38093e41449fe0578` |
+| R2 | `qwen2.5:7b` | No | 1 of 195 (0.005) | 0.815 | 90.56 | 242 | 7,733 MiB | `d8a9652fd8b24bfdbde40cd8e514a7ed` |
+| R3 | `qwen2.5:3b` | Yes | 18 of 195 (0.092) | 0.779 | 92.70 | 217 | 5,299 MiB | `a77fe8b778724e7f82bcbb1b62e97588` |
+| R4 | `qwen2.5:7b` | Yes | 0 of 195 (0.000) | 0.810 | 90.10 | 250 | 6,722 MiB | `ca8f6f433ef44a19b397054aa8a37b9a` |
+
+Peak VRAM is the whole GPU, so it includes other apps. In R2 they held about 2.9 GB at idle (`rs2client`, the RuneScape client, about 1 GB of that), and the app's guard moved 194 of 195 letters to the CPU. For R4 the idle memory was 1,605 MiB, and no letter went to the CPU.
+
+R5 ran `qwen2.5:3b` through the real service, with the rewrite, on 3 jobs of the ranking set, 8 letters each: 0 of 24 final letters have a token (upper limit 0.138). The rewrite ran on 5 of 24, and 20 of 24 final letters are valid.
+
+Run one model on the grounding set (WSL, from `apps/backend-py`; it loads the model on the GPU, and other GPU-heavy apps must be closed):
+
+```bash
+python main.py eval writer --model qwen2.5:7b
+```
+
+### Consequences
+
+- The entry of 2026-11-02 chose a default on evidence that could not see this defect. The lesson is in `docs/lessons.md`: read real output before recommending a model.
+- `qwen2.5:7b` needs room. Its load is about 5 GB, so other GPU-heavy apps must be closed, or the guard moves the work to the CPU and a run takes about 1.5 times as long.
+- A cloud fallback for the writer is the large cloud model again, and the Settings presets give the writer the large model.
+- Limits: the check finds square brackets only, so it misses `<Company>` and `XYZ Corp`. The counts use 3 synthetic profiles. No run measures final letters on `qwen2.5:7b`. The other limits of the entry of 2026-11-02 stand: the evidence is the rule validator, and most sentence flags are false.
+
+### Flow
+
+```mermaid
+flowchart LR
+    S[Demo seed: letter with<br/>literal placeholders] --> C[Hard check, then<br/>first-draft counts]
+    C --> P[Prompt rule, counts again]
+    P --> Q{qwen2.5:3b worse<br/>than qwen2.5:7b?}
+    Q -->|Yes| U[User decides]
+    U --> B[Default back to qwen2.5:7b]
+```
+
 ## 2026-11-04 - Job ranking measured on a labeled set; hybrid fused at job level
 
 ### Context
@@ -62,6 +113,8 @@ flowchart LR
 
 ## 2026-11-02 - Cover-letter writer model chosen on the grounding set
 
+**Replaced on 2026-11-05.** The default is `qwen2.5:7b` again. This comparison could not see unfilled placeholders; see the entry of 2026-11-05.
+
 ### Context
 
 The decision of 2026-08-25 kept `qwen2.5:7b` as the local cover-letter writer after an A/B against `qwen3.5:4b` on 3 synthetic cases with one letter each (validator mean score 83.0 against 77.67). Step 3.8 measured the choice again on the grounding set: 65 profile-job pairs (3 synthetic profiles), 3 letters for each pair, the production writer (temperature 0.8), and the deterministic validator on each letter. The user approved four local models of 7B or smaller for this host: `qwen2.5:7b`, `qwen3.5:4b`, `qwen2.5:3b`, and `gemma3:4b`. `gemma4:e4b` was left out: it stores 8.0B parameters in a 9.6 GB file, more than the free VRAM of the 8 GB GPU.
@@ -74,7 +127,7 @@ The plan ranked the models on the share of letters with `ungrounded_claims`. The
 
 ### Decision
 
-- The recommended local cover-letter writer is `qwen2.5:3b`. Applied on 2026-11-03 (`tasks/active/writer-default-3b/`): the built-in `cover_letter_writing` route uses `qwen2.5:3b`, and the task is in the small Ollama tier, so the Settings presets keep it and a cloud fallback for it is the small cloud model. A saved Settings route still wins over the default.
+- The recommended local cover-letter writer is `qwen2.5:3b`. Applied on 2026-11-03 (`tasks/archive/writer-default-3b/`), and reversed on 2026-11-05: the built-in `cover_letter_writing` route uses `qwen2.5:3b`, and the task is in the small Ollama tier, so the Settings presets keep it and a cloud fallback for it is the small cloud model. A saved Settings route still wins over the default.
 - `qwen2.5:3b` and `gemma3:4b` both meet the secondary rule. `gemma3:4b` gets there with short letters (89 of 195 too short, 85 with poor structure, 186 without a call to action, lowest mean score). `qwen2.5:3b` meets it with letters of nearly the baseline's length, a higher valid share and mean score, and the lowest latency and VRAM.
 - `qwen3.5:4b` does not meet the rule: its `fabricated_technology` rate is 0.010, and 13 of its letters have `fabricated_experience`.
 

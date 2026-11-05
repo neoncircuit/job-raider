@@ -104,8 +104,26 @@ The user will go on later, from home. Nothing is running. When the user says tha
 
 The seed script and its first output are in the session scratchpad, not in the repository. If that is gone, write the script again from the design in `tasks/active/step-4-demo/notes.md`.
 
+## Restore and R4 (2026-11-05, Claude, on the user's word "Alright I'm back. Lets continue")
+
+RuneScape was closed; the GPU was at 1,445 MiB, then 1,605 MiB before R4. The restore is applied as `8679ac9`: both red steps failed, the 7 checks passed, and all 5 files are the same as HEAD~1 plus the edits. R4 ran after all, so R2 no longer stands in for it.
+
+R4: `qwen2.5:7b` with the rule, 22:09 to 22:23. Git SHA `8679ac9583fe` (`git_dirty`: true; the CRLF-only files). MLflow run `ca8f6f433ef44a19b397054aa8a37b9a`. 0 of 195 letters with a placeholder, valid share 0.810, mean score 90.10, 250 words (median). Peak VRAM 6,722 MiB, 0 CPU fallback lines, no model loaded after.
+
+- R3 minus R4: 0.092 (95% interval 0.046 to 0.138). The result of the rule does not change.
+- R4 minus R2: -0.005 (95% interval -0.015 to 0.000). The rule has no measurable effect on `qwen2.5:7b`, which was at 1 of 195.
+- With RuneScape closed, the run took 14.5 min and had no CPU fallback. With it open (R2), 21 min and 194 fallback lines. So the rule for running `qwen2.5:7b` is to close GPU-heavy apps first.
+
+## Review (2026-11-05, Claude)
+
+- Delivered: the check, the prompt rule, the counts on both models, the default back on `qwen2.5:7b`, and the corrected decision log, README, architecture, and usage docs.
+- The defect came to light only because the demo showed a real letter. The recommendation of 2026-11-02 rested on checks that could not see it. `docs/lessons.md` has the lesson.
+- Claude recommended keeping `qwen2.5:3b` after the fix, and the user chose `qwen2.5:7b`. R4 supports that choice on first drafts: 0 of 195 against 18 of 195.
+- Claude's errors in this task: two runs of a check before it was valid (a heredoc that broke `\n`, and a `/tmp` clone with no dependencies), and a guess at the cause (the `Example` names) that the trial did not support. None reached the repository.
+- Limit: no run measures final letters on `qwen2.5:7b`. The demo seed gives one.
+
 ## Blockers / Questions
 
-- R4 waits for the user to close `rs2client`.
+- None.
 
 ## Review

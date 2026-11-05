@@ -109,6 +109,6 @@ Picking a clean letter by running the seed again would overstate the writer. The
 
 ## Blockers / Questions
 
-- MH-2 waits for `tasks/active/writer-placeholders/`. The user chose to fix the defect first, with the `qwen2.5:7b` count (2026-11-05, "Yes, fix it first").
+- None. The placeholder defect is fixed (`tasks/archive/writer-placeholders/`), and the default writer is `qwen2.5:7b` again, so the seed uses it.
 
 ## Review

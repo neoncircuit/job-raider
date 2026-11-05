@@ -36,4 +36,4 @@ flowchart LR
 - [ ] Done when: a visitor opens the public URL, follows the core loop with sample data, and sees that it is a demo.
 
 ## Status
-`blocked` (2026-11-05: MH-1 applied; MH-2 waits for the user's decision on the placeholder defect in `notes.md`)
+`in-progress` (2026-11-05: MH-1 applied; the placeholder defect is fixed; next: MH-2, the seed script and demo data)

@@ -259,7 +259,7 @@ sequenceDiagram
 
 **Benefits:**
 - **Cost:** Both models run locally on Ollama by default, so a default local route has no per-token API cost. The Metrics page shows the recorded cost.
-- **Writing:** The large model writes the resume text. The default cover-letter writer is `qwen2.5:3b`; `docs/decision-log.md` has the comparison (2026-11-02).
+- **Writing:** The large model writes the resume text and the cover letters. `docs/decision-log.md` has the comparison (2026-11-05).
 - **Context Control:** The small model selects the projects and keywords, so the large model gets a short prompt.
 - **Validation:** Deterministic checks flag some unsupported claims, but they do not stop all of them. On 10 real letters they found 4 of 26 ungrounded sentences (2026-10-31). The README ("Cover Letter Grounding") has the measured results and the limits.
 
@@ -269,8 +269,8 @@ Recommended defaults (also shown in Settings as **Use recommended (3b / 7b)**):
 
 | Model | Parameters | VRAM Usage | Use Case | Cost |
 |-------|-----------|------------|----------|------|
-| qwen2.5:3b | 3B | ~2 GB | Selection, Scoring, Cover-letter writing (small tier) | Free (local) |
-| qwen2.5:7b | 7B | ~4 GB | Resume Writing (large tier) | Free (local) |
+| qwen2.5:3b | 3B | ~2 GB | Selection, Scoring (small tier) | Free (local) |
+| qwen2.5:7b | 7B | ~4 GB | Resume and cover-letter writing (large tier) | Free (local) |
 | gemma3:4b | 4B | ~2.5 GB | Alt. Selection | Free (local) |
 | gemma3:12b | 12B | ~7 GB | Alt. Writing | Free (local) |
 | claude-sonnet-4-6 | N/A | N/A | Fallback/API | ~$3/50 apps |

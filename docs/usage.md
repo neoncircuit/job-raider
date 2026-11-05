@@ -541,7 +541,7 @@ To add a JSON task: add its output model to `src/llm/structured.py`, send `Model
 
 ### Writer Model Comparison
 
-The `writer` suite measures one local cover-letter writer model on the grounding set. For each of the 65 profile-job pairs, the production writer (`CoverLetterWriter.write`, temperature 0.8) writes 3 letters with a fixed selection, and the deterministic validator checks each letter. The labels of the grounding cases belong to their fixed letters, so the suite uses only the jobs and the profiles. Each run is one model and one MLflow run.
+The `writer` suite measures one local cover-letter writer model on the grounding set. For each of the 65 profile-job pairs, the production writer (`CoverLetterWriter.write`, temperature 0.8) writes 3 letters with a fixed selection, and the deterministic validator checks each letter. The labels of the grounding cases belong to their fixed letters, so the suite uses only the jobs and the profiles. Each run is one model and one MLflow run. The report gives `unfilled_placeholder_rate`, the share of first drafts with a token such as `[Company]`.
 
 ```mermaid
 flowchart LR
@@ -846,7 +846,7 @@ http://localhost:3000
 - **Small (fast / high volume):** job scoring, project and keyword selection, validation, quick Q&A, trust checks, cover-letter review
 - **Large (quality / writing):** JD extraction, resume parsing/writing/analysis, LinkedIn analysis, classification, cover-letter drafting, assessment generation and evaluation
 - Recommended defaults remain `qwen2.5:3b` and `qwen2.5:7b`; any installed model may be saved as your default
-- Local cover letters are drafted with `qwen2.5:3b` by default (Step 3.8; see the 2026-11-02 entry of `docs/decision-log.md`). A saved Settings route wins over the default: to use it, click **Use recommended (3b / 7b)** in Settings, or set the cover-letter writing route to `qwen2.5:3b`. Enable **Review & rewrite** on the Cover Letter page for one critique and rewrite pass; it improves structure without loading a larger GPU model. Do not use `qwen3.5:9b` or other models above 7B on hosts with GPU IRQL / StoreMI instability; compare writer models one at a time with `main.py eval writer` (see "Writer Model Comparison").
+- Local cover letters are drafted with `qwen2.5:7b` by default (see the 2026-11-05 entry of `docs/decision-log.md`). A saved Settings route wins over the default. Close other GPU-heavy apps before you write letters: `qwen2.5:7b` needs about 5 GB, and a guard moves the work to the CPU when the GPU is 90% full. Enable **Review & rewrite** on the Cover Letter page for one critique and rewrite pass; it improves structure. Do not use `qwen3.5:9b` or other models above 7B on hosts with GPU IRQL / StoreMI instability; compare writer models one at a time with `main.py eval writer` (see "Writer Model Comparison").
 
 ### Logs page
 
