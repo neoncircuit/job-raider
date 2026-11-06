@@ -167,6 +167,21 @@ Limits:
 
 Incident (2026-11-06): the runner test used the handoff on `D:` from a clone, and the runner takes its repository from the handoff path. It ran on the real repository and made commit `8f892ba` on local `main`, before the user said "Yes, apply it". Nothing was pushed. Claude removed the commit with `git reset --keep aa7f323`, and the user's 14 modified files did not change. Before the reset, the commit matched the checked copies, except for the 20 s limit, which came after that check. See `docs/lessons.md`.
 
+## MH-4 written and checked (2026-11-07, Claude)
+
+`mh-4-demo-ci.md` (runner) is ready. It is not applied.
+
+- New: `playwright.demo.config.ts`, `tests/e2e-demo/demo.spec.ts` (17 tests), `scripts/serve-demo.mjs`, `scripts/find-demo-code.mjs`, and `tests/lib/find-demo-code.test.ts`. New CI job `test-demo`, and a new `check:no-demo` step in `build-frontend`.
+- Check on a clone in WSL: `tsc`, eslint, and prettier pass. 318 unit tests pass in 57 files. The demo build passes, and all 17 E2E tests pass on it, with Chromium on the Pages base path. The server build passes, and `check:no-demo` finds no demo code in 682 files.
+- Mutants: the controls pass, and 13 of 13 are caught. These include the three wires that MH-3 left to this step (the gate, the banner, and the sidebar filter), a request that leaves the site, a worker on the wrong path, and no worker file. With the server flag removed, the server build still exits 0, and `check:no-demo` exits 1.
+- Runner test: the handoff was in the fresh clone, and the script stopped unless the runner would stay there. The dry run passes, the red step fails, the 5 checks pass, commit `24302e6` is on the clone, the 8 files are the same bytes as the checked copies, and the HEAD of the real repository did not change.
+
+Limits:
+
+- The runner does not run the builds or the E2E tests, because a build on the hard disk is slow. The first proof on GitHub is the CI run after the push.
+- `next/font/google` downloads the fonts at build time. The download failed on 2 of about 15 local builds, with a `module-not-found` error. The failure is in the network step, not in the code. CI can meet the same failure, and the existing `build-frontend` job has the same risk.
+- CI will use the Chromium build of its Playwright version (1223). The local check used build 1243.
+
 ## Blockers / Questions
 
 - None.
