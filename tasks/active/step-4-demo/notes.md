@@ -124,7 +124,7 @@ Next: MH-3 needs typed exports of this data, so the type part of the MH-2 criter
 
 ## MH-3 written and checked (2026-11-06, Claude)
 
-`mh-3-demo-handlers.md` (runner) is ready. It is not applied.
+`mh-3-demo-handlers.md` (runner) is applied on the repo (2026-11-06, Claude ran the runner on the user's word "Yes, apply it"): commit `0739a13`, 29 files. Both red steps failed, and the 7 checks passed. Next: MH-4, the CI job and the E2E tests on the exported site.
 
 Changes to the plan:
 
