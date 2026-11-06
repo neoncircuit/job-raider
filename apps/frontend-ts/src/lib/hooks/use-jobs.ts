@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { jobsApi } from "@/lib/api/jobs";
 import { pipelineApi } from "@/lib/api/pipeline";
 import {
@@ -160,8 +161,8 @@ export function useSaveJob() {
         refetchType: "all",
       });
     },
-    onError: () => {
-      toast.error("Action failed");
+    onError: (error: Error) => {
+      toast.error(getApiErrorMessage(error, "Action failed"));
     },
   });
 }
@@ -262,8 +263,8 @@ export function useClassifyJob() {
       );
       toast.success("Job classified successfully");
     },
-    onError: () => {
-      toast.error("Failed to classify job");
+    onError: (error: Error) => {
+      toast.error(getApiErrorMessage(error, "Failed to classify job"));
     },
   });
 }
@@ -304,8 +305,8 @@ export function useAnalyzeTrust() {
       );
       toast.success("Trust analysis complete");
     },
-    onError: () => {
-      toast.error("Failed to analyze trust");
+    onError: (error: Error) => {
+      toast.error(getApiErrorMessage(error, "Failed to analyze trust"));
     },
   });
 }
@@ -351,8 +352,8 @@ export function useGenerateCoverLetter() {
       );
       toast.success("Cover letter generated");
     },
-    onError: () => {
-      toast.error("Failed to generate cover letter. Upload a resume first.");
+    onError: (error: Error) => {
+      toast.error(getApiErrorMessage(error, "Failed to generate cover letter"));
     },
   });
 }
@@ -381,8 +382,8 @@ export function useExplainJobFit() {
       queryClient.setQueryData<ScoreExplanation>(explainFitKey(id), data);
       toast.success("Fit explanation generated");
     },
-    onError: () => {
-      toast.error("Failed to explain fit");
+    onError: (error: Error) => {
+      toast.error(getApiErrorMessage(error, "Failed to explain fit"));
     },
   });
 }

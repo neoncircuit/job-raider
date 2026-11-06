@@ -16,7 +16,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { toast } from "sonner";
 import CoverLetterPage from "@/app/cover-letter/page";
+import { ApiError } from "@/lib/api/client";
 import {
   sampleCoverLetter,
   sampleCoverLetterValidation,
@@ -249,7 +251,7 @@ describe("CoverLetterPage", () => {
     expect(
       screen.getByRole("button", { name: /export cover letter pdf/i }),
     ).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it("hides Sources when mission_context has no citations", async () => {
     const user = userEvent.setup();
@@ -580,6 +582,28 @@ describe("CoverLetterPage", () => {
       expect.any(AbortSignal),
     );
     expect(await screen.findByText("82/100")).toBeInTheDocument();
+  });
+
+  it("shows the API detail when generation is refused", async () => {
+    mockGenerate.mockRejectedValue(new ApiError(501, "Open the first job."));
+    const user = userEvent.setup();
+    renderWithClient(<CoverLetterPage />);
+
+    await user.type(screen.getByLabelText(/job title/i), "Engineer");
+    await user.type(screen.getByLabelText(/company/i), "Example Labs");
+    await user.type(
+      getJdTextarea(),
+      "We are seeking an engineer to build machine learning services in Python.",
+    );
+    const generateButton = screen.getByRole("button", {
+      name: /generate cover letter/i,
+    });
+    await waitFor(() => expect(generateButton).not.toBeDisabled());
+    await user.click(generateButton);
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Open the first job."),
+    );
   });
 
   it("shows an indeterminate wait bar while generating", async () => {

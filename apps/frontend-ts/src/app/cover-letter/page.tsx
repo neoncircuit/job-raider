@@ -212,7 +212,7 @@ export default function CoverLetterPage() {
     },
     onError: (err: Error) => {
       logger.error("Cover letter generation failed", err);
-      toast.error(err.message || "Failed to generate cover letter");
+      toast.error(getApiErrorMessage(err, "Failed to generate cover letter"));
     },
   });
 

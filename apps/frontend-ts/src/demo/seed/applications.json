@@ -3,7 +3,7 @@
     {
       "application_id": "demo-rk-012",
       "application_method": "external",
-      "applied_date": "2026-11-04T12:00:00",
+      "applied_date": "2026-10-21T12:00:00",
       "company": "Example AI Institute",
       "current_status": "technical_scheduled",
       "custom_status": null,
@@ -19,7 +19,7 @@
     {
       "application_id": "demo-rk-004",
       "application_method": "external",
-      "applied_date": "2026-11-04T12:00:00",
+      "applied_date": "2026-10-25T12:00:00",
       "company": "Example Labs",
       "current_status": "screening_completed",
       "custom_status": null,
@@ -35,7 +35,7 @@
     {
       "application_id": "demo-rk-026",
       "application_method": "external",
-      "applied_date": "2026-11-04T12:00:00",
+      "applied_date": "2026-10-29T12:00:00",
       "company": "Example Media",
       "current_status": "under_review",
       "custom_status": null,
@@ -51,7 +51,7 @@
     {
       "application_id": "demo-rk-003",
       "application_method": "external",
-      "applied_date": "2026-11-04T12:00:00",
+      "applied_date": "2026-11-02T12:00:00",
       "company": "Example Software",
       "current_status": "applied",
       "custom_status": null,
@@ -67,7 +67,7 @@
     {
       "application_id": "demo-rk-005",
       "application_method": "external",
-      "applied_date": "2026-11-04T12:00:00",
+      "applied_date": "2026-10-14T12:00:00",
       "company": "Example Mobility",
       "current_status": "rejected",
       "custom_status": null,

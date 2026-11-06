@@ -19,6 +19,7 @@ import {
   TrustTierBadge,
 } from "@/components/trust-analysis";
 import { CoverLetterValidationDisplay } from "@/components/cover-letter-validation";
+import { DemoLetterNote } from "@/components/demo/demo-notes";
 import { ScoreExplanationDisplay } from "@/components/score-explanation";
 import { AiWaitProgress } from "@/components/ai-wait-progress";
 import { cn } from "@/lib/utils/cn";
@@ -253,7 +254,7 @@ export function JobDetail({
                     : "bg-destructive text-destructive-foreground",
               )}
             >
-              {job.relevance_score}/100
+              {Math.round(job.relevance_score)}/100
             </Badge>
           </div>
         )}
@@ -462,6 +463,7 @@ export function JobDetail({
             <div className="rounded-md border bg-card p-3 text-sm text-card-foreground whitespace-pre-line max-h-60 overflow-y-auto">
               {coverLetterData.content}
             </div>
+            <DemoLetterNote />
             {coverLetterData.validation && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">

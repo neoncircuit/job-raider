@@ -2,6 +2,7 @@
 
 import json
 import re
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Iterator, List
 
@@ -265,6 +266,15 @@ def test_the_constructed_files_follow_the_shortlist_and_the_letter() -> None:
     expected = seed.derived_files(load("shortlist"), load("letter"))
 
     assert expected == {stem: load(stem) for stem in expected}
+
+
+def test_each_application_date_matches_its_age() -> None:
+    """A sample date and its age in days agree."""
+    fixed = datetime.fromisoformat(seed.FIXED_TIME)
+
+    for row in load("applications")["applications"]:
+        age = fixed - datetime.fromisoformat(row["applied_date"])
+        assert age == timedelta(days=row["days_since_application"])
 
 
 def test_the_sample_rates_come_from_the_applications() -> None:

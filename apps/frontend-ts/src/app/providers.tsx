@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { createContext, useContext, useMemo, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { DemoGate } from "@/components/demo/demo-gate";
 import { Toaster } from "@/components/ui/sonner";
 import type { JobSearchRequest } from "@/lib/api/jobs";
 import { createLogger } from "@/lib/logger";
@@ -134,7 +135,7 @@ export function Providers({ children }: ProvidersProps) {
             setJobsScrapedTodayOnly,
           }}
         >
-          {children}
+          <DemoGate>{children}</DemoGate>
           <Toaster richColors position="top-right" />
         </AppStateContext.Provider>
       </ThemeProvider>

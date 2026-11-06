@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { DemoBanner } from "@/components/demo/demo-notes";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -33,6 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <MobileNav />
         </div>
 
+        <DemoBanner />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <ErrorBoundary>
             <DatetimePrefsRefresh>

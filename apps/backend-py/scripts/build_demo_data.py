@@ -31,7 +31,7 @@ import asyncio
 import json
 import tempfile
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence
 
@@ -315,7 +315,9 @@ def applications_payload(shortlist: Dict[str, Any]) -> Dict[str, Any]:
             "application_id": f"demo-{job['job_id']}",
             "job_title": job["title"],
             "company": job["company"],
-            "applied_date": FIXED_TIME,
+            "applied_date": (
+                datetime.fromisoformat(FIXED_TIME) - timedelta(days=days)
+            ).isoformat(),
             "current_status": status,
             "custom_status": None,
             "is_bookmarked": False,

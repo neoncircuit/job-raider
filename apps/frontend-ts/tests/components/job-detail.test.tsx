@@ -20,6 +20,7 @@ const mockGenerateCoverLetterMutate = vi.hoisted(() => vi.fn());
 let explainFitState = { isPending: false };
 let generateCoverLetterState = { isPending: false };
 let cachedExplainFitData: ScoreExplanation | null = null;
+let cachedCoverLetterData: { content: string; validation: null } | null = null;
 
 vi.mock("@/lib/hooks/use-jobs", () => ({
   useClassifyJob: () => ({
@@ -40,7 +41,7 @@ vi.mock("@/lib/hooks/use-jobs", () => ({
   }),
   useCachedClassification: () => ({ data: null }),
   useCachedTrustAnalysis: () => ({ data: null }),
-  useCachedCoverLetter: () => ({ data: null }),
+  useCachedCoverLetter: () => ({ data: cachedCoverLetterData }),
   useCachedExplainFit: () => ({ data: cachedExplainFitData }),
 }));
 
@@ -76,6 +77,8 @@ describe("JobDetail explain-fit wiring", () => {
     explainFitState = { isPending: false };
     generateCoverLetterState = { isPending: false };
     cachedExplainFitData = null;
+    cachedCoverLetterData = null;
+    vi.unstubAllEnvs();
   });
 
   it("renders the relevance score badge when present", () => {
@@ -130,6 +133,26 @@ describe("JobDetail explain-fit wiring", () => {
     expect(screen.getByText("Why This Match")).toBeInTheDocument();
     expect(screen.getByText("Matches required skills")).toBeInTheDocument();
     expect(screen.queryByText("Explain This Match")).not.toBeInTheDocument();
+  });
+
+  it("shows a whole relevance score", () => {
+    render(
+      <JobDetail
+        job={{ ...baseJob, relevance_score: 80.22549940382058 }}
+        {...noopHandlers}
+      />,
+    );
+
+    expect(screen.getByText("80/100")).toBeInTheDocument();
+  });
+
+  it("shows the demo note with the sample letter", () => {
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "1");
+    cachedCoverLetterData = { content: "Dear team", validation: null };
+
+    render(<JobDetail job={baseJob} {...noopHandlers} />);
+
+    expect(screen.getByRole("note")).toHaveTextContent("they miss real errors");
   });
 
   it("shows an indeterminate wait bar while generating a cover letter", () => {

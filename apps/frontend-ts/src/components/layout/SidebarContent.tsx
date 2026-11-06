@@ -20,6 +20,7 @@ import { SystemResourcesMeter } from "./SystemResourcesMeter";
 import { SidebarNavLink } from "./SidebarNavLink";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLockup } from "./BrandLockup";
+import { visibleNavItems } from "@/demo/mode";
 
 /** Profile is the heart of the app — pinned at the top, above the workflow nav. */
 const PROFILE_ITEM = {
@@ -137,7 +138,7 @@ export function SidebarContent({ onNavItemClick }: SidebarContentProps) {
               <p className="px-3 pb-1 font-heading text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {section.label}
               </p>
-              {section.items.map((item) => (
+              {visibleNavItems(section.items).map((item) => (
                 <SidebarNavLink
                   key={item.href}
                   {...item}

@@ -136,7 +136,7 @@ export function JobListItem({
                     : "bg-destructive text-destructive-foreground",
               )}
             >
-              {job.relevance_score}/100
+              {Math.round(job.relevance_score)}/100
             </Badge>
           )}
         </div>

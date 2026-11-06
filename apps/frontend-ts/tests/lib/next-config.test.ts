@@ -36,6 +36,7 @@ async function expectServerBuild(config: NextConfig): Promise<void> {
   expect(config.output).toBe("standalone");
   expect(config.basePath).toBeUndefined();
   expect(config.pageExtensions).toBeUndefined();
+  expect(config.env).toEqual({ NEXT_PUBLIC_DEMO_MODE: "" });
   expect(await config.redirects?.()).toEqual([
     { source: "/", destination: "/dashboard", permanent: false },
   ]);
@@ -62,6 +63,7 @@ describe("next.config", () => {
     expect(config.output).toBe("export");
     expect(config.basePath).toBe("");
     expect(config.redirects).toBeUndefined();
+    expect(config.env).toBeUndefined();
   });
 
   it("uses the base path of the host in demo mode", async () => {

@@ -10,3 +10,4 @@ __tests__
 *.min.*
 package-lock.json
 src/demo/seed
+public/mockServiceWorker.js
