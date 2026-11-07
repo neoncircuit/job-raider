@@ -82,7 +82,7 @@ A fresh install was not run locally. After the push, CI run 42372115580 passed: 
 
 ## MH-4 written and checked (2026-11-07, Claude)
 
-Applied on the repo (2026-11-07, Claude, on the user's word "Yes, apply it"): commits `53fc412` and `8179f60`, cherry-picks of `c525922` and `5da2d45` from the clone. The code is the same as the checked commits: `git diff 5da2d45 HEAD`, without `tasks/`, is empty.
+Applied on the repo (2026-11-07, Claude, on the user's word "Yes, apply it"): commits `53fc412` and `8179f60`, cherry-picks of `c525922` and `5da2d45` from the clone. The code is the same as the checked commits: `git diff 5da2d45 HEAD`, without `tasks/`, is empty. Pushed as `fee1310`; CI run 42383303984 passed (all 12 jobs; the Docker job is skipped on `main` by design).
 
 Two commits were ready on the WSL clone `~/s4_work`, on top of `8970fd3`. They are direct commits, not a runner handoff: a runner edit of the whole page would copy 1,348 old lines into the handoff. To apply them, the real repository fetches the clone and cherry-picks both.
 
