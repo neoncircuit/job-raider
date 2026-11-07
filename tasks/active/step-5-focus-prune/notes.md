@@ -71,7 +71,7 @@ A fresh install was not run locally. After the push, CI run 42372115580 passed: 
 
 ## MH-3 written and checked (2026-11-07, Claude)
 
-`mh-3-sidebar-groups.md` (runner) is ready. It is not applied.
+`mh-3-sidebar-groups.md` (runner) is applied on the repo (2026-11-07, Claude ran the runner on the user's word "Yes, apply it"): commit `a266ed9`, 4 files, the same bytes as the runner test. The red step failed, and the 4 checks passed.
 
 - New: `SidebarExtras.tsx` (the collapsed group) and `tests/components/sidebar-content.test.tsx` (6 tests). `SidebarContent.tsx` now has Workflow (Dashboard, Pipeline, Jobs, Cover Letter, Applications), System (Metrics, Settings), and Extras (Career Coach, Assessment, Resume Analysis, LinkedIn Analysis, Logs). Profile stays at the top.
 - The smoke E2E test clicked the extra links directly, so its helper now opens Extras first.
