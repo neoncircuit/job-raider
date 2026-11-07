@@ -36,4 +36,4 @@ flowchart LR
 - [ ] Done when: a visitor opens the public URL, follows the core loop with sample data, and sees that it is a demo.
 
 ## Status
-`in-progress` (2026-11-07: MH-1 to MH-5 applied; next: MH-6, the Pages workflow)
+`in-progress` (2026-11-07: MH-1 to MH-5 applied; MH-6 written and checked, not applied)

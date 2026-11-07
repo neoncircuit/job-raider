@@ -198,6 +198,17 @@ Limits:
 - The first dashboard E2E run failed because Playwright reused another server on port 3000. Set `PLAYWRIGHT_PORT` to a free port for a local run. CI does not reuse a server.
 - A user who works with cloud models only sees the model step as open, and can dismiss the card.
 
+## MH-6 written and checked (2026-11-07, Claude)
+
+`mh-6-pages-workflow.md` (runner) is ready. It is not applied. `docs/demo-site.md` describes the demo, and how to build, test, and publish it.
+
+- `.github/workflows/pages.yml` builds the demo, runs the E2E tests, uploads the site, and deploys it. The only trigger is `workflow_dispatch`, so a push to `main` does not publish. The plan said "a workflow on `main`". A later step can add a push trigger, after the first publish.
+- Repository state (read only, 2026-11-07): public, and Pages is not enabled. Claude did not change any setting.
+- Check on a clone in WSL: valid YAML, `tsc` and eslint pass, 345 unit tests pass. Mutants: the control passes, and 7 of 7 are caught.
+- Runner test: the handoff was in the fresh clone. The dry run passes, the red step fails, the 5 checks pass, commit `7b6f771` is on the clone, the 2 files are the same bytes as the checked copies, and the HEAD of the real repository did not change.
+
+Limit: the deploy job cannot run until Pages is on, so its first run is the first proof. The test reads the workflow text, and it does not prove that GitHub accepts the deploy.
+
 ## Blockers / Questions
 
 - None.
