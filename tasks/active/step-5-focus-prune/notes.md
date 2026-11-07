@@ -67,7 +67,7 @@ Checks on the clone:
 - The mypy gate passes: 179 known errors, 0 new. It reports 3 baseline errors as fixed, because their file is deleted. The baseline keeps them until a person runs `--update`.
 - No tracked file outside the history docs names a deleted path.
 
-Not checked: a fresh `pip install -r requirements.txt` in a new environment. The removal only takes lines out, and the blocked-import run shows that no project code needs those packages.
+A fresh install was not run locally. After the push, CI run 42372115580 passed: its Test Backend job installs `requirements.txt` in a new environment and runs the tests, so that run covers the fresh install.
 
 ## Blockers / Questions
 
