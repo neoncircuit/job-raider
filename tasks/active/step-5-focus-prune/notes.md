@@ -82,7 +82,9 @@ A fresh install was not run locally. After the push, CI run 42372115580 passed: 
 
 ## MH-4 written and checked (2026-11-07, Claude)
 
-Two commits are ready on the WSL clone `~/s4_work`, on top of `8970fd3`. They are not applied. They are direct commits, not a runner handoff: a runner edit of the whole page would copy 1,348 old lines into the handoff. To apply them, the real repository fetches the clone and cherry-picks both.
+Applied on the repo (2026-11-07, Claude, on the user's word "Yes, apply it"): commits `53fc412` and `8179f60`, cherry-picks of `c525922` and `5da2d45` from the clone. The code is the same as the checked commits: `git diff 5da2d45 HEAD`, without `tasks/`, is empty.
+
+Two commits were ready on the WSL clone `~/s4_work`, on top of `8970fd3`. They are direct commits, not a runner handoff: a runner edit of the whole page would copy 1,348 old lines into the handoff. To apply them, the real repository fetches the clone and cherry-picks both.
 
 1. `c525922` `test(e2e)`: the smoke test helper from MH-3 clicked "Extras" once. On a cold dev server that click can come before hydration and be lost, and the test timed out on Resume Analysis. The helper now retries until the link shows, as the mobile helper already does. Then the smoke test passed twice from a cold server (28 each).
 2. `5da2d45` `refactor(cover-letter)`: the page is split by a script that cuts at checked line numbers and moves the code with no change.
