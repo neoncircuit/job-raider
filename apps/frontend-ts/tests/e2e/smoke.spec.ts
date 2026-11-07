@@ -15,8 +15,22 @@
  *    to avoid flaky actionability checks against sticky sidebar chrome.
  */
 
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { test, expect } from "./support/test";
+
+/**
+ * Open the Extras group of the sidebar when it hides a link.
+ *
+ * @param scope - The sidebar or the mobile navigation sheet.
+ * @param linkName - Accessible name of the nav link.
+ * @returns Resolved once the link is in the DOM.
+ */
+async function openExtrasFor(scope: Locator, linkName: string): Promise<void> {
+  const link = scope.getByRole("link", { name: linkName, exact: true });
+  if ((await link.count()) === 0) {
+    await scope.getByRole("button", { name: "Extras" }).click({ force: true });
+  }
+}
 
 /**
  * Navigate to a primary route via whichever nav the current viewport exposes.
@@ -44,12 +58,14 @@ async function navigateTo(page: Page, linkName: string): Promise<void> {
       }
       await expect(dialog).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 15_000 });
+    await openExtrasFor(dialog, linkName);
     await dialog.getByRole("link", { name: linkName, exact: true }).click();
     return;
   }
 
-  await page
-    .locator("aside")
+  const sidebar = page.locator("aside");
+  await openExtrasFor(sidebar, linkName);
+  await sidebar
     .getByRole("link", { name: linkName, exact: true })
     .click({ force: true });
 }

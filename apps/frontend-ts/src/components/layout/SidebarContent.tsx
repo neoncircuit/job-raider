@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { SystemResourcesMeter } from "./SystemResourcesMeter";
 import { SidebarNavLink } from "./SidebarNavLink";
+import { SidebarExtras } from "./SidebarExtras";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLockup } from "./BrandLockup";
 import { visibleNavItems } from "@/demo/mode";
@@ -40,6 +41,7 @@ interface NavSection {
   items: NavItem[];
 }
 
+/** The core loop, in the order that a user works through it. */
 const NAV_SECTIONS: NavSection[] = [
   {
     label: "Workflow",
@@ -52,6 +54,11 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/pipeline", icon: <Rocket size={16} />, label: "Pipeline" },
       { href: "/jobs", icon: <Briefcase size={16} />, label: "Jobs" },
       {
+        href: "/cover-letter",
+        icon: <Mail size={16} />,
+        label: "Cover Letter",
+      },
+      {
         href: "/applications",
         icon: <ClipboardList size={16} />,
         label: "Applications",
@@ -59,43 +66,37 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Analysis",
-    items: [
-      {
-        href: "/cover-letter",
-        icon: <Mail size={16} />,
-        label: "Cover Letter",
-      },
-      {
-        href: "/career-coach",
-        icon: <Compass size={16} />,
-        label: "Career Coach",
-      },
-      {
-        href: "/assessment",
-        icon: <GraduationCap size={16} />,
-        label: "Assessment",
-      },
-      {
-        href: "/resume-analysis",
-        icon: <FileSearch size={16} />,
-        label: "Resume Analysis",
-      },
-      {
-        href: "/linkedin-analysis",
-        icon: <LinkIcon size={16} />,
-        label: "LinkedIn Analysis",
-      },
-    ],
-  },
-  {
     label: "System",
     items: [
       { href: "/metrics", icon: <BarChart3 size={16} />, label: "Metrics" },
-      { href: "/logs", icon: <ScrollText size={16} />, label: "Logs" },
       { href: "/settings", icon: <Settings size={16} />, label: "Settings" },
     ],
   },
+];
+
+/** Pages outside the core loop, in a group that starts collapsed. */
+const EXTRA_ITEMS: NavItem[] = [
+  {
+    href: "/career-coach",
+    icon: <Compass size={16} />,
+    label: "Career Coach",
+  },
+  {
+    href: "/assessment",
+    icon: <GraduationCap size={16} />,
+    label: "Assessment",
+  },
+  {
+    href: "/resume-analysis",
+    icon: <FileSearch size={16} />,
+    label: "Resume Analysis",
+  },
+  {
+    href: "/linkedin-analysis",
+    icon: <LinkIcon size={16} />,
+    label: "LinkedIn Analysis",
+  },
+  { href: "/logs", icon: <ScrollText size={16} />, label: "Logs" },
 ];
 
 interface SidebarContentProps {
@@ -147,6 +148,10 @@ export function SidebarContent({ onNavItemClick }: SidebarContentProps) {
               ))}
             </div>
           ))}
+          <SidebarExtras
+            items={visibleNavItems(EXTRA_ITEMS)}
+            onNavItemClick={onNavItemClick}
+          />
         </div>
       </nav>
 
