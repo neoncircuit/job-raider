@@ -48,6 +48,25 @@ The sidebar after MH-3:
 2. Themes: keep all 13. MH-3 groups the sidebar only.
 3. Easy Apply: "only delete it if there is a massive downside to what's happening right now". Claude's assessment: there is no massive downside. The package is dormant: no route or stage imports it, so it runs no code, sends no request, and loads no model. Two of its parts have tests (`test_structured_trust_and_forms.py`). The real costs are small: 3,332 lines to maintain, and anti-detection code in a public repository, which a reader can see. So `src/linkedin/` stays, and MH-2 is dropped. If a later change makes this code reachable, decide again first.
 
+## MH-1 written and checked (2026-11-07, Claude)
+
+A direct commit, because the runner cannot delete files. Commit `0c957b6` is ready on the WSL clone `~/s4_work`, on top of `6e975fd`. It is not applied. To apply it, the real repository fetches the clone and cherry-picks that commit, so the bytes are the ones that were checked.
+
+- Deleted: `frontend-py/` (36 files), `src/database/` and `alembic.ini`, `src/reports/`, `config/scrapers_config.yaml`, and `config/search_config.yaml`. 56 files changed, 6,683 lines deleted.
+- Requirements removed: `sqlalchemy`, `alembic`, `asyncpg`, `psycopg2-binary`, `pgvector`, and `supabase`. Only `src/database/` imported them. `asyncpg` was not in the plan, and the measure showed the same fact for it.
+- `.env.example`: the Supabase section and the Easy Apply YAML comment are gone.
+- Docs: the README (tech stack, tree, config table, and the false example "edit `search_config.yaml`"), `DOCKER.md`, `COMPREHENSIVE_TESTING_STRATEGY.md`, `docs/architecture.md`, `docs/index.md`, and `docs/troubleshooting.md`. Four troubleshooting tips told users to set `rate_limit_delay` in `scrapers_config.yaml`. No code read that file, so the tips were false before this change. They now give advice that works. The history entries in `docs/index.md` and `docs/decision-log.md` stay as written.
+
+Checks on the clone:
+
+- The full backend suite passes, 2,151 tests, with an import blocker on. The blocker makes an import of the 6 packages from project code fail, and it lets a third-party library import them: MLflow uses SQLAlchemy, so `sqlalchemy` stays installed as an MLflow dependency. A self-test from a project file shows that the blocker refuses the import.
+- The first run blocked every import, and one MLflow test failed for that reason. That is how the MLflow dependency came to light.
+- Ruff on the CI paths passes. Ruff on all of `scripts/` finds 8 errors, and these are in files outside the CI paths.
+- The mypy gate passes: 179 known errors, 0 new. It reports 3 baseline errors as fixed, because their file is deleted. The baseline keeps them until a person runs `--update`.
+- No tracked file outside the history docs names a deleted path.
+
+Not checked: a fresh `pip install -r requirements.txt` in a new environment. The removal only takes lines out, and the blocked-import run shows that no project code needs those packages.
+
 ## Blockers / Questions
 
 - None.
