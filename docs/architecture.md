@@ -14,12 +14,7 @@ The following table lists the core technologies that make up Job Raider, the min
 | | FastAPI | 0.115+ | Async web framework for REST and WebSocket endpoints |
 | | Uvicorn | 0.30+ | ASGI server with WebSocket support |
 | | Pydantic | 2.5+ | Request/response validation and settings management |
-| **Data Layer** | SQLAlchemy | 2.0+ | Async ORM for PostgreSQL |
-| | Alembic | 1.13+ | Database schema migrations |
-| | asyncpg | 0.29+ | Async PostgreSQL driver |
-| | Supabase | 2.4+ | Storage bucket operations |
-| | pgvector | 0.2+ | SQLAlchemy types for vector columns |
-| | ChromaDB | 1.0+ | Local embedded vector store for the RAG pipeline |
+| **Data Layer** | ChromaDB | 1.0+ | Local embedded vector store for the RAG pipeline |
 | **LLM Providers** | Ollama | latest | Local model serving (default) |
 | | Anthropic API | — | Cloud fallback (Claude models) |
 | | Google GenAI | — | Cloud fallback (Gemini models) |

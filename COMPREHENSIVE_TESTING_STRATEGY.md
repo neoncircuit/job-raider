@@ -104,7 +104,6 @@ cd apps/backend-py
 
 ## Known Gaps and Next Steps
 
-- The legacy Streamlit frontend (`frontend-py/`) is superseded by `apps/frontend-ts` and is not covered by CI.
 - Profile/session state is currently in-process; tests that rely on active profile state are patched at the module level.
 - Some external service integrations (LinkedIn scraping, actual LLM calls) are mocked in tests and verified manually.
 

@@ -66,7 +66,7 @@ MyCareersFuture, JobStreet Singapore, and Careers@Gov are Singapore-scoped: they
 
 - Jobs search with only MyCareersFuture selected returns 0 jobs.
 - Backend logs: `MyCareersFuture API returned HTTP 429` or timeouts.
-- Increase delay in `config/scrapers_config.yaml` under `mycareersfuture.rate_limit_delay`, or disable with `MCF_ENABLED=0`.
+- Wait and search again, or disable the source with `MCF_ENABLED=0`. No config file sets the request rate: it is the `rate_limit` argument of `BaseScraper`, in code.
 
 ## JobStreet Singapore adapter
 
@@ -91,7 +91,7 @@ Then recreate the backend so `ScraperManager` rebuilds without the source. `GET 
 
 - Jobs search with only JobStreet selected returns 0 jobs.
 - Backend logs: `JobStreet API returned HTTP 429` or timeouts.
-- Increase delay in `config/scrapers_config.yaml` under `jobstreet.rate_limit_delay`, or disable with `JOBSTREET_ENABLED=0`.
+- Wait and search again, or disable the source with `JOBSTREET_ENABLED=0`. No config file sets the request rate: it is the `rate_limit` argument of `BaseScraper`, in code.
 
 ### Careers@Gov delayed dump
 
@@ -698,11 +698,7 @@ Scraping complete: 0 listings found
    --sources linkedin  # Single source instead of all
    ```
 
-2. **Check rate limiting:**
-   ```bash
-   # Edit apps/backend-py/config/scrapers_config.yaml
-   rate_limit_delay: 2.0  # Increase delay
-   ```
+2. **Wait between runs:** no config file sets the request rate. It is the `rate_limit` argument of `BaseScraper`, in code.
 
 3. **Check for captchas:**
    - Some sites may trigger captchas
@@ -723,12 +719,7 @@ Scraping stage failed: HTTP 429 Client Error: Too Many Requests
    # Wait 10-15 minutes before retrying
    ```
 
-2. **Increase rate limit:**
-   ```bash
-   # Edit apps/backend-py/config/scrapers_config.yaml
-   rate_limit_delay: 5.0  # Increase to 5 seconds
-   requests_per_minute: 10  # Reduce to 10 per minute
-   ```
+2. **Use fewer sources:** select one source on the Jobs or Pipeline page. No config file sets the request rate.
 
 3. **Use different IP:**
    - Consider using VPN
@@ -1423,14 +1414,7 @@ LINKEDIN_EMAIL=your_email@example.com
 LINKEDIN_PASSWORD=your_password
 ```
 
-3. Enable LinkedIn Easy Apply in config:
-
-```yaml
-# config/scrapers_config.yaml
-linkedin_easy_apply:
-  enabled: true
-  headless: false   # Set true once 2FA is handled
-```
+3. The Easy Apply code in `src/linkedin/` is not connected to the app. No route or pipeline stage calls it (decision of 2026-11-07, Step 5).
 
 4. Persistent browser context saves session state to `data/linkedin_session/`. After the first successful login, subsequent runs reuse the session automatically.
 

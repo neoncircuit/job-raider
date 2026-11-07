@@ -102,7 +102,6 @@ The project uses multiple Dockerfiles organized by purpose:
 | `docker/Dockerfile.dev` | Development backend (slim) | python:3.12-slim |
 | `docker/Dockerfile.overlay` | Temporary code-only update on a built backend image | job-raider-backend:pre-overlay |
 | `apps/frontend-ts/Dockerfile` | Frontend (Next.js), used by `docker-compose.yml` | node:24-alpine |
-| `frontend-py/docker/Dockerfile` | Old Streamlit frontend, not used by `docker-compose.yml` | python:3.12-slim |
 
 The images set non-root users: `jobraider` (backend) and `nextjs` (frontend). `docker-compose.yml` runs the backend container as `root` (`user: root`).
 
@@ -145,8 +144,6 @@ Key variables:
 All non-sensitive configuration lives in YAML files in `apps/backend-py/config/`. The backend image copies them at build time:
 - `app_config.yaml`: General settings, paths, monitoring
 - `model_config.yaml`: LLM model selection and routing
-- `scrapers_config.yaml`: Scraper settings and rate limits
-- `search_config.yaml`: Default keywords and locations
 - `scoring_config.yaml`: Scoring weights and thresholds
 - `logging_config.yaml`: Logging configuration
 

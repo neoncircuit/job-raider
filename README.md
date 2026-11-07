@@ -103,7 +103,7 @@ Job Raider is a Python-centric backend with a Next.js dashboard. The stack is ch
 | Layer | Technologies |
 |-------|--------------|
 | Backend | Python 3.11+, FastAPI 0.115+, Uvicorn 0.30+, Pydantic 2.5+ |
-| Data | SQLAlchemy 2.0+, Alembic 1.13+, asyncpg 0.29+, Supabase 2.4+, pgvector 0.2+, ChromaDB 1.0+ |
+| Data | ChromaDB 1.0+ (local vector store), JSON files on disk |
 | LLMs | Ollama, Anthropic API, Google GenAI |
 | Scraping & Documents | Playwright 1.40+, BeautifulSoup4 4.12+, pypdf 4.0+, python-docx 1.1+, reportlab 4.0+ |
 | Frontend | Next.js 16.2.4, React 19.2.4, TypeScript 5, Tailwind CSS 4, shadcn/ui 4.5.0 |
@@ -545,16 +545,13 @@ job-raider/                      # Project root (monorepo)
 │   │   ├── model_config.yaml
 │   │   ├── prompt_templates.yaml
 │   │   ├── rag_config.yaml
-│   │   ├── scoring_config.yaml
-│   │   ├── scrapers_config.yaml
-│   │   └── search_config.yaml
+│   │   └── scoring_config.yaml
 │   ├── src/                     # Source code
 │   │   ├── agents/              # Multi-agent system (coordinator, communication bus, career coach)
 │   │   ├── api/                 # FastAPI REST API (routes, models, websocket)
 │   │   ├── assessment/          # Technical assessment trainer + DISC engine
 │   │   ├── classifiers/         # LLM-based job classification
 │   │   ├── config/              # YAML config loader
-│   │   ├── database/            # Database models and connection helpers
 │   │   ├── extractors/          # Resume and JD parsing (pypdf)
 │   │   ├── generation/          # Resume generation (selector, writer, formatter) + analyzers
 │   │   ├── health/              # System health checks (including MLflow)
@@ -564,7 +561,6 @@ job-raider/                      # Project root (monorepo)
 │   │   ├── models/              # Pydantic V2 data models
 │   │   ├── pipeline/            # Pipeline orchestration and stages
 │   │   ├── rag/                 # RAG pipeline (embeddings, vector store, ranker, chunker)
-│   │   ├── reports/             # HTML report generation
 │   │   ├── scrapers/            # Job scraping (LinkedIn, JSearch API)
 │   │   ├── scoring/             # Filtering, matching, scam detection, trust analysis
 │   │   ├── submission/          # Application submission and detection
@@ -581,7 +577,6 @@ job-raider/                      # Project root (monorepo)
 │   ├── tests/                   # Vitest unit + Playwright E2E tests
 │   ├── Dockerfile               # Multi-stage production build (standalone)
 │   └── package.json             # Node dependencies
-├── frontend-py/                 # Legacy Streamlit dashboard (superseded by frontend-ts)
 ├── data/                        # Shared data storage
 │   ├── alerts/                  # Alert records
 │   ├── applications/            # Tracked applications
@@ -682,20 +677,10 @@ All non-sensitive configuration lives in YAML files under `apps/backend-py/confi
 | `model_config.yaml` | LLM model selection, routing, caching, rate limits |
 | `rag_config.yaml` | RAG pipeline configuration (embeddings, chunking, vector store) |
 | `scoring_config.yaml` | Scoring weights, thresholds, skill categories |
-| `scrapers_config.yaml` | Scraper settings, rate limiting, browser automation |
-| `search_config.yaml` | Default keywords, locations, filters |
 | `logging_config.yaml` | Logging levels and output configuration |
 | `prompt_templates.yaml` | LLM prompt templates |
 
-Example: Edit `apps/backend-py/config/search_config.yaml` to change default search keywords:
-
-```yaml
-keywords:
-  - "python"
-  - "software engineer"
-  - "backend"
-  - "remote"
-```
+Set the search keywords and locations on the Pipeline page, or turn on "Use profile targets" to use the targets of your profile.
 
 ## System Requirements
 
@@ -716,7 +701,7 @@ keywords:
 
 ### Web Dashboard (Next.js)
 
-The web dashboard (`apps/frontend-ts/`) is a Next.js + Tailwind CSS application that provides a visual interface for the full pipeline. It is the active frontend; the legacy Streamlit dashboard in `frontend-py/` is retained but superseded.
+The web dashboard (`apps/frontend-ts/`) is a Next.js + Tailwind CSS application that provides a visual interface for the full pipeline. It is the only frontend.
 
 ```bash
 # Start backend API first (http://localhost:8000)

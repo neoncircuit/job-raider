@@ -59,16 +59,7 @@ pytest>=8.0.0                 # Testing framework
 pytest-asyncio>=0.23.0        # Async testing support
 pytest-cov>=4.1.0             # Coverage reporting
 
-# === Database ===
-sqlalchemy>=2.0.0               # Async ORM for PostgreSQL
-alembic>=1.13.0                 # Database schema migrations
-asyncpg>=0.29.0                 # Async PostgreSQL driver (used at runtime with pooler)
-psycopg2-binary>=2.9.0          # Sync PostgreSQL driver (used by Alembic for migrations)
-pgvector>=0.2.0                 # SQLAlchemy type support for pgvector (replaces ChromaDB)
-supabase>=2.4.0                 # Supabase client for Storage bucket operations
-
 # === RAG / Vector Store ===
-# pgvector used for Supabase PostgreSQL persistence (see src/database/models.py)
 # ChromaDB used for local RAG pipeline (see src/rag/vector_store.py)
 chromadb>=1.0.0                   # Embedded vector store for the local RAG pipeline
 rank-bm25>=0.2.2                  # BM25 sparse retrieval for hybrid search

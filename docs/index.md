@@ -11,7 +11,7 @@ Job Raider combines an async Python backend, a local-first LLM strategy, and a m
 | Layer | Purpose | Key Technologies |
 |-------|---------|------------------|
 | Backend API | Async web framework and validation | Python 3.11+, FastAPI 0.115+, Uvicorn 0.30+, Pydantic 2.5+ |
-| Data | ORM, migrations, vector store, and storage | SQLAlchemy 2.0+, Alembic 1.13+, asyncpg 0.29+, Supabase 2.4+, pgvector 0.2+, ChromaDB 1.0+ |
+| Data | Local vector store | ChromaDB 1.0+ |
 | LLMs | Local and cloud model providers | Ollama, Anthropic API, Google GenAI |
 | Scraping & Documents | Browser automation and file parsing | Playwright 1.40+, BeautifulSoup4 4.12+, pypdf 4.0+, python-docx 1.1+, reportlab 4.0+ |
 | Frontend | Dashboard framework and styling | Next.js 16.2.4, React 19.2.4, TypeScript 5, Tailwind CSS 4, shadcn/ui 4.5.0 |
