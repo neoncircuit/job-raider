@@ -51,6 +51,7 @@ export default defineConfig({
       ".git",
       ".cache",
       "tests/e2e/**",
+      "tests/e2e-demo/**",
     ],
 
     // Watch mode configuration

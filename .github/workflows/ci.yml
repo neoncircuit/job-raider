@@ -269,6 +269,10 @@ jobs:
         run: |
           npm run build
 
+      - name: Check that the server build has no demo code
+        run: |
+          npm run check:no-demo
+
   test-frontend-e2e:
     name: Test Frontend (E2E Tests)
     # Pinned: ubuntu-latest moves to Ubuntu 26.04 from 2026-10-19, and
@@ -318,6 +322,53 @@ jobs:
         with:
           name: playwright-screenshots
           path: apps/frontend-ts/test-results/
+          retention-days: 7
+        continue-on-error: true
+
+  test-demo:
+    name: Test Demo (E2E on the Static Site)
+    # Pinned for the same reason as test-frontend-e2e.
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/frontend-ts
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: apps/frontend-ts/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Install Playwright browsers
+        run: |
+          npx playwright install --with-deps chromium
+
+      - name: Build the demo
+        run: |
+          npm run build:demo
+        env:
+          NEXT_PUBLIC_BASE_PATH: /job-raider
+
+      - name: Run E2E tests on the exported site
+        run: |
+          npm run test:e2e:demo
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-demo
+          path: apps/frontend-ts/playwright-report/
           retention-days: 7
         continue-on-error: true
 
