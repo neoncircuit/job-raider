@@ -108,6 +108,29 @@ Checks:
 - Screenshots of the page, before and after, in three states (empty, assessed, with a letter): 91 of 1,400,000 pixels differ, by at most 24 of 255. That is anti-aliasing and the animated connection dot, not a layout change.
 - Both versions log the same hydration error on the Cover Letter page in the dev server. It was there before the split.
 
+## MH-5 written and checked (2026-11-07, Claude)
+
+One commit is ready on the WSL clone `~/s4_work`, on top of `cf8ee66`: `88c4f8e` `refactor(pipeline)`. It is not applied. It is a direct commit, for the same reason as MH-4. To apply it, the real repository fetches the clone and cherry-picks it.
+
+`PipelineStages` is one class, so the split uses mixins. Tests patch 8 names through `src.pipeline.stages` (`generate_cover_letter_sync`, `ApplicationTracker`, and the 5 RAG classes plus `EmbeddingClient`). A patch on that module reaches only code in that module, so the 3 methods that use those names stay in `stages.py`.
+
+| File | Content | Lines |
+|---|---|---|
+| `stages.py` | `PipelineStages(CollectStages, RankStages, GenerateStages)`, `__init__`, `_generate_cover_letter`, `stage_submit_applications`, `_init_rag_components`; re-exports `StageResult` and `PipelineContext` | 370 (was 1,343) |
+| `stage_base.py` | `StageResult`, `PipelineContext`, and `StageBase` (attribute types for mypy, and a stub of `_generate_cover_letter`) | 101 |
+| `stages_collect.py` | scrape, deduplicate, scam filter, profile filter | 341 |
+| `stages_rank.py` | score and rank, RAG rank, apply-method detection, LinkedIn auth, present selection, 3 helpers | 462 |
+| `stages_generate.py` | generate resumes and cover letters | 201 |
+
+Checks on the clone:
+
+- Red: before the split, `tests/unit/test_module_size.py` fails because `stages.py` has 1,343 lines.
+- The source of all 17 methods (from `inspect.getsource`) is the same before and after, and each resolves to the expected module. `_generate_cover_letter` resolves to `stages.py`, not to the stub.
+- The full backend suite passes: 2,157 tests (2,151 and the 6 new size tests), with no change to a test file.
+- black and ruff on the CI paths pass. The mypy gate passes: 179 known errors, 0 new.
+- Mutants: a class without one of the 3 mixins fails the existing stage tests each time (3 of 3). The control passes (33), and the file checksum matches after the restore.
+- Only history docs name `stages.py`, so no live doc needs a change.
+
 ## Blockers / Questions
 
 - None.
