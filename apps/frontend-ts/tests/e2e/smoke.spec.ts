@@ -27,9 +27,18 @@ import { test, expect } from "./support/test";
  */
 async function openExtrasFor(scope: Locator, linkName: string): Promise<void> {
   const link = scope.getByRole("link", { name: linkName, exact: true });
-  if ((await link.count()) === 0) {
-    await scope.getByRole("button", { name: "Extras" }).click({ force: true });
+  if ((await link.count()) > 0) {
+    return;
   }
+  const toggle = scope.getByRole("button", { name: "Extras" });
+  // A click before hydration can be lost. Retry until the link shows, and do
+  // not click again when the group is already open.
+  await expect(async () => {
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+      await toggle.click({ force: true, timeout: 2_000 });
+    }
+    await expect(link).toHaveCount(1, { timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
 }
 
 /**
