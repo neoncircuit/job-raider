@@ -42,8 +42,14 @@ The sidebar after MH-3:
 1. Easy Apply. Option B (recommended): delete `src/linkedin/` and the "not implemented" auto-submit branch, and keep "Applied elsewhere" tracking. The code is not reachable now, and auto-apply has legal and ethical risk. Option A: keep it as a human-in-the-loop assistant, delete the anti-detection code, and add tests.
 2. Themes. Recommended: keep Raid (the default), Paper (light), and Midnight. Or keep all 13.
 
+## Decisions (user, 2026-11-07)
+
+1. Plan: approved ("Yes, approve it").
+2. Themes: keep all 13. MH-3 groups the sidebar only.
+3. Easy Apply: "only delete it if there is a massive downside to what's happening right now". Claude's assessment: there is no massive downside. The package is dormant: no route or stage imports it, so it runs no code, sends no request, and loads no model. Two of its parts have tests (`test_structured_trust_and_forms.py`). The real costs are small: 3,332 lines to maintain, and anti-detection code in a public repository, which a reader can see. So `src/linkedin/` stays, and MH-2 is dropped. If a later change makes this code reachable, decide again first.
+
 ## Blockers / Questions
 
-- The two questions above.
+- None.
 
 ## Review
