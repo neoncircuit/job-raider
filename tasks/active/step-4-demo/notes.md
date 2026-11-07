@@ -200,7 +200,7 @@ Limits:
 
 ## MH-6 written and checked (2026-11-07, Claude)
 
-`mh-6-pages-workflow.md` (runner) is ready. It is not applied. `docs/demo-site.md` describes the demo, and how to build, test, and publish it.
+`mh-6-pages-workflow.md` (runner) is applied on the repo (2026-11-07, Claude ran the runner on the user's word "Yes, apply it"): commit `8848679`, 2 files, the same bytes as the runner test. The red step failed, and the 5 checks passed. Nothing is published. `docs/demo-site.md` describes the demo, and how to build, test, and publish it.
 
 - `.github/workflows/pages.yml` builds the demo, runs the E2E tests, uploads the site, and deploys it. The only trigger is `workflow_dispatch`, so a push to `main` does not publish. The plan said "a workflow on `main`". A later step can add a push trigger, after the first publish.
 - Repository state (read only, 2026-11-07): public, and Pages is not enabled. Claude did not change any setting.
