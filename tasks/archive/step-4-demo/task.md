@@ -36,4 +36,4 @@ flowchart LR
 - [ ] Done when: a visitor opens the public URL, follows the core loop with sample data, and sees that it is a demo.
 
 ## Status
-`in-progress` (2026-11-07: MH-1 to MH-7 done; demo live at https://neoncircuit.github.io/job-raider/; next: push, then archive)
+`done` (2026-11-07: MH-1 to MH-7 done and pushed; CI run 42365079307 passed; demo live at https://neoncircuit.github.io/job-raider/)

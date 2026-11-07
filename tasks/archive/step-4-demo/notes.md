@@ -219,6 +219,14 @@ A direct commit, not a handoff: the README has Mermaid fences, and the GIF is bi
 - `docs/assets/demo.gif`: 505 KB, 960 px wide, 6 frames, 15 s, loops. The frames come from the live site in Chromium: Dashboard, Jobs, the job panel, the sample letter with its note, Applications, and Metrics. The letter frame holds for 4 s. Claude read each frame before the commit. The first two letter frames scrolled the job list out of view, and the third did not scroll, so the capture uses `scrollIntoView` with `block: "end"` in a window 960 px high.
 - The capture script is not in the repository. To make a new GIF, take the same six frames from the live site and join them with Pillow (128 colours, 2.2 s for each frame).
 
+## Review (2026-11-07, Claude)
+
+- Delivered: two builds from one code base; a seed made by the real scoring and writing code on synthetic input; MSW handlers that answer in the browser; a banner and a note on what the rule checks missed; E2E tests on the exported site in CI; a search of the server build for demo code; an onboarding checklist for real users; a workflow that publishes only when a person starts it; the live demo at `https://neoncircuit.github.io/job-raider/`; and the README link, GIF, and diagram.
+- Each criterion is closed. Each code step has mutants with a control: 10, 21, 51, 13, 22, and 7, all caught. The 18 demo E2E tests pass on the live site.
+- Real checks found defects that unit tests did not: the writer placeholders (MH-2), a rewrite with no provider (MH-2a), four defects in the browser in MH-3 (raw scores, a false resume message, wrong dates, demo code in the server build), and a step that read a field that a response did not send (MH-5).
+- Claude's errors in this task: the runner test of MH-3 committed on the real `main` before the user's approval, because the runner takes its repository from the handoff path. Nothing was pushed, and the commit was removed. Also: a pane limit taken for a possible bug, until Chromium showed the truth; and a test against a server on port 3000 that ran old code. Each has a lesson in `docs/lessons.md`.
+- Limits: the demo has one sample letter, and each other action gives a 501 with a message. The letter has claims with no support, and the note says so. A push to `main` does not publish the demo, so the site shows the state of the last manual run. `next/font/google` needs the network at build time.
+
 ## Blockers / Questions
 
 - None.
