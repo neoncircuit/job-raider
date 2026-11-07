@@ -1,0 +1,80 @@
+# Job Raider - Publish the public demo to GitHub Pages
+#
+# This workflow builds the static demo, runs the E2E tests on it, and deploys
+# it only when they pass. A person starts it by hand, so a push to main never
+# publishes the site.
+#
+# Before the first run, set Settings > Pages > Source to GitHub Actions.
+
+name: Publish Demo
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time. A new run does not cancel a deploy that has started.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and Test the Demo
+    # Pinned for the same reason as test-frontend-e2e in ci.yml.
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/frontend-ts
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: apps/frontend-ts/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Install Playwright browsers
+        run: |
+          npx playwright install --with-deps chromium
+
+      - name: Build the demo
+        run: |
+          npm run build:demo
+        env:
+          NEXT_PUBLIC_BASE_PATH: /job-raider
+
+      - name: Run E2E tests on the exported site
+        run: |
+          npm run test:e2e:demo
+        env:
+          CI: true
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: apps/frontend-ts/out
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
