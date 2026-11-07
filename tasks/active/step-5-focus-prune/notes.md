@@ -80,6 +80,32 @@ A fresh install was not run locally. After the push, CI run 42372115580 passed: 
 - Claude read screenshots of the sidebar, closed and open. With the group open at a height of 900 px, Logs is below the fold in the sidebar's own scroll area.
 - Runner test: the handoff was in the fresh clone. The dry run passes, the red step fails, the 4 checks pass, commit `adfb170` is on the clone, the 4 files are the same bytes as the checked copies, and the HEAD of the real repository did not change.
 
+## MH-4 written and checked (2026-11-07, Claude)
+
+Two commits are ready on the WSL clone `~/s4_work`, on top of `8970fd3`. They are not applied. They are direct commits, not a runner handoff: a runner edit of the whole page would copy 1,348 old lines into the handoff. To apply them, the real repository fetches the clone and cherry-picks both.
+
+1. `c525922` `test(e2e)`: the smoke test helper from MH-3 clicked "Extras" once. On a cold dev server that click can come before hydration and be lost, and the test timed out on Resume Analysis. The helper now retries until the link shows, as the mobile helper already does. Then the smoke test passed twice from a cold server (28 each).
+2. `5da2d45` `refactor(cover-letter)`: the page is split by a script that cuts at checked line numbers and moves the code with no change.
+
+| File | Lines |
+|---|---|
+| `src/app/cover-letter/page.tsx` | 38 (was 1,348) |
+| `src/lib/hooks/use-cover-letter-page.ts` (state, queries, actions) | 571 |
+| `src/components/cover-letter/cover-letter-result.tsx` | 392 |
+| `src/components/cover-letter/cover-letter-form.tsx` | 306 |
+| `src/components/cover-letter/job-fit-panel.tsx` | 172 |
+| `src/components/cover-letter/cv-indicator.tsx` | 61 |
+
+Each section component takes one prop, the result of the hook, so no prop list needed a rewrite. `tests/lib/module-size.test.ts` keeps each of these files under 600 lines.
+
+Checks:
+
+- Red: before the split, the size test fails because the page has 1,349 lines.
+- The 14 Cover Letter page tests pass with no change to a test file. 358 unit tests pass. `tsc`, eslint with no warnings, and prettier pass.
+- E2E: 42 pass with the API mock, and 18 pass on the demo build. The first full E2E run stopped because its dev server did not start within 300 s, so no test ran. The rerun passed.
+- Screenshots of the page, before and after, in three states (empty, assessed, with a letter): 91 of 1,400,000 pixels differ, by at most 24 of 255. That is anti-aliasing and the animated connection dot, not a layout change.
+- Both versions log the same hydration error on the Cover Letter page in the dev server. It was there before the split.
+
 ## Blockers / Questions
 
 - None.
