@@ -184,7 +184,7 @@ Limits:
 
 ## MH-5 written and checked (2026-11-07, Claude)
 
-`mh-5-onboarding.md` (runner) is ready. It is not applied.
+`mh-5-onboarding.md` (runner) is applied on the repo (2026-11-07, Claude ran the runner on the user's word "Yes, apply it"): commit `907d225`, 8 files, the same bytes as the runner test. The red step failed, and the 4 checks passed. The E2E tests with the final code run in CI after the push.
 
 - New: `src/lib/onboarding.ts`, `src/components/onboarding-checklist.tsx`, and 3 test files. The dashboard shows the card in the server build only.
 - Change to the plan: the backend does not record that a user read the shortlist. A saved, hidden, or tracked job is the proof of a review, and the step text says so.
