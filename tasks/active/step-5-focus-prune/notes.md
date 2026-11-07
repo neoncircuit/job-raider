@@ -69,6 +69,17 @@ Checks on the clone:
 
 A fresh install was not run locally. After the push, CI run 42372115580 passed: its Test Backend job installs `requirements.txt` in a new environment and runs the tests, so that run covers the fresh install.
 
+## MH-3 written and checked (2026-11-07, Claude)
+
+`mh-3-sidebar-groups.md` (runner) is ready. It is not applied.
+
+- New: `SidebarExtras.tsx` (the collapsed group) and `tests/components/sidebar-content.test.tsx` (6 tests). `SidebarContent.tsx` now has Workflow (Dashboard, Pipeline, Jobs, Cover Letter, Applications), System (Metrics, Settings), and Extras (Career Coach, Assessment, Resume Analysis, LinkedIn Analysis, Logs). Profile stays at the top.
+- The smoke E2E test clicked the extra links directly, so its helper now opens Extras first.
+- Check on a clone in WSL: `tsc`, eslint, and prettier pass. 351 unit tests pass. The smoke E2E test passes on desktop and mobile (28). The demo E2E tests pass (18).
+- Mutants: the unchanged code and the control pass, and 10 of 10 are caught.
+- Claude read screenshots of the sidebar, closed and open. With the group open at a height of 900 px, Logs is below the fold in the sidebar's own scroll area.
+- Runner test: the handoff was in the fresh clone. The dry run passes, the red step fails, the 4 checks pass, commit `adfb170` is on the clone, the 4 files are the same bytes as the checked copies, and the HEAD of the real repository did not change.
+
 ## Blockers / Questions
 
 - None.
