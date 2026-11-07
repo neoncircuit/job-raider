@@ -112,6 +112,13 @@ test.describe("demo pages", () => {
     await expect(page.getByRole("main")).toContainText("70 scraped");
   });
 
+  test("the dashboard has no onboarding card", async ({ page }) => {
+    await page.goto("dashboard");
+    await expect(page.getByRole("main")).toContainText("70 scraped");
+
+    await expect(page.getByText("Getting started")).toHaveCount(0);
+  });
+
   test("a reload keeps the data", async ({ page }) => {
     await page.goto("jobs");
     await expect(page.getByRole("main")).toContainText("Research Engineer");

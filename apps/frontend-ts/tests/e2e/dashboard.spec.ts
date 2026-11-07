@@ -21,6 +21,7 @@ test.describe("Dashboard page", () => {
 
     // Section headings render once the page mounts (brand mark + CTA sit above).
     await expect(main.getByText("System health")).toBeVisible();
+    await expect(main.getByText("Getting started")).toBeVisible();
     await expect(main.getByText("Recent pipeline runs")).toBeVisible();
     await expect(
       main.getByRole("link", { name: /Run pipeline/i }),

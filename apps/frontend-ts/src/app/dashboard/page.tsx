@@ -26,6 +26,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
 import { BrandMark } from "@/components/layout/BrandMark";
+import { OnboardingChecklist } from "@/components/onboarding-checklist";
+import { isDemoMode } from "@/demo/mode";
 import { useIsClient } from "@/lib/hooks/use-is-client";
 import { Separator } from "@/components/ui/separator";
 
@@ -155,6 +157,8 @@ export default function DashboardPage() {
           message={metrics.error.message}
         />
       )}
+
+      {ready && !isDemoMode() && <OnboardingChecklist />}
 
       {/* Compact health strip */}
       <section className="rounded border border-border bg-card/80 px-4 py-3">
