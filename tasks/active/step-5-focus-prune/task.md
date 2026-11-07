@@ -24,11 +24,11 @@ flowchart LR
 
 ## Acceptance Criteria
 - [x] Plan approved by the user, with the Easy Apply and theme decisions. (2026-11-07: keep `src/linkedin/`, keep all 13 themes)
-- [ ] Dead code deleted: `frontend-py/`, `src/database/` with `alembic.ini` and its 5 requirements, `src/reports/`, and the 2 YAML files that nothing reads. Backend tests, mypy gate, and a fresh install pass.
+- [x] Dead code deleted: `frontend-py/`, `src/database/` with `alembic.ini` and its 6 requirements, `src/reports/`, and the 2 YAML files that nothing reads. Backend tests (with the packages blocked) and the mypy gate pass. (`374c4a3`; a fresh install was not run)
 - [x] LinkedIn Easy Apply decided: keep the dormant package, because it has no massive downside now (user rule). MH-2 dropped.
 - [ ] Sidebar shows the core loop first, with a collapsed "Extras" group.
 - [ ] `cover-letter/page.tsx`, `stages.py`, and `outcome_tracker.py` split into modules of fewer than 600 lines each, with no change in behaviour.
 - [ ] README tree and docs have no reference to a deleted path.
 
 ## Status
-`in-progress` (2026-11-07: plan approved; next: MH-1, the dead-code deletion)
+`in-progress` (2026-11-07: MH-1 applied; next: MH-3, the sidebar groups)

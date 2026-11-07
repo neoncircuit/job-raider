@@ -50,7 +50,9 @@ The sidebar after MH-3:
 
 ## MH-1 written and checked (2026-11-07, Claude)
 
-A direct commit, because the runner cannot delete files. Commit `0c957b6` is ready on the WSL clone `~/s4_work`, on top of `6e975fd`. It is not applied. To apply it, the real repository fetches the clone and cherry-picks that commit, so the bytes are the ones that were checked.
+Applied on the repo (2026-11-07, Claude, on the user's word "Yes, apply it"): commit `374c4a3`, a cherry-pick of `0c957b6` from the clone. Its code is the same as the checked commit; only the task notes differ. Untracked files stay in the working tree: `frontend-py/` holds an old `.venv` and caches (521 MB), and `src/database/` holds `__pycache__` files. Git does not track them, and Claude did not delete them.
+
+A direct commit, because the runner cannot delete files. Commit `0c957b6` was made on the WSL clone `~/s4_work`, on top of `6e975fd`. To apply it, the real repository fetches the clone and cherry-picks that commit, so the bytes are the ones that were checked.
 
 - Deleted: `frontend-py/` (36 files), `src/database/` and `alembic.ini`, `src/reports/`, `config/scrapers_config.yaml`, and `config/search_config.yaml`. 56 files changed, 6,683 lines deleted.
 - Requirements removed: `sqlalchemy`, `alembic`, `asyncpg`, `psycopg2-binary`, `pgvector`, and `supabase`. Only `src/database/` imported them. `asyncpg` was not in the plan, and the measure showed the same fact for it.
