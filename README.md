@@ -2,41 +2,9 @@
 
 Local-first job search pipeline. It collects listings from several job boards, flags likely scams, scores each job against your resume, and writes tailored resumes and cover letters with local LLMs. You review and apply yourself; the pipeline does not submit applications.
 
-## Features
+**[Open the live demo](https://neoncircuit.github.io/job-raider/)**. It runs in your browser with fictional sample data, and needs no install, backend, or model. The scores and the sample letter are real output of this code on synthetic input. Nothing leaves your browser. See [Public Demo](docs/demo-site.md).
 
-- **Multi-Platform Job Aggregation**: LinkedIn (Playwright), JSearch API (50+ boards via Google for Jobs), and Singapore sources (MyCareersFuture, JobStreet; Careers@Gov is opt-in)
-- **Smart Filtering**: Keyword matching, rule-based scam detection (10 indicators in 5 groups), profile-based filtering
-- **Relevance Scoring**: 100-point heuristic scoring with configurable thresholds
-- **Semantic Matching**: RAG-powered similarity search using ChromaDB vector store and embeddings
-- **Resume Generation**: Two-model approach (small for selection, large for writing)
-- **Resume Analysis**: AI-powered general and job-specific gap analysis with scoring
-- **LinkedIn Profile Analysis**: Inbound-attraction scoring and recruiter-focused recommendations
-- **AI Cover Letter Generation**: Tailored cover letters from profile and job description, with deterministic grounding checks; a letter that claims skills or experience that are not in the resume is rewritten one time, then held for review
-- **Career Coach**: `/api/agents/*` career analysis, gap analysis, roadmaps, and goals
-- **DISC Personality Assessment**: Most/least forced-choice assessment with job matching
-- **Technical Assessment Trainer**: Practice engine for coding and technical interviews
-- **Job Trust Analysis**: Scam detection and employer-trust scoring
-- **Fresh-Graduate Scoring Mode**: Projects 35%, Skills 30%, Education 20% weighting
-- **Light/Dark Theme Toggle**: UI theme switching via the sidebar
-- **Frontend Testing Infrastructure**: Vitest unit tests + Playwright E2E tests
-- **Dry Run by Default**: The pipeline does not submit applications
-- **Local Models by Default**: Generation runs on Ollama on your machine; a cloud model is used only as a fallback when you set an API key
-- **Application Tracking**: Track applications from submission to offer with custom statuses
-
-## Measured Results
-
-Each number comes from a labeled set and a command in this repository, except the real letters, which are private. The sections have the commands and the limits. Read the limits: on real letters, the grounding rules find few of the errors, and the scam rules do not detect the frauds in EMSCAD.
-
-| Part | Set | Result | Date |
-|------|-----|--------|------|
-| [Cover letter grounding](#cover-letter-grounding) | 65 constructed letters | Sentence precision 0.154, recall 0.638 | 2026-11-05 |
-| | 23 holdout letters, one run | Sentence precision 0.104, recall 0.727 | 2026-10-24 |
-| | 10 real letters, private | Sentence precision 0.182, recall 0.154 | 2026-10-31 |
-| [Job ranking](#job-ranking) | 140 labeled pairs | NDCG@10: BM25 0.915, hybrid 0.851, heuristic 0.818, dense 0.806 | 2026-11-04 |
-| [Duplicate detection](#duplicate-detection) | 31 labeled pairs | Identified precision 0.833, recall 0.938 | 2026-11-05 |
-| [Scam detection](#scam-detection) | 8,940 held-out postings, one run | 0 of 433 frauds found; false-positive rate 0.0027 | 2026-10-26 |
-| [Structured output](#structured-output) | 43 cases at 9 call sites | Strict answers 0.845 before, 1.000 after | 2026-11-01 |
-| [Writer model](#writer-model) | 65 pairs, 3 letters each | First drafts with placeholders: `qwen2.5:7b` 0 of 195, `qwen2.5:3b` 18 of 195 | 2026-11-05 |
+![The demo: dashboard, ranked jobs, the sample letter with its note, applications, and metrics](docs/assets/demo.gif)
 
 ## Architecture
 
@@ -57,6 +25,44 @@ graph LR
 The small model does the selection step, so the large model gets a short, focused prompt. Both run locally on Ollama by default, so a default local route has no per-token API cost. The Metrics page shows the recorded cost when a cloud fallback or a cloud route is used.
 
 Cover letters also use `qwen2.5:7b` by default; see [Writer Model](#writer-model).
+
+## Features
+
+- **Multi-Platform Job Aggregation**: LinkedIn (Playwright), JSearch API (50+ boards via Google for Jobs), and Singapore sources (MyCareersFuture, JobStreet; Careers@Gov is opt-in)
+- **Smart Filtering**: Keyword matching, rule-based scam detection (10 indicators in 5 groups), profile-based filtering
+- **Relevance Scoring**: 100-point heuristic scoring with configurable thresholds
+- **Semantic Matching**: RAG-powered similarity search using ChromaDB vector store and embeddings
+- **Resume Generation**: Two-model approach (small for selection, large for writing)
+- **Resume Analysis**: AI-powered general and job-specific gap analysis with scoring
+- **LinkedIn Profile Analysis**: Inbound-attraction scoring and recruiter-focused recommendations
+- **AI Cover Letter Generation**: Tailored cover letters from profile and job description, with deterministic grounding checks; a letter that claims skills or experience that are not in the resume is rewritten one time, then held for review
+- **Career Coach**: `/api/agents/*` career analysis, gap analysis, roadmaps, and goals
+- **DISC Personality Assessment**: Most/least forced-choice assessment with job matching
+- **Technical Assessment Trainer**: Practice engine for coding and technical interviews
+- **Job Trust Analysis**: Scam detection and employer-trust scoring
+- **Fresh-Graduate Scoring Mode**: Projects 35%, Skills 30%, Education 20% weighting
+- **Light/Dark Theme Toggle**: UI theme switching via the sidebar
+- **Frontend Testing Infrastructure**: Vitest unit tests + Playwright E2E tests
+- **Dry Run by Default**: The pipeline does not submit applications
+- **Local Models by Default**: Generation runs on Ollama on your machine; a cloud model is used only as a fallback when you set an API key
+- **Application Tracking**: Track applications from submission to offer with custom statuses
+- **Onboarding Checklist**: The dashboard shows the next setup step, from the backend to a first tracked application
+- **Public Demo**: A static build with sample data, tested in CI and published to GitHub Pages
+
+## Measured Results
+
+Each number comes from a labeled set and a command in this repository, except the real letters, which are private. The sections have the commands and the limits. Read the limits: on real letters, the grounding rules find few of the errors, and the scam rules do not detect the frauds in EMSCAD.
+
+| Part | Set | Result | Date |
+|------|-----|--------|------|
+| [Cover letter grounding](#cover-letter-grounding) | 65 constructed letters | Sentence precision 0.154, recall 0.638 | 2026-11-05 |
+| | 23 holdout letters, one run | Sentence precision 0.104, recall 0.727 | 2026-10-24 |
+| | 10 real letters, private | Sentence precision 0.182, recall 0.154 | 2026-10-31 |
+| [Job ranking](#job-ranking) | 140 labeled pairs | NDCG@10: BM25 0.915, hybrid 0.851, heuristic 0.818, dense 0.806 | 2026-11-04 |
+| [Duplicate detection](#duplicate-detection) | 31 labeled pairs | Identified precision 0.833, recall 0.938 | 2026-11-05 |
+| [Scam detection](#scam-detection) | 8,940 held-out postings, one run | 0 of 433 frauds found; false-positive rate 0.0027 | 2026-10-26 |
+| [Structured output](#structured-output) | 43 cases at 9 call sites | Strict answers 0.845 before, 1.000 after | 2026-11-01 |
+| [Writer model](#writer-model) | 65 pairs, 3 letters each | First drafts with placeholders: `qwen2.5:7b` 0 of 195, `qwen2.5:3b` 18 of 195 | 2026-11-05 |
 
 ## Cost and usage tracking
 
@@ -631,6 +637,7 @@ job-raider/                      # Project root (monorepo)
 - **[Usage Guide](docs/usage.md)** - Installation and usage
 - **[API Reference](docs/api.md)** - Complete API documentation
 - **[Testing Guide](docs/testing.md)** - Backend and frontend test commands
+- **[Public Demo](docs/demo-site.md)** - How the demo works, and how to build, test, and publish it
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 - **[Disk Space Management](docs/disk-space.md)** - Data retention policies
 

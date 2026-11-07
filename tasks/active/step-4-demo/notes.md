@@ -211,6 +211,14 @@ First publish (2026-11-07): the user set the Pages source to GitHub Actions, and
 
 Limit before the publish: the deploy job could not run until Pages was on, so its first run was the first proof. The test reads the workflow text, and it does not prove that GitHub accepts the deploy.
 
+## MH-7: README and GIF (2026-11-07, Claude)
+
+A direct commit, not a handoff: the README has Mermaid fences, and the GIF is binary, and the runner can do neither.
+
+- `README.md`: a link to the live demo and the GIF after the first paragraph, then the Architecture section (moved up from after Measured Results), two new feature lines (onboarding checklist, public demo), and a link to `docs/demo-site.md` under Documentation. Each anchor in the README still resolves.
+- `docs/assets/demo.gif`: 505 KB, 960 px wide, 6 frames, 15 s, loops. The frames come from the live site in Chromium: Dashboard, Jobs, the job panel, the sample letter with its note, Applications, and Metrics. The letter frame holds for 4 s. Claude read each frame before the commit. The first two letter frames scrolled the job list out of view, and the third did not scroll, so the capture uses `scrollIntoView` with `block: "end"` in a window 960 px high.
+- The capture script is not in the repository. To make a new GIF, take the same six frames from the live site and join them with Pillow (128 colours, 2.2 s for each frame).
+
 ## Blockers / Questions
 
 - None.

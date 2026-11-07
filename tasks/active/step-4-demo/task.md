@@ -32,8 +32,8 @@ flowchart LR
 - [x] E2E tests on the exported site in CI: each core page shows data, the banner is there, and no request fails. (`2e45b68`, CI run 42317711516, 13 of 13 mutants)
 - [x] Onboarding checklist on the dashboard that reads real state, with tests. (`907d225`, CI run 42325636575, 22 of 22 mutants)
 - [x] Demo deployed, with the user's approval. (2026-11-07, run 42364191748; 18 E2E tests pass on the live site)
-- [ ] README: demo link, short GIF, and the architecture diagram at the top.
+- [x] README: demo link, short GIF, and the architecture diagram at the top. (2026-11-07)
 - [ ] Done when: a visitor opens the public URL, follows the core loop with sample data, and sees that it is a demo.
 
 ## Status
-`in-progress` (2026-11-07: MH-1 to MH-6 applied; demo live at https://neoncircuit.github.io/job-raider/; next: MH-7, the GIF and the README)
+`in-progress` (2026-11-07: MH-1 to MH-7 done; demo live at https://neoncircuit.github.io/job-raider/; next: push, then archive)
