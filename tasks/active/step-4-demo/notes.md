@@ -169,7 +169,7 @@ Incident (2026-11-06): the runner test used the handoff on `D:` from a clone, an
 
 ## MH-4 written and checked (2026-11-07, Claude)
 
-`mh-4-demo-ci.md` (runner) is applied on the repo (2026-11-07, Claude ran the runner on the user's word "Yes, apply it"): commit `2e45b68`, 8 files, the same bytes as the runner test. The red step failed, and the 5 checks passed. The `test-demo` job has not run on GitHub yet.
+`mh-4-demo-ci.md` (runner) is applied on the repo (2026-11-07, Claude ran the runner on the user's word "Yes, apply it"): commit `2e45b68`, 8 files, the same bytes as the runner test. The red step failed, and the 5 checks passed. The first CI run with the `test-demo` job passed on GitHub (run 42317711516, commit `5370796`).
 
 - New: `playwright.demo.config.ts`, `tests/e2e-demo/demo.spec.ts` (17 tests), `scripts/serve-demo.mjs`, `scripts/find-demo-code.mjs`, and `tests/lib/find-demo-code.test.ts`. New CI job `test-demo`, and a new `check:no-demo` step in `build-frontend`.
 - Check on a clone in WSL: `tsc`, eslint, and prettier pass. 318 unit tests pass in 57 files. The demo build passes, and all 17 E2E tests pass on it, with Chromium on the Pages base path. The server build passes, and `check:no-demo` finds no demo code in 682 files.
