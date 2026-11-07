@@ -182,6 +182,22 @@ Limits:
 - `next/font/google` downloads the fonts at build time. The download failed on 2 of about 15 local builds, with a `module-not-found` error. The failure is in the network step, not in the code. CI can meet the same failure, and the existing `build-frontend` job has the same risk.
 - CI will use the Chromium build of its Playwright version (1223). The local check used build 1243.
 
+## MH-5 written and checked (2026-11-07, Claude)
+
+`mh-5-onboarding.md` (runner) is ready. It is not applied.
+
+- New: `src/lib/onboarding.ts`, `src/components/onboarding-checklist.tsx`, and 3 test files. The dashboard shows the card in the server build only.
+- Change to the plan: the backend does not record that a user read the shortlist. A saved, hidden, or tracked job is the proof of a review, and the step text says so.
+- Check on a clone in WSL: `tsc`, eslint, and prettier pass. All frontend unit tests pass. The demo E2E tests pass (18), and they prove that the demo has no card. The dashboard E2E test passes with the card.
+- Mutants: the unchanged code and the control pass, and 22 of 22 are caught over two runs. The first run found one survivor: the test for a saved dismiss looked for the card before it could come back. The test now reads the saved value.
+- A screenshot found a defect that no test found: the step read `total`, and the E2E mock of `/pipeline/history` has only `runs`, so the step stayed open next to a listed run. The step now reads `runs`, which is the data that the page shows.
+- Runner test: the handoff was in the fresh clone. The dry run passes, the red step fails, the 4 checks pass, commit `63459a7` is on the clone, the 8 files are the same bytes as the checked copies, and the HEAD of the real repository did not change.
+
+Limits:
+
+- The first dashboard E2E run failed because Playwright reused another server on port 3000. Set `PLAYWRIGHT_PORT` to a free port for a local run. CI does not reuse a server.
+- A user who works with cloud models only sees the model step as open, and can dismiss the card.
+
 ## Blockers / Questions
 
 - None.

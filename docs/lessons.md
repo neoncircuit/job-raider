@@ -3703,3 +3703,12 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - When a browser check fails, read the real error, and try a second browser before you change the code.
 - Drive the actions on each page as a visitor would. A page that loads can still show a false message.
 - Search the build output for what must not be in it. A check on a literal `process.env.NEXT_PUBLIC_*` value removes dead code only when the variable has a value at build time.
+
+### Look at a new card, and use a free port
+
+**Lesson:** In MH-5, all tests passed, but a screenshot showed "Run a first discover" as open next to a listed run. The step read a field that the mock did not send. Earlier, a dashboard E2E test failed because Playwright reused another server on port 3000, so it tested old code.
+
+**How to apply:**
+- Take a screenshot of a new UI element with realistic data, and read it against the rest of the page.
+- Read the same field that the page already shows, so that two parts of a page cannot disagree.
+- For a local E2E run, set `PLAYWRIGHT_PORT` to a free port. When a page does not request what the new code needs, first check which server answered.
