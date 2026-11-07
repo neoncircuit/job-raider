@@ -207,7 +207,9 @@ Limits:
 - Check on a clone in WSL: valid YAML, `tsc` and eslint pass, 345 unit tests pass. Mutants: the control passes, and 7 of 7 are caught.
 - Runner test: the handoff was in the fresh clone. The dry run passes, the red step fails, the 5 checks pass, commit `7b6f771` is on the clone, the 2 files are the same bytes as the checked copies, and the HEAD of the real repository did not change.
 
-Limit: the deploy job cannot run until Pages is on, so its first run is the first proof. The test reads the workflow text, and it does not prove that GitHub accepts the deploy.
+First publish (2026-11-07): the user set the Pages source to GitHub Actions, and said "Pages is on, publish". Claude read the setting (`build_type: workflow`) and started the workflow. Run 42364191748 on commit `92a99f1`: 18 E2E tests passed, and the deploy reported success. Then the same 18 tests passed against the live site, `https://neoncircuit.github.io/job-raider/`, in Chromium. Pages serves `mockServiceWorker.js` with status 200 and `application/javascript`.
+
+Limit before the publish: the deploy job could not run until Pages was on, so its first run was the first proof. The test reads the workflow text, and it does not prove that GitHub accepts the deploy.
 
 ## Blockers / Questions
 
