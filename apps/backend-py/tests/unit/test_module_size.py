@@ -20,6 +20,13 @@ LIMITED_MODULES = [
     "src/pipeline/stages_collect.py",
     "src/pipeline/stages_rank.py",
     "src/pipeline/stages_generate.py",
+    "src/metrics/outcome_tracker.py",
+    "src/metrics/outcome_models.py",
+    "src/metrics/outcome_helpers.py",
+    "src/metrics/outcome_storage.py",
+    "src/metrics/outcome_analytics.py",
+    "src/metrics/outcome_lists.py",
+    "src/metrics/outcome_external.py",
 ]
 
 
@@ -37,7 +44,7 @@ def count_lines(path: Path) -> int:
 
 
 def test_split_modules_exist() -> None:
-    """The stage modules exist, so the size checks below test real files."""
+    """The split modules exist, so the size checks below test real files."""
     missing = [m for m in LIMITED_MODULES if not (BACKEND_DIR / m).exists()]
     assert missing == []
 
