@@ -35,4 +35,4 @@ flowchart LR
 - [ ] MH-6 (optional): MLflow evaluation runs record the hardware profile, so results from different machines can be compared.
 
 ## Status
-`in-progress` (2026-11-08: MH-1 measured; MH-2 applied; MH-3 next)
+`in-progress` (2026-11-08: MH-2 applied; MH-3 checked on a clone, not applied)

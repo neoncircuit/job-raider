@@ -94,6 +94,19 @@ Other checks on the clone:
 - Smoke run against the real llmfit 1.1.20 and the local Ollama (read-only; no model loaded): budget 6.0 GB of 8.0 GB. Of 21 installed tags, 8 use an llmfit plan for the installed quant and 13 use the rough estimate. 15 fit, 5 are over the budget (`deepseek-r1:8b` at 6.16 GB, `qwen3.5:9b`, `qwen3.5-9b-16k`, `ornith:9b`, `granite4.1:8b`), and 1 is too large (`qwen2.5:14b` at 10.57 GB). There are 8 suggestions, such as `gemma4:e2b`, `phi3`, and `llama3.2:3b`. The old binary in `/usr/local/bin` gives "update recommended", and a missing binary gives "not installed".
 - The smoke run took 11.7 s, with 8 `plan` calls and 2 catalog runs. MH-3 must cache the results and run them in the background.
 
+## MH-3 written and checked (2026-11-08, Claude)
+
+`mh-3-hardware-api.md` (runner) is written. It is not applied. It adds `src/hardware/service.py` (the cached report and the pull check), `src/api/routes/hardware.py` (`GET /api/hardware/fit`), the over-budget 409 on `POST /api/settings/ollama/pull` with `confirm_over_budget`, the `quantization` field in `ollama_admin.list_models`, a conftest guard so tests never run a real llmfit, and 20 tests.
+
+Runner test on the clone (the handoff was in the clone): the dry run is valid, the red step fails for the right reason (`ImportError: service`), the 4 checks pass (115 tests, black, ruff, mypy gate with 179 known and 0 new), and commit `3e8d820` is on the clone. The HEAD of the real repository did not change. The first run passed.
+
+Other checks on the clone:
+
+- The full backend suite passes: 2,225 tests.
+- Mutants: 12 of 12 are caught (cache, plan cache, refresh, budget passed to the catalog, plans used, FP16 name, quant from the tag, no warning for an unknown tag, the pull warning, the confirm flag, the too-large message, and the quantization field). In the first run, two mutants did not apply because of an indent error in the mutant script, and the file did not change; the rerun with the correct text caught both.
+- Smoke run through the API (a TestClient with the real llmfit 1.1.20 and the local Ollama; read-only): the cold report took 5.0 s (the MH-2 smoke took 11.7 s without the cache and the parallel plans), and the warm report took 0.0 s. The labels match MH-2: 15 fit, 5 over the budget, 1 too large, and the same 8 suggestions. A pull of `deepseek-r1:8b` answered 409: "needs about 6.2 GB of GPU memory, above your safety budget of 6.0 GB (75% of 8.0 GB). Confirm to pull it anyway." The pull state stayed `idle`, so no download started.
+- The first smoke run failed in the smoke script, not in the code: TestClient's default host `testserver` is not in the trusted hosts. The script now uses `http://localhost`.
+
 ## Blockers / Questions
 
 - None.
