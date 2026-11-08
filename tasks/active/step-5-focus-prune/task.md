@@ -27,8 +27,8 @@ flowchart LR
 - [x] Dead code deleted: `frontend-py/`, `src/database/` with `alembic.ini` and its 6 requirements, `src/reports/`, and the 2 YAML files that nothing reads. Backend tests (with the packages blocked) and the mypy gate pass. (`374c4a3`; a fresh install was not run)
 - [x] LinkedIn Easy Apply decided: keep the dormant package, because it has no massive downside now (user rule). MH-2 dropped.
 - [x] Sidebar shows the core loop first, with a collapsed "Extras" group. (`a266ed9`, 10 of 10 mutants)
-- [ ] `cover-letter/page.tsx`, `stages.py`, and `outcome_tracker.py` split into modules of fewer than 600 lines each, with no change in behaviour.
-- [ ] README tree and docs have no reference to a deleted path.
+- [x] `cover-letter/page.tsx`, `stages.py`, and `outcome_tracker.py` split into modules of fewer than 600 lines each, with no change in behaviour. (`8179f60`, `34488eb`, `1fee432`; the unchanged tests pass, and size tests guard each module)
+- [x] README tree and docs have no reference to a deleted path. (`374c4a3`; a `git grep` on 2026-11-08 finds none outside the history docs)
 
 ## Status
-`in-progress` (2026-11-07: MH-1, MH-3, MH-4, and MH-5 applied; MH-6 checked on a clone, not applied)
+`in-progress` (2026-11-08: MH-1 and MH-3 to MH-6 applied; all criteria met; archive after the push and CI)

@@ -135,7 +135,9 @@ Checks on the clone:
 
 ## MH-6 written and checked (2026-11-08, Claude)
 
-One commit is ready on the WSL clone `~/s4_work`, on top of `782a22d`: `fffa8bd` `refactor(metrics)`. It is not applied. It is a direct commit, as for MH-4 and MH-5.
+Applied on the repo (2026-11-08, Claude, on the user's word "Yes, apply it"): commit `1fee432`, a cherry-pick of `fffa8bd`. `git diff fffa8bd HEAD`, without `tasks/`, is empty.
+
+One commit was ready on the WSL clone `~/s4_work`, on top of `782a22d`: `fffa8bd` `refactor(metrics)`. It is a direct commit, as for MH-4 and MH-5.
 
 No test patches a name through `src.metrics.outcome_tracker`, but other modules import 13 names from it, so it re-exports each of them in `__all__`. The mypy baseline has 2 errors keyed to `outcome_tracker.py`, both in `get_company_stats`. The gate compares errors by file, so that method stays in `outcome_tracker.py`. Otherwise the gate would count them as new, and a baseline `--update` is not allowed.
 
