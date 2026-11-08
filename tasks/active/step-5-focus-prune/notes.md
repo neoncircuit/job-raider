@@ -110,7 +110,7 @@ Checks:
 
 ## MH-5 written and checked (2026-11-07, Claude)
 
-Applied on the repo (2026-11-08, Claude, on the user's word "Yes, apply it"): commit `34488eb`, a cherry-pick of `88c4f8e`. `git diff 88c4f8e HEAD`, without `tasks/`, is empty.
+Applied on the repo (2026-11-08, Claude, on the user's word "Yes, apply it"): commit `34488eb`, a cherry-pick of `88c4f8e`. `git diff 88c4f8e HEAD`, without `tasks/`, is empty. Pushed as `e83deb0`; CI run 42458192041 passed (all 12 jobs; the Docker job is skipped on `main` by design).
 
 One commit was ready on the WSL clone `~/s4_work`, on top of `cf8ee66`: `88c4f8e` `refactor(pipeline)`. It is a direct commit, for the same reason as MH-4. To apply it, the real repository fetches the clone and cherry-picks it.
 
