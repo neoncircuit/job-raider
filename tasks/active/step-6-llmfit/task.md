@@ -28,11 +28,11 @@ flowchart LR
 ## Acceptance Criteria
 - [x] Plan approved by the user, with the decisions on the safety margin, the setup default, and the pull guard. (2026-11-08: 75% VRAM budget; installed by default; warn and confirm)
 - [x] MH-1: the pinned llmfit version is measured on this machine: JSON samples, Ollama mapping coverage, run time, and the PyPI wheel. Test fixtures use made-up hardware values. (2026-11-08: v1.1.20; fixtures are made in MH-2)
-- [ ] MH-2: a backend client finds llmfit, checks its version, runs it safely, and parses only the fields we use. Tests cover missing binary, old version, timeout, bad JSON, and a good sample.
+- [x] MH-2: a backend client finds llmfit, checks its version, runs it safely, and parses only the fields we use. Tests cover missing binary, old version, timeout, bad JSON, and a good sample. (`9b7b2be`, 12 of 12 mutants)
 - [ ] MH-3: `GET /api/hardware/fit` gives the hardware, the safety budget, a label for each installed Ollama model, and suggestions that map to Ollama tags. The pull route warns when a model is over the budget.
 - [ ] MH-4: the Ollama models card shows the fit labels, the suggestions, and an install hint when llmfit is missing. Unit tests, E2E with the mock, and the demo pass.
 - [ ] MH-5: `setup.sh` installs the pinned llmfit by default, with a flag to skip it, and a failure does not stop setup. A docs page with a flow diagram explains the feature. The README names it.
 - [ ] MH-6 (optional): MLflow evaluation runs record the hardware profile, so results from different machines can be compared.
 
 ## Status
-`in-progress` (2026-11-08: MH-1 measured; MH-2 checked on a clone, not applied)
+`in-progress` (2026-11-08: MH-1 measured; MH-2 applied; MH-3 next)
