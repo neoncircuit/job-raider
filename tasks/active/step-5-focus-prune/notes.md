@@ -110,7 +110,9 @@ Checks:
 
 ## MH-5 written and checked (2026-11-07, Claude)
 
-One commit is ready on the WSL clone `~/s4_work`, on top of `cf8ee66`: `88c4f8e` `refactor(pipeline)`. It is not applied. It is a direct commit, for the same reason as MH-4. To apply it, the real repository fetches the clone and cherry-picks it.
+Applied on the repo (2026-11-08, Claude, on the user's word "Yes, apply it"): commit `34488eb`, a cherry-pick of `88c4f8e`. `git diff 88c4f8e HEAD`, without `tasks/`, is empty.
+
+One commit was ready on the WSL clone `~/s4_work`, on top of `cf8ee66`: `88c4f8e` `refactor(pipeline)`. It is a direct commit, for the same reason as MH-4. To apply it, the real repository fetches the clone and cherry-picks it.
 
 `PipelineStages` is one class, so the split uses mixins. Tests patch 8 names through `src.pipeline.stages` (`generate_cover_letter_sync`, `ApplicationTracker`, and the 5 RAG classes plus `EmbeddingClient`). A patch on that module reaches only code in that module, so the 3 methods that use those names stay in `stages.py`.
 
