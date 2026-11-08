@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
+from ..hardware.fit import DEFAULT_VRAM_HEADROOM_PERCENT
 from ..llm.router import TaskType
 
 _logger = logging.getLogger(__name__)
@@ -227,6 +228,20 @@ class CostLimits(BaseModel):
     )
 
 
+class HardwareSettings(BaseModel):
+    """Hardware fit settings (Step 6)."""
+
+    vram_headroom_percent: int = Field(
+        default=DEFAULT_VRAM_HEADROOM_PERCENT,
+        ge=30,
+        le=100,
+        description=(
+            "Share of the total GPU memory that a local model may use. A model "
+            "above it is labelled over budget, and a pull asks to confirm."
+        ),
+    )
+
+
 class UserSettings(BaseModel):
     """Complete user settings configuration."""
 
@@ -241,6 +256,9 @@ class UserSettings(BaseModel):
     )
     cost_limits: CostLimits = Field(
         default_factory=CostLimits, description="Cost and usage limits"
+    )
+    hardware: HardwareSettings = Field(
+        default_factory=HardwareSettings, description="Hardware fit settings"
     )
     updated_at: datetime = Field(
         default_factory=datetime.now, description="Last update timestamp"
@@ -302,6 +320,9 @@ def merge_preserving_api_keys(
         merged.api_config.anthropic_api_key = current.api_config.anthropic_api_key
     if not merged.api_config.gemini_api_key:
         merged.api_config.gemini_api_key = current.api_config.gemini_api_key
+    # A client from before Step 6 omits the hardware section; keep the stored one.
+    if "hardware" not in incoming.model_fields_set:
+        merged.hardware = current.hardware.model_copy(deep=True)
     # has_* are client-facing only; do not persist as source of truth
     merged.api_config.has_anthropic_key = False
     merged.api_config.has_gemini_key = False

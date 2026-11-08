@@ -1,0 +1,98 @@
+{
+  "system": {
+    "gpu_name": "Example GPU",
+    "gpu_vram_gb": 12.0,
+    "has_gpu": true,
+    "total_ram_gb": 32.0
+  },
+  "models": [
+    {
+      "name": "example/Chat-7B-Instruct",
+      "ollama_name": "examplechat:7b",
+      "runtime": "llama.cpp",
+      "best_quant": "Q5_K_M",
+      "fit_level": "Good",
+      "memory_required_gb": 6.4,
+      "utilization_pct": 71.1,
+      "estimated_tps": 70.0,
+      "score": 88.0,
+      "params_b": 7.2,
+      "category": "Chat",
+      "use_case": "General chat",
+      "license": "apache-2.0",
+      "installed": false,
+      "estimate_confidence": "medium",
+      "notes": ["Extra fields are ignored"]
+    },
+    {
+      "name": "example/Chat-7B-Instruct-AWQ",
+      "ollama_name": null,
+      "runtime": "vLLM",
+      "best_quant": "AWQ-4bit",
+      "fit_level": "Perfect",
+      "memory_required_gb": 5.1,
+      "utilization_pct": 56.7,
+      "estimated_tps": 90.0,
+      "score": 95.0,
+      "params_b": 7.2,
+      "category": "Chat",
+      "use_case": "General chat",
+      "license": "apache-2.0",
+      "installed": false
+    },
+    {
+      "name": "example/Coder-3B",
+      "ollama_name": "examplecoder:3b",
+      "runtime": "llama.cpp",
+      "best_quant": "Q8_0",
+      "fit_level": "Perfect",
+      "memory_required_gb": 4.1,
+      "utilization_pct": 45.6,
+      "estimated_tps": 95.0,
+      "score": 82.0,
+      "params_b": 3.1,
+      "category": "Coding",
+      "use_case": "Code",
+      "license": "mit",
+      "installed": true
+    },
+    {
+      "name": "example/Big-14B",
+      "ollama_name": "examplebig:14b",
+      "runtime": "llama.cpp",
+      "best_quant": "Q3_K_M",
+      "fit_level": "Marginal",
+      "memory_required_gb": 8.6,
+      "utilization_pct": 95.6,
+      "estimated_tps": 40.0,
+      "score": 84.0,
+      "params_b": 14.7,
+      "category": "General",
+      "use_case": "General",
+      "license": null,
+      "installed": false
+    },
+    {
+      "name": "example/Embed-Large",
+      "ollama_name": "exampleembed",
+      "runtime": "llama.cpp",
+      "best_quant": "Q8_0",
+      "fit_level": "Perfect",
+      "memory_required_gb": 0.9,
+      "utilization_pct": 10.0,
+      "estimated_tps": 500.0,
+      "score": 80.0,
+      "params_b": 0.34,
+      "category": "Embedding",
+      "use_case": "Embeddings",
+      "license": "mit",
+      "installed": false
+    },
+    {
+      "name": "example/Bad-Row",
+      "runtime": "llama.cpp",
+      "best_quant": "Q4_K_M",
+      "fit_level": "Good"
+    }
+  ]
+}

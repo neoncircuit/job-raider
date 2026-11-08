@@ -1,0 +1,30 @@
+{
+  "providers": {
+    "llama.cpp": {
+      "available": false,
+      "binary_style": "separate",
+      "server_running": false
+    }
+  },
+  "system": {
+    "available_ram_gb": 20.5,
+    "backend": "CUDA",
+    "cpu_cores": 16,
+    "cpu_name": "Example CPU 8-Core",
+    "gpu_count": 1,
+    "gpu_name": "Example GPU",
+    "gpu_vram_gb": 12.0,
+    "gpus": [
+      {
+        "backend": "CUDA",
+        "count": 1,
+        "name": "Example GPU",
+        "unified_memory": false,
+        "vram_gb": 12.0
+      }
+    ],
+    "has_gpu": true,
+    "total_ram_gb": 32.0,
+    "unified_memory": false
+  }
+}
