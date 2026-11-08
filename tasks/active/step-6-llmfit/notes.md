@@ -53,8 +53,35 @@ Facts from the llmfit repository (through `gh`) and from read-only runs in WSL o
 2. Setup: `setup.sh` installs the pinned llmfit by default, with `--no-llmfit` to skip it. A failed install does not stop setup.
 3. Pull guard: a model over the budget gets a warning, and the pull starts only after the user confirms. The 9B refusal stays.
 
+## MH-1 measured (2026-11-08, Claude)
+
+The user approved the plan and the download ("Yes, approve and start"). llmfit v1.1.20 is installed from PyPI into the scratch venv `~/llmfit_scratch/.venv` in WSL. The real repository did not change. The raw JSON samples are in the Claude scratchpad (`s6mh1/`); they hold the real hardware names, so they are not committed.
+
+| Item | Fact (v1.1.20) |
+|---|---|
+| Package | `llmfit-1.1.20-py3-none-manylinux_2_17_x86_64.whl`, 7.9 MB. pip puts a 42 MB binary at `.venv/bin/llmfit`. So `setup.sh` can install it into the backend `.venv` with one pinned pip line. |
+| Run time | `--json system` 0.8 s; `--json fit -n <all>` 2.4 to 2.8 s; `plan` 0.8 s. The API must cache the results and not run llmfit on each request. |
+| Flags | `--memory`, `--memory-percent`, `--ram`, `--max-context` are global flags before the subcommand. `fit` has no `--runtime` flag, so we filter on the `runtime` field (`llama.cpp`; the others are `vLLM` and `bitnet.cpp`). |
+| Errors | A bad flag exits 2 with plain text on stderr (no JSON). The client must treat any non-zero exit or non-JSON output as "not available". |
+| `system` JSON | `system.gpu_vram_gb`, `gpu_name`, `backend`, `has_gpu`, `total_ram_gb`, `available_ram_gb`, `gpus[]`, and a new `providers` block. Free VRAM is not in it now. |
+| `fit` JSON | `{system, models}`. 13,112 `llama.cpp` rows and 132 distinct `ollama_name` values. New fields: `quantization`, `runnable`, `estimate_confidence`. |
+| Mapping | 8 of the 21 installed tags map by `ollama_name` (v1.1.6: 5). Not mapped: the user's own tags (3), newer families (`qwen3.5`, `granite4.1`, `olmo-3`, `nemotron-3-nano`, `ornith`), `mistral:latest`, `deepseek-coder:6.7b`, and one embedding model. |
+| Labels | Less permissive than v1.1.6: `deepseek-r1:8b` is "Marginal" at 87% (v1.1.6: "Perfect" at 99%). Still, each label is for `best_quant` (Q6_K, Q5_K_M, Q8_0), and every installed tag here is Q4_K_M (or Q4_0, F16). |
+| `plan --quant` | `plan "Qwen/Qwen2.5-Coder-7B-Instruct" --quant Q4_K_M --context 8192 --json` gives the installed file's need: minimum 5.35 GB VRAM, recommended 7.1 GB, `disk_size_gb` 4.42 (the Ollama file is 4.68 GB). It grades the GPU path against the VRAM that is free now (5.7 GB here), not the total. |
+| Free VRAM | `nvidia-smi` shows 2.3 GB of 8 GB in use while idle (the Windows desktop and any loaded model). |
+
+Consequences for MH-2 and MH-3:
+
+1. The budget is `gpu_vram_gb` times the headroom (75%). It is stable, so labels do not change when a model loads. The card also shows that the desktop uses some VRAM.
+2. Mapped tags: run `plan` with the installed quant and compare its minimum VRAM with the budget. Unmapped tags: compare the Ollama file size plus a context allowance with the budget, and mark the label "rough estimate".
+3. Cache `system` and `fit` (for example 10 minutes) and run `plan` only for mapped tags, in the background, with one call per tag at most per cache period.
+4. The minimum version is 1.1.20, because `--memory-percent` and the current field names start in that range. An older binary (such as the 1.1.6 in `/usr/local/bin`) gives "update recommended", and the client then uses only `system`.
+5. The test fixtures use made-up hardware ("Example GPU", 12 GB) and a few catalog rows copied in shape, not in value.
+
+- [x] MH-1 is done. The acceptance criterion is checked.
+
 ## Blockers / Questions
 
-- MH-1 installs llmfit v1.1.20 from PyPI into a scratch venv in WSL. That is a download, so it needs the user's approval.
+- None.
 
 ## Review
