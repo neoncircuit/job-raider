@@ -82,7 +82,7 @@ Consequences for MH-2 and MH-3:
 
 ## MH-2 written and checked (2026-11-08, Claude)
 
-`mh-2-llmfit-client.md` (runner) is applied on the repo (2026-11-08, Claude ran the runner on the user's word "Yes, apply it"): commit `9b7b2be`. The red step failed, the 4 checks passed, and `git diff 686be0c HEAD`, without `tasks/`, is empty. It adds `src/hardware/` (`llmfit_client.py`, `fit.py`), the `hardware.vram_headroom_percent` setting (30 to 100, default 75), 3 fixtures with made-up hardware, and 2 test files (40 tests).
+`mh-2-llmfit-client.md` (runner) is applied on the repo (2026-11-08, Claude ran the runner on the user's word "Yes, apply it"): commit `9b7b2be`. The red step failed, the 4 checks passed, and `git diff 686be0c HEAD`, without `tasks/`, is empty. Pushed as `edc64c2`; CI run 42475903565 passed (all 12 jobs, on a runner without llmfit installed). It adds `src/hardware/` (`llmfit_client.py`, `fit.py`), the `hardware.vram_headroom_percent` setting (30 to 100, default 75), 3 fixtures with made-up hardware, and 2 test files (40 tests).
 
 Runner test on the clone `~/s4_work` (the handoff was in the clone; `git rev-parse --show-toplevel` gave the clone): the dry run is valid, the red step fails for the right reason (`ImportError: HardwareSettings`), the 4 checks pass (62 tests, black, ruff, mypy gate with 179 known and 0 new), and commit `686be0c` is on the clone. The HEAD of the real repository did not change.
 
