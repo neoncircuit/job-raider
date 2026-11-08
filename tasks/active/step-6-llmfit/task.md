@@ -35,4 +35,4 @@ flowchart LR
 - [ ] MH-6 (optional): MLflow evaluation runs record the hardware profile, so results from different machines can be compared.
 
 ## Status
-`review` (2026-11-08: plan written; waiting for the user's decisions)
+`review` (2026-11-08: decisions made; waiting for plan approval)

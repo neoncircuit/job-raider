@@ -47,8 +47,14 @@ Facts from the llmfit repository (through `gh`) and from read-only runs in WSL o
 2. Setup default. Recommended: `setup.sh` installs the pinned llmfit by default (with `--no-llmfit` to skip), because "optional but recommended". A failed install prints a note and setup continues.
 3. Pull guard for a model over the budget. Recommended: a warning that the user must confirm, so the user decides. Or: refuse it, as the 9B limit does.
 
+## Decisions (user, 2026-11-08)
+
+1. Safety margin: 75% of the detected VRAM by default, and the user can change it in Settings.
+2. Setup: `setup.sh` installs the pinned llmfit by default, with `--no-llmfit` to skip it. A failed install does not stop setup.
+3. Pull guard: a model over the budget gets a warning, and the pull starts only after the user confirms. The 9B refusal stays.
+
 ## Blockers / Questions
 
-- None, apart from the questions above.
+- MH-1 installs llmfit v1.1.20 from PyPI into a scratch venv in WSL. That is a download, so it needs the user's approval.
 
 ## Review
