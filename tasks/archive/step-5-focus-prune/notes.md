@@ -165,3 +165,19 @@ Checks on the clone:
 - None.
 
 ## Review
+
+Step 5 is done (2026-11-08). MH-6 was pushed as `e07cf80`. CI run 42469431381 failed on the first attempt in the frontend E2E job: no test ran, because the dev server did not start within 300 s after `next/font/google` failed to download the fonts. This push changed only backend files. The rerun of the failed job (attempt 2) passed, and all 12 jobs are green.
+
+| Item | Result |
+|---|---|
+| Dead code | 56 files and 6,683 lines deleted, with 6 requirements (MH-1) |
+| Easy Apply | Kept, dormant, by the user's rule (MH-2 dropped) |
+| Sidebar | Core loop first, collapsed Extras group (MH-3) |
+| Large files | `page.tsx` 1,348 to 38, `stages.py` 1,343 to 370, `outcome_tracker.py` 1,691 to 448 lines; every new module is under 600 lines, and size tests guard them (MH-4 to MH-6) |
+
+What worked: each split moved code with a script that cut at checked lines, and a source compare (`inspect.getsource`, or unchanged tests for the page) proved that no method body changed. Two rules of the project shaped the backend splits: the mypy baseline is keyed by file, and a patch reaches only the module it names. So the code that those rules touch stayed in the original modules.
+
+Open items, outside this step:
+
+- The font download in CI is a repeated flake. Self-hosted fonts would remove it.
+- Untracked local leftovers from MH-1 (`frontend-py/.venv`, caches, 521 MB) are still on the disk.

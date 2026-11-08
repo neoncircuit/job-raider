@@ -1,9 +1,9 @@
 # Current Priorities
 
 ## Active Focus
-- [x] Step 4: Make it demo-able (`tasks/archive/step-4-demo/`; demo live at https://neoncircuit.github.io/job-raider/)
+- [x] Step 5: Focus and prune (`tasks/archive/step-5-focus-prune/`; done 2026-11-08)
 
 ## Next Up
-- [ ] Step 5: Focus and prune (`tasks/active/step-5-focus-prune/`; MH-1 and MH-3 to MH-6 applied; archive after CI)
+- [ ] Step 6: Hardware fit with llmfit, optional and recommended (`tasks/active/step-6-llmfit/`; plan written 2026-11-08, waiting for decisions)
 
 *(Agent Note: When starting a task above, ensure a corresponding folder exists in `tasks/active/`)*

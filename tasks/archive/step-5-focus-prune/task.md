@@ -31,4 +31,4 @@ flowchart LR
 - [x] README tree and docs have no reference to a deleted path. (`374c4a3`; a `git grep` on 2026-11-08 finds none outside the history docs)
 
 ## Status
-`in-progress` (2026-11-08: MH-1 and MH-3 to MH-6 applied; all criteria met; archive after the push and CI)
+`done` (2026-11-08: all criteria met; CI run 42469431381 green)

@@ -14,7 +14,7 @@ Do the six steps of section 6 of `review-2026-10-18.md` (in this folder): the co
 - [x] Step 2: Make local-first true (`tasks/archive/step-2-local-first/`).
 - [x] Step 3: Make claims measurable (`tasks/archive/step-3-measurable-claims/`; done 2026-11-05).
 - [x] Step 4: Make it demo-able (`tasks/archive/step-4-demo/`; done 2026-11-07, demo live).
-- [ ] Step 5: Focus and prune (`tasks/active/step-5-focus-prune/`; plan written 2026-11-07).
+- [x] Step 5: Focus and prune (`tasks/archive/step-5-focus-prune/`; done 2026-11-08).
 
 ## Status
 `in-progress`
