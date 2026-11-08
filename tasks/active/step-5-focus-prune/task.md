@@ -31,4 +31,4 @@ flowchart LR
 - [ ] README tree and docs have no reference to a deleted path.
 
 ## Status
-`in-progress` (2026-11-07: MH-1, MH-3, MH-4, and MH-5 applied; MH-6 next)
+`in-progress` (2026-11-07: MH-1, MH-3, MH-4, and MH-5 applied; MH-6 checked on a clone, not applied)

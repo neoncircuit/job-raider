@@ -133,6 +133,31 @@ Checks on the clone:
 - Mutants: a class without one of the 3 mixins fails the existing stage tests each time (3 of 3). The control passes (33), and the file checksum matches after the restore.
 - Only history docs name `stages.py`, so no live doc needs a change.
 
+## MH-6 written and checked (2026-11-08, Claude)
+
+One commit is ready on the WSL clone `~/s4_work`, on top of `782a22d`: `fffa8bd` `refactor(metrics)`. It is not applied. It is a direct commit, as for MH-4 and MH-5.
+
+No test patches a name through `src.metrics.outcome_tracker`, but other modules import 13 names from it, so it re-exports each of them in `__all__`. The mypy baseline has 2 errors keyed to `outcome_tracker.py`, both in `get_company_stats`. The gate compares errors by file, so that method stays in `outcome_tracker.py`. Otherwise the gate would count them as new, and a baseline `--update` is not allowed.
+
+| File | Content | Lines |
+|---|---|---|
+| `outcome_tracker.py` | `OutcomeTracker(OutcomeAnalytics, OutcomeLists, OutcomeExternal)`: `__init__`, track, status changes and revert, interviews, offers, `get_all_applications`, `get_company_stats`; the re-exports | 448 (was 1,691) |
+| `outcome_models.py` | the 3 enums and 5 dataclasses | 156 |
+| `outcome_helpers.py` | constants, `application_filename_stem`, URL and label forms for the match | 112 |
+| `outcome_storage.py` | `OutcomeStorage`: attribute types for mypy, `get_application`, cache load and reload, file save, serialize, deserialize | 221 |
+| `outcome_analytics.py` | conversion, pipeline, and streak metrics | 227 |
+| `outcome_lists.py` | custom statuses, saved jobs, hidden jobs, delete | 407 |
+| `outcome_external.py` | external tracking and the match to an existing application; a stub of `update_status` for mypy | 319 |
+
+Checks on the clone:
+
+- Red: the original `outcome_tracker.py` fails the extended size test (1,691 lines).
+- The source of all 43 methods, the 8 model classes, and the 4 helper functions (from `inspect.getsource`) is the same before and after, and the 6 constants have equal values. `update_status` resolves to `outcome_tracker.py`, not to the stub.
+- The full backend suite passes: 2,164 tests (2,157 and 7 new size cases), with no change to a test file other than the size test.
+- black and ruff on the CI paths pass. The mypy gate passes: 179 known errors, 0 new.
+- Mutants: a class without one of the 3 mixins fails the tests each time (3 of 3). The first run of the mutant without `OutcomeAnalytics` used only the application tests, and it passed, because those tests do not call the metrics. On `test_metrics.py` and `test_metrics_api.py`, it fails (5). The controls pass, and the file checksum matches after each restore.
+- The only doc that names `outcome_tracker` is a lesson about the route variable, and it is still correct.
+
 ## Blockers / Questions
 
 - None.
