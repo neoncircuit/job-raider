@@ -80,6 +80,20 @@ Consequences for MH-2 and MH-3:
 
 - [x] MH-1 is done. The acceptance criterion is checked.
 
+## MH-2 written and checked (2026-11-08, Claude)
+
+`mh-2-llmfit-client.md` (runner) is written. It is not applied. It adds `src/hardware/` (`llmfit_client.py`, `fit.py`), the `hardware.vram_headroom_percent` setting (30 to 100, default 75), 3 fixtures with made-up hardware, and 2 test files (40 tests).
+
+Runner test on the clone `~/s4_work` (the handoff was in the clone; `git rev-parse --show-toplevel` gave the clone): the dry run is valid, the red step fails for the right reason (`ImportError: HardwareSettings`), the 4 checks pass (62 tests, black, ruff, mypy gate with 179 known and 0 new), and commit `686be0c` is on the clone. The HEAD of the real repository did not change.
+
+Other checks on the clone:
+
+- The full backend suite passes: 2,204 tests. That run was before one test was added for mutant M3; the runner check ran the changed test file again.
+- black and ruff on all CI paths pass.
+- Mutants: 12 of 12 are caught. The first run caught 11: with the low-quant filter removed, the tests still passed, because the only Q3 row in the fixture was also above 9B. A new test with a small Q3 row now catches it.
+- Smoke run against the real llmfit 1.1.20 and the local Ollama (read-only; no model loaded): budget 6.0 GB of 8.0 GB. Of 21 installed tags, 8 use an llmfit plan for the installed quant and 13 use the rough estimate. 15 fit, 5 are over the budget (`deepseek-r1:8b` at 6.16 GB, `qwen3.5:9b`, `qwen3.5-9b-16k`, `ornith:9b`, `granite4.1:8b`), and 1 is too large (`qwen2.5:14b` at 10.57 GB). There are 8 suggestions, such as `gemma4:e2b`, `phi3`, and `llama3.2:3b`. The old binary in `/usr/local/bin` gives "update recommended", and a missing binary gives "not installed".
+- The smoke run took 11.7 s, with 8 `plan` calls and 2 catalog runs. MH-3 must cache the results and run them in the background.
+
 ## Blockers / Questions
 
 - None.
