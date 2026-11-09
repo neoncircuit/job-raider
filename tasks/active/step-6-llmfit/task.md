@@ -32,7 +32,7 @@ flowchart LR
 - [x] MH-3: `GET /api/hardware/fit` gives the hardware, the safety budget, a label for each installed Ollama model, and suggestions that map to Ollama tags. The pull route warns when a model is over the budget. (`1f96f22`, 12 of 12 mutants)
 - [x] MH-4: the Ollama models card shows the fit labels, the suggestions, and an install hint when llmfit is missing. Unit tests, E2E with the mock, and the demo pass. (`1b1939a`, 15 of 15 mutants)
 - [x] MH-5: `setup.sh` installs the pinned llmfit by default, with a flag to skip it, and a failure does not stop setup. A docs page with a flow diagram explains the feature. The README names it. (`1535e07`, 5 of 5 mutants)
-- [ ] MH-6 (optional): MLflow evaluation runs record the hardware profile, so results from different machines can be compared.
+- [x] MH-6 (optional): MLflow evaluation runs record the hardware profile, so results from different machines can be compared. (`2aa6127`, 5 of 5 mutants)
 
 ## Status
-`in-progress` (2026-11-09: MH-1 to MH-5 done; MH-6 checked on a clone, not applied)
+`in-progress` (2026-11-09: MH-1 to MH-6 applied; all criteria met; archive after the push and CI)

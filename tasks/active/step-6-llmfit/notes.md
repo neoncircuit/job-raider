@@ -162,7 +162,7 @@ Repair (user decisions, 2026-11-09): setuptools 84.2.1 was reinstalled with `--f
 
 ## MH-6 written and checked (2026-11-09, Claude)
 
-`mh-6-run-hardware.md` (runner) is written. It is not applied. `collect_hardware()` in `run_metadata.py` reads the GPU, its memory, the RAM, the CPU, and the llmfit version (empty without llmfit). `build_run_metadata` adds them to `RunMetadata` (5 new optional fields), so the JSON report and the MLflow params have them. The cover-letter model compare logs the same params. 1 new test file (7 tests).
+`mh-6-run-hardware.md` (runner) is applied on the repo (2026-11-09, Claude ran the runner on the user's word "Yes, apply it"): commit `2aa6127`. The red step failed, the 4 checks passed, and `git diff 6f40622 HEAD`, without `tasks/`, is empty. `collect_hardware()` in `run_metadata.py` reads the GPU, its memory, the RAM, the CPU, and the llmfit version (empty without llmfit). `build_run_metadata` adds them to `RunMetadata` (5 new optional fields), so the JSON report and the MLflow params have them. The cover-letter model compare logs the same params. 1 new test file (7 tests).
 
 Runner test on the clone (the handoff was in the clone): the red step fails for the right reason (`ImportError: collect_hardware`), the 4 checks pass (65 tests, black, ruff, mypy gate with 179 known and 0 new), and commit `6f40622` is on the clone. The HEAD of the real repository did not change. The first try stopped before any write: one edit did not end in a newline, which the handoff generator checks.
 
