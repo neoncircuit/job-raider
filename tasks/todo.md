@@ -1,10 +1,10 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] To be decided with the user.
+- [ ] Self-hosted fonts (`tasks/active/self-hosted-fonts/`; plan written 2026-11-09, waiting for approval)
 
 ## Next Up
-- [ ] Open items: self-hosted fonts for CI (repeated font-download flake), and the Step 5 local leftovers (`frontend-py/.venv` and caches, 521 MB).
+- [ ] Open item: the Step 5 local leftovers (`frontend-py/.venv` and caches, 521 MB).
 
 ## Done
 - [x] Local models table on a phone (`tasks/archive/phone-model-table/`; done 2026-11-09)
