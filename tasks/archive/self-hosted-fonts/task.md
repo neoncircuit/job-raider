@@ -29,4 +29,4 @@ flowchart LR
 - [x] Screenshots before and after match (same fonts), and the unit, E2E, and demo E2E tests pass.
 
 ## Status
-`in-progress` (2026-11-10: applied as `841943b`; archive after the push and CI)
+`done` (2026-11-10: applied as `841943b`; CI run 42665659154 green)

@@ -49,3 +49,9 @@ Checks on the clone:
 - None.
 
 ## Review
+
+Done (2026-11-10). Pushed as `9d836d8`; CI run 42665659154 passed (all 12 jobs; the build and the E2E jobs no longer download fonts). In the real `apps/frontend-ts`, `npm install` failed with EACCES: Windows refused to rename `node_modules/@types/node`, which was already out of step with the lockfile. The two Fontsource folders were copied from the checked clone instead; `npm ls` lists both at 5.3.0, and the lockfile did not change. A plain `npm install` with the editor closed will bring `@types/node` back in step.
+
+## Review
+
+The build no longer depends on fonts.googleapis.com. The pixel compare was the check that found the real defect: every test passed while the page showed a system font, because a `:root` font variable named a family that only the Google loader made. A text guard now covers it. The Jobs page E2E search test is flaky before and after this change (2 to 4 failures in 24 runs); it is a separate open item.
