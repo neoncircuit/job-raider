@@ -247,7 +247,7 @@ export function OllamaModelsCard() {
               <thead>
                 <tr className="border-b text-left text-xs text-muted-foreground">
                   <th className="pb-2 pr-4">Model</th>
-                  <th className="pb-2 pr-4">Parameters</th>
+                  <th className="hidden pb-2 pr-4 sm:table-cell">Parameters</th>
                   <th className="pb-2 pr-4">Size</th>
                   <th className="pb-2 pr-4">Fit</th>
                   <th className="pb-2" />
@@ -256,13 +256,13 @@ export function OllamaModelsCard() {
               <tbody className="divide-y">
                 {list.models.map((m) => (
                   <tr key={m.name}>
-                    <td className="py-2 pr-4 font-mono text-xs text-foreground">
+                    <td className="break-all py-2 pr-4 font-mono text-xs text-foreground">
                       {m.name}
                     </td>
-                    <td className="py-2 pr-4 text-muted-foreground">
+                    <td className="hidden py-2 pr-4 text-muted-foreground sm:table-cell">
                       {m.parameter_size ?? "—"}
                     </td>
-                    <td className="py-2 pr-4 text-muted-foreground">
+                    <td className="whitespace-nowrap py-2 pr-4 text-muted-foreground">
                       {formatGb(m.size)}
                     </td>
                     <td className="py-2 pr-4">

@@ -44,4 +44,22 @@ test.describe("Hardware fit", () => {
       { model: "examplebig:8b", confirm_over_budget: true },
     ]);
   });
+
+  test("keeps the table on a phone screen", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "Mobile Chrome", "phone layout only");
+    await page.goto("/settings");
+    const card = page.getByRole("region", { name: "Local models" });
+    const row = card.getByRole("row", { name: /examplereason:8b/ });
+
+    await expect(row.getByText("Over budget")).toBeVisible();
+    await expect(
+      card.getByRole("columnheader", { name: "Parameters" }),
+    ).toBeHidden();
+    const button = await row
+      .getByRole("button", { name: "Delete examplereason:8b" })
+      .boundingBox();
+    const width = page.viewportSize()?.width ?? 0;
+    expect(button).not.toBeNull();
+    expect((button?.x ?? 0) + (button?.width ?? 0)).toBeLessThanOrEqual(width);
+  });
 });
