@@ -23,10 +23,10 @@ flowchart LR
 - One runner handoff. It needs the user's "Yes, apply it". Push only after the user approves.
 
 ## Acceptance Criteria
-- [ ] Plan approved, with the package install.
-- [ ] `src/app/layout.tsx` uses `next/font/local` with the Fontsource files; no source file imports `next/font/google`. A unit test guards that.
-- [ ] A build succeeds while HTTPS to other hosts fails (a proxy that refuses every connection), which the old build cannot do.
-- [ ] Screenshots before and after match (same fonts), and the unit, E2E, and demo E2E tests pass.
+- [x] Plan approved, with the package install. (2026-11-09)
+- [x] `src/app/layout.tsx` uses `next/font/local` with the Fontsource files; no source file imports `next/font/google`. A unit test guards that.
+- [x] A build succeeds while HTTPS to other hosts fails (a proxy that refuses every connection), which the old build cannot do.
+- [x] Screenshots before and after match (same fonts), and the unit, E2E, and demo E2E tests pass.
 
 ## Status
-`review` (2026-11-09: plan written; waiting for the user)
+`in-progress` (2026-11-09: checked on a clone, not applied; the Jobs page E2E flake predates it)

@@ -1,10 +1,10 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Self-hosted fonts (`tasks/active/self-hosted-fonts/`; plan written 2026-11-09, waiting for approval)
+- [ ] Self-hosted fonts (`tasks/active/self-hosted-fonts/`; checked on a clone, not applied)
 
 ## Next Up
-- [ ] Open item: the Step 5 local leftovers (`frontend-py/.venv` and caches, 521 MB).
+- [ ] Open items: the flaky Jobs page E2E search test (about 1 failure in 10), and the Step 5 local leftovers (`frontend-py/.venv` and caches, 521 MB).
 
 ## Done
 - [x] Local models table on a phone (`tasks/archive/phone-model-table/`; done 2026-11-09)
