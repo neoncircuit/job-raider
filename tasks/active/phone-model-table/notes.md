@@ -6,7 +6,7 @@ The Step 6 review listed it as an open item. The user chose it next ("Fix the ph
 
 ## Handoff written and checked (2026-11-09, Claude)
 
-`mh-1-phone-table.md` (runner) is written. It is not applied. Below the `sm` breakpoint (640 px), the Parameters header and cells get `hidden sm:table-cell`, the model name gets `break-all`, and the size gets `whitespace-nowrap`. New: `tests/components/ollama-models-card-phone.test.tsx` (2 tests). Changed: `tests/e2e/hardware-fit.spec.ts` (a Mobile Chrome test: the Parameters header is hidden, and the delete button is inside the screen).
+`mh-1-phone-table.md` (runner) is applied on the repo (2026-11-09, Claude ran the runner on the user's word "Yes, apply it"): commit `3bd7c0f`. The red step failed, the 4 checks passed, and `git diff b7aaa57 HEAD`, without `tasks/`, is empty. Below the `sm` breakpoint (640 px), the Parameters header and cells get `hidden sm:table-cell`, the model name gets `break-all`, and the size gets `whitespace-nowrap`. New: `tests/components/ollama-models-card-phone.test.tsx` (2 tests). Changed: `tests/e2e/hardware-fit.spec.ts` (a Mobile Chrome test: the Parameters header is hidden, and the delete button is inside the screen).
 
 Runner test on the clone (the handoff was in the clone): the red step fails, the 4 checks pass (vitest, prettier, eslint with no warnings, tsc), and commit `b7aaa57` is on the clone. The HEAD of the real repository did not change.
 

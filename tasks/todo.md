@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Local models table on a phone (`tasks/active/phone-model-table/`; checked on a clone, not applied)
+- [ ] Local models table on a phone (`tasks/active/phone-model-table/`; applied, archive after CI)
 
 ## Next Up
 - [ ] Open items from Step 6: self-hosted fonts for CI, and the Step 5 local leftovers.
