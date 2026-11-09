@@ -11,10 +11,11 @@ from __future__ import annotations
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple
 
 from pydantic import BaseModel
 
+from ..hardware.llmfit_client import LlmfitClient, LlmfitUnavailable
 from ..utils.logger import Components, get_logger
 from .datasets import dataset_sha256
 
@@ -36,6 +37,12 @@ class RunMetadata(BaseModel):
     model: Optional[str] = None
     temperature: Optional[float] = None
     seed: Optional[int] = None
+    # Hardware profile from llmfit (Step 6); None when llmfit is missing.
+    gpu_name: Optional[str] = None
+    gpu_vram_gb: Optional[float] = None
+    ram_gb: Optional[float] = None
+    cpu_name: Optional[str] = None
+    hardware_source: Optional[str] = None
 
 
 def collect_git_state(repo_dir: Path) -> Tuple[str, Optional[bool]]:
@@ -90,6 +97,38 @@ def collect_git_state(repo_dir: Path) -> Tuple[str, Optional[bool]]:
     return sha, bool(status.strip())
 
 
+def collect_hardware(
+    client_factory: Callable[[], LlmfitClient] = LlmfitClient,
+) -> Dict[str, Any]:
+    """
+    Read the hardware with llmfit (optional), so that results from different
+    machines can be compared.
+
+    Args:
+        client_factory: Makes an llmfit client. Tests pass a stub.
+
+    Returns:
+        ``gpu_name``, ``gpu_vram_gb``, ``ram_gb``, ``cpu_name``, and
+        ``hardware_source`` (the llmfit version), without empty values; an
+        empty dict when llmfit cannot answer.
+    """
+    client = client_factory()
+    try:
+        version = client.version()
+        hardware = client.system()
+    except LlmfitUnavailable as exc:
+        logger.info("No hardware profile for the run metadata: %s", exc)
+        return {}
+    profile: Dict[str, Any] = {
+        "gpu_name": hardware.gpu_name,
+        "gpu_vram_gb": hardware.gpu_vram_gb,
+        "ram_gb": hardware.total_ram_gb or None,
+        "cpu_name": hardware.cpu_name,
+        "hardware_source": "llmfit " + ".".join(str(part) for part in version),
+    }
+    return {key: value for key, value in profile.items() if value is not None}
+
+
 def build_run_metadata(
     suite: str,
     dataset_paths: Sequence[Path],
@@ -115,7 +154,8 @@ def build_run_metadata(
         repo_dir: Directory for git commands; defaults to the backend folder.
 
     Returns:
-        Run metadata with a UTC start time.
+        Run metadata with a UTC start time, and the hardware profile when
+        llmfit is installed.
     """
     git_sha, git_dirty = collect_git_state(repo_dir or BACKEND_DIR)
     return RunMetadata(
@@ -129,4 +169,5 @@ def build_run_metadata(
         model=model,
         temperature=temperature,
         seed=seed,
+        **collect_hardware(),
     )

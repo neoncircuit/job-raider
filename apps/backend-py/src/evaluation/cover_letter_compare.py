@@ -25,6 +25,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 import requests
 
 from ..utils.logger import Components, get_logger
+from .run_metadata import collect_hardware
 
 logger = get_logger(Components.GENERATION)
 
@@ -506,6 +507,7 @@ def log_to_mlflow(
                     "models": ",".join(r["model"] for r in reports),
                     "cool_down_s": report.get("protocol", {}).get("cool_down_s"),
                     "case_count": len(reports[0]["cases"]) if reports else 0,
+                    **collect_hardware(),
                 }
             )
             metrics: Dict[str, float] = {}
