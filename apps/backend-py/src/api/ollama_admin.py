@@ -178,6 +178,7 @@ def list_models(host: str, used: Set[str], timeout: float = 5.0) -> Dict[str, An
             "size": m.get("size", 0),
             "modified_at": m.get("modified_at"),
             "parameter_size": (m.get("details") or {}).get("parameter_size"),
+            "quantization": (m.get("details") or {}).get("quantization_level"),
             "in_use": is_in_use(m["name"], used),
         }
         for m in raw

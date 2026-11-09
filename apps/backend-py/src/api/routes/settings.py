@@ -7,13 +7,16 @@ Author: Job Raider
 Date: 2026-04-24
 """
 
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.concurrency import run_in_threadpool
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from ...api import ollama_admin
+from ...api.models.responses import ErrorResponse
 from ...api.ollama_models import (
     RECOMMENDED_OLLAMA_LARGE,
     RECOMMENDED_OLLAMA_SMALL,
@@ -28,6 +31,9 @@ from ...api.settings import (
     merge_preserving_api_keys,
 )
 from ...config.loader import get_config_loader
+from ...hardware import service as hardware_service
+from ...hardware.fit import FitLabel
+from ...hardware.service import PullCheck
 from ...utils.logger import Components, get_logger
 
 router = APIRouter()
@@ -380,6 +386,10 @@ class OllamaPullRequest(BaseModel):
     """Request body for pulling an Ollama model."""
 
     model: str = Field(description="Model tag, for example qwen2.5:3b")
+    confirm_over_budget: bool = Field(
+        default=False,
+        description="Pull even when the model is over the GPU memory budget",
+    )
 
 
 def _embedding_model() -> str:
@@ -419,26 +429,70 @@ async def list_ollama_models() -> Dict[str, Any]:
     return await run_in_threadpool(ollama_admin.list_models, host, used)
 
 
+def _over_budget_response(check: PullCheck) -> JSONResponse:
+    """
+    Build the 409 answer that asks the user to confirm a large pull.
+
+    Args:
+        check: Fit of the model against the safety budget.
+
+    Returns:
+        JSON error response; ``details.code`` is ``over_budget`` and the other
+        details give the numbers for the confirm dialog.
+    """
+    limit = (
+        f"the total GPU memory of {check.total_vram_gb:.1f} GB"
+        if check.label == FitLabel.TOO_LARGE
+        else f"your safety budget of {check.budget_gb:.1f} GB "
+        f"({check.headroom_percent}% of {check.total_vram_gb:.1f} GB)"
+    )
+    error = ErrorResponse(
+        error="Over budget",
+        message=(
+            f"{check.tag} needs about {check.need_gb:.1f} GB of GPU memory, "
+            f"above {limit}. Confirm to pull it anyway."
+        ),
+        details={"code": "over_budget", **check.model_dump(mode="json")},
+    )
+    return JSONResponse(status_code=409, content=jsonable_encoder(error))
+
+
 @router.post("/ollama/pull", status_code=202, response_model=Dict[str, Any])
 async def pull_ollama_model(
     body: OllamaPullRequest, background_tasks: BackgroundTasks
-) -> Dict[str, Any]:
+) -> Union[Dict[str, Any], JSONResponse]:
     """
     Start pulling an Ollama model in the background.
 
     Only one pull runs at a time. Models of 9B parameters or more are refused.
+    When llmfit is installed and the model needs more GPU memory than the
+    safety budget, the answer is 409 until the request has
+    ``confirm_over_budget``.
 
     Args:
-        body: Model tag to pull.
+        body: Model tag to pull, and the confirmation flag.
         background_tasks: FastAPI background task runner.
 
     Returns:
-        The pull state after the pull starts.
+        The pull state after the pull starts, or the 409 answer.
     """
     host, _used = _ollama_context()
     try:
         name = ollama_admin.validate_model_name(body.model)
         ollama_admin.check_pull_allowed(name)
+    except ollama_admin.OllamaAdminError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    if not body.confirm_over_budget:
+        headroom = get_storage().load_settings().hardware.vram_headroom_percent
+        check = await run_in_threadpool(
+            hardware_service.get_fit_service().check_pull, name, headroom
+        )
+        if check is not None and check.label in (
+            FitLabel.OVER_BUDGET,
+            FitLabel.TOO_LARGE,
+        ):
+            return _over_budget_response(check)
+    try:
         state = ollama_admin.begin_pull(name)
     except ollama_admin.OllamaAdminError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc

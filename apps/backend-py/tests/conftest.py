@@ -55,6 +55,29 @@ def _isolate_settings_storage(tmp_path: Path):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_llmfit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """
+    Keep tests away from a real llmfit binary on the developer's machine.
+
+    ``LLMFIT_PATH`` points at a missing file, so ``find_llmfit()`` gives None,
+    and the cached hardware fit service is reset. Tests that need llmfit
+    pass a fake binary or a stub client.
+
+    Args:
+        tmp_path: Pytest temporary directory for this test.
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Yields:
+        None.
+    """
+    import src.hardware.service as hardware_service
+
+    monkeypatch.setenv("LLMFIT_PATH", str(tmp_path / "no-llmfit"))
+    monkeypatch.setattr(hardware_service, "_service", None)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _bypass_api_auth_except_auth_tests(request):
     """
     Skip X-API-Key checks in API tests unless the file is ``test_auth.py``.

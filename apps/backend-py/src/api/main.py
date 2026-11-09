@@ -40,6 +40,7 @@ from .routes import (
     assessment,
     cover_letter,
     evaluation,
+    hardware,
     jobs,
     logs,
     metrics,
@@ -354,6 +355,9 @@ app.include_router(
     assessment.router, prefix="/api/assessment", tags=["Assessment"], dependencies=_auth
 )
 app.include_router(logs.router, prefix="/api/logs", tags=["Logs"], dependencies=_auth)
+app.include_router(
+    hardware.router, prefix="/api/hardware", tags=["Hardware"], dependencies=_auth
+)
 app.include_router(
     evaluation.router, prefix="/api/evaluation", tags=["Evaluation"], dependencies=_auth
 )
