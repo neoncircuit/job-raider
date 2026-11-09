@@ -96,7 +96,7 @@ Other checks on the clone:
 
 ## MH-3 written and checked (2026-11-08, Claude)
 
-`mh-3-hardware-api.md` (runner) is applied on the repo (2026-11-09, Claude ran the runner on the user's word "Yes, apply it"): commit `1f96f22`. The red step failed, the 4 checks passed, and `git diff 3e8d820 HEAD`, without `tasks/`, is empty. It adds `src/hardware/service.py` (the cached report and the pull check), `src/api/routes/hardware.py` (`GET /api/hardware/fit`), the over-budget 409 on `POST /api/settings/ollama/pull` with `confirm_over_budget`, the `quantization` field in `ollama_admin.list_models`, a conftest guard so tests never run a real llmfit, and 20 tests.
+`mh-3-hardware-api.md` (runner) is applied on the repo (2026-11-09, Claude ran the runner on the user's word "Yes, apply it"): commit `1f96f22`. The red step failed, the 4 checks passed, and `git diff 3e8d820 HEAD`, without `tasks/`, is empty. Pushed as `e7a4b08`; CI run 42571909728 passed (all 12 jobs). It adds `src/hardware/service.py` (the cached report and the pull check), `src/api/routes/hardware.py` (`GET /api/hardware/fit`), the over-budget 409 on `POST /api/settings/ollama/pull` with `confirm_over_budget`, the `quantization` field in `ollama_admin.list_models`, a conftest guard so tests never run a real llmfit, and 20 tests.
 
 Runner test on the clone (the handoff was in the clone): the dry run is valid, the red step fails for the right reason (`ImportError: service`), the 4 checks pass (115 tests, black, ruff, mypy gate with 179 known and 0 new), and commit `3e8d820` is on the clone. The HEAD of the real repository did not change. The first run passed.
 
