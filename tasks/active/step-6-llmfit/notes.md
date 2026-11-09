@@ -132,7 +132,9 @@ Other checks on the clone:
 
 ## MH-5 written and checked (2026-11-09, Claude)
 
-One commit is ready on the WSL clone `~/s4_work`, on top of `a51b2e9`: `277b2c5` `feat(setup)`. It is not applied. It is a direct commit, not a runner handoff: the runner cannot carry a file that has code fences in it, and `docs/hardware-fit.md` has Mermaid and bash blocks. To apply it, the real repository fetches the clone and cherry-picks it.
+Applied on the repo (2026-11-09, Claude, on the user's word "Yes, apply it"): commit `1535e07`, a cherry-pick of `277b2c5`, with the mode change of `setup.sh`. The only difference from the clone commit, outside `tasks/`, is the lesson in `docs/lessons.md`, which is in the commit below it.
+
+One commit was ready on the WSL clone `~/s4_work`, on top of `a51b2e9`: `277b2c5` `feat(setup)`. It is a direct commit, not a runner handoff: the runner cannot carry a file that has code fences in it, and `docs/hardware-fit.md` has Mermaid and bash blocks. To apply it, the real repository fetches the clone and cherry-picks it.
 
 - `apps/backend-py/requirements-optional.txt` (new): `llmfit==1.1.20`. CI does not install it.
 - `setup.sh`: `install_llmfit` runs after the requirements (user decision: on by default); `--no-llmfit` skips it; a failed install records a warning and setup goes on; an unknown option exits 2 with the usage; `main` runs only when the file is executed, so a test can source it; the summary names hardware fit. The file is now executable in git (mode 100644 to 100755), so `./setup.sh` works on a fresh Linux clone.
