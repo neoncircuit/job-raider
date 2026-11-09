@@ -19,4 +19,4 @@ flowchart LR
 - [x] Screenshots on a phone and on a desktop show the table as intended.
 
 ## Status
-`in-progress` (2026-11-09: applied as `3bd7c0f`; archive after the push and CI)
+`done` (2026-11-09: applied as `3bd7c0f`; CI run 42628686203 green)

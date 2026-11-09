@@ -1,12 +1,13 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Local models table on a phone (`tasks/active/phone-model-table/`; applied, archive after CI)
+- [ ] To be decided with the user.
 
 ## Next Up
-- [ ] Open items from Step 6: self-hosted fonts for CI, and the Step 5 local leftovers.
+- [ ] Open items: self-hosted fonts for CI (repeated font-download flake), and the Step 5 local leftovers (`frontend-py/.venv` and caches, 521 MB).
 
 ## Done
+- [x] Local models table on a phone (`tasks/archive/phone-model-table/`; done 2026-11-09)
 - [x] Step 6: Hardware fit with llmfit, optional and recommended (`tasks/archive/step-6-llmfit/`; done 2026-11-09)
 
 *(Agent Note: When starting a task above, ensure a corresponding folder exists in `tasks/active/`)*

@@ -18,3 +18,5 @@ Other checks on the clone:
 - Screenshots: on a phone, the table shows Model, Size, Fit, and the delete button, with no sideways scroll; the desktop table is the same as before.
 
 ## Review
+
+Done (2026-11-09). Pushed as `5784105`; CI run 42628686203 passed (all 12 jobs, including the new Mobile Chrome E2E test). The table fits a phone screen, and the desktop layout did not change.
