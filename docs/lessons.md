@@ -3712,3 +3712,17 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - Take a screenshot of a new UI element with realistic data, and read it against the rest of the page.
 - Read the same field that the page already shows, so that two parts of a page cannot disagree.
 - For a local E2E run, set `PLAYWRIGHT_PORT` to a free port. When a page does not request what the new code needs, first check which server answered.
+
+## Setup script tests (2026-11-09)
+
+### Never source a script that runs on load, and keep a clone's environment apart
+
+**Lesson:** For MH-5 of Step 6, a red step and a mutant sourced `setup.sh` while it still called `main` on the last line. Each source ran the whole setup, about ten times, on the WSL clone. The clone's `apps/backend-py/.venv` is a symlink to the real `.venv`, so the runs upgraded pip, wheel, and setuptools in the real environment and installed llmfit there. A test timeout killed one pip run while the next one started, which left setuptools half installed (`No module named '_distutils_hack'`). The runs also downloaded 641 MB of Playwright browsers. The user approved the repair: setuptools 84.2.1 was reinstalled, the `~distutils_hack` stash was removed, and the extra browsers were deleted.
+
+**Why:** `source` runs every top-level command of a file. A guard that a test needs cannot also be the thing that the red step removes. A symlinked `.venv` makes a "scratch" clone share its packages with the real repository.
+
+**How to apply:**
+- Before a test sources a shell script, check the guard (`if [[ "${BASH_SOURCE[0]}" == "$0" ]]`) in the file text, and fail without sourcing when it is missing. A mutant that removes the guard must be caught by that text check, not by running the script.
+- In a clone, assume that a symlinked `.venv`, `node_modules`, or cache is the real one. Run a step that installs packages only against a new, temporary environment.
+- When a background run takes far longer than expected, read what it is doing before the next step.
+- After an accident, stop, measure the damage (`pip check`, imports, changed files by time), tell the user, and repair only what the user approves.

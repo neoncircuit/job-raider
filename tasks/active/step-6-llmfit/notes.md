@@ -130,6 +130,34 @@ Other checks on the clone:
 - Observation: on a phone, the model table now has 5 columns, so the Fit column and the delete button need a sideways scroll (the table already scrolls). A later change can hide the Parameters column on small screens.
 - Setup note: the main E2E config does not read `PLAYWRIGHT_CHROMIUM_PATH`, so local runs in WSL use an untracked config that sets the browser path for both projects (as in Step 5).
 
+## MH-5 written and checked (2026-11-09, Claude)
+
+One commit is ready on the WSL clone `~/s4_work`, on top of `a51b2e9`: `277b2c5` `feat(setup)`. It is not applied. It is a direct commit, not a runner handoff: the runner cannot carry a file that has code fences in it, and `docs/hardware-fit.md` has Mermaid and bash blocks. To apply it, the real repository fetches the clone and cherry-picks it.
+
+- `apps/backend-py/requirements-optional.txt` (new): `llmfit==1.1.20`. CI does not install it.
+- `setup.sh`: `install_llmfit` runs after the requirements (user decision: on by default); `--no-llmfit` skips it; a failed install records a warning and setup goes on; an unknown option exits 2 with the usage; `main` runs only when the file is executed, so a test can source it; the summary names hardware fit. The file is now executable in git (mode 100644 to 100755), so `./setup.sh` works on a fresh Linux clone.
+- `docs/hardware-fit.md` (new): the labels, the budget, where the numbers come from, the install commands, and the limits (Docker, WSL, privacy, demo), with a flow diagram. README (feature, setup note, doc link) and `docs/index.md` link it.
+- `tests/unit/test_setup_llmfit.py` (new, 6 tests): it checks the guard in the file text, and only then sources `setup.sh` with a fake `pip`.
+
+Checks on the clone (second, safe run):
+
+- Red: before the change, the 6 tests fail, and none of them sources the old file.
+- `bash -n setup.sh` passes; `bash setup.sh --help` exits 0; `bash setup.sh --bogus` exits 2 with "Unknown option". shellcheck is not installed.
+- The 6 tests pass; black and ruff pass.
+- A real install through `install_llmfit` into a new temporary venv installed llmfit 1.1.20, and `llmfit -V` answered.
+- Mutants: 5 of 5 are caught (flag ignored, failure stops setup, unknown option accepted, main runs on source, pin drifts from the client minimum).
+- No file of the real `.venv` changed during this run.
+
+### Incident: the first MH-5 check ran the whole setup (2026-11-09)
+
+In the first check run, the red step and the "main runs on source" mutant sourced a `setup.sh` without the guard, so each source ran the whole setup, about ten times, on the clone. The clone's `apps/backend-py/.venv` is a symlink to the real `.venv`. Effects:
+
+- Real `.venv` (16:24 to 16:33): pip 26.3, wheel 0.48.0, and setuptools 84.2.1 were installed, and llmfit 1.1.20. A test timeout killed one pip run while the next one started, so setuptools was left half installed: `import setuptools` failed (`No module named '_distutils_hack'`), and a `~distutils_hack` stash stayed. `pip check` passed, and fastapi, pydantic, and mlflow still imported.
+- `~/.cache/ms-playwright`: Chromium 1228 and its headless shell were downloaded (641 MB).
+- The clone only: a generated `apps/backend-py/.env`, a `post-checkout` hook, and a frontend `.env.local`.
+
+Repair (user decisions, 2026-11-09): setuptools 84.2.1 was reinstalled with `--force-reinstall --no-deps`, and the stash was removed; `import setuptools` works, `pip check` passes, and the core imports work. llmfit stays in the real `.venv` (user: keep it). The Chromium 1228 folders were deleted (user: delete them). The clone files were removed. The test now checks the guard before it sources the file, and `docs/lessons.md` has the lesson.
+
 ## Blockers / Questions
 
 - None.
