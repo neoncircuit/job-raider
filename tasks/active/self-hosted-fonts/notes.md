@@ -23,7 +23,9 @@ The user chose it next ("Self-host the fonts"). The Step 5 and Step 6 reviews li
 
 ## MH-1 written and checked (2026-11-09, Claude)
 
-One commit is ready on the WSL clone `~/s4_work`, on top of `c43dfa5`: `ba13c57` `fix(frontend)`. It is not applied. It is a direct commit, not a runner handoff, because `package-lock.json` changes. To apply it, the real repository fetches the clone and cherry-picks it. The clone's `node_modules` is a real folder, not a link to the repository, so the install did not touch the real working tree.
+Applied on the repo (2026-11-10, Claude, on the user's word "Yes, apply it"): commit `841943b`, a cherry-pick of `ba13c57`. The only difference from the clone commit is the file mode of the new test (100644; the clone copy was 100755 because it was copied from the Windows drive). The real `apps/frontend-ts/node_modules` does not have the two packages yet, so the local dev server and build need `npm install` there; CI runs `npm ci` from the lockfile.
+
+One commit was ready on the WSL clone `~/s4_work`, on top of `c43dfa5`: `ba13c57` `fix(frontend)`. It is a direct commit, not a runner handoff, because `package-lock.json` changes. To apply it, the real repository fetches the clone and cherry-picks it. The clone's `node_modules` is a real folder, not a link to the repository, so the install did not touch the real working tree.
 
 - `package.json`: `@fontsource/ibm-plex-sans` and `@fontsource/ibm-plex-mono`, exact 5.3.0; `package-lock.json` has the two entries.
 - `src/app/layout.tsx`: `next/font/local` with the 9 Latin woff2 files (paths written in full, because `next/font` needs literal values), the same CSS variables, and system fallbacks.

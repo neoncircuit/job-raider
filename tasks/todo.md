@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Self-hosted fonts (`tasks/active/self-hosted-fonts/`; checked on a clone, not applied)
+- [ ] Self-hosted fonts (`tasks/active/self-hosted-fonts/`; applied, archive after CI)
 
 ## Next Up
 - [ ] Open items: the flaky Jobs page E2E search test (about 1 failure in 10), and the Step 5 local leftovers (`frontend-py/.venv` and caches, 521 MB).

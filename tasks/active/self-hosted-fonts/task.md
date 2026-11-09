@@ -20,7 +20,7 @@ flowchart LR
 - The packages are `@fontsource/ibm-plex-sans` and `@fontsource/ibm-plex-mono`, version 5.3.0, license OFL-1.1, pinned to the exact version. No font binary goes into git.
 - Installing the two packages is a download (about 4 MB unpacked), so it needs the user's approval.
 - Read the Next.js 16 docs in `node_modules/next/dist/docs/` first (AGENTS.md). `next/font/local` takes `src` as an array of `{ path, weight, style }`, relative to the file that calls it.
-- One runner handoff. It needs the user's "Yes, apply it". Push only after the user approves.
+- One direct commit, checked on the clone and cherry-picked (the runner cannot carry the `package-lock.json` change). It needs the user's "Yes, apply it". Push only after the user approves.
 
 ## Acceptance Criteria
 - [x] Plan approved, with the package install. (2026-11-09)
@@ -29,4 +29,4 @@ flowchart LR
 - [x] Screenshots before and after match (same fonts), and the unit, E2E, and demo E2E tests pass.
 
 ## Status
-`in-progress` (2026-11-09: checked on a clone, not applied; the Jobs page E2E flake predates it)
+`in-progress` (2026-11-10: applied as `841943b`; archive after the push and CI)
