@@ -35,4 +35,4 @@ flowchart LR
 - [x] MH-6 (optional): MLflow evaluation runs record the hardware profile, so results from different machines can be compared. (`2aa6127`, 5 of 5 mutants)
 
 ## Status
-`in-progress` (2026-11-09: MH-1 to MH-6 applied; all criteria met; archive after the push and CI)
+`done` (2026-11-09: all criteria met; CI run 42616304211 green)

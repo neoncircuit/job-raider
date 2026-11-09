@@ -162,7 +162,7 @@ Repair (user decisions, 2026-11-09): setuptools 84.2.1 was reinstalled with `--f
 
 ## MH-6 written and checked (2026-11-09, Claude)
 
-`mh-6-run-hardware.md` (runner) is applied on the repo (2026-11-09, Claude ran the runner on the user's word "Yes, apply it"): commit `2aa6127`. The red step failed, the 4 checks passed, and `git diff 6f40622 HEAD`, without `tasks/`, is empty. `collect_hardware()` in `run_metadata.py` reads the GPU, its memory, the RAM, the CPU, and the llmfit version (empty without llmfit). `build_run_metadata` adds them to `RunMetadata` (5 new optional fields), so the JSON report and the MLflow params have them. The cover-letter model compare logs the same params. 1 new test file (7 tests).
+`mh-6-run-hardware.md` (runner) is applied on the repo (2026-11-09, Claude ran the runner on the user's word "Yes, apply it"): commit `2aa6127`. The red step failed, the 4 checks passed, and `git diff 6f40622 HEAD`, without `tasks/`, is empty. Pushed as `1aae44b`; CI run 42616304211 passed (all 12 jobs). `collect_hardware()` in `run_metadata.py` reads the GPU, its memory, the RAM, the CPU, and the llmfit version (empty without llmfit). `build_run_metadata` adds them to `RunMetadata` (5 new optional fields), so the JSON report and the MLflow params have them. The cover-letter model compare logs the same params. 1 new test file (7 tests).
 
 Runner test on the clone (the handoff was in the clone): the red step fails for the right reason (`ImportError: collect_hardware`), the 4 checks pass (65 tests, black, ruff, mypy gate with 179 known and 0 new), and commit `6f40622` is on the clone. The HEAD of the real repository did not change. The first try stopped before any write: one edit did not end in a newline, which the handoff generator checks.
 
@@ -177,3 +177,26 @@ Other checks on the clone:
 - None.
 
 ## Review
+
+Step 6 is done (2026-11-09). The last push is `1aae44b`, and CI run 42616304211 passed (all 12 jobs).
+
+| Item | Result |
+|---|---|
+| llmfit client | `src/hardware/llmfit_client.py`: optional, read-only subcommands, a timeout, a version check (1.1.20), and a lenient parse (MH-2) |
+| Fit rules | Job Raider's own budget (75% of the VRAM by default, user setting 30 to 100), with labels fits, over budget, too large, and unknown (MH-2) |
+| API | `GET /api/hardware/fit`, cached for 10 minutes; a pull over the budget answers 409 until the user confirms (MH-3) |
+| Settings | Fit badges, a panel with the budget and suggestions or the install hint, a confirm dialog, and the budget field; the demo shows no invented GPU (MH-4) |
+| Setup and docs | `setup.sh` installs llmfit by default (`--no-llmfit` skips it) and is executable in git; `docs/hardware-fit.md` (MH-5) |
+| Evaluation | Each run records the GPU, VRAM, RAM, CPU, and llmfit version in the metadata and the MLflow params (MH-6) |
+
+On this machine: budget 6.0 GB of 8.0 GB. Of 21 installed tags, 15 fit, 5 are over the budget, and 1 is too large; 8 use an llmfit plan for the installed quantization, and 13 use the rough estimate.
+
+What worked: measure the tool first (MH-1). The real output showed the permissive labels, the quantization mismatch, the noisy recommendations, and the run time, and each one shaped the design. Each step had a red step, mutants, and a read-only smoke run against the real llmfit.
+
+What went wrong: in MH-5, a test sourced `setup.sh` before it had a guard, and the setup ran about ten times against the real `.venv` through the clone's symlink. It is repaired, recorded above, and in `docs/lessons.md`.
+
+Open items, outside this step:
+
+- On a phone, the model table needs a sideways scroll for the Fit column and the delete button.
+- The font download in CI is a repeated flake (Step 5); self-hosted fonts would remove it.
+- Untracked local leftovers from Step 5 MH-1 (`frontend-py/.venv` and caches, 521 MB).
