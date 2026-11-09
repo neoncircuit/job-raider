@@ -109,7 +109,7 @@ Other checks on the clone:
 
 ## MH-4 written and checked (2026-11-09, Claude)
 
-`mh-4-settings-card.md` (runner) is written. It is not applied. It adds the fit badge column, the hardware fit panel (budget, suggestions with Pull, or the install hint without llmfit), the over-budget confirm dialog, the "GPU memory budget (%)" settings field, `ApiError.details`, the demo answers, the E2E mock answers, and 4 test files (16 unit tests, 1 E2E test).
+`mh-4-settings-card.md` (runner) is applied on the repo (2026-11-09, Claude ran the runner on the user's word "Yes, apply it"): commit `1b1939a`. The red step failed, the 4 checks passed, and `git diff ab7fb94 HEAD`, without `tasks/`, is empty. It adds the fit badge column, the hardware fit panel (budget, suggestions with Pull, or the install hint without llmfit), the over-budget confirm dialog, the "GPU memory budget (%)" settings field, `ApiError.details`, the demo answers, the E2E mock answers, and 4 test files (16 unit tests, 1 E2E test).
 
 Decision during the work: the demo data rule is "no invented GPU or host readings", so the demo fit report is `available: false`, with a reason and the install hint. The demo now lists the two sample models that its settings already name as installed.
 
