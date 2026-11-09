@@ -45,6 +45,7 @@ Cover letters also use `qwen2.5:7b` by default; see [Writer Model](#writer-model
 - **Frontend Testing Infrastructure**: Vitest unit tests + Playwright E2E tests
 - **Dry Run by Default**: The pipeline does not submit applications
 - **Local Models by Default**: Generation runs on Ollama on your machine; a cloud model is used only as a fallback when you set an API key
+- **Hardware Fit**: Settings labels each local model against a GPU memory budget and suggests models that fit, with [llmfit](https://github.com/AlexsJones/llmfit) (optional and recommended)
 - **Application Tracking**: Track applications from submission to offer with custom statuses
 - **Onboarding Checklist**: The dashboard shows the next setup step, from the backend to a first tracked application
 - **Public Demo**: A static build with sample data, tested in CI and published to GitHub Pages
@@ -127,7 +128,7 @@ Job Raider is a Python-centric backend with a Next.js dashboard. The stack is ch
 git clone https://github.com/neoncircuit/job-raider.git
 cd job-raider
 
-# Run setup
+# Run setup (installs llmfit for hardware fit; add --no-llmfit to skip it)
 ./setup.sh
 
 # Pull Ollama models
@@ -633,6 +634,7 @@ job-raider/                      # Project root (monorepo)
 - **[API Reference](docs/api.md)** - Complete API documentation
 - **[Testing Guide](docs/testing.md)** - Backend and frontend test commands
 - **[Public Demo](docs/demo-site.md)** - How the demo works, and how to build, test, and publish it
+- **[Hardware Fit](docs/hardware-fit.md)** - Which local models fit your GPU, with llmfit (optional)
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 - **[Disk Space Management](docs/disk-space.md)** - Data retention policies
 

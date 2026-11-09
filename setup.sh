@@ -16,6 +16,9 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/apps/backend-py"
 VENV_DIR="$BACKEND_DIR/.venv"
 REQUIREMENTS="$BACKEND_DIR/requirements.txt"
+# Optional and recommended packages (llmfit); --no-llmfit skips them
+OPTIONAL_REQUIREMENTS="$BACKEND_DIR/requirements-optional.txt"
+INSTALL_LLMFIT=true
 # Node.js major version for the frontend; .nvmrc is the one source (CI reads it too)
 REQUIRED_NODE_MAJOR="$(tr -dc '0-9' < "$PROJECT_ROOT/.nvmrc")"
 
@@ -336,6 +339,55 @@ install_dependencies() {
     fi
 }
 
+# Print how to call this script
+usage() {
+    echo "Usage: ./setup.sh [--no-llmfit]"
+    echo ""
+    echo "  --no-llmfit   Do not install llmfit (optional and recommended)."
+    echo "                Without it, Settings shows no hardware fit."
+    echo "  -h, --help    Show this help."
+}
+
+# Read the command-line options
+parse_args() {
+    for arg in "$@"; do
+        case "$arg" in
+            --no-llmfit) INSTALL_LLMFIT=false ;;
+            -h|--help) usage; exit 0 ;;
+            *)
+                print_error "Unknown option: $arg"
+                usage
+                exit 2
+                ;;
+        esac
+    done
+}
+
+# Install llmfit (optional and recommended): it tells which local models fit
+# the GPU (docs/hardware-fit.md). A failure does not stop setup.
+install_llmfit() {
+    if [ "$INSTALL_LLMFIT" != true ]; then
+        print_status "Skipping llmfit (--no-llmfit). Settings shows no hardware fit."
+        record_check "WARN" "llmfit (skipped; hardware fit is off)"
+        return 0
+    fi
+    if [ ! -f "$OPTIONAL_REQUIREMENTS" ]; then
+        print_warning "requirements-optional.txt not found, skipping llmfit."
+        record_check "WARN" "llmfit (requirements-optional.txt missing)"
+        return 0
+    fi
+    print_status "Installing llmfit (optional, recommended)..."
+    if pip install -r "$OPTIONAL_REQUIREMENTS"; then
+        print_status "llmfit $("$VENV_DIR/bin/llmfit" -V 2>/dev/null | awk '{print $2}') installed [OK]"
+        record_check "PASS" "llmfit (hardware fit in Settings)"
+    else
+        print_warning "llmfit could not be installed. The app works without it;"
+        print_warning "Settings shows how to install it (docs/hardware-fit.md)."
+        record_check "WARN" "llmfit (install failed; hardware fit is off)"
+    fi
+    return 0
+}
+
 # Create necessary directories
 create_directories() {
     print_status "Creating project directories..."
@@ -593,6 +645,7 @@ print_summary() {
     echo "  4. Run: make dev-frontend     (Next.js on :3000)"
     echo "  5. Or:  make dev              (both together)"
     echo "  6. Docker: docker compose up -d"
+    echo "  7. Hardware fit: Settings > Local models (llmfit; docs/hardware-fit.md)"
     echo ""
     echo -e "Disk space warning:"
     echo "  - Docker Desktop stores ALL data on C: drive (see docs/docker-storage.md)"
@@ -643,6 +696,8 @@ print_summary() {
 
 # Main execution
 main() {
+    parse_args "$@"
+
     # System prerequisites
     check_disk_space
     check_git
@@ -660,6 +715,7 @@ main() {
     activate_venv
     upgrade_pip
     install_dependencies
+    install_llmfit
 
     # Project structure
     create_directories
@@ -675,5 +731,7 @@ main() {
     print_summary
 }
 
-# Run main function
-main
+# Run main function when the file is executed (tests source it)
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

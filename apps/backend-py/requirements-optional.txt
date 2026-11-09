@@ -1,0 +1,8 @@
+# Job Raider - optional and recommended packages
+#
+# setup.sh installs these into apps/backend-py/.venv unless you pass
+# --no-llmfit. The app works without them. CI does not install them.
+
+# llmfit (MIT): detects the GPU and estimates which local models fit it.
+# The Settings page uses it for hardware fit (docs/hardware-fit.md).
+llmfit==1.1.20

@@ -28,6 +28,7 @@ Job Raider combines an async Python backend, a local-first LLM strategy, and a m
 - **[Tech Stack](architecture.md#tech-stack)** - Languages, frameworks, and key dependencies
 - **[API Reference](api.md)** - Complete API documentation
 - **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
+- **[Hardware Fit](hardware-fit.md)** - Which local models fit your GPU, with llmfit (optional)
 - **[Conventions](conventions.md)** - Documentation style and local CI quality gate
 - **[Decision Log](decision-log.md)** - Recorded design decisions and consequences
 - **[Changelog](../CHANGELOG.md)** - Version checkpoints and release notes (root `VERSION`)
