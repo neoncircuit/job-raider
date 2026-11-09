@@ -160,6 +160,18 @@ In the first check run, the red step and the "main runs on source" mutant source
 
 Repair (user decisions, 2026-11-09): setuptools 84.2.1 was reinstalled with `--force-reinstall --no-deps`, and the stash was removed; `import setuptools` works, `pip check` passes, and the core imports work. llmfit stays in the real `.venv` (user: keep it). The Chromium 1228 folders were deleted (user: delete them). The clone files were removed. The test now checks the guard before it sources the file, and `docs/lessons.md` has the lesson.
 
+## MH-6 written and checked (2026-11-09, Claude)
+
+`mh-6-run-hardware.md` (runner) is written. It is not applied. `collect_hardware()` in `run_metadata.py` reads the GPU, its memory, the RAM, the CPU, and the llmfit version (empty without llmfit). `build_run_metadata` adds them to `RunMetadata` (5 new optional fields), so the JSON report and the MLflow params have them. The cover-letter model compare logs the same params. 1 new test file (7 tests).
+
+Runner test on the clone (the handoff was in the clone): the red step fails for the right reason (`ImportError: collect_hardware`), the 4 checks pass (65 tests, black, ruff, mypy gate with 179 known and 0 new), and commit `6f40622` is on the clone. The HEAD of the real repository did not change. The first try stopped before any write: one edit did not end in a newline, which the handoff generator checks.
+
+Other checks on the clone:
+
+- The full backend suite passes: 2,238 tests. No MLflow tracking store was made in the working folder (the compare test stubs the experiment lookup).
+- Smoke run with the real llmfit 1.1.20 (read-only): `collect_hardware()` gave the RTX 3070 Ti with 8.0 GB, 7.72 GB RAM, the Ryzen 5 5600X, and "llmfit 1.1.20".
+- Mutants: 5 of 5 are caught (builder skips the profile, no VRAM, None values kept, unavailable not caught, compare skips the profile).
+
 ## Blockers / Questions
 
 - None.
