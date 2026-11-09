@@ -58,10 +58,6 @@
 }
 
 :root {
-  /* Fonts — set by next/font on <html>; fallbacks for SSR */
-  --font-ibm-plex-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-  --font-ibm-plex-mono: "IBM Plex Mono", ui-monospace, "Consolas", monospace;
-
   /* Typography sizes - px based */
   --font-size-xs: 12px;
   --font-size-sm: 14px;
