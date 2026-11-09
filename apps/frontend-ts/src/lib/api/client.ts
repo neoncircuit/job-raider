@@ -5,6 +5,8 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly detail: string,
+    /** The ``details`` object of a JSON error body, if there is one. */
+    public readonly details?: Record<string, unknown>,
   ) {
     super(`API ${status}: ${detail}`);
     this.name = "ApiError";
@@ -340,12 +342,16 @@ export async function request<T>(
 
   if (!res.ok) {
     let detail = res.statusText;
+    let details: Record<string, unknown> | undefined;
     try {
       const json = await res.json();
       detail = normalizeApiErrorDetail(
         json?.detail ?? json?.message,
         res.statusText,
       );
+      if (json?.details && typeof json.details === "object") {
+        details = json.details as Record<string, unknown>;
+      }
     } catch {
       // ignore parse errors
     }
@@ -375,7 +381,7 @@ export async function request<T>(
       throw new ConnectionError(detail || "Backend unreachable");
     }
 
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, detail, details);
   }
 
   logResponse(res.status, path);

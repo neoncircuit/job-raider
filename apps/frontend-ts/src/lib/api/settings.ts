@@ -2,6 +2,7 @@ import { request } from "./client";
 import type {
   AppSettings,
   AvailableModelsResponse,
+  HardwareFitReport,
   OllamaModelList,
   OllamaPullState,
 } from "@/lib/types/api";
@@ -75,11 +76,27 @@ export const settingsApi = {
   /**
    * Start pulling an Ollama model (one at a time; 9B+ refused).
    *
+   * A model over the GPU memory budget answers 409 (``details.code`` is
+   * ``over_budget``) until the user confirms.
+   *
    * @param model - Model tag such as ``qwen2.5:3b``.
+   * @param confirmOverBudget - True after the user confirmed an over-budget pull.
    */
-  pullOllamaModel: (model: string) =>
+  pullOllamaModel: (model: string, confirmOverBudget = false) =>
     request<OllamaPullState>("POST", "/settings/ollama/pull", {
-      body: { model },
+      body: confirmOverBudget
+        ? { model, confirm_over_budget: true }
+        : { model },
+    }),
+
+  /**
+   * Get the hardware fit of the local models (llmfit is optional).
+   *
+   * @param refresh - True to run llmfit again instead of using the cache.
+   */
+  getHardwareFit: (refresh = false) =>
+    request<HardwareFitReport>("GET", "/hardware/fit", {
+      params: refresh ? { refresh: true } : undefined,
     }),
 
   /** Read progress of the current or last pull. */

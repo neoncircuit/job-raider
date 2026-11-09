@@ -12,8 +12,10 @@ import type {
   AvailableModelsResponse,
   CoverLetterResponse,
   DiscoverShortlistResponse,
+  HardwareFitReport,
   HealthResponse,
   MetricsSummaryResponse,
+  OllamaModelList,
   PipelineHistoryResponse,
   SystemResourcesResponse,
   UserProfile,
@@ -84,6 +86,46 @@ export const demoSettings: AppSettings = {
     enable_cache: true,
     cache_ttl: 3600,
   },
+};
+
+/** Two installed sample models, as the Local models card lists them. */
+export const demoOllamaModels: OllamaModelList = {
+  host: "localhost:11434",
+  reachable: true,
+  in_use: LOCAL_MODELS,
+  models: [
+    {
+      name: "qwen2.5:3b",
+      size: 1_929_912_432,
+      parameter_size: "3.1B",
+      quantization: "Q4_K_M",
+      in_use: true,
+    },
+    {
+      name: "qwen2.5:7b",
+      size: 4_683_087_332,
+      parameter_size: "7.6B",
+      quantization: "Q4_K_M",
+      in_use: true,
+    },
+  ],
+};
+
+/**
+ * The demo reads no hardware, so it shows no invented GPU. It says how a local
+ * install gets hardware fit instead.
+ */
+export const demoHardwareFit: HardwareFitReport = {
+  available: false,
+  reason:
+    "The demo runs in your browser and reads no hardware. A local install with llmfit shows which models fit your GPU.",
+  install_hint:
+    "llmfit is optional and recommended. Run ./setup.sh, or install it into the backend environment: apps/backend-py/.venv/bin/pip install llmfit==1.1.20",
+  headroom_percent: 75,
+  budget_gb: 0,
+  ollama_reachable: true,
+  installed: [],
+  suggestions: [],
 };
 
 /** The recommended local models. */

@@ -739,6 +739,7 @@ export interface AppSettings {
   api_config: ApiConfig;
   model_params: ModelParams;
   cost_limits: CostLimits;
+  hardware?: HardwareSettings;
   updated_at?: string;
   version?: string;
 }
@@ -761,6 +762,8 @@ export interface OllamaInstalledModel {
   size: number;
   modified_at?: string | null;
   parameter_size?: string | null;
+  /** Quantization of the file, such as ``Q4_K_M`` (Step 6). */
+  quantization?: string | null;
   /** True when routing or RAG embedding uses it (delete is refused). */
   in_use: boolean;
 }
@@ -841,6 +844,78 @@ export interface OllamaPullState {
   started_at?: string;
   finished_at?: string | null;
   error?: string | null;
+}
+
+// ── Hardware fit (Step 6) ─────────────────────────────────────────────────────
+
+/** Hardware fit settings. */
+export interface HardwareSettings {
+  /** Share of the total GPU memory that a local model may use (30 to 100). */
+  vram_headroom_percent: number;
+}
+
+/** Fit of a model against the safety budget of GPU memory. */
+export type FitLabel = "fits" | "over_budget" | "too_large" | "unknown";
+
+/** Where the memory need of a model comes from. */
+export type FitSource = "llmfit_plan" | "rough_estimate" | "none";
+
+/** Hardware that llmfit detected. */
+export interface HardwareProfile {
+  has_gpu: boolean;
+  gpu_name?: string | null;
+  gpu_vram_gb?: number | null;
+  backend?: string | null;
+  total_ram_gb: number;
+  available_ram_gb?: number | null;
+  cpu_name?: string | null;
+  cpu_cores?: number | null;
+}
+
+/** Fit of one installed Ollama model. */
+export interface InstalledFit {
+  name: string;
+  quantization?: string | null;
+  need_gb?: number | null;
+  label: FitLabel;
+  source: FitSource;
+}
+
+/** A model that is not installed and fits the budget. */
+export interface ModelSuggestion {
+  ollama_name: string;
+  category?: string | null;
+  params_b?: number | null;
+  memory_required_gb: number;
+  estimated_tps?: number | null;
+  score: number;
+  license?: string | null;
+}
+
+/** ``GET /api/hardware/fit`` response. */
+export interface HardwareFitReport {
+  available: boolean;
+  reason?: string | null;
+  install_hint?: string | null;
+  llmfit_version?: string | null;
+  hardware?: HardwareProfile | null;
+  headroom_percent: number;
+  budget_gb: number;
+  ollama_reachable: boolean;
+  installed: InstalledFit[];
+  suggestions: ModelSuggestion[];
+}
+
+/** ``details`` of the 409 answer when a pull is over the budget. */
+export interface OverBudgetDetails {
+  code: "over_budget";
+  tag: string;
+  quantization: string;
+  label: FitLabel;
+  need_gb?: number | null;
+  budget_gb: number;
+  total_vram_gb?: number | null;
+  headroom_percent: number;
 }
 
 // ── Resume Analysis ───────────────────────────────────────────────────────────

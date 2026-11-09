@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { Download, Trash2 } from "lucide-react";
 import { settingsApi } from "@/lib/api/settings";
 import { getApiErrorMessage } from "@/lib/api/client";
-import type { OllamaPullState } from "@/lib/types/api";
+import type { OllamaPullState, OverBudgetDetails } from "@/lib/types/api";
+import { overBudgetDetails } from "@/lib/hardware-fit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,9 +24,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { QueryErrorBanner } from "@/components/layout/QueryErrorBanner";
+import {
+  FitBadge,
+  HardwareFitPanel,
+} from "@/components/settings/hardware-fit-panel";
 
 const MODELS_KEY = ["ollama-models"] as const;
 const PULL_KEY = ["ollama-pull-status"] as const;
+const FIT_KEY = ["hardware-fit"] as const;
 
 /**
  * Format a byte count as gigabytes.
@@ -53,6 +59,8 @@ function pullPercent(state: OllamaPullState): number {
  *
  * The backend allows one pull at a time, refuses models of 9B parameters or
  * more, and refuses to delete models that routing or RAG embedding uses.
+ * With llmfit (optional), it labels each model against the GPU memory
+ * budget, suggests models, and asks to confirm an over-budget pull.
  *
  * @returns The Local models card.
  */
@@ -60,6 +68,10 @@ export function OllamaModelsCard() {
   const qc = useQueryClient();
   const [modelInput, setModelInput] = useState("");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [overBudget, setOverBudget] = useState<{
+    details: OverBudgetDetails;
+    message: string;
+  } | null>(null);
 
   const models = useQuery({
     queryKey: MODELS_KEY,
@@ -71,6 +83,21 @@ export function OllamaModelsCard() {
     refetchInterval: (q) =>
       q.state.data?.status === "pulling" ? 1_000 : false,
   });
+  const fit = useQuery({
+    queryKey: FIT_KEY,
+    queryFn: () => settingsApi.getHardwareFit(),
+  });
+  const refreshFit = useMutation({
+    mutationFn: () => settingsApi.getHardwareFit(true),
+    onSuccess: (report) => qc.setQueryData(FIT_KEY, report),
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "Could not refresh the hardware fit."),
+      ),
+  });
+  const fitByName = new Map(
+    (fit.data?.installed ?? []).map((item) => [item.name, item]),
+  );
 
   const pullState = pull.data;
   const pulling = pullState?.status === "pulling";
@@ -83,18 +110,37 @@ export function OllamaModelsCard() {
     if (pullState.status === "success") {
       toast.success(`Pulled ${pullState.model}`);
       qc.invalidateQueries({ queryKey: MODELS_KEY });
+      qc.invalidateQueries({ queryKey: FIT_KEY });
       qc.invalidateQueries({ queryKey: ["settings-models"] });
     } else if (pullState.status === "error") {
       toast.error(`Pull failed: ${pullState.error ?? "unknown error"}`);
     }
   }, [pullState, qc]);
 
+  const onPullStarted = (state: OllamaPullState) => {
+    qc.setQueryData(PULL_KEY, state);
+    setModelInput("");
+  };
+
   const startPull = useMutation({
     mutationFn: (model: string) => settingsApi.pullOllamaModel(model),
-    onSuccess: (state) => {
-      qc.setQueryData(PULL_KEY, state);
-      setModelInput("");
+    onSuccess: onPullStarted,
+    onError: (error) => {
+      const details = overBudgetDetails(error);
+      if (details) {
+        setOverBudget({
+          details,
+          message: getApiErrorMessage(error, "Over the GPU memory budget."),
+        });
+        return;
+      }
+      toast.error(getApiErrorMessage(error, "Could not start the pull."));
     },
+  });
+
+  const confirmPull = useMutation({
+    mutationFn: (model: string) => settingsApi.pullOllamaModel(model, true),
+    onSuccess: onPullStarted,
     onError: (error) =>
       toast.error(getApiErrorMessage(error, "Could not start the pull.")),
   });
@@ -104,6 +150,7 @@ export function OllamaModelsCard() {
     onSuccess: (data) => {
       toast.success(`Deleted ${data.deleted}`);
       qc.invalidateQueries({ queryKey: MODELS_KEY });
+      qc.invalidateQueries({ queryKey: FIT_KEY });
       qc.invalidateQueries({ queryKey: ["settings-models"] });
     },
     onError: (error) =>
@@ -153,6 +200,16 @@ export function OllamaModelsCard() {
         </Button>
       </form>
 
+      <HardwareFitPanel
+        fit={fit.data}
+        isLoading={fit.isLoading}
+        isError={fit.isError}
+        isRefreshing={refreshFit.isPending}
+        pullDisabled={pulling || startPull.isPending || confirmPull.isPending}
+        onRefresh={() => refreshFit.mutate()}
+        onPull={(model) => startPull.mutate(model)}
+      />
+
       {pulling && pullState && (
         <div className="space-y-1" aria-live="polite">
           <p className="text-xs text-muted-foreground">
@@ -192,6 +249,7 @@ export function OllamaModelsCard() {
                   <th className="pb-2 pr-4">Model</th>
                   <th className="pb-2 pr-4">Parameters</th>
                   <th className="pb-2 pr-4">Size</th>
+                  <th className="pb-2 pr-4">Fit</th>
                   <th className="pb-2" />
                 </tr>
               </thead>
@@ -206,6 +264,9 @@ export function OllamaModelsCard() {
                     </td>
                     <td className="py-2 pr-4 text-muted-foreground">
                       {formatGb(m.size)}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <FitBadge fit={fitByName.get(m.name)} />
                     </td>
                     <td className="py-2 text-right">
                       {m.in_use ? (
@@ -253,6 +314,33 @@ export function OllamaModelsCard() {
               }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={overBudget !== null}
+        onOpenChange={(open) => !open && setOverBudget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Pull {overBudget?.details.tag} anyway?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {overBudget?.message}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (overBudget) confirmPull.mutate(overBudget.details.tag);
+                setOverBudget(null);
+              }}
+            >
+              Pull anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

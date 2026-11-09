@@ -10,11 +10,13 @@ import { http, HttpResponse } from "msw";
 
 import {
   demoApplications,
+  demoHardwareFit,
   demoHealth,
   demoHistory,
   demoLetter,
   demoMetrics,
   demoModels,
+  demoOllamaModels,
   demoProfile,
   demoResources,
   demoSettings,
@@ -59,6 +61,13 @@ export const handlers = [
   http.get(api("/profile"), () => HttpResponse.json(demoProfile)),
   http.get(api("/settings/"), () => HttpResponse.json(demoSettings)),
   http.get(api("/settings/models"), () => HttpResponse.json(demoModels)),
+  http.get(api("/settings/ollama/models"), () =>
+    HttpResponse.json(demoOllamaModels),
+  ),
+  http.get(api("/settings/ollama/pull/status"), () =>
+    HttpResponse.json({ status: "idle" }),
+  ),
+  http.get(api("/hardware/fit"), () => HttpResponse.json(demoHardwareFit)),
   http.get(api("/applications/dashboard"), () =>
     HttpResponse.json(demoApplications),
   ),

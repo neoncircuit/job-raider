@@ -78,6 +78,9 @@ const schema = z.object({
     enable_prompt_cache: z.boolean(),
     ollama_keep_alive: z.string().optional(),
   }),
+  hardware: z.object({
+    vram_headroom_percent: z.number().int().min(30).max(100),
+  }),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -138,6 +141,9 @@ function SettingsForm({
         enable_prompt_cache: initial.cost_limits.enable_prompt_cache ?? false,
         ollama_keep_alive: initial.cost_limits.ollama_keep_alive ?? "",
       },
+      hardware: {
+        vram_headroom_percent: initial.hardware?.vram_headroom_percent ?? 75,
+      },
     },
   });
 
@@ -188,6 +194,7 @@ function SettingsForm({
       replaceFormValues(settings);
       qc.invalidateQueries({ queryKey: ["settings"] });
       qc.invalidateQueries({ queryKey: ["settings-models"] });
+      qc.invalidateQueries({ queryKey: ["hardware-fit"] });
       setModelsDirty(false);
       toast.success("Settings saved.");
     },
@@ -685,6 +692,32 @@ function SettingsForm({
                   request. Leave blank to use Ollama defaults.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Hardware Fit</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              <Label htmlFor="vram_headroom_percent">
+                GPU memory budget (%)
+              </Label>
+              <Input
+                id="vram_headroom_percent"
+                type="number"
+                min={30}
+                max={100}
+                step={1}
+                {...register("hardware.vram_headroom_percent", {
+                  valueAsNumber: true,
+                })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Share of the total GPU memory that a local model may use. Models
+                above it are labelled over budget, and a pull asks you to
+                confirm. Default 75. Needs llmfit (optional and recommended).
+              </p>
             </CardContent>
           </Card>
         </div>

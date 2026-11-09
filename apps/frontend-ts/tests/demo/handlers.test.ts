@@ -6,11 +6,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   demoApplications,
+  demoHardwareFit,
   demoHealth,
   demoHistory,
   demoLetter,
   demoMetrics,
   demoModels,
+  demoOllamaModels,
   demoProfile,
   demoResources,
   demoSettings,
@@ -53,6 +55,8 @@ describe("demo handlers", () => {
     ["/profile", demoProfile],
     ["/settings/", demoSettings],
     ["/settings/models", demoModels],
+    ["/settings/ollama/models", demoOllamaModels],
+    ["/hardware/fit", demoHardwareFit],
     ["/applications/dashboard", demoApplications],
     ["/jobs/sources", { sources: ["sample"] }],
   ])("serves %s", async (path, expected) => {

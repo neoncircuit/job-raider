@@ -121,6 +121,106 @@ const mockPipelineHistory = {
  * @param page - The Playwright page whose network traffic to mock.
  * @returns A promise that resolves once the catch-all route is registered.
  */
+/** Hardware fit report for the E2E mock (made-up 8 GB GPU). */
+const mockHardwareFit = {
+  available: true,
+  llmfit_version: "1.1.20",
+  hardware: {
+    has_gpu: true,
+    gpu_name: "Example GPU",
+    gpu_vram_gb: 8,
+    total_ram_gb: 32,
+  },
+  headroom_percent: 75,
+  budget_gb: 6,
+  ollama_reachable: true,
+  installed: [
+    {
+      name: "examplechat:7b",
+      quantization: "Q4_K_M",
+      need_gb: 5.35,
+      label: "fits",
+      source: "llmfit_plan",
+    },
+    {
+      name: "examplereason:8b",
+      quantization: "Q4_K_M",
+      need_gb: 6.2,
+      label: "over_budget",
+      source: "llmfit_plan",
+    },
+  ],
+  suggestions: [
+    {
+      ollama_name: "examplebig:8b",
+      category: "General",
+      params_b: 8,
+      memory_required_gb: 5.9,
+      score: 84,
+    },
+  ],
+};
+
+/** Installed models for the E2E mock. */
+const mockOllamaModels = {
+  host: "localhost:11434",
+  reachable: true,
+  in_use: [],
+  models: [
+    {
+      name: "examplechat:7b",
+      size: 4_680_000_000,
+      parameter_size: "7B",
+      quantization: "Q4_K_M",
+      in_use: false,
+    },
+    {
+      name: "examplereason:8b",
+      size: 5_230_000_000,
+      parameter_size: "8B",
+      quantization: "Q4_K_M",
+      in_use: false,
+    },
+  ],
+};
+
+/**
+ * Answer a pull like the backend: an over-budget model needs a confirmation.
+ *
+ * @param route - The intercepted request.
+ * @returns A promise that resolves when the route is fulfilled.
+ */
+function fulfillPull(route: Route): Promise<void> {
+  const body = (route.request().postDataJSON() ?? {}) as {
+    model?: string;
+    confirm_over_budget?: boolean;
+  };
+  if (body.model === "examplebig:8b" && !body.confirm_over_budget) {
+    return route.fulfill({
+      status: 409,
+      json: {
+        error: "Over budget",
+        message:
+          "examplebig:8b needs about 6.4 GB of GPU memory, above your safety budget of 6.0 GB (75% of 8.0 GB). Confirm to pull it anyway.",
+        details: {
+          code: "over_budget",
+          tag: "examplebig:8b",
+          quantization: "Q4_K_M",
+          label: "over_budget",
+          need_gb: 6.4,
+          budget_gb: 6,
+          total_vram_gb: 8,
+          headroom_percent: 75,
+        },
+      },
+    });
+  }
+  return route.fulfill({
+    status: 202,
+    json: { status: "pulling", model: body.model, message: "pulling manifest" },
+  });
+}
+
 export async function mockApi(page: Page): Promise<void> {
   await page.route("**/api/proxy/**", async (route: Route) => {
     const request = route.request();
@@ -162,6 +262,14 @@ export async function mockApi(page: Page): Promise<void> {
       case "GET /settings":
       case "GET /settings/":
         return route.fulfill({ status: 200, json: mockSettings });
+      case "GET /settings/ollama/models":
+        return route.fulfill({ status: 200, json: mockOllamaModels });
+      case "GET /settings/ollama/pull/status":
+        return route.fulfill({ status: 200, json: { status: "idle" } });
+      case "POST /settings/ollama/pull":
+        return fulfillPull(route);
+      case "GET /hardware/fit":
+        return route.fulfill({ status: 200, json: mockHardwareFit });
       case "GET /profile":
         return route.fulfill({ status: 200, json: sampleProfile });
       case "POST /profile/analyze-linkedin":
