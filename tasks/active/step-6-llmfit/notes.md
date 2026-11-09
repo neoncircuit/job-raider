@@ -107,6 +107,29 @@ Other checks on the clone:
 - Smoke run through the API (a TestClient with the real llmfit 1.1.20 and the local Ollama; read-only): the cold report took 5.0 s (the MH-2 smoke took 11.7 s without the cache and the parallel plans), and the warm report took 0.0 s. The labels match MH-2: 15 fit, 5 over the budget, 1 too large, and the same 8 suggestions. A pull of `deepseek-r1:8b` answered 409: "needs about 6.2 GB of GPU memory, above your safety budget of 6.0 GB (75% of 8.0 GB). Confirm to pull it anyway." The pull state stayed `idle`, so no download started.
 - The first smoke run failed in the smoke script, not in the code: TestClient's default host `testserver` is not in the trusted hosts. The script now uses `http://localhost`.
 
+## MH-4 written and checked (2026-11-09, Claude)
+
+`mh-4-settings-card.md` (runner) is written. It is not applied. It adds the fit badge column, the hardware fit panel (budget, suggestions with Pull, or the install hint without llmfit), the over-budget confirm dialog, the "GPU memory budget (%)" settings field, `ApiError.details`, the demo answers, the E2E mock answers, and 4 test files (16 unit tests, 1 E2E test).
+
+Decision during the work: the demo data rule is "no invented GPU or host readings", so the demo fit report is `available: false`, with a reason and the install hint. The demo now lists the two sample models that its settings already name as installed.
+
+Runner test on the clone (the handoff was in the clone): the red step fails for the right reason (`Failed to resolve import "@/lib/hardware-fit"`, and the card tests find no "Fits", no panel, no Pull or Refresh button), the 4 checks pass (vitest, prettier, eslint with no warnings, tsc), and commit `ab7fb94` is on the clone. The HEAD of the real repository did not change.
+
+Fixes before the final runner test:
+
+- A test asked for a custom "30 to 100" error. The browser's own check (`min=30`, also in jsdom) stops the submit first, so that message could never show. The message is removed, and the test checks that the field is invalid and nothing is saved.
+- In the E2E spec, `getByLabel("Hardware fit")` also matched the "Refresh hardware fit" button (Playwright matches a substring). The spec uses `exact: true`.
+
+Other checks on the clone:
+
+- Unit tests: 373 pass (358 before). The 86 MSW "Cannot bypass a request" log lines are the same before and after this change.
+- E2E with the API mock: 43 of 44 pass. The one failure was the Jobs page search test, which this change does not touch; it passed in the run before, and 3 repeats of the Jobs and hardware fit specs passed (24 of 24).
+- Demo E2E: 18 pass, after a build with `NEXT_PUBLIC_BASE_PATH=/job-raider` (as in CI). The first demo run failed for a setup reason: the build had no base path, so the demo did not start.
+- Mutants: 15 of 15 are caught (13 with the unit tests; the client that drops `details` and the request body that drops `confirm_over_budget` with the E2E spec).
+- Screenshots (API mock, desktop and mobile): the card shows the budget line, the suggestion with its Pull button, and the Fits and Over budget badges. The confirm dialog shows the backend's message.
+- Observation: on a phone, the model table now has 5 columns, so the Fit column and the delete button need a sideways scroll (the table already scrolls). A later change can hide the Parameters column on small screens.
+- Setup note: the main E2E config does not read `PLAYWRIGHT_CHROMIUM_PATH`, so local runs in WSL use an untracked config that sets the browser path for both projects (as in Step 5).
+
 ## Blockers / Questions
 
 - None.
