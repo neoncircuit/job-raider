@@ -215,7 +215,7 @@ class TestReport:
         installed[0]["quantization"] = "Q5_K_M"
         report = make_service(StubClient()).report(75, installed, True)
         assert report.installed[0].source == FitSource.ROUGH_ESTIMATE
-        assert report.installed[0].need_gb == 5.68
+        assert report.installed[0].need_gb == 5.36
 
 
 class TestCache:

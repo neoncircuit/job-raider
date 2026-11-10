@@ -44,6 +44,8 @@ llmfit can call a model a good fit when the model fills almost all of the GPU me
 
 - **llmfit plan**: when llmfit knows the model, Job Raider asks llmfit for the memory need at the quantization of the file that you have (for example Q4_K_M), at a context of 8,192 tokens.
 - **Rough estimate**: when llmfit does not know the model (for example a tag that you made yourself), the need is the file size plus 1 GB for the context and the runtime.
+- **File-size floor**: Ollama loads the whole file, so an llmfit plan below the file size is not used. This happens for a Gemma "e" model, where llmfit assumes that part of the weights stays off the GPU. The label then uses the rough estimate and says so.
+- **Units**: GB here means 1024³ bytes, as `nvidia-smi` and llmfit report the VRAM and as the Size column shows a file.
 - **Suggestions**: models with an Ollama name, at 4-bit quantization or more, under the 9B pull limit, within the budget.
 
 All numbers are estimates, not benchmarks. The backend keeps the results for 10 minutes. The refresh button on the card runs llmfit again.

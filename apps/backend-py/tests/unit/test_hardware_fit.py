@@ -74,8 +74,8 @@ class TestLabel:
         assert label_for(2.0, 0.0, None) == FitLabel.UNKNOWN
 
     def test_rough_need_adds_the_allowance(self) -> None:
-        """A 4.68 GB file needs about 5.68 GB."""
-        assert rough_need_gb(4_680_000_000) == 5.68
+        """A file of 4.68e9 bytes (4.36 GiB) needs about 5.36 GiB."""
+        assert rough_need_gb(4_680_000_000) == 5.36
         assert rough_need_gb(None) is None
         assert rough_need_gb(0) is None
 
@@ -86,13 +86,28 @@ class TestLabel:
         assert fit.need_gb == 5.35
         assert fit.label == FitLabel.FITS
 
+    def test_the_file_size_is_a_floor_for_the_plan(self) -> None:
+        """A plan below the installed file is not used: Ollama loads the file."""
+        # gemma4:e4b on the user's machine: llmfit planned 5.79 GiB for a
+        # 9.61e9-byte file, which alone is more than the 8 GiB card.
+        fit = label_installed("gemma4:e4b", "Q4_K_M", 9_610_000_000, 5.79, 6.0, 8.0)
+        assert fit.need_gb == 9.95
+        assert fit.source == FitSource.ROUGH_ESTIMATE
+        assert fit.label == FitLabel.TOO_LARGE
+
+    def test_a_plan_without_a_file_size_is_used(self) -> None:
+        """With no file size there is no floor, so the plan decides."""
+        fit = label_installed("x:7b", "Q4_K_M", None, 5.35, 6.0, 8.0)
+        assert fit.source == FitSource.LLMFIT_PLAN
+        assert fit.need_gb == 5.35
+
     def test_installed_falls_back_to_a_rough_estimate(self) -> None:
         """Without a plan the file size decides, and the source says so."""
         fit = label_installed(
             "mine-16k:latest", "Q4_K_M", 6_590_000_000, None, 6.0, 8.0
         )
         assert fit.source == FitSource.ROUGH_ESTIMATE
-        assert fit.need_gb == 7.59
+        assert fit.need_gb == 7.14
         assert fit.label == FitLabel.OVER_BUDGET
 
     def test_installed_without_size_or_plan_is_unknown(self) -> None:

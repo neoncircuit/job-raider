@@ -29,11 +29,17 @@ DEFAULT_VRAM_HEADROOM_PERCENT = 75
 ROUGH_ALLOWANCE_GB = 1.0
 """Context and runtime memory added to a file size for a rough estimate.
 
+A plan below the file size itself is not used: Ollama loads the whole
+file, so such a plan is replaced with this rough estimate.
+
 MH-1 measure: the Q4_K_M ``qwen2.5-coder:7b`` file is 4.42 GB in llmfit's
 estimate, and its minimum VRAM at an 8,192-token context is 5.35 GB.
 """
 
-BYTES_PER_GB = 1_000_000_000
+BYTES_PER_GB = 1024**3
+"""GB in this module means 1024**3 bytes (GiB), the unit of the VRAM that
+nvidia-smi and llmfit report (8192 MiB is 8.0) and of the Size column in
+Settings, so a file size and a budget compare in one unit."""
 
 _LOW_QUANT_RE = re.compile(r"^(Q[23]_|IQ[123]_)", re.IGNORECASE)
 _EMBEDDING_CATEGORY = "embedding"
@@ -143,8 +149,10 @@ def label_installed(
     """
     Label one installed Ollama model.
 
-    The llmfit plan for the installed quantization is used when there is one.
-    Otherwise the label uses a rough estimate from the file size.
+    The llmfit plan for the installed quantization is used when there is one,
+    unless it is below the file size itself: a plan can assume that part of
+    the weights stays off the GPU, but Ollama loads the whole file. Otherwise
+    the label uses a rough estimate: the file size plus ``ROUGH_ALLOWANCE_GB``.
 
     Args:
         tag: Ollama tag.
@@ -157,7 +165,8 @@ def label_installed(
     Returns:
         The fit result with its source.
     """
-    if plan_need_gb is not None:
+    file_gb = size_bytes / BYTES_PER_GB if size_bytes and size_bytes > 0 else None
+    if plan_need_gb is not None and (file_gb is None or plan_need_gb >= file_gb):
         need: Optional[float] = round(plan_need_gb, 2)
         source = FitSource.LLMFIT_PLAN
     else:
