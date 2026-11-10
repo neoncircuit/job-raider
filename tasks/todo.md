@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] One split view for `make dev` (`tasks/active/make-dev-split-view/`; mprocs; applied, waiting for the user's make dev run)
+- [ ] One split view for `make dev` (`tasks/active/make-dev-split-view/`; mprocs; confirmed by the user, archive after CI)
 
 ## Next Up
 - [ ] No open items.

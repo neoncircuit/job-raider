@@ -21,7 +21,7 @@ flowchart LR
 ## Acceptance Criteria
 - [x] `mprocs.yaml` starts `dev.sh api` and `dev.sh frontend`; `dev.sh both` hands off to mprocs in a terminal.
 - [x] Tests guard the config, the pin, and the switch; the README, `docs/usage.md`, and the Makefile help say how to use it.
-- [ ] The user runs `make dev` on this machine and sees both services in one view.
+- [x] The user runs `make dev` on this machine and sees both services in one view. (2026-11-10: "Yes, it works")
 
 ## Status
-`in-progress` (2026-11-10: applied as `e1cdebd`; waiting for the user's make dev run)
+`in-progress` (2026-11-10: applied as `e1cdebd`; the user confirmed it; archive after the push and CI)

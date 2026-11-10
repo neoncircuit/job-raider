@@ -30,6 +30,6 @@ Checks on the clone:
 - The real mprocs rendered the real `mprocs.yaml` with its two commands replaced by echoes: both processes listed, the selected output shown. The real commands were not started, because the user's dev servers use ports 8000 and 3000.
 - The new files first had mode 100755 (copied from the Windows drive); they are 100644 in the commit.
 
-Not checked here: the plain fallback at run time (it would start servers on the ports in use), and a real `make dev` with both services. The user's run on this machine is the last criterion.
+Not checked here: the plain fallback at run time (it would start servers on the ports in use). The user ran `make dev` on this machine and confirmed the split view with both services ("Yes, it works", 2026-11-10).
 
 ## Review
