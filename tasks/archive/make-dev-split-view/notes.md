@@ -33,3 +33,11 @@ Checks on the clone:
 Not checked here: the plain fallback at run time (it would start servers on the ports in use). The user ran `make dev` on this machine and confirmed the split view with both services ("Yes, it works", 2026-11-10).
 
 ## Review
+
+Done (2026-11-10). Pushed as `86c5469`; CI run 42844773681 passed (all 12 jobs).
+
+After the first `make dev` the frontend logged `ChunkLoadError ... SyntaxError: Unexpected end of input` for `/settings`: Next.js read a server chunk in `apps/frontend-ts/.next` while Turbopack was still writing it (slow writes on the Windows drive under WSL; several first-compile requests at once). The chunk on disk was complete a moment later, and CI was green, so the code was fine. `.next` (670 MB, with leftovers of older production builds) was deleted, and a clean `make dev` served `/settings` with HTTP 200 and no error after an 80 s first compile.
+
+## Review
+
+`make dev` now gives the Turborepo-style view the user asked for, with no new setup step: `npm ci` installs the pinned mprocs, and the old mixed output stays as the fallback. Two lessons: copying files from the Windows drive with `cp` makes them executable in git, so check the mode before a commit; and on the Windows drive a cold Next.js dev cache is slow and can race, so delete `.next` when chunk errors appear and let the first page compile alone.

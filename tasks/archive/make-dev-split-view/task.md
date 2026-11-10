@@ -24,4 +24,4 @@ flowchart LR
 - [x] The user runs `make dev` on this machine and sees both services in one view. (2026-11-10: "Yes, it works")
 
 ## Status
-`in-progress` (2026-11-10: applied as `e1cdebd`; the user confirmed it; archive after the push and CI)
+`done` (2026-11-10: applied as `e1cdebd`; CI run 42844773681 green)
