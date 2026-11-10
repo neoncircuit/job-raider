@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Hardware fit: file-size floor and one unit (`tasks/active/hardware-fit-floor/`; checked on a clone, not applied)
+- [ ] Hardware fit: file-size floor and one unit (`tasks/active/hardware-fit-floor/`; applied, archive after CI)
 
 ## Next Up
 - [ ] No open items.

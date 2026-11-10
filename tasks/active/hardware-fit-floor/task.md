@@ -22,4 +22,4 @@ flowchart LR
 - [x] A smoke run with the real llmfit and Ollama shows the expected changes only (`gemma4:e4b` to Too large; `granite4.1:8b` to Fits from the unit change).
 
 ## Status
-`in-progress` (2026-11-10: checked on a clone, not applied)
+`in-progress` (2026-11-10: applied as `e488a63`; archive after the push and CI)

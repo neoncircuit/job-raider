@@ -12,7 +12,7 @@ The user's screenshot of Settings showed `gemma4:e4b` as "Fits" next to an 8.9 G
 
 ## Handoff written and checked (2026-11-10, Claude)
 
-`mh-1-file-size-floor.md` (runner) is written. It is not applied. In `label_installed`, a plan below the file size (in GiB) is not used; the rough estimate (file size plus 1 GB) takes its place, with the source `rough_estimate`. `BYTES_PER_GB` is 1024^3. The docs explain the floor and the unit. Tests: 2 new, 3 values updated.
+`mh-1-file-size-floor.md` (runner) is applied on the repo (2026-11-10, Claude ran the runner on the user's word "Yes, apply it"): commit `e488a63`. The red step failed, the 4 checks passed, and `git diff 3509f0d HEAD`, without `tasks/`, is empty. In `label_installed`, a plan below the file size (in GiB) is not used; the rough estimate (file size plus 1 GB) takes its place, with the source `rough_estimate`. `BYTES_PER_GB` is 1024^3. The docs explain the floor and the unit. Tests: 2 new, 3 values updated.
 
 A first version used the file size plus 1 GB as the floor. The smoke run showed that it replaced good plans by 0.01 GB (`qwen2.5-coder:7b`: plan 5.35, floor 5.36). The floor is now the file size alone, and mutant M4 guards it. The first handoff text also said that no other label changed; the smoke run showed `granite4.1:8b` moving to Fits, and the text now says so.
 
