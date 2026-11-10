@@ -101,7 +101,17 @@ start_frontend() {
     npm run dev -- --hostname 127.0.0.1 --port 3000
 }
 
+# Start both services. In an interactive terminal with mprocs installed (a
+# frontend dev dependency), show them in one split view: a process list with
+# status, and the selected process's output. Set DEV_PLAIN=1, or run without
+# a terminal, for the plain mixed output.
 start_both() {
+    MPROCS_BIN="$FRONTEND_DIR/node_modules/.bin/mprocs"
+    if [ -t 1 ] && [ -x "$MPROCS_BIN" ] && [ -z "${DEV_PLAIN:-}" ]; then
+        echo "Starting backend API + Next.js frontend in mprocs (q quits)..."
+        cd "$PROJECT_ROOT"
+        exec "$MPROCS_BIN" --config "$PROJECT_ROOT/mprocs.yaml"
+    fi
     echo "Starting backend API + Next.js frontend..."
     (trap 'kill 0' SIGINT; start_api & start_frontend; wait)
 }

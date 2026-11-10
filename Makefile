@@ -9,7 +9,7 @@ help:
 	@echo "Job Raider - Development Commands"
 	@echo ""
 	@echo "Local Development:"
-	@echo "  make dev              - Start backend API + Next.js frontend concurrently"
+	@echo "  make dev              - Start backend API + Next.js frontend in one split view (mprocs)"
 	@echo "  make dev-api          - Start backend API only (port 8000)"
 	@echo "  make dev-frontend     - Start Next.js dev server only (port 3000)"
 	@echo ""

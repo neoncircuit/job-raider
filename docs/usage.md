@@ -38,7 +38,7 @@ cp apps/frontend-ts/.env.example apps/frontend-ts/.env.local
 ### Running Locally
 
 ```bash
-# Start both services together
+# Start both services together, in one split view (mprocs; q quits)
 make dev
 
 # Or start them individually

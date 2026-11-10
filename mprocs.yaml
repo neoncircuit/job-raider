@@ -1,0 +1,14 @@
+# Job Raider - processes for `make dev`
+#
+# mprocs (https://github.com/pvolok/mprocs, MIT) shows each process in one
+# terminal: the list on the left with its status, the selected process's
+# output on the right. scripts/dev.sh starts it from the project root.
+#
+# Keys: j / k select, Ctrl+A switches focus to the output (to scroll or
+# type), r restarts, x stops, s starts, z zooms, q quits and stops all.
+
+procs:
+  backend:
+    shell: "./scripts/dev.sh api"
+  frontend:
+    shell: "./scripts/dev.sh frontend"

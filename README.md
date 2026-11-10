@@ -712,9 +712,11 @@ make dev-api
 # In another terminal, start the Next.js dashboard (http://localhost:3000)
 make dev-frontend
 
-# Or start both together
+# Or start both together, in one split view
 make dev
 ```
+
+`make dev` shows both services in [mprocs](https://github.com/pvolok/mprocs): the process list with each status on the left, and the selected process's output on the right. Use `j` and `k` to select, `r` to restart, `Ctrl+A` to scroll or type in the output, and `q` to quit and stop both. mprocs is a frontend dev dependency, so `npm ci` installs it. Without it, or with `DEV_PLAIN=1`, `make dev` prints both outputs mixed in one terminal.
 
 Or use Docker to start all services at once:
 
