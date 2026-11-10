@@ -83,8 +83,14 @@ start_api() {
     # Load apps/backend-py/.env (API_KEY, AUTH_DISABLED, provider keys), as
     # Compose does with env_file. The app itself does not read .env, and
     # variables already set in the shell take precedence.
+    # Reload watches only the code and the config. Watching the whole backend
+    # folder includes data/, where folders that a container wrote as root
+    # (for example a browser session) stop the watcher with "Permission
+    # denied", and data writes would restart the server.
     PYTHONPATH=. "$VENV_PYTHON" -m uvicorn src.api.main:app \
-        --host 127.0.0.1 --port 8000 --reload --env-file "$BACKEND_DIR/.env"
+        --host 127.0.0.1 --port 8000 --reload \
+        --reload-dir "$BACKEND_DIR/src" --reload-dir "$BACKEND_DIR/config" \
+        --env-file "$BACKEND_DIR/.env"
 }
 
 start_frontend() {
