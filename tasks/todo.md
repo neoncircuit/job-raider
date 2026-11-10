@@ -1,12 +1,13 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] make dev creates, repairs, and updates the environments (`tasks/active/dev-deps-repair/`; committed, archive after CI)
+- [ ] To be decided with the user.
 
 ## Next Up
 - [ ] No open items.
 
 ## Done
+- [x] Move to `~/personal-projects/job-raider`, and make dev creates, repairs, and updates the environments (`tasks/archive/dev-deps-repair/`; done 2026-11-11)
 - [x] One split view for `make dev` with mprocs (`tasks/archive/make-dev-split-view/`; done 2026-11-10)
 - [x] Hardware fit: file-size floor and one unit (`tasks/archive/hardware-fit-floor/`; done 2026-11-10)
 - [x] Local cleanup (2026-11-10): the Step 5 leftovers `frontend-py/` (521 MB of `.venv` and caches) and `apps/backend-py/src/database/` (`__pycache__` only) are deleted. `apps/frontend-ts/node_modules` had root-owned folders in WSL (`@types`), so `npm install` failed with EACCES; it was deleted from Windows and rebuilt with `npm ci` (lockfile unchanged, `@types/node` 24.19.2, tsc and 378 unit tests pass).

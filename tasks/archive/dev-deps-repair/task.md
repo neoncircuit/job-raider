@@ -31,4 +31,4 @@ flowchart TD
 - [x] The user runs `make dev` in `~/personal-projects/job-raider`. (2026-11-11: "Yes, it works")
 
 ## Status
-`in-progress` (2026-11-11: committed in the new folder; the user confirmed make dev; archive after the push and CI)
+`done` (2026-11-11: commit `5cc602d`; CI run 42855541242 green)

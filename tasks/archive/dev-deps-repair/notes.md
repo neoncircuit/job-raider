@@ -33,3 +33,7 @@ Scenarios, run in the new folder with `./scripts/dev.sh deps`:
 - The user ran `make dev` from `~/personal-projects/job-raider` and confirmed that it starts cleanly ("Yes, it works", 2026-11-11).
 
 ## Review
+
+Done (2026-11-11). Pushed from `~/personal-projects/job-raider` as `89d501c`; CI run 42855541242 passed (all 12 jobs).
+
+`make dev` now works on a fresh clone and repairs a broken or outdated environment by itself, and the move to the WSL filesystem cut the backend test time to about a third. The D: copy stays as a backup; it is not used any more.
