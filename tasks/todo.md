@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] To be decided with the user (open question: a split view for `make dev`, mprocs or tmux).
+- [ ] One split view for `make dev` (`tasks/active/make-dev-split-view/`; mprocs; checked on a clone, not applied)
 
 ## Next Up
 - [ ] No open items.
