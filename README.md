@@ -718,6 +718,8 @@ make dev
 
 `make dev` shows both services in [mprocs](https://github.com/pvolok/mprocs): the process list with each status on the left, and the selected process's output on the right. Use `j` and `k` to select, `r` to restart, `Ctrl+A` to scroll or type in the output, and `q` to quit and stop both. mprocs is a frontend dev dependency, so `npm ci` installs it. Without it, or with `DEV_PLAIN=1`, `make dev` prints both outputs mixed in one terminal.
 
+Before the services start, `make dev` checks the dependencies: it creates `apps/backend-py/.venv` and `apps/frontend-ts/node_modules` when they are missing, creates the `.venv` again when its Python or core packages are broken, and installs again when `requirements.txt`, `requirements-optional.txt`, or `package-lock.json` changed since the last install. `make dev-deps` runs only these checks. `NO_LLMFIT=1` skips the optional llmfit install.
+
 Or use Docker to start all services at once:
 
 ```bash

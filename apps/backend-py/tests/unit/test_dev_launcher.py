@@ -9,6 +9,7 @@ runs the real script in a copy of the repository layout, with a stub
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -46,11 +47,14 @@ def _run_dev_sh_api(tmp_path: Path) -> tuple[Path, List[str]]:
     stub.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{args_file}"\n')
     stub.chmod(0o755)
 
+    # This test is about how the API starts, not about the dependency checks
+    # (tests/unit/test_dev_deps.py), so it skips them as mprocs does.
     result = subprocess.run(
         [bash, str(root / "scripts" / "dev.sh"), "api"],
         capture_output=True,
         text=True,
         timeout=60,
+        env={**os.environ, "DEV_DEPS_CHECKED": "1"},
     )
     assert result.returncode == 0, result.stdout + result.stderr
     return backend_dir.resolve(), args_file.read_text().splitlines()
