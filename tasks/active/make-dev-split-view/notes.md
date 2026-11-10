@@ -12,7 +12,9 @@ The user asked for a `make dev` like the Turborepo terminal UI: one terminal, ea
 
 ## Change written and checked (2026-11-10, Claude)
 
-One commit is ready on the WSL clone `~/s4_work`, on top of `21a895e`: `dd2528a` `feat(dev)`. It is not applied.
+Applied on the repo (2026-11-10, Claude, on the user's word "Yes, apply it"): commit `e1cdebd`, a cherry-pick of `dd2528a`; `git diff dd2528a HEAD`, without `tasks/`, is empty. In the real `apps/frontend-ts`, `npm install` added mprocs 0.9.6 (lockfile unchanged).
+
+One commit was ready on the WSL clone `~/s4_work`, on top of `21a895e`: `dd2528a` `feat(dev)`.
 
 - `mprocs.yaml` (new): processes `backend` (`./scripts/dev.sh api`) and `frontend` (`./scripts/dev.sh frontend`).
 - `scripts/dev.sh`: `start_both` uses `node_modules/.bin/mprocs` from the frontend when stdout is a terminal, the binary is there, and `DEV_PLAIN` is not set; it runs from the project root. Otherwise it keeps the plain mixed output. The file is now executable in git (100644 to 100755): `make dev` and `mprocs.yaml` both run `./scripts/dev.sh`.

@@ -24,4 +24,4 @@ flowchart LR
 - [ ] The user runs `make dev` on this machine and sees both services in one view.
 
 ## Status
-`in-progress` (2026-11-10: checked on a clone, not applied)
+`in-progress` (2026-11-10: applied as `e1cdebd`; waiting for the user's make dev run)
