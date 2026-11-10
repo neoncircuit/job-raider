@@ -22,4 +22,4 @@ flowchart LR
 - [x] The full E2E suite passes.
 
 ## Status
-`in-progress` (2026-11-10: applied as `f7d2462`; archive after the push and CI)
+`done` (2026-11-10: applied as `f7d2462`; CI run 42732898798 green)

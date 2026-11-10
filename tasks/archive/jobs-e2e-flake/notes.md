@@ -23,3 +23,5 @@ Proof on the clone:
 - The full E2E suite: 45 pass, 1 skipped (the phone test on desktop).
 
 ## Review
+
+Done (2026-11-10). Pushed as `357a6f0`; CI run 42732898798 passed (all 12 jobs). The Jobs page search tests now wait for hydration by retrying, so a fill before hydration no longer fails the run.
