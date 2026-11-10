@@ -7,7 +7,30 @@
  * mocked `sampleJobs` fixture — no speculative data-testid hooks.
  */
 
+import type { Page } from "@playwright/test";
+
 import { test, expect } from "./support/test";
+
+/**
+ * Search for jobs, and wait for the first mocked result.
+ *
+ * On a cold dev server, a fill or a click before hydration can be lost: the
+ * hydrated input resets to its empty state, so no search runs. Retry until
+ * the results show; the mocked search is safe to repeat, and a search that
+ * never works still fails after the overall timeout.
+ *
+ * @param page - The page on /jobs.
+ * @param keywords - Text for the Keywords field.
+ * @returns Resolved once the first result is visible.
+ */
+async function searchJobs(page: Page, keywords: string): Promise<void> {
+  const firstResult = page.getByText("Senior Software Engineer").first();
+  await expect(async () => {
+    await page.locator('input[name="keywords"]').fill(keywords);
+    await page.locator('button[type="submit"]').click();
+    await expect(firstResult).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 20_000 });
+}
 
 test.describe("Jobs page", () => {
   test.beforeEach(async ({ page }) => {
@@ -20,29 +43,15 @@ test.describe("Jobs page", () => {
   });
 
   test("renders results after a search", async ({ page }) => {
-    await page.locator('input[name="keywords"]').fill("Software Engineer");
-    await page.locator('button[type="submit"]').click();
-
     // The mocked POST /jobs/search returns sampleJobs; the first result's
     // title renders in the left-hand results list.
-    await expect(
-      page.getByText("Senior Software Engineer").first(),
-    ).toBeVisible({
-      timeout: 10000,
-    });
+    await searchJobs(page, "Software Engineer");
   });
 
   test("generates a cover letter and displays proofread validation", async ({
     page,
   }) => {
-    await page.locator('input[name="keywords"]').fill("Software Engineer");
-    await page.locator('button[type="submit"]').click();
-
-    await expect(
-      page.getByText("Senior Software Engineer").first(),
-    ).toBeVisible({
-      timeout: 10000,
-    });
+    await searchJobs(page, "Software Engineer");
 
     // Open the first job detail panel by clicking the row's overlay button.
     // On narrow viewports the detail opens in a bottom sheet.
