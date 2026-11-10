@@ -208,11 +208,17 @@ WSL2 uses the Windows file system (DrvFs) for bind mounts, which has aggressive 
 **Fixes:**
 
 1. **Use proper container rebuild:**
+
+   The images contain the code. Only `apps/backend-py/data` is mounted into the backend, so a code change needs a new image: `down` and `up` alone start the old image again.
+
+   Rebuild with the helper (from the project root):
    ```bash
-   # Use this instead of 'restart' after code changes
    ./docker-rebuild.sh
-   # Or manually:
-   docker compose down && docker compose up -d
+   ```
+
+   Or rebuild manually:
+   ```bash
+   docker compose up -d --build --force-recreate
    ```
 
 2. **Entrypoint auto-fix (already implemented):**
@@ -226,7 +232,7 @@ WSL2 uses the Windows file system (DrvFs) for bind mounts, which has aggressive 
    ```
 
 **Prevention:**
-- Always use `docker compose down` + `up` (or the provided `docker-rebuild.sh`) after code changes
+- Always rebuild the image after code changes: `./docker-rebuild.sh`, or `docker compose up -d --build --force-recreate`
 - Never use `docker compose restart` when you've modified Python/TypeScript code
 - The entrypoint script will catch many issues automatically, but cache invalidation is still needed
 
