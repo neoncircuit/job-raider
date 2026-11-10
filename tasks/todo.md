@@ -4,9 +4,10 @@
 - [ ] To be decided with the user.
 
 ## Next Up
-- [ ] Open items: `@types/node` in the local `apps/frontend-ts/node_modules` is out of step with the lockfile (run `npm install` with the editor closed); the Step 5 local leftovers (`frontend-py/.venv` and caches, 521 MB).
+- [ ] No open items.
 
 ## Done
+- [x] Local cleanup (2026-11-10): the Step 5 leftovers `frontend-py/` (521 MB of `.venv` and caches) and `apps/backend-py/src/database/` (`__pycache__` only) are deleted. `apps/frontend-ts/node_modules` had root-owned folders in WSL (`@types`), so `npm install` failed with EACCES; it was deleted from Windows and rebuilt with `npm ci` (lockfile unchanged, `@types/node` 24.19.2, tsc and 378 unit tests pass).
 - [x] Stable Jobs page E2E search (`tasks/archive/jobs-e2e-flake/`; done 2026-11-10)
 - [x] Self-hosted fonts (`tasks/archive/self-hosted-fonts/`; done 2026-11-10)
 - [x] Local models table on a phone (`tasks/archive/phone-model-table/`; done 2026-11-09)
