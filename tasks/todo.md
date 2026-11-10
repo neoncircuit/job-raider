@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] To be decided with the user.
+- [ ] Hardware fit: file-size floor and one unit (`tasks/active/hardware-fit-floor/`; checked on a clone, not applied)
 
 ## Next Up
 - [ ] No open items.
