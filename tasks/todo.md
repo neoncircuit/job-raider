@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] To be decided with the user.
+- [ ] make dev creates, repairs, and updates the environments (`tasks/active/dev-deps-repair/`; committed, archive after CI)
 
 ## Next Up
 - [ ] No open items.
