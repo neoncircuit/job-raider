@@ -27,3 +27,5 @@ Other checks on the clone:
 Limit: suggestions do not change. A model that is not installed has no file size yet, so a Gemma "e" suggestion can still show llmfit's lower number.
 
 ## Review
+
+Done (2026-11-10). Pushed as `ca5aa19`; CI run 42837383017 passed (all 12 jobs). After a backend restart (or the refresh button, because of the 10-minute cache), Settings shows `gemma4:e4b` as Too large and `granite4.1:8b` as Fits.
