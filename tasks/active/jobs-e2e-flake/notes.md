@@ -12,7 +12,7 @@ The font task measured the Jobs page E2E search tests as flaky before and after 
 
 ## Handoff written and checked (2026-11-10, Claude)
 
-`mh-1-jobs-search.md` (runner) is written. It is not applied. A `searchJobs` helper in `tests/e2e/jobs-page.spec.ts` retries the fill and the click until the first result shows (`expect.toPass`, 3 s per try, 20 s in all); both search tests use it. The app does not change.
+`mh-1-jobs-search.md` (runner) is applied on the repo (2026-11-10, Claude ran the runner on the user's word "Yes, apply it"): commit `f7d2462`. The 3 checks passed, and `git diff 6a863c3 HEAD`, without `tasks/`, is empty. Before the run, the attribution line in the handoff's commit message changed to the current one; the code blocks did not change. A `searchJobs` helper in `tests/e2e/jobs-page.spec.ts` retries the fill and the click until the first result shows (`expect.toPass`, 3 s per try, 20 s in all); both search tests use it. The app does not change.
 
 Runner test on the clone (the handoff was in the clone): there is no red step (a flake cannot fail on demand); the 3 checks pass (prettier, eslint with no warnings, tsc), and commit `6a863c3` is on the clone. The HEAD of the real repository did not change.
 

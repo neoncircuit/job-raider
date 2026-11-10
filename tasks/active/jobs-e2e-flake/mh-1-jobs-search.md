@@ -131,5 +131,5 @@ ran (about 1 failure in 10). A searchJobs helper now retries the fill and
 the click until the first result shows, as the Step 5 sidebar helper
 does.
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```

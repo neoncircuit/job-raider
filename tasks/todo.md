@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Stable Jobs page E2E search (`tasks/active/jobs-e2e-flake/`; checked on a clone, not applied)
+- [ ] Stable Jobs page E2E search (`tasks/active/jobs-e2e-flake/`; applied, archive after CI)
 
 ## Next Up
 - [ ] Open items: `@types/node` in the local `apps/frontend-ts/node_modules` is out of step with the lockfile (run `npm install` with the editor closed); the Step 5 local leftovers (`frontend-py/.venv` and caches, 521 MB).
