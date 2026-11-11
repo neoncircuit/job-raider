@@ -298,8 +298,12 @@ jobs:
           npm ci
 
       - name: Install Playwright browsers
+        # No --with-deps: the ubuntu-24.04 image has the libraries that
+        # Chromium needs. The apt step made this job depend on the Ubuntu
+        # mirror, and it failed 4 times on 2026-11-11 when the mirror did
+        # not resolve.
         run: |
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
 
       - name: Run E2E tests
         run: |
@@ -348,8 +352,12 @@ jobs:
           npm ci
 
       - name: Install Playwright browsers
+        # No --with-deps: the ubuntu-24.04 image has the libraries that
+        # Chromium needs. The apt step made this job depend on the Ubuntu
+        # mirror, and it failed 4 times on 2026-11-11 when the mirror did
+        # not resolve.
         run: |
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
 
       - name: Build the demo
         run: |
