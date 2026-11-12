@@ -3742,3 +3742,16 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - Check a pass by the cause too: on the proof run, the install log had 0 `apt` lines. A green run alone could also mean that the mirror was back.
 - The session scratchpad can be cleared at a session restart, and a clone in it goes with it. A commit that was pushed can still be fetched by its full SHA (`git fetch origin <sha>`) after its branch is deleted. When its parent is the tip of `main`, fast-forward `main` to it, so that `main` holds the exact commit that CI tested.
 - Run `actionlint` on workflow changes before the push. It is not installed here; use its Docker image with the file paths: `docker run --rm -v "$PWD/.github:/repo/.github:ro" -w /repo rhysd/actionlint:1.7.7 -no-color -oneline .github/workflows/ci.yml .github/workflows/pages.yml`.
+
+## Task tracking (2026-11-12)
+
+### Trust a step's own task file, not a summary checkbox
+
+**Lesson:** `tasks/active/review-follow-up/task.md` showed Step 1 as open ("only the manual dry run is open") for two weeks after the dry run was done. The archived `tasks/archive/step-1-core-flow/task.md` was ticked and `done` on 2026-10-30, with two recorded runs. On 2026-11-11 the user and Claude both took the summary checkbox as the truth, Claude wrote it into its memory, and a new dry run was nearly planned. Claude also fixed a path on that same line without checking the step it pointed to.
+
+**Why:** a summary file that lists other tasks is a second copy of their state. When a step closes in its own folder, the summary is not always updated, so the two copies drift.
+
+**How to apply:**
+- Before you plan work for an open item in a summary file, read the task file that the item points to. When the two disagree, the step's own `task.md` and `notes.md` are the record.
+- When you archive a step that a parent task lists, update the parent's checkbox in the same commit.
+- When you edit a line that points to another task, check the state of that task too.
