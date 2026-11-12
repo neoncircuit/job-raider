@@ -13,6 +13,11 @@ the letter level. The rows keep the count of ungrounded sentences, but the
 metrics do not rank on it (precision 0.182 and recall 0.154 at the sentence
 level). The validator does not find analogical claims in real letters.
 
+Each written letter also goes through the generic-phrasing detector
+(``generic_phrasing.py``). ``generic_phrasing_rate`` is the share of written
+letters with one or more stock phrases, and ``generic_per_100w_p50`` is the
+median count of stock phrases per 100 words. The rows keep the phrases found.
+
 One run uses one model. Letters from the writer's template fallback or from
 another model are counted, not scored. Tests pass a fake writer.
 
@@ -33,6 +38,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from ...generation.cover_letter_validator import CoverLetterValidator
 from ...generation.cover_letter_writer import CoverLetterWriter, GeneratedCoverLetter
+from ...generation.generic_phrasing import find_generic_phrases
 from ...generation.selector import SelectionOutput
 from ...llm.router import TaskType
 from ...models.job_listing import JobListing
@@ -95,6 +101,8 @@ class LetterRow:
     score: Optional[float] = None
     word_count: int = 0
     ungrounded_sentences: int = 0
+    generic_phrases: List[str] = field(default_factory=list)
+    generic_per_100w: Optional[float] = None
     latency_ms: float = 0.0
     error: Optional[str] = None
 
@@ -182,6 +190,9 @@ def write_and_check(
     row.ungrounded_sentences = len(
         (result.details or {}).get("ungrounded_sentences") or []
     )
+    generic = find_generic_phrases(letter.content)
+    row.generic_phrases = [hit.phrase for hit in generic.hits for _ in range(hit.count)]
+    row.generic_per_100w = generic.per_100_words
     return row
 
 
@@ -228,7 +239,9 @@ def summarize(rows: Sequence[LetterRow]) -> Dict[str, Optional[float]]:
     Returns:
         The counts of each outcome, and for the written letters: the share
         that each check flags, the share of valid letters, the mean score,
-        the median word count, and the median and 95th-percentile latency.
+        the share with a stock phrase, the median stock phrases per 100
+        words, the median word count, and the median and 95th-percentile
+        latency.
     """
     written = [row for row in rows if row.outcome == "written"]
     metrics: Dict[str, Optional[float]] = {
@@ -245,6 +258,13 @@ def summarize(rows: Sequence[LetterRow]) -> Dict[str, Optional[float]]:
     )
     scores = [row.score for row in written if row.score is not None]
     metrics["mean_score"] = round(statistics.fmean(scores), 2) if scores else None
+    metrics["generic_phrasing_rate"] = _rate(
+        sum(1 for row in written if row.generic_phrases), len(written)
+    )
+    metrics["generic_per_100w_p50"] = percentile(
+        [row.generic_per_100w for row in written if row.generic_per_100w is not None],
+        0.5,
+    )
     metrics["words_p50"] = percentile([float(row.word_count) for row in written], 0.5)
     latencies = [row.latency_ms for row in written]
     metrics["latency_p50_ms"] = percentile(latencies, 0.5)

@@ -373,3 +373,92 @@ def test_default_validator_has_no_llm(
     )
 
     assert made == [{"llm_router": None, "strict_mode": False}]
+
+
+def text_writer(
+    texts: Dict[str, str], models: Optional[Dict[str, str]] = None
+) -> Callable[..., Any]:
+    """
+    A fake writer that returns a given text for each job.
+
+    Args:
+        texts: Job ID to the letter text (default: a plain sentence).
+        models: Job ID to the ``model_used`` of its letters (default: MODEL).
+
+    Returns:
+        The write function.
+    """
+
+    def write(job: Any, profile: Any, selection: Any) -> GeneratedCoverLetter:
+        """
+        Return the text of the job as a letter.
+
+        Args:
+            job: The job.
+            profile: The profile.
+            selection: The selection.
+
+        Returns:
+            The letter.
+        """
+        return GeneratedCoverLetter(
+            content=texts.get(job.job_id, "Dear team, I built this."),
+            highlighted_experiences=[],
+            word_count=120,
+            model_used=(models or {}).get(job.job_id, MODEL),
+        )
+
+    return write
+
+
+def test_generic_phrasing_metrics_and_rows(tmp_path: Path) -> None:
+    """The rate is the share of written letters with a stock phrase; rows keep the phrases."""
+    dataset = small_dataset(tmp_path)
+    first, _, third = job_ids(dataset)
+    write = text_writer(
+        {
+            first: "Moreover, I am a team player. Moreover yes.",
+            third: "I am confident that this works.",
+        }
+    )
+
+    report = run_writer_suite(
+        dataset, model=MODEL, write=write, samples=1, validator=FakeValidator({})
+    )
+
+    assert report.metrics["generic_phrasing_rate"] == 0.667
+    assert report.metrics["generic_per_100w_p50"] == 16.67
+    rows = {row["case_id"]: row for row in report.details["rows"]}
+    phrases = sorted(tuple(row["generic_phrases"]) for row in rows.values())
+    assert phrases == [
+        (),
+        ("i am confident that",),
+        ("moreover", "moreover", "team player"),
+    ]
+    assert sorted(row["generic_per_100w"] for row in rows.values()) == [
+        0.0,
+        16.67,
+        37.5,
+    ]
+
+
+def test_generic_phrasing_counts_written_letters_only(tmp_path: Path) -> None:
+    """A fallback letter with stock phrases does not count in the rate."""
+    dataset = small_dataset(tmp_path)
+    first, _, _ = job_ids(dataset)
+    write = text_writer(
+        {first: "Furthermore, I am a team player."},
+        models={first: FALLBACK_MODEL},
+    )
+
+    report = run_writer_suite(
+        dataset, model=MODEL, write=write, samples=1, validator=FakeValidator({})
+    )
+
+    assert report.metrics["written"] == 2
+    fallback = [r for r in report.details["rows"] if r["outcome"] == "fallback"]
+    assert [(r["generic_phrases"], r["generic_per_100w"]) for r in fallback] == [
+        ([], None)
+    ]
+    assert report.metrics["generic_phrasing_rate"] == 0.0
+    assert report.metrics["generic_per_100w_p50"] == 0.0
