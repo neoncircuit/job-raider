@@ -3726,3 +3726,19 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - In a clone, assume that a symlinked `.venv`, `node_modules`, or cache is the real one. Run a step that installs packages only against a new, temporary environment.
 - When a background run takes far longer than expected, read what it is doing before the next step.
 - After an accident, stop, measure the damage (`pip check`, imports, changed files by time), tell the user, and repair only what the user approves.
+
+## CI and the Ubuntu mirror (2026-11-11)
+
+### Do not make a CI job depend on a package mirror that it does not need
+
+**Lesson:** After the `AGENTS.md` push, both E2E jobs failed 4 times in about 70 minutes. `npx playwright install --with-deps chromium` could not resolve `azure.archive.ubuntu.com`, and `apt` stopped after about 10 minutes, before any test ran. GitHub status showed no incident, and re-runs did not help. The `ubuntu-24.04` runner image already has the libraries that Chromium needs. The packages that failed were extra fonts, which the suites do not use (Chromium only, no screenshot comparisons). Without `--with-deps`, both E2E jobs pass with no `apt` step.
+
+**Why:** each download from an outside service in CI is a point of failure that the code does not control. A step that installs what the image already has adds risk and gives nothing.
+
+**How to apply:**
+- When a CI job fails on the same outside download in two or more attempts, stop re-running it. Find the step that downloads, and check whether the runner image already has what it needs.
+- Prove a workflow change with a real CI run of the exact commit. A scratch clone cannot reproduce a runner image. Push the commit to a temporary branch, start CI with `gh workflow run ci.yml --ref <branch>`, and delete the branch after the run.
+- A manual start (`workflow_dispatch`) also starts `Build Docker Image`, which fails at the Docker Hub login when the secrets are not set. Expect that failure on a proof run, and do not read it as a result of the change.
+- Check a pass by the cause too: on the proof run, the install log had 0 `apt` lines. A green run alone could also mean that the mirror was back.
+- The session scratchpad can be cleared at a session restart, and a clone in it goes with it. A commit that was pushed can still be fetched by its full SHA (`git fetch origin <sha>`) after its branch is deleted. When its parent is the tip of `main`, fast-forward `main` to it, so that `main` holds the exact commit that CI tested.
+- Run `actionlint` on workflow changes before the push. It is not installed here; use its Docker image with the file paths: `docker run --rm -v "$PWD/.github:/repo/.github:ro" -w /repo rhysd/actionlint:1.7.7 -no-color -oneline .github/workflows/ci.yml .github/workflows/pages.yml`.

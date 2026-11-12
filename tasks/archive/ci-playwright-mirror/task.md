@@ -37,9 +37,9 @@ Fallback, if Chromium does not start because a library is missing: stop and plan
 - [x] The CI run on the temporary branch passes `Test Frontend (E2E Tests)` and `Test Demo (E2E on the Static Site)`, with no `apt-get` in the install step log.
 - [x] The temporary branch is deleted on GitHub.
 - [x] Applied on `main` after "Yes, apply it"; the diff matches the checked commit.
-- [ ] Pushed after approval; the CI run on `main` passes all jobs. Recorded in `notes.md`.
-- [ ] `docs/lessons.md` has the lesson: in CI, do not make a job depend on the Ubuntu mirror when the runner image already has what it needs.
-- [ ] `tasks/todo.md` updated, and this folder moved to `tasks/archive/`.
+- [x] Pushed after approval; the CI run on `main` passes all jobs. Recorded in `notes.md`.
+- [x] `docs/lessons.md` has the lesson: in CI, do not make a job depend on the Ubuntu mirror when the runner image already has what it needs.
+- [x] `tasks/todo.md` updated, and this folder moved to `tasks/archive/`.
 
 ## Status
-`review`
+`done`

@@ -7,6 +7,7 @@
 - [ ] No open items.
 
 ## Done
+- [x] CI E2E jobs install Chromium without `apt` and the Ubuntu mirror (`tasks/archive/ci-playwright-mirror/`; done 2026-11-12)
 - [x] Move to `~/personal-projects/job-raider`, and make dev creates, repairs, and updates the environments (`tasks/archive/dev-deps-repair/`; done 2026-11-11)
 - [x] One split view for `make dev` with mprocs (`tasks/archive/make-dev-split-view/`; done 2026-11-10)
 - [x] Hardware fit: file-size floor and one unit (`tasks/archive/hardware-fit-floor/`; done 2026-11-10)

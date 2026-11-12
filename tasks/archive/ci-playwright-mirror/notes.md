@@ -24,3 +24,13 @@ The other 10 jobs passed in each attempt. The Docker image job was skipped.
 - The user said "Yes, apply it".
 - The scratch clone was gone (the session scratchpad was cleared at a session restart). The proven commit was fetched from GitHub by its full SHA, after the temporary branch had been deleted.
 - Its parent was the tip of `main`, so `main` was fast-forwarded to it. `main` now holds the same commit that CI run 43062631470 tested, and `git diff` against it (without `tasks/`) is empty.
+
+## Push and CI on main (2026-11-12)
+
+- Before the push, `actionlint` 1.7.7 (Docker image `rhysd/actionlint:1.7.7`, read-only, with shellcheck) checked `ci.yml` and `pages.yml`: no findings, exit code 0. The user asked for this local check after the apply step.
+- The user approved the push. `main` was pushed to `origin` with the fix and the task folder.
+- CI run 43143067148 passed: 12 jobs passed, and `Build Docker Image` was skipped (push run). `Test Frontend (E2E Tests)` passed 45 tests and `Test Demo (E2E on the Static Site)` passed 18 tests. The install step logs have 0 lines with `apt`.
+
+## Review
+
+The E2E jobs no longer use the Ubuntu mirror. The change is one flag in three places, with a comment in each. It was proven on the GitHub runner before it landed, and `main` holds the exact commit that was tested. The lesson is in `docs/lessons.md` ("CI and the Ubuntu mirror").
