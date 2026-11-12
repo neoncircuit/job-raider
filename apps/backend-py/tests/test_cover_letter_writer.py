@@ -197,7 +197,10 @@ class TestCoverLetterWriter:
         assert result.content == SAMPLE_COVER_LETTER
         assert result.word_count > 0
         assert result.model_used == "qwen2.5:7b"
-        mock_llm_router.generate.assert_called_once()
+        # The writer call, then the stock-phrase polish call: the sample has
+        # stock phrases. The mock's answer is not numbered, so the letter stays.
+        assert mock_llm_router.generate.call_count == 2
+        assert result.stock_phrase_edits == 0
 
     def test_fallback_on_llm_failure(
         self, mock_llm_router, sample_job, sample_profile, sample_selection
@@ -449,7 +452,9 @@ class TestCoverLetterWriter:
         )
         writer = CoverLetterWriter(mock_llm_router)
         writer.write(job, sample_profile, sample_selection)
-        system = mock_llm_router.generate.call_args.kwargs["messages"][0].content
+        system = (
+            mock_llm_router.generate.call_args_list[0].kwargs["messages"][0].content
+        )
         assert _DOMAIN_MISMATCH_RULES in system
         assert "Do not analogize across domains" in system
 
@@ -479,7 +484,8 @@ class TestCoverLetterWriter:
 
         writer = CoverLetterWriter(mock_llm_router)
         writer.write(sample_job, sample_profile, sample_selection)
-        write_messages = mock_llm_router.generate.call_args.kwargs["messages"]
+        # The writer's own call is the first; the stock-phrase polish may follow.
+        write_messages = mock_llm_router.generate.call_args_list[0].kwargs["messages"]
         write_system = write_messages[0].content
 
         draft = GeneratedCoverLetter(
@@ -513,9 +519,9 @@ class TestCoverLetterWriter:
 
         writer = CoverLetterWriter(mock_llm_router)
         writer.write(sample_job, sample_profile, sample_selection, style="classic")
-        classic_system = mock_llm_router.generate.call_args.kwargs["messages"][
-            0
-        ].content
+        classic_system = (
+            mock_llm_router.generate.call_args_list[0].kwargs["messages"][0].content
+        )
 
         assert (
             classic_system
@@ -593,3 +599,38 @@ class TestWriterOutputCleaning:
             sample_job, sample_profile, sample_selection
         )
         assert result.content == SAMPLE_COVER_LETTER
+
+    def test_write_polishes_stock_phrase_sentences(
+        self, mock_llm_router, sample_job, sample_profile, sample_selection
+    ):
+        """write() replaces the sentences with stock phrases and counts them."""
+        mock_llm_router.generate.side_effect = [
+            LLMResponse(
+                content=SAMPLE_COVER_LETTER,
+                model="qwen2.5:7b",
+                provider="ollama",
+                tokens_used=400,
+                cost=0.0,
+            ),
+            LLMResponse(
+                content=(
+                    "1. I am applying for the Senior Python Developer position at "
+                    "TechStartup Inc.\n"
+                    "2. I reduced API latency by 40% through strategic optimization."
+                ),
+                model="qwen2.5:7b",
+                provider="ollama",
+                tokens_used=80,
+                cost=0.0,
+            ),
+        ]
+        result = CoverLetterWriter(mock_llm_router).write(
+            sample_job, sample_profile, sample_selection
+        )
+        assert result.stock_phrase_edits == 2
+        assert "I am excited to apply" not in result.content
+        assert "results-driven" not in result.content
+        assert result.content.startswith(
+            "I am applying for the Senior Python Developer position at TechStartup Inc."
+        )
+        assert result.word_count == len(result.content.split())

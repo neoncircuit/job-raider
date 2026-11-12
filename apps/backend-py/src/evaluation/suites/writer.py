@@ -103,6 +103,7 @@ class LetterRow:
     ungrounded_sentences: int = 0
     generic_phrases: List[str] = field(default_factory=list)
     generic_per_100w: Optional[float] = None
+    stock_phrase_edits: int = 0
     latency_ms: float = 0.0
     error: Optional[str] = None
 
@@ -193,6 +194,7 @@ def write_and_check(
     generic = find_generic_phrases(letter.content)
     row.generic_phrases = [hit.phrase for hit in generic.hits for _ in range(hit.count)]
     row.generic_per_100w = generic.per_100_words
+    row.stock_phrase_edits = int(getattr(letter, "stock_phrase_edits", 0) or 0)
     return row
 
 

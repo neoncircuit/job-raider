@@ -29,6 +29,7 @@ from .cover_letter_grounding import (
     redact_unsupported_technologies,
 )
 from .selector import SelectionOutput
+from .stock_phrase_polish import polish_stock_phrases
 
 CoverLetterStyle = Literal["modern", "classic"]
 
@@ -263,6 +264,7 @@ class GeneratedCoverLetter:
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
     tokens_used: Optional[int] = None
+    stock_phrase_edits: int = 0  # Sentences replaced by stock_phrase_polish.
 
 
 def _tokens_from_llm_response(
@@ -393,6 +395,10 @@ class CoverLetterWriter:
             content = strip_invisible_characters(response.content).strip()
             if not content:
                 raise ValueError("Cover letter model returned empty content")
+            polish = polish_stock_phrases(
+                self.llm_router, content, style=style, model=model
+            )
+            content = polish.content
             word_count = len(content.split())
             model_used = (
                 response.model
@@ -423,6 +429,7 @@ class CoverLetterWriter:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 tokens_used=tokens_used,
+                stock_phrase_edits=polish.replaced,
             )
 
         except Exception as e:
