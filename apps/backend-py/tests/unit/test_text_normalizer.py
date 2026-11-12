@@ -218,3 +218,28 @@ class TestCompactHtmlJobDescriptions:
             "We need a <strong>Python</strong> developer with <em>Docker</em>."
         )
         assert "We need a **Python** developer with *Docker*." in result
+
+
+class TestStripInvisibleCharacters:
+    """Tests for strip_invisible_characters."""
+
+    def test_removes_zero_width_characters_and_bom(self):
+        """Zero-width characters, a word joiner, and a BOM are removed."""
+        from src.utils.text_normalizer import strip_invisible_characters
+
+        text = "﻿Hello​ ‌wor‍ld⁠!"
+        assert strip_invisible_characters(text) == "Hello world!"
+
+    def test_keeps_other_characters(self):
+        """Line breaks, accents, and punctuation stay the same."""
+        from src.utils.text_normalizer import strip_invisible_characters
+
+        text = "Café — line one\n\nline two’s end."
+        assert strip_invisible_characters(text) == text
+
+    def test_empty_text(self):
+        """Empty or missing text gives an empty string."""
+        from src.utils.text_normalizer import strip_invisible_characters
+
+        assert strip_invisible_characters("") == ""
+        assert strip_invisible_characters(None) == ""

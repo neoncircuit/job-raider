@@ -20,6 +20,7 @@ from ..llm.router import LLMRouter, TaskType
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
+from ..utils.text_normalizer import strip_invisible_characters
 from .cover_letter_grounding import (
     collect_resume_supported_names,
     filter_resume_supported_keywords,
@@ -389,7 +390,7 @@ class CoverLetterWriter:
                 think=False,
             )
 
-            content = response.content.strip()
+            content = strip_invisible_characters(response.content).strip()
             if not content:
                 raise ValueError("Cover letter model returned empty content")
             word_count = len(content.split())
@@ -531,7 +532,7 @@ class CoverLetterWriter:
                 max_tokens=400,
                 think=False,
             )
-            content = response.content.strip()
+            content = strip_invisible_characters(response.content).strip()
             if not content:
                 raise ValueError("Why-interest model returned empty content")
             word_count = len(content.split())
@@ -716,7 +717,7 @@ class CoverLetterWriter:
                 think=False,
             )
 
-            content = response.content.strip()
+            content = strip_invisible_characters(response.content).strip()
             if not content:
                 raise ValueError("Cover letter rewrite returned empty content")
             word_count = len(content.split())

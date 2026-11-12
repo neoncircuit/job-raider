@@ -573,3 +573,23 @@ class TestGeneratedCoverLetter:
         assert letter.highlighted_experiences == []
         assert letter.word_count == 2
         assert letter.model_used == "test_model"
+
+
+class TestWriterOutputCleaning:
+    """Model output is cleaned before it becomes a letter."""
+
+    def test_invisible_characters_are_removed(
+        self, mock_llm_router, sample_job, sample_profile, sample_selection
+    ):
+        """Zero-width characters and a byte order mark do not reach the letter."""
+        mock_llm_router.generate.return_value = LLMResponse(
+            content="﻿" + SAMPLE_COVER_LETTER.replace(" ", " ​", 3),
+            model="qwen2.5:7b",
+            provider="ollama",
+            tokens_used=400,
+            cost=0.0,
+        )
+        result = CoverLetterWriter(mock_llm_router).write(
+            sample_job, sample_profile, sample_selection
+        )
+        assert result.content == SAMPLE_COVER_LETTER

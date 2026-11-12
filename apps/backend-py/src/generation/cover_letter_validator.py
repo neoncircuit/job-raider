@@ -11,7 +11,7 @@ Date: 2026-05-13
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..llm.base import Message, MessageType
 from ..llm.router import LLMRouter, TaskType
@@ -39,6 +39,7 @@ from .cover_letter_instructions import (
     length_within_spec,
 )
 from .cover_letter_writer import GeneratedCoverLetter
+from .generic_phrasing import GROUP_CLOSING, GROUP_OPENING, find_generic_phrases
 from .selector import SelectionOutput
 
 
@@ -51,6 +52,7 @@ class CoverLetterIssue(str, Enum):
     MISSING_JOB_TITLE = "missing_job_title"
     POOR_STRUCTURE = "poor_structure"
     GENERIC_OPENING = "generic_opening"
+    GENERIC_PHRASING = "generic_phrasing"
     NO_CALL_TO_ACTION = "no_call_to_action"
     FABRICATED_EXPERIENCE = "fabricated_experience"
     MISSING_SELECTED_PROJECT = "missing_selected_project"
@@ -67,6 +69,14 @@ class CoverLetterIssue(str, Enum):
     INSTRUCTION_LENGTH_MISMATCH = "instruction_length_mismatch"
     MISSING_REQUIRED_INCLUSION = "missing_required_inclusion"
 
+
+# A closing asks for a next step when it names a conversation, a call, an
+# interview, a meeting, or the next steps, in any wording.
+CALL_TO_ACTION_INTENT = re.compile(
+    r"\b(?:discuss|discussion|conversation|chat|call|interview|meeting|"
+    r"walk you through|next steps?|hear(?:ing)? (?:from|back)|"
+    r"(?:speak|talk|meet|connect) (?:with|about|soon|further))\b"
+)
 
 HARD_FAIL_ISSUES: frozenset[CoverLetterIssue] = frozenset(
     {
@@ -191,14 +201,16 @@ class CoverLetterValidator:
     IDEAL_MAX = 300
     MIN_PARAGRAPHS = 3
 
-    GENERIC_OPENINGS = [
-        "i am writing to apply",
-        "i am writing in response to",
-        "please accept this letter",
-        "i would like to express my interest",
-        "i am submitting my application",
-    ]
+    # Stock openings and other stock phrases come from ``generic_phrasing``.
+    # Each stock phrase outside the opening group costs this many tone points,
+    # up to GENERIC_PHRASING_MAX_PENALTY.
+    GENERIC_PHRASING_PENALTY = 5
+    GENERIC_PHRASING_MAX_PENALTY = 20
 
+    # The grounding check skips sentences with these phrases
+    # (``cover_letter_grounding._call_to_action_phrases``). Keep the list as
+    # it is, so that the grounding measure does not change; the tone check
+    # also accepts a closing that asks for a next step (CALL_TO_ACTION_INTENT).
     CALL_TO_ACTION_PHRASES = [
         "i would welcome",
         "i look forward to",
@@ -274,10 +286,13 @@ class CoverLetterValidator:
         )
         issues.extend(content_issues)
 
+        opening_hits: List[str] = []
+        other_hits: List[str] = []
         if short_answer_mode:
             tone_issues: List[CoverLetterIssue] = []
         else:
-            tone_issues = self._check_tone(content_lower, style=letter_style)
+            opening_hits, other_hits = self._generic_hits(content, style=letter_style)
+            tone_issues = self._check_tone(content_lower, opening_hits, other_hits)
             issues.extend(tone_issues)
 
         accuracy_issues = self._check_accuracy(content_lower, profile, selection)
@@ -381,7 +396,9 @@ class CoverLetterValidator:
             tone_score = 100
         else:
             structure_score = self._calc_structure_score(content, structure_issues)
-            tone_score = self._calc_tone_score(tone_issues)
+            tone_score = self._calc_tone_score(
+                tone_issues, generic_count=len(other_hits)
+            )
 
         content_score = self._calc_content_score(
             content_issues + jd_issues + instruction_issues,
@@ -414,14 +431,9 @@ class CoverLetterValidator:
             "paragraph_count": self._count_paragraphs(content),
             "style": letter_style,
             "short_answer_mode": short_answer_mode,
-            "has_generic_opening": (
-                False
-                if letter_style == "classic" or short_answer_mode
-                else any(phrase in content_lower for phrase in self.GENERIC_OPENINGS)
-            ),
-            "has_call_to_action": any(
-                phrase in content_lower for phrase in self.CALL_TO_ACTION_PHRASES
-            ),
+            "has_generic_opening": bool(opening_hits),
+            "generic_phrases": opening_hits + other_hits,
+            "has_call_to_action": self._has_call_to_action(content_lower),
             "company_mentioned": job.company.lower() in content_lower,
             "job_title_mentioned": job.title.lower() in content_lower,
             "referenced_projects": [
@@ -583,29 +595,70 @@ class CoverLetterValidator:
 
         return issues, context
 
+    @staticmethod
+    def _generic_hits(
+        content: str, style: str = "modern"
+    ) -> Tuple[List[str], List[str]]:
+        """
+        Find stock phrases in the whole letter.
+
+        Args:
+            content: Cover letter text.
+            style: ``modern`` or ``classic``. Classic letters may use a
+                traditional opening and closing, so those groups are skipped.
+
+        Returns:
+            The opening phrases found and the other stock phrases found, one
+            entry per occurrence.
+        """
+        skipped = {GROUP_OPENING, GROUP_CLOSING} if style == "classic" else set()
+        opening: List[str] = []
+        other: List[str] = []
+        for hit in find_generic_phrases(content).hits:
+            if hit.group in skipped:
+                continue
+            target = opening if hit.group == GROUP_OPENING else other
+            target.extend([hit.phrase] * hit.count)
+        return opening, other
+
+    def _has_call_to_action(self, text_lower: str) -> bool:
+        """
+        Return whether a text asks for a next step.
+
+        Args:
+            text_lower: Lowercase text (a closing or a whole letter).
+
+        Returns:
+            True when the text has a call-to-action phrase or asks for a
+            conversation, call, interview, meeting, or next step.
+        """
+        if any(phrase in text_lower for phrase in self.CALL_TO_ACTION_PHRASES):
+            return True
+        return bool(CALL_TO_ACTION_INTENT.search(text_lower))
+
     def _check_tone(
-        self, content_lower: str, style: str = "modern"
+        self, content_lower: str, opening_hits: List[str], other_hits: List[str]
     ) -> List[CoverLetterIssue]:
         """
         Check tone and professionalism.
 
         Args:
-            content_lower: Lowercase cover letter text
-            style: ``modern`` or ``classic``. Classic skips GENERIC_OPENING
-                penalties for traditional apply openers.
+            content_lower: Lowercase cover letter text.
+            opening_hits: Stock opening phrases found (see ``_generic_hits``).
+            other_hits: Other stock phrases found.
 
         Returns:
-            List of tone issues found
+            List of tone issues found.
         """
         issues = []
 
-        if style != "classic" and any(
-            phrase in content_lower[:100] for phrase in self.GENERIC_OPENINGS
-        ):
+        if opening_hits:
             issues.append(CoverLetterIssue.GENERIC_OPENING)
+        if other_hits:
+            issues.append(CoverLetterIssue.GENERIC_PHRASING)
 
         closing = content_lower[-200:] if len(content_lower) > 200 else content_lower
-        if not any(phrase in closing for phrase in self.CALL_TO_ACTION_PHRASES):
+        if not self._has_call_to_action(closing):
             issues.append(CoverLetterIssue.NO_CALL_TO_ACTION)
 
         return issues
@@ -812,20 +865,28 @@ class CoverLetterValidator:
 
         return max(0, score)
 
-    def _calc_tone_score(self, issues: List[CoverLetterIssue]) -> int:
+    def _calc_tone_score(
+        self, issues: List[CoverLetterIssue], generic_count: int = 0
+    ) -> int:
         """
         Calculate tone quality score.
 
         Args:
-            issues: Tone issues found
+            issues: Tone issues found.
+            generic_count: Stock phrases found outside the opening group.
 
         Returns:
-            Score from 0-100
+            Score from 0-100.
         """
         score = 100
 
         if CoverLetterIssue.GENERIC_OPENING in issues:
             score -= 20
+        if CoverLetterIssue.GENERIC_PHRASING in issues:
+            score -= min(
+                self.GENERIC_PHRASING_MAX_PENALTY,
+                self.GENERIC_PHRASING_PENALTY * max(1, generic_count),
+            )
         if CoverLetterIssue.NO_CALL_TO_ACTION in issues:
             score -= 15
 

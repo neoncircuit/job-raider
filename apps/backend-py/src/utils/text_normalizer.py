@@ -500,3 +500,21 @@ def _is_section_header(line: str) -> bool:
             return True
 
     return False
+
+
+# Zero-width space, non-joiner, joiner, word joiner, and byte order mark.
+_INVISIBLE_CHARACTERS = re.compile("[\u200b\u200c\u200d\u2060\ufeff]")
+
+
+def strip_invisible_characters(text: str) -> str:
+    """
+    Remove invisible characters from generated text.
+
+    Args:
+        text: Text from a model (a cover letter or a CV section).
+
+    Returns:
+        The text without zero-width characters, word joiners, or a byte
+        order mark. Other characters, line breaks included, stay the same.
+    """
+    return _INVISIBLE_CHARACTERS.sub("", text or "")

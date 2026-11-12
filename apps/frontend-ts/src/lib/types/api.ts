@@ -294,6 +294,7 @@ export type CoverLetterIssue =
   | "too_short"
   | "too_long"
   | "generic_opening"
+  | "generic_phrasing"
   | "no_call_to_action"
   | "missing_call_to_action"
   | "missing_experience_match"

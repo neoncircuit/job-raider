@@ -747,3 +747,132 @@ class TestGroundingHardFails:
 
         assert CoverLetterIssue.FABRICATED_EXPERIENCE in fake_result.issues
         assert CoverLetterIssue.FABRICATED_EXPERIENCE not in real_result.issues
+
+
+def _letter(content: str) -> GeneratedCoverLetter:
+    """
+    Wrap text as a generated letter for the tone tests.
+
+    Args:
+        content: Letter text.
+
+    Returns:
+        The letter.
+    """
+    return GeneratedCoverLetter(
+        content=content,
+        highlighted_experiences=[],
+        word_count=len(content.split()),
+        model_used="qwen2.5:7b",
+    )
+
+
+class TestGenericPhrasingTone:
+    """Stock phrases over the whole letter, and calls to action by intent."""
+
+    def test_stock_phrases_mid_letter_are_flagged(
+        self, sample_job, sample_profile, sample_selection
+    ):
+        """Stock phrases anywhere in the letter give GENERIC_PHRASING, 5 points each."""
+        letter = _letter(
+            "Acme's billing rewrite caught my eye. At Foo I cut API latency by 40%.\n\n"
+            "Furthermore, I have a proven track record with Django.\n\n"
+            "I would welcome a conversation about the role."
+        )
+        result = CoverLetterValidator().validate(
+            letter, sample_job, sample_profile, sample_selection
+        )
+        assert CoverLetterIssue.GENERIC_PHRASING in result.issues
+        assert CoverLetterIssue.GENERIC_OPENING not in result.issues
+        assert result.details["generic_phrases"] == [
+            "furthermore",
+            "proven track record",
+        ]
+        assert result.tone_score == 90
+
+    def test_opening_phrase_after_100_characters_is_flagged(
+        self, sample_job, sample_profile, sample_selection
+    ):
+        """A stock opening counts anywhere, not only in the first 100 characters."""
+        letter = _letter(
+            "At Foo I moved the nightly billing job from cron to Airflow and cut "
+            "its failures from weekly to none in a quarter. I am excited to apply "
+            "for this role.\n\nI would welcome a conversation about the role."
+        )
+        result = CoverLetterValidator().validate(
+            letter, sample_job, sample_profile, sample_selection
+        )
+        assert CoverLetterIssue.GENERIC_OPENING in result.issues
+        assert CoverLetterIssue.GENERIC_PHRASING not in result.issues
+        assert result.details["has_generic_opening"] is True
+        assert result.tone_score == 80
+
+    def test_penalty_is_capped(self, sample_job, sample_profile, sample_selection):
+        """Six stock phrases cost 20 points, not 30."""
+        letter = _letter(
+            "Moreover, furthermore, the synergy was invaluable. I am a team player "
+            "with cutting-edge habits.\n\nI would welcome a conversation."
+        )
+        result = CoverLetterValidator().validate(
+            letter, sample_job, sample_profile, sample_selection
+        )
+        assert len(result.details["generic_phrases"]) == 6
+        assert result.tone_score == 80
+
+    def test_classic_skips_opening_and_closing_groups(
+        self, sample_job, sample_profile, sample_selection
+    ):
+        """Classic letters may use a traditional opening and closing, but not filler."""
+        letter = _letter(
+            "Dear Hiring Manager,\n\nI am writing to apply for the role. Moreover, "
+            "I built the billing service.\n\nI look forward to hearing from you.\n\n"
+            "Sincerely,\nAlex"
+        )
+        result = CoverLetterValidator(strict_mode=False).validate(
+            letter, sample_job, sample_profile, sample_selection, style="classic"
+        )
+        assert CoverLetterIssue.GENERIC_OPENING not in result.issues
+        assert CoverLetterIssue.GENERIC_PHRASING in result.issues
+        assert result.details["generic_phrases"] == ["moreover"]
+        assert result.details["has_generic_opening"] is False
+
+    def test_fresh_closing_counts_as_call_to_action(
+        self, sample_job, sample_profile, sample_selection
+    ):
+        """A closing that asks for a next step in its own words passes."""
+        letter = _letter(
+            "At Foo I cut API latency by 40%.\n\n"
+            "I'd be glad to walk you through the migration on a call."
+        )
+        result = CoverLetterValidator().validate(
+            letter, sample_job, sample_profile, sample_selection
+        )
+        assert CoverLetterIssue.NO_CALL_TO_ACTION not in result.issues
+        assert result.details["has_call_to_action"] is True
+
+    def test_closing_without_an_ask_is_flagged(
+        self, sample_job, sample_profile, sample_selection
+    ):
+        """'My results speak for themselves' does not ask for anything."""
+        letter = _letter(
+            "At Foo I cut API latency by 40%.\n\nMy results speak for themselves."
+        )
+        result = CoverLetterValidator().validate(
+            letter, sample_job, sample_profile, sample_selection
+        )
+        assert CoverLetterIssue.NO_CALL_TO_ACTION in result.issues
+        assert result.details["has_call_to_action"] is False
+
+    def test_grounding_skip_list_is_unchanged(self):
+        """The grounding check keeps its phrase list, so its measure stays comparable."""
+        from src.generation.cover_letter_grounding import _call_to_action_phrases
+
+        assert list(_call_to_action_phrases()) == [
+            "i would welcome",
+            "i look forward to",
+            "i would appreciate the opportunity",
+            "i am eager to discuss",
+            "thank you for considering",
+            "thank you for your time",
+            "i hope to hear from you",
+        ]
