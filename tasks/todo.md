@@ -4,6 +4,8 @@
 - [ ] To be decided with the user.
 
 ## Next Up
+- [ ] Install the CI type-check pins (`mypy==2.4.0`, `types-requests`, `types-PyYAML`) in the local backend `.venv`: without them the local mypy gate reports 2 errors on `main` that CI does not (found in `tasks/active/generic-phrasing/`).
+- [ ] Optional: a CV eval suite, so that a change to the CV writer (prompt rule or sentence rewrite) can be measured like the cover letters (`tasks/active/generic-phrasing/`, step 7 decision).
 - [ ] Open question from Step 2, not blocking: allow LinkedIn country hosts such as `sg.linkedin.com` (`tasks/archive/review-follow-up/notes.md`).
 
 ## Done

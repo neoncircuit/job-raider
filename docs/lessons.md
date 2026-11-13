@@ -3755,3 +3755,30 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - Before you plan work for an open item in a summary file, read the task file that the item points to. When the two disagree, the step's own `task.md` and `notes.md` are the record.
 - When you archive a step that a parent task lists, update the parent's checkbox in the same commit.
 - When you edit a line that points to another task, check the state of that task too.
+
+## MLflow after the move to WSL (2026-11-12)
+
+### Absolute paths in a moved store, and a log line that misled
+
+**Lesson:** After the move to `~/personal-projects/job-raider`, the local MLflow store (`apps/backend-py/data/mlflow.db`) still recorded its artifact folder as `file:///mnt/d/GitHub/job-raider/...`. The first eval run after the move wrote its artifact into the D: backup. Claude also first concluded that the store was new, because MLflow printed "Creating initial MLflow database tables"; MLflow prints that line each time it opens a SQLite store. Claude proposed to replace the store with the D: copy, and the user approved it. A file comparison then showed the real cause before anything was changed.
+
+**Why:** an MLflow SQLite store keeps absolute artifact paths in its `experiments` and `runs` tables, so a copied store still points at the old folder. A log line is not proof of state.
+
+**How to apply:**
+- After a project moves, search its stores and configs for the old absolute path (MLflow `artifact_location` and `artifact_uri`, Chroma, caches), and fix them with a backup and a checked transaction.
+- Before you conclude that data is missing, look the data up directly (for example `MlflowClient.get_run`). Do not infer it from a log message.
+- When an approved fix turns out to rest on a wrong finding, stop, correct the record, and ask again with the new fix.
+
+## Generic phrasing in cover letters (2026-11-12)
+
+### A "never use" list in a small model's prompt can make it use the listed words
+
+**Lesson:** The writer prompt already banned some stock phrases by name, and the 7B writer still used them ("i am excited to apply" in 21 of 65 letters). Attempt 1 listed all 51 stock phrases in the prompt: the share of letters with a stock phrase went up (0.831 to 0.892), phrases appeared that the letters had not used before, and flagged ungrounded sentences per letter went up (+0.48, interval above 0). Attempt 2 left the prompt alone and, after writing, rewrote only the sentences with a stock phrase, naming only the phrases each sentence used, and kept a new sentence only when it passed deterministic checks (no stock phrase, no new number, not much longer). The share fell to 0.095, and the grounding measures did not get worse.
+
+**Why:** a small model reads a long list of banned words as words that belong in the text. A narrow edit with checks keeps control of what changes.
+
+**How to apply:**
+- Do not fix a local model's word choice with a long ban list in its prompt. Detect the problem deterministically, then fix only the parts that have it, and check each fix before it replaces the original.
+- Measure each change against a baseline with a guard written before the run, and keep only what passes. An eval metric at its ceiling (here `ungrounded_claims_rate` at 1.0) cannot be a guard; use a measure that can move (mean flagged sentences per letter, paired, with an interval).
+- Do not change the measuring tool with the thing that it measures: the grounding check kept its own call-to-action list when the validator's call-to-action check changed, so the grounding measure meant the same thing before and after.
+- Run an eval for an unmerged change from a scratch clone, with `MLFLOW_TRACKING_URI` pointed at the real store, so the result is known before anything lands on `main`.

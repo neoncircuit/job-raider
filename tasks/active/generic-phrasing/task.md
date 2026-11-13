@@ -33,7 +33,7 @@ flowchart LR
    - Cover letter prompt: replace the four example phrases with the detector's list (one source, so the prompt and the check cannot drift).
    - Strip zero-width characters and a BOM from final letter text (small normalizer function, unit tested).
 6. **After run.** The same writer suite run as the baseline. Compare in MLflow, and with `scripts/compare_writer_reports.py --secondary` (baseline first). Keep the change only when `generic_phrasing_rate` is lower, the S1 interval (mean flagged ungrounded sentences per letter, paired) is not above 0, and the S2 interval (`scope_inflation` share, paired) is not above 0.
-7. **CVs, after the letters are settled.** CV prompt: add a rule from the CV filler group. Run the detector on the generated CV text (summary and bullets) and save the hits with the CV result. Apply the same zero-width normalizer to CV text.
+7. **CVs, after the letters are settled.** See "Step 7 plan" below (option 1: the hit list only, no prompt change).
 
 ## Attempt 2: targeted sentence rewrite (planned 2026-11-12, after attempt 1 failed its guard)
 
@@ -60,6 +60,27 @@ flowchart LR
 - Measure: the same writer suite run (65 letters, `qwen2.5:7b`, 1 sample) from the clone, with the same guard (stock-phrase rate lower; S1 and S2 intervals not above 0). Also report the extra latency.
 - Tests with a fake router: no stock phrase means no call; each acceptance rule; a wrong line count; an error; the splice; classic skips.
 
+## Step 7 plan: stock phrases in CVs (planned 2026-11-13, option 1 chosen by the user)
+
+No prompt change and no rewrite for CVs: there is no CV eval suite to measure them, and attempt 1 showed that an unmeasured phrase list in a prompt can make the output worse. CVs get the hit list only.
+
+What exists: CVs are made only in the pipeline stage Generate Resumes (`src/pipeline/stages_generate.py`): `ResumeWriter.write`, then `ResumeValidator.validate` (`src/generation/validator.py`), then PDF and DOCX. The validator result goes nowhere outside the stage; the stage passes summary numbers in its metadata, which the run file keeps and the status API reads (as for the Cloud badge).
+
+```mermaid
+flowchart LR
+    W[ResumeWriter.write] --> V[ResumeValidator.validate]
+    V --> G[generic_phrases: detector on summary, bullets, project descriptions]
+    G --> S[Stage: per-CV list in metadata, count, one log line per CV]
+    S --> R[Run file]
+    R --> A[Status API: resumes_with_stock_phrases]
+    A --> P[Pipeline page: count next to resumes generated]
+```
+
+1. `ValidationResult.generic_phrases: List[str]` (one entry per occurrence). `ResumeValidator.validate` runs the detector on the CV prose only: the summary, experience highlights, and project descriptions and highlights. Not skill names, job titles, company names, or dates. All phrase groups count. The score and the recommendation do not change.
+2. Generate Resumes: each generated item keeps `generic_phrases`; the stage metadata gets `resumes_with_stock_phrases` (count) and `resume_stock_phrases` (job ID to its phrases, only for CVs with hits); one log line per CV with hits.
+3. Pipeline page (user decision, see below): the status API and the page show "N of M resumes have stock phrases" next to the resumes generated.
+4. Tests: validator (prose only; skills and titles do not count; score unchanged), stage metadata (count and map with a fake writer and validator), and, with the UI part, the API field and a Vitest test for the page text.
+
 ## Decisions (2026-11-12)
 1. Cover letters first: the user generates letters much more often than CVs. Steps 1 to 6 are for letters; step 7 (CVs) starts only after the letter result is in.
 2. CV scope: the prompt rule and the per-CV hit list only. A CV eval suite is a follow-up task if the user wants one.
@@ -81,10 +102,10 @@ flowchart LR
 - [x] Cover letter prompt uses the detector's phrase list.
 - [x] Zero-width characters and BOM stripped from final letter text, with a unit test.
 - [x] After run: `generic_phrasing_rate` lower than the baseline (attempt 2, 2026-11-12); S1 and S2 intervals (`compare_writer_reports.py --secondary`) not above 0. Recorded in MLflow and `notes.md`.
-- [ ] CVs (after the letter result): the CV prompt has the filler rule, CV results carry the detector hits, and CV text goes through the same normalizer.
-- [ ] CI checks pass locally and in CI (black, ruff, mypy gate 0 new, pytest; frontend unchanged).
+- [x] CVs (option 1): `ValidationResult.generic_phrases` from the CV prose; the Generate Resumes stage records the per-CV phrases and the count; tests. Pipeline page count if the user wants it.
+- [x] CI checks pass locally and in CI (black, ruff, mypy gate 0 new, pytest; frontend unchanged).
 - [ ] Applied after "Yes, apply it"; pushed after approval; CI run recorded.
-- [ ] Lesson in `docs/lessons.md` if the run teaches one; `tasks/todo.md` updated; folder archived.
+- [x] Lesson in `docs/lessons.md` if the run teaches one; `tasks/todo.md` updated; folder archived.
 
 ## Status
 `review`

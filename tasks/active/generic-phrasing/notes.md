@@ -140,3 +140,23 @@ Limits:
 - 1 letter per pair at temperature 0.8: the S1 interval is wide.
 
 - Applied (user approved, 2026-11-13): `main` fast-forwarded to `da2bcc1`; `git diff` against it (without `tasks/`) is empty. Not pushed yet.
+
+## Push and CI (2026-11-13)
+
+- The user approved the push. `main` was pushed to `origin` with the detector, the validator changes, the targeted rewrite, and the task notes.
+- CI run 43265943842 passed: 12 jobs passed, `Build Docker Image` skipped (push run). Backend 2,291 passed; frontend unit 378 passed; `Test Frontend (E2E Tests)` 45 passed; `Test Demo (E2E on the Static Site)` 18 passed.
+- Cover letters are done. Step 7 (CVs) is open.
+
+## Step 7 built: stock phrases in CVs (2026-11-13, new scratch clone; the old one was cleared again)
+
+- `src/generation/validator.py`: `ValidationResult.generic_phrases` (one entry per occurrence, default empty). `_stock_phrases` runs the detector on the summary, experience highlights, and project descriptions and highlights only. Both `validate` and the LLM path of `validate_with_llm` fill it. The score, recommendation, and issues do not change.
+- `src/pipeline/stages_generate.py`: each generated item keeps `generic_phrases`; one log line per CV with hits; stage metadata `resumes_with_stock_phrases` (count) and `resume_stock_phrases` (job ID to phrases, only CVs with hits). The file has 215 lines (limit 600).
+- Status API: `resumes_with_stock_phrases` in `PipelineStatusResponse`, read from the Generate Resumes metadata (0 for older runs).
+- Pipeline page: the resume line adds " · N with stock phrases" when N is above 0; `resumes_with_stock_phrases` added to `PipelineStatusResponse` in `api.ts`.
+- CV writer prompt unchanged (no CV eval suite).
+- Tests: 4 validator (`tests/unit/test_resume_stock_phrases.py`: prose only with stock phrases in the title, company, and project name on purpose; skill names; score unchanged; LLM path), 2 stage, 2 status API, 1 Vitest. Red step: all 9 fail without the source change. Mutants: titles and names counted, LLM path without phrases, map listing CVs without phrases, API reading the wrong key, page suffix at 0: 5 of 5 caught.
+- Full checks on the clone: black and ruff clean, mypy gate with CI pins 177 known and 0 new, pytest 2,299 passed; frontend tsc and eslint clean, Prettier clean after one formatting fix in `page.tsx`, Vitest 379 passed. No E2E test reads the resume line (the E2E mock API does not send the new field), so E2E runs in CI after the push.
+- Clone commit `f4891ab` on top of `607399b` (= `main`).
+
+- Applied (user approved, 2026-11-13): `main` fast-forwarded to `f4891ab`; `git diff` against it (without `tasks/` and `docs/lessons.md`) is empty. Not pushed yet.
+- Checks on `main` with the real environments after the apply: pytest 2,299 passed; frontend tsc clean, Vitest 379 passed.
