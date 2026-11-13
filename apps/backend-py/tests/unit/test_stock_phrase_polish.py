@@ -173,3 +173,122 @@ class TestAcceptSentence:
         old = "Moreover, I cut latency."
         assert not accept_sentence(old, " ".join(["word"] * 12))
         assert accept_sentence(old, " ".join(["word"] * 11))
+
+
+def _cv(summary: str, highlight: str, description: str) -> Any:
+    """
+    A small generated CV whose title, company, skill, and project name hold
+    stock phrases on purpose (they are not prose and must never be sent).
+
+    Args:
+        summary: The summary.
+        highlight: The first experience highlight.
+        description: The project description.
+
+    Returns:
+        A ``GeneratedResume``.
+    """
+    from src.generation.resume_writer import GeneratedResume
+
+    return GeneratedResume(
+        summary=summary,
+        skills=["Team player"],
+        experience=[
+            {
+                "title": "Team Player Lead",
+                "company": "Synergy Corp",
+                "dates": "Jan 2020 - Present",
+                "highlights": [highlight, "Cut latency by 40%."],
+            }
+        ],
+        projects=[
+            {
+                "name": "Cutting-Edge App",
+                "description": description,
+                "technologies": ["Python"],
+                "highlights": [],
+            }
+        ],
+        education=[],
+        raw_response="{}",
+        model_used="m",
+    )
+
+
+class TestPolishResume:
+    """Tests for polish_resume_stock_phrases."""
+
+    def test_replaces_prose_in_place_and_keeps_the_rest(self):
+        """Summary and bullet are replaced in their fields; non-prose is untouched."""
+        from src.generation.stock_phrase_polish import polish_resume_stock_phrases
+        from src.llm.router import TaskType
+
+        resume = _cv(
+            "A proven track record in billing systems.",
+            "Moreover, built the billing API.",
+            "A dashboard for support.",
+        )
+        router = FakeRouter(
+            ["1. Years of work on billing systems.\n2. Built the billing API."]
+        )
+        updated, outcome = polish_resume_stock_phrases(router, resume)
+
+        assert updated.summary == "Years of work on billing systems."
+        assert updated.experience[0]["highlights"] == [
+            "Built the billing API.",
+            "Cut latency by 40%.",
+        ]
+        assert updated.experience[0]["title"] == "Team Player Lead"
+        assert updated.skills == ["Team player"]
+        assert updated.projects[0]["name"] == "Cutting-Edge App"
+        assert (outcome.attempted, outcome.replaced) == (2, 2)
+        assert resume.summary == "A proven track record in billing systems."
+        assert (
+            resume.experience[0]["highlights"][0] == "Moreover, built the billing API."
+        )
+        call = router.calls[0]
+        assert call["task_type"] == TaskType.RESUME_WRITING
+        assert call["messages"][0].content.startswith("You edit CVs.")
+        prompt = router.user_prompt()
+        assert prompt.startswith("CV (context only):")
+        for not_prose in ("Team Player Lead", "Synergy Corp", "Cutting-Edge App"):
+            assert not_prose not in prompt
+
+    def test_project_description_is_prose(self):
+        """A stock phrase in a project description is rewritten there."""
+        from src.generation.stock_phrase_polish import polish_resume_stock_phrases
+
+        resume = _cv(
+            "An engineer.", "Built the API.", "Moreover, a dashboard for support."
+        )
+        router = FakeRouter(["1. A dashboard for support."])
+        updated, outcome = polish_resume_stock_phrases(router, resume)
+        assert updated.projects[0]["description"] == "A dashboard for support."
+        assert outcome.replaced == 1
+
+    def test_no_stock_phrase_means_no_call(self):
+        """A CV without stock phrases in its prose is returned with the same values."""
+        from src.generation.stock_phrase_polish import polish_resume_stock_phrases
+
+        resume = _cv("An engineer.", "Built the API.", "A dashboard.")
+        router = FakeRouter()
+        updated, outcome = polish_resume_stock_phrases(router, resume)
+        assert router.calls == []
+        assert (updated.summary, updated.experience, updated.projects) == (
+            resume.summary,
+            resume.experience,
+            resume.projects,
+        )
+        assert (outcome.attempted, outcome.replaced) == (0, 0)
+
+    def test_rejected_rewrite_keeps_the_field(self):
+        """A rewrite that keeps the stock phrase is not used."""
+        from src.generation.stock_phrase_polish import polish_resume_stock_phrases
+
+        resume = _cv(
+            "A proven track record in billing.", "Built the API.", "A dashboard."
+        )
+        router = FakeRouter(["1. Still a proven track record in billing."])
+        updated, outcome = polish_resume_stock_phrases(router, resume)
+        assert updated.summary == "A proven track record in billing."
+        assert outcome.replaced == 0

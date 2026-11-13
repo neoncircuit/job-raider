@@ -19,6 +19,7 @@ from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
 from .selector import SelectionOutput, profile_skill_names
+from .stock_phrase_polish import polish_resume_stock_phrases
 
 # System prompt of ``ResumeWriter.write`` (the resume eval suite hashes it).
 RESUME_SYSTEM_PROMPT = """You are an expert resume writer. Rewrite a resume to emphasize specific projects,
@@ -46,6 +47,7 @@ class GeneratedResume:
     raw_response: str
     model_used: str
     provider_used: Optional[str] = None
+    stock_phrase_edits: int = 0  # Sentences replaced by the stock-phrase polish.
 
 
 def flatten_skills(value: Any) -> List[str]:
@@ -189,6 +191,7 @@ class ResumeWriter:
         job: JobListing,
         profile: UserProfile,
         selection: SelectionOutput,
+        polish: bool = True,
     ) -> GeneratedResume:
         """
         Generate a tailored resume for a job application.
@@ -197,6 +200,9 @@ class ResumeWriter:
             job: Target job listing
             profile: User profile
             selection: Selection output from selector stage
+            polish: Rewrite the prose sentences with stock phrases after
+                writing (``stock_phrase_polish``); the resume eval suite
+                turns it off to check the same CV before and after.
 
         Returns:
             GeneratedResume with all sections
@@ -268,7 +274,7 @@ Return a JSON object with the rewritten resume sections:
 
             answer = parse_structured(response.content, ResumeWritingAnswer)
 
-            return GeneratedResume(
+            resume = GeneratedResume(
                 summary=answer.summary,
                 skills=keep_profile_skills(
                     flatten_skills(answer.skills),
@@ -286,6 +292,11 @@ Return a JSON object with the rewritten resume sections:
                 ].primary_model,
                 provider_used=getattr(response, "provider", None),
             )
+            if not polish:
+                return resume
+            polished, outcome = polish_resume_stock_phrases(self.llm_router, resume)
+            polished.stock_phrase_edits = outcome.replaced
+            return polished
 
         except Exception as e:
             self.logger.error(f"Resume writing failed: {str(e)}")

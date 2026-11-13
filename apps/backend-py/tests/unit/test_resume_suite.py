@@ -309,3 +309,133 @@ def test_route_must_be_ollama_with_the_model() -> None:
     router.resolve_primary_model = lambda task, override=None: ("ollama", MODEL)
     local_resume_writer(router, MODEL)
     assert routes[TaskType.RESUME_WRITING].fallback_provider == "none"
+
+
+def test_polish_step_gives_before_after_and_paired_counts(tmp_path: Path) -> None:
+    """The same CVs are checked before and after the polish step."""
+    import dataclasses
+
+    dataset = small_dataset(tmp_path)
+    first, second, _ = job_ids(dataset)
+    write = writer_with(
+        {
+            first: cv(summary="A results-driven engineer."),
+            second: cv(summary="An engineer."),
+        }
+    )
+
+    def polish(resume: GeneratedResume) -> Any:
+        """
+        Remove the stock phrase of the first CV; add a number to the second.
+
+        Args:
+            resume: The CV as written.
+
+        Returns:
+            The CV after the step and the count of replaced sentences.
+        """
+        if "results-driven" in resume.summary:
+            return dataclasses.replace(resume, summary="An engineer who ships."), 1
+        if resume.summary == "An engineer.":
+            return dataclasses.replace(resume, summary="I cut costs by 987%."), 1
+        return resume, 0
+
+    report = run_resume_suite(
+        dataset,
+        model=MODEL,
+        write=write,
+        polish=polish,
+        samples=1,
+        validator=FakeValidator(),
+    )
+
+    metrics = report.metrics
+    assert metrics["before_generic_phrasing_rate"] == 0.333
+    assert metrics["generic_phrasing_rate"] == 0.0
+    assert metrics["cvs_losing_stock_phrases"] == 1.0
+    assert metrics["cvs_gaining_accuracy_flag"] == 1.0
+    assert metrics["before_unsupported_numbers_rate"] == 0.0
+    assert metrics["unsupported_numbers_rate"] == 0.333
+    assert metrics["stock_phrase_edits"] == 2.0
+    assert metrics["polish_ms_p50"] is not None
+    assert report.details["polish"] is True
+
+
+def test_without_polish_after_equals_before(tmp_path: Path) -> None:
+    """With a given writer and no polish, the CVs are checked as written only."""
+    dataset = small_dataset(tmp_path)
+    first, _, _ = job_ids(dataset)
+    report = run_resume_suite(
+        dataset,
+        model=MODEL,
+        write=writer_with({first: cv(summary="A results-driven engineer.")}),
+        samples=1,
+        validator=FakeValidator(),
+    )
+    assert report.details["polish"] is False
+    assert (
+        report.metrics["before_generic_phrasing_rate"]
+        == report.metrics["generic_phrasing_rate"]
+    )
+    assert report.metrics["cvs_gaining_accuracy_flag"] == 0.0
+    assert report.metrics["polish_ms_p50"] is None
+
+
+def test_local_writer_turns_the_writers_polish_off(monkeypatch: Any) -> None:
+    """The suite's writer asks for the CV as written, so 'before' is not polished."""
+    seen: Dict[str, Any] = {}
+
+    class FakeResumeWriter:
+        """Records the write arguments."""
+
+        def __init__(self, router: Any) -> None:
+            """
+            Keep nothing.
+
+            Args:
+                router: The router.
+            """
+
+        def write(self, **kwargs: Any) -> GeneratedResume:
+            """
+            Record the arguments and return a CV.
+
+            Args:
+                **kwargs: The write arguments.
+
+            Returns:
+                A CV.
+            """
+            seen.update(kwargs)
+            return cv()
+
+    monkeypatch.setattr("src.evaluation.suites.resume.ResumeWriter", FakeResumeWriter)
+    routes = {TaskType.RESUME_WRITING: SimpleNamespace(fallback_provider="openai")}
+    router = SimpleNamespace(
+        resolve_primary_model=lambda task, override=None: ("ollama", MODEL),
+        routes=routes,
+    )
+    write = local_resume_writer(router, MODEL)
+    write("job", "profile", "selection")
+    assert seen["polish"] is False
+
+
+def test_polish_time_counts_only_cvs_with_stock_phrases(tmp_path: Path) -> None:
+    """The median polish time is over CVs that had a stock phrase (they can call the model)."""
+    dataset = small_dataset(tmp_path)
+    first, _, _ = job_ids(dataset)
+    write = writer_with({first: cv(summary="A results-driven engineer.")})
+    # Per CV: write start, write end, polish start, polish end.
+    times = iter([0.0, 1.0, 1.0, 3.0, 3.0, 4.0, 4.0, 4.001, 4.001, 5.0, 5.0, 5.001])
+
+    report = run_resume_suite(
+        dataset,
+        model=MODEL,
+        write=write,
+        polish=lambda resume: (resume, 0),
+        samples=1,
+        validator=FakeValidator(),
+        clock=lambda: next(times),
+    )
+
+    assert report.metrics["polish_ms_p50"] == 2000.0

@@ -27,7 +27,7 @@ import statistics
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from ...generation.cover_letter_grounding import flag_unsupported_number_sentences
 from ...generation.generic_phrasing import count_words, find_generic_phrases
@@ -37,6 +37,7 @@ from ...generation.resume_writer import (
     ResumeWriter,
 )
 from ...generation.selector import SelectionOutput
+from ...generation.stock_phrase_polish import polish_resume_stock_phrases
 from ...generation.validator import ResumeValidator, resume_prose_text
 from ...llm.router import TaskType
 from ...models.job_listing import JobListing
@@ -63,7 +64,16 @@ CHECKS: tuple[str, ...] = (
     "date_inconsistency",
 )
 
+# Checks that the polish step must not add to any CV (paired guard).
+ACCURACY_CHECKS: tuple[str, ...] = (
+    "hallucinated_skill",
+    NUMBER_CHECK,
+    "missing_keyword",
+    "missing_project",
+)
+
 ResumeWriteFn = Callable[[JobListing, UserProfile, SelectionOutput], GeneratedResume]
+PolishFn = Callable[[GeneratedResume], Tuple[GeneratedResume, int]]
 Clock = Callable[[], float]
 UnloadFn = Callable[[str], None]
 VramProbe = Callable[[], Optional[int]]
@@ -71,7 +81,13 @@ VramProbe = Callable[[], Optional[int]]
 
 @dataclass
 class ResumeRow:
-    """One CV of one pair and its check results."""
+    """
+    One CV of one pair and its check results.
+
+    The check fields hold the CV after the stock-phrase polish step (the CV as
+    written when the run has no polish step). ``before_issues`` and
+    ``before_generic_phrases`` hold the same CV before the step.
+    """
 
     case_id: str
     profile_id: str
@@ -85,8 +101,60 @@ class ResumeRow:
     generic_phrases: List[str] = field(default_factory=list)
     generic_per_100w: Optional[float] = None
     prose_words: int = 0
+    before_issues: List[str] = field(default_factory=list)
+    before_generic_phrases: List[str] = field(default_factory=list)
+    stock_phrase_edits: int = 0
+    polish_ms: Optional[float] = None
     latency_ms: float = 0.0
     error: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class _CVCheck:
+    """The check results of one CV."""
+
+    issues: List[str]
+    is_valid: bool
+    score: float
+    unsupported_numbers: int
+    generic_phrases: List[str]
+    generic_per_100w: float
+    prose_words: int
+
+
+def _check_cv(resume: GeneratedResume, pair: WriterPair, validator: Any) -> _CVCheck:
+    """
+    Check one CV: the validator, the number check, and the stock phrases.
+
+    Args:
+        resume: The CV.
+        pair: The profile-job pair it was written for.
+        validator: Has ``validate(resume=..., job=..., profile=..., selection=...)``.
+
+    Returns:
+        The check results.
+    """
+    result = validator.validate(
+        resume=resume, job=pair.job, profile=pair.profile, selection=pair.selection
+    )
+    issues = {
+        issue.value if hasattr(issue, "value") else str(issue)
+        for issue in result.issues
+    }
+    prose = resume_prose_text(resume)
+    unsupported = flag_unsupported_number_sentences(prose, pair.profile)
+    if unsupported:
+        issues.add(NUMBER_CHECK)
+    generic = find_generic_phrases(prose)
+    return _CVCheck(
+        issues=sorted(issues),
+        is_valid=bool(result.is_valid),
+        score=float(result.overall_score),
+        unsupported_numbers=len(unsupported),
+        generic_phrases=[hit.phrase for hit in generic.hits for _ in range(hit.count)],
+        generic_per_100w=generic.per_100_words,
+        prose_words=count_words(prose),
+    )
 
 
 def write_and_check_cv(
@@ -96,9 +164,10 @@ def write_and_check_cv(
     write: ResumeWriteFn,
     validator: Any,
     clock: Clock = time.perf_counter,
+    polish: Optional[PolishFn] = None,
 ) -> ResumeRow:
     """
-    Write one CV for a pair and check it.
+    Write one CV for a pair and check it, before and after the polish step.
 
     Args:
         pair: The profile-job pair.
@@ -107,6 +176,8 @@ def write_and_check_cv(
         write: Writes a CV for a job, a profile, and a selection.
         validator: Has ``validate(resume=..., job=..., profile=..., selection=...)``.
         clock: Gives the time in seconds (tests pass a fake).
+        polish: Polishes a written CV and gives the count of replaced
+            sentences; None checks the CV as written only.
 
     Returns:
         The row. Its outcome is ``written``, ``fallback`` (the template CV),
@@ -129,26 +200,24 @@ def write_and_check_cv(
         row.outcome = "other_model"
         return row
 
-    result = validator.validate(
-        resume=resume, job=pair.job, profile=pair.profile, selection=pair.selection
-    )
-    issues = {
-        issue.value if hasattr(issue, "value") else str(issue)
-        for issue in result.issues
-    }
-    prose = resume_prose_text(resume)
-    unsupported = flag_unsupported_number_sentences(prose, pair.profile)
-    if unsupported:
-        issues.add(NUMBER_CHECK)
-    generic = find_generic_phrases(prose)
+    before = _check_cv(resume, pair, validator)
+    after = before
+    if polish is not None:
+        polish_started = clock()
+        polished, edits = polish(resume)
+        row.polish_ms = round((clock() - polish_started) * 1000.0, 1)
+        row.stock_phrase_edits = edits
+        after = _check_cv(polished, pair, validator)
 
-    row.issues = sorted(issues)
-    row.is_valid = bool(result.is_valid)
-    row.score = float(result.overall_score)
-    row.unsupported_numbers = len(unsupported)
-    row.generic_phrases = [hit.phrase for hit in generic.hits for _ in range(hit.count)]
-    row.generic_per_100w = generic.per_100_words
-    row.prose_words = count_words(prose)
+    row.before_issues = before.issues
+    row.before_generic_phrases = before.generic_phrases
+    row.issues = after.issues
+    row.is_valid = after.is_valid
+    row.score = after.score
+    row.unsupported_numbers = after.unsupported_numbers
+    row.generic_phrases = after.generic_phrases
+    row.generic_per_100w = after.generic_per_100w
+    row.prose_words = after.prose_words
     return row
 
 
@@ -178,7 +247,10 @@ def summarize(rows: Sequence[ResumeRow]) -> Dict[str, Optional[float]]:
         each check flags, the share of valid CVs, the mean score, the share
         with a stock phrase, the median stock phrases per 100 prose words,
         the median prose word count, and the median and 95th-percentile
-        latency.
+        latency. With the polish step: the same rates before the step
+        (``before_*``), the CVs that gained an accuracy flag, the CVs that
+        lost all stock phrases, the replaced sentences, and the median
+        polish time of the CVs that had a stock phrase before the step.
     """
     written = [row for row in rows if row.outcome == "written"]
     metrics: Dict[str, Optional[float]] = {
@@ -205,6 +277,39 @@ def summarize(rows: Sequence[ResumeRow]) -> Dict[str, Optional[float]]:
     metrics["prose_words_p50"] = percentile(
         [float(row.prose_words) for row in written], 0.5
     )
+    for check in CHECKS:
+        flagged = sum(1 for row in written if check in row.before_issues)
+        metrics[f"before_{check}_rate"] = _rate(flagged, len(written))
+    metrics["before_generic_phrasing_rate"] = _rate(
+        sum(1 for row in written if row.before_generic_phrases), len(written)
+    )
+    metrics["cvs_gaining_accuracy_flag"] = float(
+        sum(
+            1
+            for row in written
+            if (set(row.issues) - set(row.before_issues)) & set(ACCURACY_CHECKS)
+        )
+    )
+    metrics["cvs_losing_stock_phrases"] = float(
+        sum(
+            1
+            for row in written
+            if row.before_generic_phrases and not row.generic_phrases
+        )
+    )
+    metrics["stock_phrase_edits"] = float(
+        sum(row.stock_phrase_edits for row in written)
+    )
+    # Only CVs with a stock phrase before the step can call the model; the
+    # others return at once and would pull the median towards 0.
+    metrics["polish_ms_p50"] = percentile(
+        [
+            row.polish_ms
+            for row in written
+            if row.polish_ms is not None and row.before_generic_phrases
+        ],
+        0.5,
+    )
     latencies = [row.latency_ms for row in written]
     metrics["latency_p50_ms"] = percentile(latencies, 0.5)
     metrics["latency_p95_ms"] = percentile(latencies, 0.95)
@@ -214,6 +319,9 @@ def summarize(rows: Sequence[ResumeRow]) -> Dict[str, Optional[float]]:
 def local_resume_writer(router: Any, model: str) -> ResumeWriteFn:
     """
     The app's CV writer, on a route that must use one local model, no fallback.
+
+    The writer's own polish step is off: the suite runs it itself, so that it
+    can check the same CV before and after the step.
 
     Args:
         router: The app's LLM router.
@@ -249,9 +357,37 @@ def local_resume_writer(router: Any, model: str) -> ResumeWriteFn:
         Returns:
             The CV.
         """
-        return writer.write(job=job, profile=profile, selection=selection)
+        return writer.write(job=job, profile=profile, selection=selection, polish=False)
 
     return write
+
+
+def local_polish(router: Any) -> PolishFn:
+    """
+    The app's stock-phrase polish step for CVs, on the app's router.
+
+    Args:
+        router: The LLM router (``resume_writing`` route, checked by
+            ``local_resume_writer``).
+
+    Returns:
+        Polishes a CV and gives the count of replaced sentences.
+    """
+
+    def polish(resume: GeneratedResume) -> Tuple[GeneratedResume, int]:
+        """
+        Polish one CV.
+
+        Args:
+            resume: The CV as written.
+
+        Returns:
+            The CV after the step and the count of replaced sentences.
+        """
+        polished, outcome = polish_resume_stock_phrases(router, resume)
+        return polished, outcome.replaced
+
+    return polish
 
 
 def run_resume_suite(
@@ -259,6 +395,7 @@ def run_resume_suite(
     *,
     model: str,
     write: Optional[ResumeWriteFn] = None,
+    polish: Optional[PolishFn] = None,
     samples: int = DEFAULT_SAMPLES,
     validator: Optional[Any] = None,
     clock: Clock = time.perf_counter,
@@ -277,6 +414,10 @@ def run_resume_suite(
             ``model``. When None, the app's CV writer is used (see
             ``local_resume_writer``), and the model is unloaded and the VRAM
             is read unless ``unload`` or ``vram_probe`` is given.
+        polish: Polishes each written CV (the stock-phrase step). When
+            ``write`` is None and ``polish`` is None, the app's polish step
+            is used; with a given ``write`` and no ``polish``, CVs are
+            checked as written only.
         samples: CVs for each pair.
         validator: The resume validator; the default is the deterministic
             validator that the Generate Resumes stage uses.
@@ -301,6 +442,8 @@ def run_resume_suite(
     if write is None:
         app_router = router if router is not None else default_router()
         write = local_resume_writer(app_router, model)
+        if polish is None:
+            polish = local_polish(app_router)
         if unload is None:
 
             def unload_model(name: str) -> None:
@@ -325,7 +468,9 @@ def run_resume_suite(
         for pair in pairs:
             for sample in range(samples):
                 rows.append(
-                    write_and_check_cv(pair, sample, model, write, checker, clock)
+                    write_and_check_cv(
+                        pair, sample, model, write, checker, clock, polish
+                    )
                 )
                 if vram_probe is not None:
                     reading = vram_probe()
@@ -353,6 +498,8 @@ def run_resume_suite(
             "model": model,
             "samples": samples,
             "checks": list(CHECKS),
+            "accuracy_checks": list(ACCURACY_CHECKS),
+            "polish": polish is not None,
             "rows": [row.__dict__ for row in rows],
         },
     )
