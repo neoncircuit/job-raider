@@ -5,9 +5,9 @@
 
 ## Next Up
 - [ ] Optional: a CV eval suite, so that a change to the CV writer (prompt rule or sentence rewrite) can be measured like the cover letters (`tasks/archive/generic-phrasing/`, step 7 decision).
-- [ ] Open question from Step 2, not blocking: allow LinkedIn country hosts such as `sg.linkedin.com` (`tasks/archive/review-follow-up/notes.md`).
 
 ## Done
+- [x] LinkedIn country hosts such as `sg.linkedin.com` are accepted and stored as `www.linkedin.com` (`tasks/archive/linkedin-country-hosts/`; done 2026-11-13)
 - [x] The local `.venv` uses the CI versions of black, ruff, mypy, and the mypy stubs, pinned in `requirements.txt` (`tasks/archive/ci-type-check-pins/`; done 2026-11-13)
 - [x] Cover letters and CVs that do not sound generic: stock-phrase detector, checked sentence rewrite for letters, stock-phrase count for CVs (`tasks/archive/generic-phrasing/`; done 2026-11-13)
 - [x] Review follow-up (2026-10-18), Steps 0 to 5 (`tasks/archive/review-follow-up/`; closed 2026-11-12)
