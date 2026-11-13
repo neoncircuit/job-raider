@@ -11,7 +11,10 @@ from pydantic import ValidationError
 
 from src.api.main import _allowed_hosts
 from src.api.settings import APIConfig
-from src.linkedin.profile_url import validate_linkedin_profile_url
+from src.linkedin.profile_url import (
+    validate_linkedin_navigation_url,
+    validate_linkedin_profile_url,
+)
 
 
 class TestOllamaHostAllowlist:
@@ -82,6 +85,73 @@ class TestLinkedInProfileUrl:
         ):
             with pytest.raises(ValueError):
                 validate_linkedin_profile_url(bad)
+
+
+class TestLinkedInCountryHosts:
+    """Two-letter LinkedIn country hosts are accepted and changed to www."""
+
+    @pytest.mark.parametrize("country", ["sg", "uk", "de"])
+    def test_profile_on_a_country_host_uses_www(self, country: str) -> None:
+        """
+        A profile URL on a country host comes back on www.linkedin.com.
+
+        Args:
+            country: The two-letter host label.
+        """
+        url = f"https://{country}.linkedin.com/in/jane-doe/?trk=share#about"
+        assert (
+            validate_linkedin_profile_url(url)
+            == "https://www.linkedin.com/in/jane-doe/?trk=share#about"
+        )
+
+    def test_navigation_on_a_country_host_uses_www(self) -> None:
+        """
+        Navigation URLs follow the same rule.
+
+        Returns:
+            None.
+        """
+        assert (
+            validate_linkedin_navigation_url("https://SG.linkedin.com/jobs/view/1")
+            == "https://www.linkedin.com/jobs/view/1"
+        )
+
+    def test_known_hosts_are_unchanged(self) -> None:
+        """
+        www.linkedin.com and linkedin.com URLs come back as given.
+
+        Returns:
+            None.
+        """
+        for url in ("https://www.linkedin.com/in/jane", "https://linkedin.com/in/jane"):
+            assert validate_linkedin_profile_url(url) == url
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "https://linkedin.com.evil.com/in/jane",
+            "https://sg.linkedin.com.evil.com/in/jane",
+            "https://evil-linkedin.com/in/jane",
+            "https://evil.com/sg.linkedin.com/in/jane",
+            "https://abc.linkedin.com/in/jane",
+            "https://s.linkedin.com/in/jane",
+            "https://s1.linkedin.com/in/jane",
+            "https://a.sg.linkedin.com/in/jane",
+            "http://sg.linkedin.com/in/jane",
+            "https://user:pass@sg.linkedin.com/in/jane",
+            "https://sg.linkedin.com/company/acme",
+        ],
+    )
+    def test_look_alike_and_bad_country_urls_are_rejected(self, bad: str) -> None:
+        """
+        Look-alike hosts, other subdomains, http, credentials, and non-profile
+        paths are still rejected.
+
+        Args:
+            bad: The URL to reject.
+        """
+        with pytest.raises(ValueError):
+            validate_linkedin_profile_url(bad)
 
 
 class TestTrustedHostMiddleware:
