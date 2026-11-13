@@ -537,7 +537,7 @@ def run_eval_command(args) -> int:
 
     Returns:
         Exit code: 0 on success, 1 when the dataset is missing or invalid, or
-        when the writer suite has no ``--model``.
+        when the writer or resume suite has no ``--model``.
     """
     from src.evaluation.report import log_report_to_mlflow, write_report
     from src.evaluation.suites import emscad as emscad_suite
@@ -559,9 +559,11 @@ def run_eval_command(args) -> int:
     runner_kwargs = {}
     if args.suite == "emscad":
         runner_kwargs["part"] = args.part
-    if args.suite == "writer":
+    if args.suite in ("writer", "resume"):
         if not args.model:
-            message = "The writer suite needs --model, for example --model qwen2.5:7b."
+            message = (
+                f"The {args.suite} suite needs --model, for example --model qwen2.5:7b."
+            )
             logger.error(message)
             print(message)
             return 1
@@ -861,13 +863,13 @@ Examples:
         "--model",
         type=str,
         default=None,
-        help="Writer model (writer only; required there)",
+        help="Writer model (writer and resume suites; required there)",
     )
     eval_parser.add_argument(
         "--samples",
         type=int,
         default=3,
-        help="Letters for each profile-job pair (writer only; default: 3)",
+        help="Letters or CVs for each profile-job pair (writer and resume suites; default: 3)",
     )
     eval_parser.add_argument(
         "--methods",

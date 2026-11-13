@@ -26,6 +26,7 @@ SUITE_NAMES: Tuple[str, ...] = (
     "dedupe",
     "structured",
     "writer",
+    "resume",
     "ranking",
 )
 
@@ -67,6 +68,10 @@ def get_suite(name: str) -> Tuple[SuiteRunner, Path]:
         from .writer import DEFAULT_DATASET_DIR, run_writer_suite
 
         return run_writer_suite, DEFAULT_DATASET_DIR
+    if name == "resume":
+        from .resume import DEFAULT_DATASET_DIR, run_resume_suite
+
+        return run_resume_suite, DEFAULT_DATASET_DIR
     if name == "ranking":
         from .ranking import DEFAULT_DATASET_DIR, run_ranking_suite
 

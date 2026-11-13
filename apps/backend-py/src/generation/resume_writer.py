@@ -20,6 +20,19 @@ from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
 from .selector import SelectionOutput, profile_skill_names
 
+# System prompt of ``ResumeWriter.write`` (the resume eval suite hashes it).
+RESUME_SYSTEM_PROMPT = """You are an expert resume writer. Rewrite a resume to emphasize specific projects,
+skills, and keywords for a job application while maintaining factual accuracy.
+
+CRITICAL RULES:
+1. Never fabricate skills, experience, or achievements
+2. All selected projects MUST appear in the output
+3. All keywords MUST be naturally incorporated
+4. Keep dates and facts exactly as provided
+5. Use action verbs and quantify achievements where possible
+6. Maintain professional tone throughout
+7. "skills" lists only skill names from the BASE RESUME, in one flat list. Do not add other skills, and do not group skills by category."""
+
 
 @dataclass
 class GeneratedResume:
@@ -197,17 +210,7 @@ class ResumeWriter:
         messages = [
             Message(
                 role=MessageType.SYSTEM,
-                content="""You are an expert resume writer. Rewrite a resume to emphasize specific projects,
-skills, and keywords for a job application while maintaining factual accuracy.
-
-CRITICAL RULES:
-1. Never fabricate skills, experience, or achievements
-2. All selected projects MUST appear in the output
-3. All keywords MUST be naturally incorporated
-4. Keep dates and facts exactly as provided
-5. Use action verbs and quantify achievements where possible
-6. Maintain professional tone throughout
-7. "skills" lists only skill names from the BASE RESUME, in one flat list. Do not add other skills, and do not group skills by category.""",
+                content=RESUME_SYSTEM_PROMPT,
             ),
             Message(
                 role=MessageType.USER,

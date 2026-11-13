@@ -23,6 +23,29 @@ from .resume_writer import GeneratedResume, flatten_skills
 from .selector import SelectionOutput
 
 
+def resume_prose_text(resume: GeneratedResume) -> str:
+    """
+    Join the prose of a CV: the text a reader reads as sentences.
+
+    Only the summary, the experience highlights, and the project descriptions
+    and highlights count. Skill names, job titles, company names, and dates
+    are not prose.
+
+    Args:
+        resume: Generated resume.
+
+    Returns:
+        The prose parts, one per line.
+    """
+    parts: List[str] = [resume.summary or ""]
+    for exp in resume.experience:
+        parts.extend(str(h) for h in exp.get("highlights", []))
+    for project in resume.projects:
+        parts.append(str(project.get("description", "")))
+        parts.extend(str(h) for h in project.get("highlights", []))
+    return "\n".join(part for part in parts if part)
+
+
 class ValidationIssue(str, Enum):
     """Types of validation issues."""
 
@@ -277,11 +300,7 @@ Return a JSON object:
     @staticmethod
     def _stock_phrases(resume: GeneratedResume) -> List[str]:
         """
-        Find stock phrases in the prose of a CV.
-
-        Only the summary, the experience highlights, and the project
-        descriptions and highlights count. Skill names, job titles, company
-        names, and dates are not prose.
+        Find stock phrases in the prose of a CV (``resume_prose_text``).
 
         Args:
             resume: Generated resume.
@@ -289,13 +308,7 @@ Return a JSON object:
         Returns:
             The stock phrases found, one entry per occurrence.
         """
-        parts: List[str] = [resume.summary or ""]
-        for exp in resume.experience:
-            parts.extend(str(h) for h in exp.get("highlights", []))
-        for project in resume.projects:
-            parts.append(str(project.get("description", "")))
-            parts.extend(str(h) for h in project.get("highlights", []))
-        found = find_generic_phrases("\n".join(parts))
+        found = find_generic_phrases(resume_prose_text(resume))
         return [hit.phrase for hit in found.hits for _ in range(hit.count)]
 
     def _get_resume_text(self, resume: GeneratedResume) -> str:
