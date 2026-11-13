@@ -160,3 +160,18 @@ Limits:
 
 - Applied (user approved, 2026-11-13): `main` fast-forwarded to `f4891ab`; `git diff` against it (without `tasks/` and `docs/lessons.md`) is empty. Not pushed yet.
 - Checks on `main` with the real environments after the apply: pytest 2,299 passed; frontend tsc clean, Vitest 379 passed.
+
+## Push and CI for the CV step (2026-11-13)
+
+- The user approved the push. `main` was pushed to `origin` with the CV step and the docs commit.
+- CI run 43357140402 passed: 12 jobs passed, `Build Docker Image` skipped (push run). Backend 2,299 passed; frontend unit 379 passed; E2E 45 passed; demo E2E 18 passed.
+
+## Review (2026-11-13)
+
+The user asked to link Turnitout-Humanizer so that cover letters and CVs do not sound generic. It could not be linked (no engine code, a closed cloud API, a license that forbids use, and personal letters would leave the machine), so the same goal was met inside the project, local and measured.
+
+- Measurement: a deterministic detector (51 stock phrases in 5 groups), checked on the 15 real letters (counts only), and two metrics in the writer eval suite.
+- Cover letters: a baseline with `qwen2.5:7b` (stock phrases in 83% of letters). Attempt 1 (all phrases listed in the prompt) failed its guard and was not applied. Attempt 2 (a checked rewrite of only the sentences with stock phrases) brought the share to 9.5% with the grounding measures not worse, at about 0.9 s more per letter. The validator now flags stock phrases over the whole letter and accepts a call to action in any wording.
+- CVs: each generated CV reports its stock phrases (no prompt change, because there is no CV eval suite); the Pipeline page shows how many CVs have them.
+- Found on the way: the moved MLflow store still pointed its artifacts at the D: copy (fixed with a backup), and the local `.venv` does not have the CI type-check pins (in Next Up).
+- Open: a CV eval suite (optional, in Next Up).

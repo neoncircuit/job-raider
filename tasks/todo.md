@@ -4,11 +4,12 @@
 - [ ] To be decided with the user.
 
 ## Next Up
-- [ ] Install the CI type-check pins (`mypy==2.4.0`, `types-requests`, `types-PyYAML`) in the local backend `.venv`: without them the local mypy gate reports 2 errors on `main` that CI does not (found in `tasks/active/generic-phrasing/`).
-- [ ] Optional: a CV eval suite, so that a change to the CV writer (prompt rule or sentence rewrite) can be measured like the cover letters (`tasks/active/generic-phrasing/`, step 7 decision).
+- [ ] Install the CI type-check pins (`mypy==2.4.0`, `types-requests`, `types-PyYAML`) in the local backend `.venv`: without them the local mypy gate reports 2 errors on `main` that CI does not (found in `tasks/archive/generic-phrasing/`).
+- [ ] Optional: a CV eval suite, so that a change to the CV writer (prompt rule or sentence rewrite) can be measured like the cover letters (`tasks/archive/generic-phrasing/`, step 7 decision).
 - [ ] Open question from Step 2, not blocking: allow LinkedIn country hosts such as `sg.linkedin.com` (`tasks/archive/review-follow-up/notes.md`).
 
 ## Done
+- [x] Cover letters and CVs that do not sound generic: stock-phrase detector, checked sentence rewrite for letters, stock-phrase count for CVs (`tasks/archive/generic-phrasing/`; done 2026-11-13)
 - [x] Review follow-up (2026-10-18), Steps 0 to 5 (`tasks/archive/review-follow-up/`; closed 2026-11-12)
 - [x] CI E2E jobs install Chromium without `apt` and the Ubuntu mirror (`tasks/archive/ci-playwright-mirror/`; done 2026-11-12)
 - [x] Move to `~/personal-projects/job-raider`, and make dev creates, repairs, and updates the environments (`tasks/archive/dev-deps-repair/`; done 2026-11-11)

@@ -104,8 +104,8 @@ flowchart LR
 - [x] After run: `generic_phrasing_rate` lower than the baseline (attempt 2, 2026-11-12); S1 and S2 intervals (`compare_writer_reports.py --secondary`) not above 0. Recorded in MLflow and `notes.md`.
 - [x] CVs (option 1): `ValidationResult.generic_phrases` from the CV prose; the Generate Resumes stage records the per-CV phrases and the count; tests. Pipeline page count if the user wants it.
 - [x] CI checks pass locally and in CI (black, ruff, mypy gate 0 new, pytest; frontend unchanged).
-- [ ] Applied after "Yes, apply it"; pushed after approval; CI run recorded.
+- [x] Applied after "Yes, apply it"; pushed after approval; CI run recorded.
 - [x] Lesson in `docs/lessons.md` if the run teaches one; `tasks/todo.md` updated; folder archived.
 
 ## Status
-`review`
+`done` (2026-11-13)
