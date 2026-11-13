@@ -35,3 +35,12 @@ Findings:
 - The accuracy checks are almost clean on the grounding set: no skill off the profile, 1 CV with a number not in the profile.
 - `valid_rate` 1.0 and `mean_score` 100: the validator's score counts only missing projects, missing keywords, and skills off the profile, and the fixed selection is built from each job, so these two metrics cannot separate CV writers. The accuracy rates and the stock-phrase rate are the useful metrics. The date mismatch does not change the score (by design of `ResumeValidator`).
 - The 1 fallback was the CV writer's call timing out after 120 s (22:41 local time), mid-run, with low paging at the start.
+
+## Push and CI (2026-11-13)
+
+- The user approved the push; `main` was pushed with the LinkedIn archive, the suite, and its notes.
+- CI run 43448653197 passed: 12 jobs passed, `Build Docker Image` skipped (push run). Backend 2,324 passed; Vitest 379 passed; E2E 45 and demo E2E 18 passed.
+
+## Review
+
+`main.py eval resume --model <tag>` now measures generated CVs on the 65 grounding pairs, the same way the writer suite measures cover letters, and logs to MLflow with a hash of the CV writer prompt. The `qwen2.5:7b` baseline: no skill off the profile, 1 of 64 CVs with a number not in the profile, and "proven track record" in 26 of 64 CVs (the only stock phrase). A later change to the CV writer (for example the checked sentence rewrite from the cover letters, aimed at that one phrase) can now be kept or dropped on these numbers. The validator's score and valid share are 100% on this set, so they cannot separate CV writers; use the accuracy rates and the stock-phrase rate.

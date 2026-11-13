@@ -39,9 +39,9 @@ flowchart LR
 - [x] `suites/resume.py` with docstrings and types; `eval resume` in `main.py`.
 - [x] Unit tests with a fake writer (rates, fallback counted not scored, route check, number check on prose only); red step and mutants caught.
 - [x] CI checks pass locally (black, ruff, mypy gate 0 new, pytest).
-- [ ] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
+- [x] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
 - [x] Baseline run with `qwen2.5:7b` recorded in MLflow and `notes.md` (after the user approves the GPU time).
-- [ ] The Next Up item in `tasks/todo.md` updated; folder archived.
+- [x] The Next Up item in `tasks/todo.md` updated; folder archived.
 
 ## Status
-`review`
+`done` (2026-11-13)
