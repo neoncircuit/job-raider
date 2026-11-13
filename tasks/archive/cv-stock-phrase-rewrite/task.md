@@ -38,8 +38,8 @@ flowchart LR
 - [x] The resume suite reports before, after, and paired counts for the same CVs.
 - [x] Unit tests, red step, and mutants; CI checks pass locally.
 - [x] Run from a clone with `qwen2.5:7b` (after the user approves the GPU time): fewer CVs with stock phrases, and no CV gains an accuracy flag. Recorded in MLflow and `notes.md`.
-- [ ] Applied after "Yes, apply it" only if the guard passes; pushed after approval; the CI run passes.
-- [ ] `tasks/todo.md` updated; folder archived.
+- [x] Applied after "Yes, apply it" only if the guard passes; pushed after approval; the CI run passes.
+- [x] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`review`
+`done` (2026-11-14)

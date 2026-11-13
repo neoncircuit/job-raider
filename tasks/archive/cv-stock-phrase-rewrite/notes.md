@@ -38,3 +38,12 @@ Guard: fewer CVs with stock phrases (26 to 2), and no CV gained an accuracy flag
 - The clone commit was replaced: `d4dc63a`. Against the measured commit `e765924` it changes only `src/evaluation/suites/resume.py` (the summary) and `tests/unit/test_resume_suite.py`; the CV writer and the polish code are the code that was measured.
 
 - Applied (user approved, 2026-11-14): `main` fast-forwarded to `d4dc63a`; `git diff` against it is empty. Not pushed yet.
+
+## Push and CI (2026-11-14)
+
+- The user approved the push; `main` was pushed with the CV rewrite and the task notes.
+- CI run 43468385773 passed: 12 jobs passed, `Build Docker Image` skipped (push run). Backend 2,334 passed; mypy gate 177 known and 0 new; Vitest 379 passed; demo E2E 18 passed; the E2E job passed.
+
+## Review
+
+Generated CVs now go through the checked sentence rewrite that the cover letters use: on the same 65 CVs, stock phrases fell from 26 CVs to 2, and no CV gained an accuracy flag, at about 1 s per CV with a stock phrase. The polish core works on a list of texts, so letters and CVs share one implementation (letters unchanged, proven against the old module). The resume suite measures a post-writing step on the same CVs before and after, which removes the writer's own randomness from the comparison.

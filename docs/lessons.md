@@ -3782,3 +3782,17 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - Measure each change against a baseline with a guard written before the run, and keep only what passes. An eval metric at its ceiling (here `ungrounded_claims_rate` at 1.0) cannot be a guard; use a measure that can move (mean flagged sentences per letter, paired, with an interval).
 - Do not change the measuring tool with the thing that it measures: the grounding check kept its own call-to-action list when the validator's call-to-action check changed, so the grounding measure meant the same thing before and after.
 - Run an eval for an unmerged change from a scratch clone, with `MLFLOW_TRACKING_URI` pointed at the real store, so the result is known before anything lands on `main`.
+
+## Measuring a step after writing (2026-11-14)
+
+### Compare the same documents before and after the step
+
+**Lesson:** For the CV stock-phrase rewrite, accuracy problems were rare (1 or 0 in 64 CVs). Two separate eval runs would differ mostly by the writer's own randomness (temperature 0.7), so one extra flag by chance could fail a strict guard, and a real problem could hide. The rewrite runs after writing, so the resume suite turned the writer's own step off, ran the step itself, and checked each CV before and after it. The guard ("no CV gains an accuracy flag") then counts only what the step changed.
+
+**Why:** a paired comparison on the same documents removes the noise that does not come from the change under test.
+
+**How to apply:**
+- When the change is a step after generation (a rewrite, a filter, a cleanup), measure it on the same outputs before and after, in one run, and write the guard per document.
+- Use separate runs only for changes to the generation itself (the prompt or the model), and then use paired intervals over the same inputs (as in `compare_writer_reports.py --secondary`).
+- Check that the suite really sees the output before the step (a test that the suite's writer turns the built-in step off), or the "before" numbers are already polished.
+- Read a timing metric over the items where the step can do work: a median over all items, most of which return at once, hides the real cost.

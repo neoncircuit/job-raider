@@ -4,9 +4,10 @@
 - [ ] To be decided with the user.
 
 ## Next Up
-- [ ] Optional: try the checked sentence rewrite on CVs for "proven track record" (26 of 64 CVs in the CV eval baseline), and keep it only if the resume suite shows fewer stock phrases with the accuracy rates not worse (`tasks/archive/cv-eval-suite/`).
+- [ ] No open items.
 
 ## Done
+- [x] CVs: checked rewrite of stock-phrase sentences (26 to 2 of 65 CVs, no new accuracy flags) (`tasks/archive/cv-stock-phrase-rewrite/`; done 2026-11-14)
 - [x] CV eval suite: `main.py eval resume` with a `qwen2.5:7b` baseline (`tasks/archive/cv-eval-suite/`; done 2026-11-13)
 - [x] LinkedIn country hosts such as `sg.linkedin.com` are accepted and stored as `www.linkedin.com` (`tasks/archive/linkedin-country-hosts/`; done 2026-11-13)
 - [x] The local `.venv` uses the CI versions of black, ruff, mypy, and the mypy stubs, pinned in `requirements.txt` (`tasks/archive/ci-type-check-pins/`; done 2026-11-13)
