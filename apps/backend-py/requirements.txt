@@ -72,8 +72,13 @@ mlflow>=2.0.0                   # Experiment tracking and model performance logg
 sentry-sdk[fastapi]>=1.40.0     # Error tracking and performance monitoring
 
 # === Development (optional) ===
-black>=24.1.0                 # Code formatting
-ruff>=0.2.0                   # Fast Python linter
-mypy>=1.8.0                   # Static type checking
+# Exact versions, the same in CI and in every local .venv, so that a local
+# check gives the CI result. Regenerate mypy-baseline.txt when you change
+# the mypy or stub versions (never to accept a new error).
+black==26.10.1                # Code formatting
+ruff==0.17.5                  # Fast Python linter
+mypy==2.4.0                   # Static type checking (mypy baseline gate)
+types-requests==2.33.0.20261006  # Stubs for the mypy gate
+types-PyYAML==6.0.12.20260906    # Stubs for the mypy gate
 ipython>=8.20.0               # Enhanced Python REPL
 jupyter>=1.0.0                # Jupyter notebook support
