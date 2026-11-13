@@ -91,3 +91,38 @@ def test_status_reports_zero_for_a_discover_run(client: TestClient) -> None:
 
     assert data["jobs_for_resumes"] == 0
     assert data["resumes_generated"] == 0
+
+
+def test_status_reports_resumes_with_stock_phrases(client: TestClient) -> None:
+    """The status has the count of generated resumes with stock phrases."""
+    store_run(
+        "run_stock_phrases",
+        {
+            PipelineStage.GENERATE_RESUMES.value: {
+                "attempted_count": 2,
+                "generated_count": 2,
+                "resumes_with_stock_phrases": 1,
+            },
+        },
+    )
+
+    data = client.get("/api/pipeline/status/run_stock_phrases").json()
+    pipeline_runs.pop("run_stock_phrases")
+
+    assert data["resumes_generated"] == 2
+    assert data["resumes_with_stock_phrases"] == 1
+
+
+def test_status_reports_zero_stock_phrases_without_the_field(
+    client: TestClient,
+) -> None:
+    """Runs saved before the field existed report 0."""
+    store_run(
+        "run_old_metadata",
+        {PipelineStage.GENERATE_RESUMES.value: {"generated_count": 1}},
+    )
+
+    data = client.get("/api/pipeline/status/run_old_metadata").json()
+    pipeline_runs.pop("run_old_metadata")
+
+    assert data["resumes_with_stock_phrases"] == 0

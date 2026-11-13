@@ -120,6 +120,22 @@ describe("PipelinePage resume line", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows how many resumes have stock phrases", async () => {
+    mockGetStatus.mockResolvedValue(
+      status({
+        jobs_for_resumes: 2,
+        resumes_generated: 2,
+        resumes_with_stock_phrases: 1,
+      }),
+    );
+    await openMonitor();
+    expect(
+      await screen.findByText(
+        "Resumes: 2 jobs selected (Max Jobs) · 2 generated · 1 with stock phrases",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("says job for one job", async () => {
     mockGetStatus.mockResolvedValue(
       status({ jobs_for_resumes: 1, resumes_generated: 0 }),

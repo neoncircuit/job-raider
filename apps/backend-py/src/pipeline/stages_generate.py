@@ -113,8 +113,14 @@ class GenerateStages(StageBase):
                             "cover_letter_status": letter["status"],
                             "cover_letter_issues": letter["issues"],
                             "cover_letter_provider_used": letter.get("provider_used"),
+                            "generic_phrases": list(validation.generic_phrases),
                         }
                     )
+                    if validation.generic_phrases:
+                        self.logger.info(
+                            f"Stock phrases in resume for {job.title}: "
+                            f"{', '.join(validation.generic_phrases)}"
+                        )
 
                     self.logger.info(
                         f"Resume generated: {pdf_path} (validation: {validation.overall_score}/100)"
@@ -165,6 +171,14 @@ class GenerateStages(StageBase):
                     1 for r in generated if r["cover_letter_status"] == "error"
                 ),
                 "cloud_documents": cloud_documents,
+                "resumes_with_stock_phrases": sum(
+                    1 for r in generated if r["generic_phrases"]
+                ),
+                "resume_stock_phrases": {
+                    str(r["job"].job_id): r["generic_phrases"]
+                    for r in generated
+                    if r["generic_phrases"]
+                },
             }
 
             self.logger.info(

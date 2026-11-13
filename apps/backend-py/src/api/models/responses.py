@@ -43,6 +43,7 @@ class PipelineStatusResponse(BaseModel):
     cloud_documents: int = 0
     jobs_for_resumes: int = 0  # Select Jobs selected_count (limited by Max Jobs)
     resumes_generated: int = 0  # Generate Resumes generated_count
+    resumes_with_stock_phrases: int = 0  # Generated resumes with stock phrases
 
 
 class PipelineResultResponse(BaseModel):

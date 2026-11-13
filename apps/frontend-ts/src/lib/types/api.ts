@@ -117,6 +117,8 @@ export interface PipelineStatusResponse {
   jobs_for_resumes?: number;
   /** Resumes that Generate Resumes saved. */
   resumes_generated?: number;
+  /** Saved resumes whose prose has stock phrases (generic-phrasing detector). */
+  resumes_with_stock_phrases?: number;
 }
 
 export interface PipelineRun {

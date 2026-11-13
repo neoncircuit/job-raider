@@ -316,6 +316,40 @@ class TestStageGenerateResumes:
         )
 
 
+class TestStageGenerateResumesStockPhrases:
+    """Generate Resumes records the stock phrases of each saved CV."""
+
+    def test_metadata_counts_and_maps_cvs_with_stock_phrases(
+        self, stages: PipelineStages, sample_job_listing, resume_mocks, monkeypatch
+    ):
+        """A CV with stock phrases is counted and listed under its job ID."""
+        service = MagicMock(return_value=letter_response("Dear hiring manager...", []))
+        monkeypatch.setattr("src.pipeline.stages.generate_cover_letter_sync", service)
+        stages.resume_validator.validate.return_value.generic_phrases = [
+            "moreover",
+            "moreover",
+        ]
+
+        result = stages.stage_generate_resumes([sample_job_listing])
+
+        assert result.metadata["resumes_with_stock_phrases"] == 1
+        assert result.metadata["resume_stock_phrases"] == {
+            str(sample_job_listing.job_id): ["moreover", "moreover"]
+        }
+
+    def test_metadata_is_empty_without_stock_phrases(
+        self, stages: PipelineStages, sample_job_listing, resume_mocks, monkeypatch
+    ):
+        """Without stock phrases the count is 0 and the map is empty."""
+        service = MagicMock(return_value=letter_response("Dear hiring manager...", []))
+        monkeypatch.setattr("src.pipeline.stages.generate_cover_letter_sync", service)
+
+        result = stages.stage_generate_resumes([sample_job_listing])
+
+        assert result.metadata["resumes_with_stock_phrases"] == 0
+        assert result.metadata["resume_stock_phrases"] == {}
+
+
 class TestBatchCoverLetters:
     """Batch cover letters use the service repair loop and its hard-fail rule."""
 

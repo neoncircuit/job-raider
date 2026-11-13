@@ -424,6 +424,7 @@ async def get_pipeline_status(run_id: str):
     cloud_documents = 0
     jobs_for_resumes = 0
     resumes_generated = 0
+    resumes_with_stock_phrases = 0
     if result is not None:
         jobs_scraped = getattr(result, "jobs_scraped", jobs_scraped) or jobs_scraped
         jobs_scored = getattr(result, "jobs_scored", jobs_scored) or jobs_scored
@@ -441,6 +442,9 @@ async def get_pipeline_status(run_id: str):
             meta = getattr(generate, "metadata", None) or {}
             cloud_documents = int(meta.get("cloud_documents") or 0)
             resumes_generated = int(meta.get("generated_count") or 0)
+            resumes_with_stock_phrases = int(
+                meta.get("resumes_with_stock_phrases") or 0
+            )
 
     return PipelineStatusResponse(
         run_id=run_id,
@@ -458,6 +462,7 @@ async def get_pipeline_status(run_id: str):
         cloud_documents=cloud_documents,
         jobs_for_resumes=jobs_for_resumes,
         resumes_generated=resumes_generated,
+        resumes_with_stock_phrases=resumes_with_stock_phrases,
     )
 
 

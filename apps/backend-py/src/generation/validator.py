@@ -8,7 +8,7 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -18,6 +18,7 @@ from ..llm.structured import ResumeValidationAnswer, parse_structured
 from ..models.job_listing import JobListing
 from ..models.user_profile import UserProfile
 from ..utils.logger import Components, get_logger
+from .generic_phrasing import find_generic_phrases
 from .resume_writer import GeneratedResume, flatten_skills
 from .selector import SelectionOutput
 
@@ -44,6 +45,9 @@ class ValidationResult:
     overall_score: int  # 0-100
     recommendation: str  # "approve", "needs_revision", "reject"
     issues: List[ValidationIssue]
+    # Stock phrases in the CV prose, one entry per occurrence. Shown to the
+    # user; they do not change the score.
+    generic_phrases: List[str] = field(default_factory=list)
 
 
 class ResumeValidator:
@@ -180,6 +184,7 @@ class ResumeValidator:
             overall_score=overall_score,
             recommendation=recommendation,
             issues=issues,
+            generic_phrases=self._stock_phrases(resume),
         )
 
     def validate_with_llm(
@@ -261,12 +266,37 @@ Return a JSON object:
                 overall_score=answer.overall_score,
                 recommendation=answer.recommendation,
                 issues=[],
+                generic_phrases=self._stock_phrases(resume),
             )
 
         except Exception as e:
             self.logger.error(f"LLM validation failed: {str(e)}")
             # Fall back to deterministic validation
             return self.validate(resume, job, profile, selection)
+
+    @staticmethod
+    def _stock_phrases(resume: GeneratedResume) -> List[str]:
+        """
+        Find stock phrases in the prose of a CV.
+
+        Only the summary, the experience highlights, and the project
+        descriptions and highlights count. Skill names, job titles, company
+        names, and dates are not prose.
+
+        Args:
+            resume: Generated resume.
+
+        Returns:
+            The stock phrases found, one entry per occurrence.
+        """
+        parts: List[str] = [resume.summary or ""]
+        for exp in resume.experience:
+            parts.extend(str(h) for h in exp.get("highlights", []))
+        for project in resume.projects:
+            parts.append(str(project.get("description", "")))
+            parts.extend(str(h) for h in project.get("highlights", []))
+        found = find_generic_phrases("\n".join(parts))
+        return [hit.phrase for hit in found.hits for _ in range(hit.count)]
 
     def _get_resume_text(self, resume: GeneratedResume) -> str:
         """

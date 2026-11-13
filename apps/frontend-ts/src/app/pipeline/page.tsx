@@ -507,6 +507,7 @@ function LiveMonitor({ runId }: { runId: string }) {
   const jobsSelected = status.data?.jobs_selected ?? 0;
   const jobsForResumes = status.data?.jobs_for_resumes ?? 0;
   const resumesGenerated = status.data?.resumes_generated ?? 0;
+  const resumesWithStockPhrases = status.data?.resumes_with_stock_phrases ?? 0;
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
@@ -558,7 +559,7 @@ function LiveMonitor({ runId }: { runId: string }) {
           </p>
           {jobsForResumes > 0 && (
             <p className="text-sm text-foreground">
-              {`Resumes: ${jobsForResumes} ${jobsForResumes === 1 ? "job" : "jobs"} selected (Max Jobs) · ${resumesGenerated} generated`}
+              {`Resumes: ${jobsForResumes} ${jobsForResumes === 1 ? "job" : "jobs"} selected (Max Jobs) · ${resumesGenerated} generated${resumesWithStockPhrases > 0 ? ` · ${resumesWithStockPhrases} with stock phrases` : ""}`}
             </p>
           )}
         </div>
