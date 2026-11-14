@@ -67,6 +67,7 @@ class TestOllamaThinkPassthrough:
                 new_callable=PropertyMock,
                 return_value=["qwen2.5:3b"],
             ),
+            patch.object(OllamaClient, "_loaded_models", return_value=["qwen2.5:3b"]),
             patch("src.llm.ollama_client.requests.post") as mock_post,
         ):
             mock_resp = MagicMock()
@@ -96,6 +97,7 @@ class TestOllamaThinkPassthrough:
                 new_callable=PropertyMock,
                 return_value=["gemma4:e4b"],
             ),
+            patch.object(OllamaClient, "_loaded_models", return_value=["gemma4:e4b"]),
             patch("src.llm.ollama_client.requests.post") as mock_post,
         ):
             mock_resp = MagicMock()

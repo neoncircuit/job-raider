@@ -59,6 +59,7 @@ def _ollama_payload(**kwargs: Any) -> Dict[str, Any]:
             new_callable=PropertyMock,
             return_value=["qwen2.5:3b"],
         ),
+        patch.object(OllamaClient, "_loaded_models", return_value=["qwen2.5:3b"]),
         patch("src.llm.ollama_client.requests.post") as post,
     ):
         answer = MagicMock()

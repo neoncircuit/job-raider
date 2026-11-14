@@ -108,7 +108,7 @@ class FakeOllama:
             path = call["url"].split(":11434")[-1].split("//")[-1]
             path = path[path.index("/api/") :] if "/api/" in path else path
             if path == "/api/generate":
-                path += f"({call['json']['model']}, keep_alive={call['json']['keep_alive']})"
+                path += f"({call['json']['model']}, keep_alive={call['json'].get('keep_alive')})"
             out.append(path)
         return out
 
@@ -155,11 +155,19 @@ def test_the_same_model_is_not_unloaded() -> None:
     assert fake.paths() == ["/api/ps", "/api/chat"]
 
 
-def test_option_off_does_not_ask_ollama() -> None:
-    """With the option off (the client default), no /api/ps call is made."""
+def test_option_off_does_not_unload_other_models() -> None:
+    """With the option off (the client default), no other model is unloaded.
+
+    The /api/ps call and the load of the client's own model still run: the
+    load step applies to every setting (ollama-load-timeout task).
+    """
     fake = FakeOllama(loaded=["qwen2.5:3b"])
     chat(fake)
-    assert fake.paths() == ["/api/chat"]
+    assert fake.paths() == [
+        "/api/ps",
+        "/api/generate(qwen2.5:7b, keep_alive=None)",
+        "/api/chat",
+    ]
 
 
 def test_a_failing_ps_or_unload_does_not_block_the_chat() -> None:

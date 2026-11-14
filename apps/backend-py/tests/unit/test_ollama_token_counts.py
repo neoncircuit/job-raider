@@ -14,6 +14,9 @@ def _generate_with_chat_payload(payload: dict) -> tuple:
     """
     Run one generate call against a fake /api/chat response.
 
+    The model is reported as loaded (``_loaded_models``), so no load request
+    is made and no request goes to a real Ollama server.
+
     Args:
         payload: JSON body returned by the fake HTTP response.
 
@@ -28,6 +31,7 @@ def _generate_with_chat_payload(payload: dict) -> tuple:
             new_callable=PropertyMock,
             return_value=["qwen2.5:3b"],
         ),
+        patch.object(OllamaClient, "_loaded_models", return_value=["qwen2.5:3b"]),
         patch("src.llm.ollama_client.requests.post") as mock_post,
     ):
         mock_resp = MagicMock()

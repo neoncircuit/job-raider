@@ -45,12 +45,12 @@ flowchart TD
 - Out of scope: the `llama3.2:3b` experiment (next task, user choice (a)); the lean-setup after run (it waits for this fix).
 
 ## Acceptance Criteria
-- [ ] `_ensure_loaded()` and `_loaded_models()` added, with docstrings and type hints; `_unload_other_models()` uses `_loaded_models()`.
-- [ ] Unit tests written red first, then green; existing Ollama client tests pass.
-- [ ] CI checks pass on the clone: black, ruff, mypy gate (0 new), full backend pytest.
+- [x] `_ensure_loaded()` and `_loaded_models()` added, with docstrings and type hints; `_unload_other_models()` uses `_loaded_models()`.
+- [x] Unit tests written red first, then green; existing Ollama client tests pass.
+- [x] CI checks pass on the clone: black, ruff, mypy gate (0 new), full backend pytest.
 - [ ] Measurement run: 0 cancelled loads and 0 request timeouts; results in `notes.md`.
 - [ ] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
 - [ ] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`review`
+`in-progress`

@@ -46,6 +46,11 @@ def extract_ollama_chat_content(message: Dict[str, Any]) -> str:
 
 logger = get_logger(Components.LLM)
 
+# Seconds to wait for Ollama to load a model into memory. A cold load with low
+# free RAM can take longer than the chat timeout; a separate, longer timeout
+# keeps the chat retry loop from cancelling a slow load and starting it again.
+DEFAULT_LOAD_TIMEOUT = 600
+
 
 class OllamaClient(BaseLLMClient):
     """
@@ -59,6 +64,7 @@ class OllamaClient(BaseLLMClient):
         config: LLMConfig,
         host: Optional[str] = None,
         port: Optional[int] = None,
+        load_timeout: int = DEFAULT_LOAD_TIMEOUT,
         **kwargs,
     ):
         """
@@ -68,12 +74,15 @@ class OllamaClient(BaseLLMClient):
             config: LLM configuration
             host: Ollama host (defaults to OLLAMA_HOST env var or localhost)
             port: Ollama port (defaults to OLLAMA_PORT env var or 11434)
+            load_timeout: Seconds to wait for Ollama to load the model before
+                a chat request, when the model is not loaded (default 600).
             **kwargs: Additional parameters. ``keep_alive`` is sent with each
                 chat request; ``one_model_at_a_time`` (default False) unloads
                 any other loaded model before each chat request.
         """
         super().__init__(config, provider="ollama", **kwargs)
 
+        self.load_timeout = load_timeout
         self.keep_alive = kwargs.get("keep_alive")
         self.one_model_at_a_time = bool(kwargs.get("one_model_at_a_time", False))
 
@@ -148,24 +157,35 @@ class OllamaClient(BaseLLMClient):
             print(f"Failed to pull model {model}: {e}")
             return False
 
-    def _unload_other_models(self) -> None:
+    def _loaded_models(self) -> Optional[List[str]]:
         """
-        Unload every loaded Ollama model except this client's model.
+        Ask Ollama which models are loaded in memory (``/api/ps``).
 
-        Asks Ollama which models are loaded (``/api/ps``) and sends each other
-        model a request with ``keep_alive: 0``, which unloads it. Errors are
-        logged and ignored: the chat request goes on either way.
+        Returns:
+            The names of the loaded models, or ``None`` when Ollama does not
+            answer or the answer cannot be read.
         """
         try:
             response = requests.get(f"{self.base_url}/api/ps", timeout=5)
             response.raise_for_status()
-            loaded = [
+            return [
                 str(item.get("name") or item.get("model") or "")
                 for item in (response.json().get("models") or [])
             ]
         except (requests.RequestException, ValueError) as exc:
             logger.debug(f"Could not list loaded Ollama models: {exc}")
-            return
+            return None
+
+    def _unload_other_models(self, loaded: List[str]) -> None:
+        """
+        Unload every loaded Ollama model except this client's model.
+
+        Sends each other model a request with ``keep_alive: 0``, which unloads
+        it. Errors are logged and ignored: the chat request goes on either way.
+
+        Args:
+            loaded: The loaded model names (from ``_loaded_models``).
+        """
         for name in loaded:
             if not name or name == self.config.model:
                 continue
@@ -178,6 +198,43 @@ class OllamaClient(BaseLLMClient):
                 logger.info(f"Unloaded Ollama model {name} before {self.config.model}")
             except requests.RequestException as exc:
                 logger.debug(f"Could not unload Ollama model {name}: {exc}")
+
+    def _ensure_loaded(self, loaded: List[str], keep_alive: Any) -> None:
+        """
+        Load this client's model before the chat request, when it is not loaded.
+
+        Sends ``/api/generate`` with the model and no prompt, so Ollama only
+        loads the model. The request uses ``load_timeout``, not the chat
+        timeout, so a slow cold load is not cancelled and started again by the
+        chat retry loop. Errors and timeouts are logged as warnings and
+        ignored: the chat request then works as before.
+
+        Args:
+            loaded: The loaded model names (from ``_loaded_models``).
+            keep_alive: The keep_alive of the chat request, or ``None`` for the
+                Ollama default.
+        """
+        model = self.config.model
+        if model in loaded:
+            return
+        body: Dict[str, Any] = {"model": model}
+        if keep_alive is not None:
+            body["keep_alive"] = keep_alive
+        logger.info(f"Loading Ollama model {model} (timeout {self.load_timeout} s)")
+        start = time.time()
+        try:
+            requests.post(
+                f"{self.base_url}/api/generate",
+                json=body,
+                timeout=self.load_timeout,
+            ).raise_for_status()
+        except requests.RequestException as exc:
+            logger.warning(
+                f"Could not load Ollama model {model} before the chat request"
+                f" after {time.time() - start:.0f} s: {exc}"
+            )
+            return
+        logger.info(f"Loaded Ollama model {model} in {time.time() - start:.1f} s")
 
     def generate(self, messages: List[Message], **kwargs) -> LLMResponse:
         """
@@ -198,9 +255,18 @@ class OllamaClient(BaseLLMClient):
         """
         self.validate_messages(messages)
 
-        # Keep one model in GPU memory: unload any other loaded model first.
-        if self.one_model_at_a_time:
-            self._unload_other_models()
+        keep_alive = kwargs.get("keep_alive", self.keep_alive)
+
+        # One /api/ps call serves both steps. When it fails, both are skipped
+        # and the chat request runs as before.
+        loaded = self._loaded_models()
+        if loaded is not None:
+            # Keep one model in GPU memory: unload any other loaded model first.
+            if self.one_model_at_a_time:
+                self._unload_other_models(loaded)
+            # Load this model with the long load timeout, so the chat timeout
+            # applies to the answer only.
+            self._ensure_loaded(loaded, keep_alive)
 
         # Build request payload. Do not set ``think`` unless the caller asked;
         # cover-letter writing passes think=False for Gemma 4 blank-output.
@@ -223,7 +289,6 @@ class OllamaClient(BaseLLMClient):
         if kwargs.get("response_schema"):
             payload["format"] = kwargs["response_schema"]
 
-        keep_alive = kwargs.get("keep_alive", self.keep_alive)
         if keep_alive is not None:
             payload["keep_alive"] = keep_alive
 
