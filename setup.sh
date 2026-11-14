@@ -21,6 +21,9 @@ OPTIONAL_REQUIREMENTS="$BACKEND_DIR/requirements-optional.txt"
 INSTALL_LLMFIT=true
 # Node.js major version for the frontend; .nvmrc is the one source (CI reads it too)
 REQUIRED_NODE_MAJOR="$(tr -dc '0-9' < "$PROJECT_ROOT/.nvmrc")"
+# Python: the version in .python-version or newer (find_python, python_install_help)
+# shellcheck source=scripts/find_python.sh
+source "$PROJECT_ROOT/scripts/find_python.sh"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}    Job Raider - Setup Script${NC}"
@@ -281,32 +284,26 @@ check_disk_space() {
     fi
 }
 
-# Check if Python 3.11+ is installed
+# Find the newest Python that meets .python-version, or install one in .tools
+# (scripts/find_python.sh: ensure_python).
+# It sets PYTHON_BIN, which create_venv uses.
 check_python() {
     print_status "Checking Python version..."
 
-    if ! command -v python3 &> /dev/null; then
-        print_error "Python 3 is not installed!"
-        echo "Please install Python 3.11 or higher."
+    if ! PYTHON_BIN="$(ensure_python "$PROJECT_ROOT")"; then
+        print_error "No suitable Python found!"
+        python_install_help "$PROJECT_ROOT"
         exit 1
     fi
 
-    PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
-    REQUIRED_VERSION="3.11"
-
-    if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
-        print_error "Python $PYTHON_VERSION is installed, but Python 3.11+ is required!"
-        exit 1
-    fi
-
-    print_status "Python $PYTHON_VERSION found [OK]"
+    print_status "$("$PYTHON_BIN" --version) found at $PYTHON_BIN [OK]"
 }
 
 # Create virtual environment if it doesn't exist
 create_venv() {
     if [ ! -d "$VENV_DIR" ]; then
         print_status "Creating virtual environment at $VENV_DIR..."
-        python3 -m venv "$VENV_DIR"
+        "$PYTHON_BIN" -m venv "$VENV_DIR"
         print_status "Virtual environment created [OK]"
     else
         print_status "Virtual environment already exists [OK]"

@@ -3810,3 +3810,16 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - Record per-source results (count or error) in the stage metadata, not only in the log.
 - In a test run, check the counts and the resource use, not only the stage colors: a model run that loads no model did no model work.
 - When a list of user terms goes to a search, decide on purpose whether it means "any" or "all"; one joined query means "all".
+
+## A fresh machine with an old default Python (2026-11-14)
+
+### Look for a versioned Python, not only python3
+
+**Lesson:** `setup.sh` stopped on the user's laptop because `python3` was 3.10 (Ubuntu 22.04). Installing Python 3.12 would not have helped: `setup.sh` and `scripts/dev.sh` only called `python3`, and on Ubuntu `python3` must stay the system version. The scripts were only ever run on machines where `python3` was already new enough.
+
+**Why:** "it works on my machine" for a setup script means only that the developer's machine meets its needs. A fresh machine is the real test.
+
+**How to apply:**
+- Pick the interpreter with `scripts/find_python.sh` (newest `python3.X` that meets `.python-version`, then `python3`). Never hard-code `python3 -m venv`.
+- When nothing suitable exists, install one inside the repository (`ensure_python`: a pinned uv, checked against its SHA-256, puts the `.python-version` Python in the git-ignored `.tools/`). Setup scripts do not run `sudo` or `apt` and write nothing outside the repository; the user chose this over a system install (2026-11-14). The install commands are printed only when this fails.
+- Test setup changes against a clean distribution image (for example `ubuntu:22.04` in Docker), not only on the developer's machine.

@@ -18,6 +18,9 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/apps/backend-py"
 FRONTEND_DIR="$PROJECT_ROOT/apps/frontend-ts"
 VENV_PYTHON="$BACKEND_DIR/.venv/bin/python3"
+# Python: the version in .python-version or newer (find_python, python_install_help)
+# shellcheck source=scripts/find_python.sh
+source "$PROJECT_ROOT/scripts/find_python.sh"
 
 # --- Helpers ----------------------------------------------------------------
 
@@ -39,8 +42,11 @@ BACKEND_STAMP="$BACKEND_DIR/.venv/.job-raider-requirements.sha256"
 # Make the backend .venv usable and up to date with its requirements.
 #
 # - The .venv is created when it is missing, and created again when its Python
-#   does not run (for example after the base Python moved) or when the core
-#   packages do not import (a broken or half-finished install).
+#   does not run (for example after the base Python moved), when its Python is
+#   older than .python-version, or when the core packages do not import (a
+#   broken or half-finished install). A new .venv uses the newest suitable
+#   Python (scripts/find_python.sh), not only the default python3, and when
+#   there is none, a Python installed in .tools (ensure_python).
 # - pip installs the requirements again when requirements.txt or
 #   requirements-optional.txt changed since the last install (a hash stamp in
 #   the .venv), so a pull with new requirements needs no manual step.
@@ -54,6 +60,9 @@ ensure_backend() {
     if [ -e "$BACKEND_DIR/.venv" ] && ! "$VENV_PYTHON" -c "import sys" &> /dev/null; then
         warn "Backend .venv does not run -- creating it again..."
         rm -rf "$BACKEND_DIR/.venv"
+    elif [ -x "$VENV_PYTHON" ] && ! python_meets "$VENV_PYTHON" "$(python_required_version "$PROJECT_ROOT")"; then
+        warn "Backend .venv uses an older Python than .python-version -- creating it again..."
+        rm -rf "$BACKEND_DIR/.venv"
     elif [ -x "$VENV_PYTHON" ] && ! "$VENV_PYTHON" -c "import fastapi, uvicorn, pydantic, setuptools" &> /dev/null; then
         warn "Backend .venv has broken packages -- creating it again..."
         rm -rf "$BACKEND_DIR/.venv"
@@ -65,12 +74,14 @@ ensure_backend() {
     fi
 
     if [ ! -x "$VENV_PYTHON" ]; then
-        if ! command -v python3 &> /dev/null; then
-            echo "Error: python3 not found. Install Python 3.11+ first."
+        local python_bin
+        if ! python_bin="$(ensure_python "$PROJECT_ROOT")"; then
+            echo "Error: no suitable Python found."
+            python_install_help "$PROJECT_ROOT"
             exit 1
         fi
-        warn "Creating the backend .venv..."
-        python3 -m venv "$BACKEND_DIR/.venv"
+        warn "Creating the backend .venv with $("$python_bin" --version)..."
+        "$python_bin" -m venv "$BACKEND_DIR/.venv"
     else
         warn "Backend requirements changed -- updating the .venv..."
     fi

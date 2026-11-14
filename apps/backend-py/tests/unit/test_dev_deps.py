@@ -14,10 +14,10 @@ SCRIPT = (REPO_ROOT / "scripts" / "dev.sh").read_text()
 
 
 def test_backend_venv_is_rebuilt_when_broken() -> None:
-    """A .venv whose Python or core packages fail is created again."""
+    """A .venv whose Python fails, is too old, or has broken packages is created again."""
     assert '"$VENV_PYTHON" -c "import sys"' in SCRIPT
     assert '"$VENV_PYTHON" -c "import fastapi, uvicorn, pydantic, setuptools"' in SCRIPT
-    assert SCRIPT.count('rm -rf "$BACKEND_DIR/.venv"') == 2
+    assert SCRIPT.count('rm -rf "$BACKEND_DIR/.venv"') == 3
 
 
 def test_requirements_changes_trigger_an_install() -> None:

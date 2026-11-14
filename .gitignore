@@ -87,3 +87,6 @@ pnpm-lock.yaml
 
 # Local cron schedule (hardcoded to a specific machine; keep your local copy)
 crontab.job_raider
+
+# Python installed by setup.sh when the machine has none (uv, scripts/find_python.sh)
+.tools/

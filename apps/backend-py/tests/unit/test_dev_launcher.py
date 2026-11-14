@@ -38,6 +38,7 @@ def _run_dev_sh_api(tmp_path: Path) -> tuple[Path, List[str]]:
     root = tmp_path / "repo"
     (root / "scripts").mkdir(parents=True)
     shutil.copy(DEV_SH, root / "scripts" / "dev.sh")
+    shutil.copy(DEV_SH.parent / "find_python.sh", root / "scripts" / "find_python.sh")
 
     backend_dir = root / "apps" / "backend-py"
     venv_bin = backend_dir / ".venv" / "bin"
