@@ -4,9 +4,12 @@
 - [ ] To be decided with the user.
 
 ## Next Up
-- [ ] No open items.
+- [ ] Scoring calibration: in the pipeline test (2026-11-14) 58 of 59 profile-matched jobs scored below 60 (best 61), so Max Jobs 2 gave 1 document. Find out if the scoring (fresh graduate mode) or broad keywords cause it, and measure before changing (`tasks/archive/scrape-keyword-search/`).
+- [ ] Lighter writer: `qwen2.5:7b` took total GPU use to 7.2 to 7.3 of 8 GB on this machine. Measure `qwen2.5:3b` for letters and CVs with the writer and resume suites (quality guard first) to make the app usable on smaller GPUs.
+- [ ] RAM during `make dev`: 0.6 to 1.1 GB free with heavy paging; the Next.js dev server is part of it. Measure a production build (`next start`) for everyday use.
 
 ## Done
+- [x] Pipeline searches each keyword (was: all keywords at once, 0 jobs), a run with no jobs stops with a warning, Request Cancel hidden after a run (`tasks/archive/scrape-keyword-search/`; done 2026-11-14)
 - [x] CVs: checked rewrite of stock-phrase sentences (26 to 2 of 65 CVs, no new accuracy flags) (`tasks/archive/cv-stock-phrase-rewrite/`; done 2026-11-14)
 - [x] CV eval suite: `main.py eval resume` with a `qwen2.5:7b` baseline (`tasks/archive/cv-eval-suite/`; done 2026-11-13)
 - [x] LinkedIn country hosts such as `sg.linkedin.com` are accepted and stored as `www.linkedin.com` (`tasks/archive/linkedin-country-hosts/`; done 2026-11-13)

@@ -44,8 +44,8 @@ flowchart LR
 - [x] "Request Cancel" is hidden when the run is no longer running.
 - [x] Unit tests, red step, and mutants; CI checks pass locally.
 - [x] Scrape with the user's keywords finds jobs; then the full-mode dry run reaches Generate Resumes with the recorder on.
-- [ ] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
-- [ ] `tasks/todo.md` updated; folder archived.
+- [x] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
+- [x] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`review`
+`done` (2026-11-14)

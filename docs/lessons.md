@@ -3796,3 +3796,17 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - Use separate runs only for changes to the generation itself (the prompt or the model), and then use paired intervals over the same inputs (as in `compare_writer_reports.py --secondary`).
 - Check that the suite really sees the output before the step (a test that the suite's writer turns the built-in step off), or the "before" numbers are already polished.
 - Read a timing metric over the items where the step can do work: a median over all items, most of which return at once, hides the real cost.
+
+## A run that did nothing (2026-11-14)
+
+### Zero work must never look like success
+
+**Lesson:** A full pipeline test finished every stage within one second and showed "Complete", with 0 jobs scraped. Every scraper treated the keyword list as "match all", so a profile with several broad keywords matched no posting, and `ScraperManager.search_all` only logged per-source errors. The empty list then went through all later stages, which each "succeeded" on nothing. A resource recorder (no model loaded at any time) and the "0 scraped" count showed the problem; the green stage list did not.
+
+**Why:** a pipeline that reports success for each stage, but not for the work done, hides an empty input as well as it hides a real failure.
+
+**How to apply:**
+- When a stage's output is empty and later stages need it, stop the run with a clear message (here: complete with a warning after Scrape), instead of running the rest on nothing.
+- Record per-source results (count or error) in the stage metadata, not only in the log.
+- In a test run, check the counts and the resource use, not only the stage colors: a model run that loads no model did no model work.
+- When a list of user terms goes to a search, decide on purpose whether it means "any" or "all"; one joined query means "all".

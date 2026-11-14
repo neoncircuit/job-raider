@@ -30,3 +30,12 @@ Planned 2026-11-14 after the test run run_d6a88288 scraped 0 jobs. Review sectio
 - Result: the fix works as intended. Open questions for later (not this task): 58 of 59 jobs scored below 60 (scoring calibration or broad keywords); GPU close to the 90% guard on this machine.
 
 - Applied (user approved, 2026-11-14): the working tree was checked identical to clone commit `08b43f0` (11 files, and the 2 new test files byte for byte), the uncommitted copy was removed, and `main` was fast-forwarded to `08b43f0`; `git diff` against it is empty. Not pushed yet.
+
+## Push and CI (2026-11-14)
+
+- The user approved the push; `main` was pushed with the fix and the task notes.
+- CI run 43545647044 passed: 12 jobs passed, `Build Docker Image` skipped (push run). Backend 2,346 passed; mypy gate 177 known and 0 new; Vitest 382 passed; demo E2E 18 passed; the E2E job passed.
+
+## Review
+
+A profile with several keywords found no jobs, because every scraper matched all keywords at once; the run then did nothing and still showed "Complete". Each keyword is now its own search (the limit is shared, so the work for the later stages stays at the same scale), each search's count or error is recorded, a run with no jobs stops after Scrape with a visible warning, and "Request Cancel" is hidden after a run ends. The real pipeline test with the fix: 100 jobs scraped, 1 CV and letter with no stock phrases, dry-run submit with 0 submitted.
