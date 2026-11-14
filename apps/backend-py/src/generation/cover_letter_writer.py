@@ -644,6 +644,7 @@ class CoverLetterWriter:
         model: Optional[str] = None,
         mission_brief: Optional[str] = None,
         inclusion_urls: Optional[Dict[str, Optional[str]]] = None,
+        polish: bool = True,
     ) -> GeneratedCoverLetter:
         """
         Rewrite a cover letter draft using a reviewer critique.
@@ -658,6 +659,9 @@ class CoverLetterWriter:
             model: Optional one-shot writer model override (Settings provider).
             mission_brief: Optional verified company-mission brief.
             inclusion_urls: Optional kind→URL map for JD inclusion asks.
+            polish: Rewrite the sentences with stock phrases after the rewrite
+                (``stock_phrase_polish``); a measurement turns it off to check
+                the same rewrite before and after.
 
         Returns:
             ``GeneratedCoverLetter`` with the rewritten content and metadata.
@@ -727,6 +731,14 @@ class CoverLetterWriter:
             content = strip_invisible_characters(response.content).strip()
             if not content:
                 raise ValueError("Cover letter rewrite returned empty content")
+            # A rewrite can bring stock phrases back; polish it like a draft.
+            edits = 0
+            if polish:
+                outcome = polish_stock_phrases(
+                    self.llm_router, content, style=style, model=model
+                )
+                content = outcome.content
+                edits = outcome.replaced
             word_count = len(content.split())
             model_used = (
                 response.model
@@ -755,6 +767,7 @@ class CoverLetterWriter:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 tokens_used=tokens_used,
+                stock_phrase_edits=edits,
             )
 
         except Exception as e:

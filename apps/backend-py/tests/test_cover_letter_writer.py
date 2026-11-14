@@ -494,8 +494,12 @@ class TestCoverLetterWriter:
             word_count=2,
             model_used="qwen2.5:7b",
         )
+        calls_before = mock_llm_router.generate.call_count
         writer.rewrite(sample_job, sample_profile, sample_selection, draft, "Fix tone")
-        rewrite_messages = mock_llm_router.generate.call_args.kwargs["messages"]
+        # The rewrite's own call comes first; the stock-phrase polish may follow.
+        rewrite_messages = mock_llm_router.generate.call_args_list[calls_before].kwargs[
+            "messages"
+        ]
         rewrite_system = rewrite_messages[0].content
 
         assert write_system == _COVER_LETTER_SYSTEM + "\n\n" + _MISSION_ABSENT_RULES
@@ -547,6 +551,7 @@ class TestCoverLetterWriter:
             word_count=2,
             model_used="qwen2.5:7b",
         )
+        calls_before = mock_llm_router.generate.call_count
         writer.rewrite(
             sample_job,
             sample_profile,
@@ -555,9 +560,11 @@ class TestCoverLetterWriter:
             "Fix tone",
             style="classic",
         )
-        rewrite_system = mock_llm_router.generate.call_args.kwargs["messages"][
-            0
-        ].content
+        rewrite_system = (
+            mock_llm_router.generate.call_args_list[calls_before]
+            .kwargs["messages"][0]
+            .content
+        )
         assert rewrite_system == (
             _CLASSIC_COVER_LETTER_SYSTEM + "\n\n" + _MISSION_ABSENT_RULES
         )
@@ -634,3 +641,87 @@ class TestWriterOutputCleaning:
             "I am applying for the Senior Python Developer position at TechStartup Inc."
         )
         assert result.word_count == len(result.content.split())
+
+
+class TestRewritePolish:
+    """rewrite() runs the stock-phrase polish on its output, as write() does."""
+
+    @staticmethod
+    def _draft() -> GeneratedCoverLetter:
+        """
+        A draft letter for rewrite().
+
+        Returns:
+            The draft.
+        """
+        return GeneratedCoverLetter(
+            content="Draft letter",
+            highlighted_experiences=[],
+            word_count=2,
+            model_used="qwen2.5:7b",
+        )
+
+    def test_rewrite_with_a_stock_phrase_is_polished(
+        self, mock_llm_router, sample_job, sample_profile, sample_selection
+    ):
+        """A stock phrase in the rewrite is replaced, and the edit is counted."""
+        rewritten = (
+            "At Acme I cut API latency by 40%.\n\n"
+            "I am confident that my Python work fits this role.\n\n"
+            "I would welcome a conversation about the role."
+        )
+        mock_llm_router.generate.side_effect = [
+            LLMResponse(content=rewritten, model="qwen2.5:7b", provider="ollama"),
+            LLMResponse(
+                content="1. My Python work fits this role.",
+                model="qwen2.5:7b",
+                provider="ollama",
+            ),
+        ]
+        result = CoverLetterWriter(mock_llm_router).rewrite(
+            sample_job, sample_profile, sample_selection, self._draft(), "Fix tone"
+        )
+        assert "I am confident that" not in result.content
+        assert "My Python work fits this role." in result.content
+        assert result.stock_phrase_edits == 1
+        assert mock_llm_router.generate.call_count == 2
+        polish_call = mock_llm_router.generate.call_args_list[1].kwargs
+        assert polish_call["task_type"] == TaskType.COVER_LETTER_WRITING
+        assert polish_call["temperature"] == 0.2
+
+    def test_rewrite_without_a_stock_phrase_makes_one_call(
+        self, mock_llm_router, sample_job, sample_profile, sample_selection
+    ):
+        """A rewrite with no stock phrase is returned as written."""
+        rewritten = "At Acme I cut API latency by 40%.\n\nI would welcome a call."
+        mock_llm_router.generate.side_effect = [
+            LLMResponse(content=rewritten, model="qwen2.5:7b", provider="ollama"),
+        ]
+        result = CoverLetterWriter(mock_llm_router).rewrite(
+            sample_job, sample_profile, sample_selection, self._draft(), "Fix tone"
+        )
+        assert result.content == rewritten
+        assert result.stock_phrase_edits == 0
+        assert mock_llm_router.generate.call_count == 1
+
+    def test_rewrite_without_polish_returns_the_raw_rewrite(
+        self, mock_llm_router, sample_job, sample_profile, sample_selection
+    ):
+        """rewrite(polish=False) keeps a stock phrase and makes one call."""
+        rewritten = (
+            "I am confident that my Python work fits.\n\nI would welcome a call."
+        )
+        mock_llm_router.generate.side_effect = [
+            LLMResponse(content=rewritten, model="qwen2.5:7b", provider="ollama"),
+        ]
+        result = CoverLetterWriter(mock_llm_router).rewrite(
+            sample_job,
+            sample_profile,
+            sample_selection,
+            self._draft(),
+            "Fix tone",
+            polish=False,
+        )
+        assert result.content == rewritten
+        assert result.stock_phrase_edits == 0
+        assert mock_llm_router.generate.call_count == 1
