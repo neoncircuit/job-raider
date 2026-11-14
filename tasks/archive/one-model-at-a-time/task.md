@@ -36,8 +36,8 @@ flowchart LR
 - [x] Unit tests, red step, and mutants; CI checks pass locally.
 - [x] Measurement before and after (3 pairs or per decision 2): never two models loaded together after the change; peak GPU memory and time per letter reported.
 - [x] The memory note about the guard corrected.
-- [ ] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
-- [ ] `tasks/todo.md` updated; folder archived.
+- [x] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
+- [x] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`review`
+`done` (2026-11-14)

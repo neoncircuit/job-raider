@@ -52,3 +52,9 @@ Same script, pairs, and options as the before run; the recorder started before t
 - Reading: the slow worst case (GPU memory over 8 GB while RAM was short; 18 minutes for the first letter) did not happen; GPU use stayed at the idle baseline plus one model. A warm letter is slower (about 40 to 46 s against 16 to 21 s), because each swap reloads a model. Limits: the before run started with less free RAM (1.0 against 3.2 GB), so part of the first letter's gain comes from the calmer machine; peak GPU is still above 8 GB on the summed counters (4.1 GB baseline plus the 7B model).
 
 - Applied (user approved, 2026-11-14): `main` fast-forwarded to `5337f67`; `git diff` against it is empty; the running `make dev` reloaded (the OpenAPI schema shows `ollama_one_model_at_a_time`). Not pushed yet.
+
+## Review (2026-11-14)
+
+- Pushed after approval. CI: 12 of 13 jobs passed on the first attempt (backend 2,355 tests, mypy gate 0 new, frontend 385 tests, E2E 18); "Build Next.js Frontend" failed because the hosted runner lost communication with the server during "Install dependencies" (a GitHub runner fault, not the change). The re-run of that job passed.
+- Result: only one model in GPU memory at a time; the first letter fell from 1,074 s to 40 s in the paired run; warm letters are slower (each swap reloads a model).
+- Follow-up found in `lean-setup`: under memory pressure a cold model load can take longer than the 120 s client timeout, and each retry cancels and restarts the load.

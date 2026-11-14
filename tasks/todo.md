@@ -1,7 +1,7 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] To be decided with the user.
+- [ ] Lean setup for 16 GB RAM machines: `make app`, measured before and after (`tasks/active/lean-setup/`).
 
 ## Next Up
 - [ ] Scoring calibration: in the pipeline test (2026-11-14) 58 of 59 profile-matched jobs scored below 60 (best 61), so Max Jobs 2 gave 1 document. Find out if the scoring (fresh graduate mode) or broad keywords cause it, and measure before changing (`tasks/archive/scrape-keyword-search/`).
@@ -9,6 +9,7 @@
 - [ ] RAM during `make dev`: 0.6 to 1.1 GB free with heavy paging; the Next.js dev server is part of it. Measure a production build (`next start`) for everyday use.
 
 ## Done
+- [x] One local model in GPU memory at a time by default, with a Settings switch; the no-op VRAM guard removed (`tasks/archive/one-model-at-a-time/`; done 2026-11-14)
 - [x] Cover letters: stock-phrase polish after every rewrite (Review & rewrite and the grounding rewrite) (`tasks/archive/letter-rewrite-polish/`; done 2026-11-14)
 - [x] Pipeline searches each keyword (was: all keywords at once, 0 jobs), a run with no jobs stops with a warning, Request Cancel hidden after a run (`tasks/archive/scrape-keyword-search/`; done 2026-11-14)
 - [x] CVs: checked rewrite of stock-phrase sentences (26 to 2 of 65 CVs, no new accuracy flags) (`tasks/archive/cv-stock-phrase-rewrite/`; done 2026-11-14)
