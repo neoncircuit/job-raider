@@ -1,14 +1,17 @@
 # Current Priorities
 
 ## Active Focus
-- [ ] Lean setup for 16 GB RAM machines: `make app`, measured before and after (`tasks/active/lean-setup/`).
+- [ ] Ollama load timeout: load the model first with a long timeout, so a slow load is not cancelled and restarted (`tasks/active/ollama-load-timeout/`). Work continues on the laptop.
+- [ ] Lean setup for 16 GB RAM machines: `make app`, measured before and after (`tasks/active/lean-setup/`); the after run waits for the load timeout fix.
 
 ## Next Up
 - [ ] Scoring calibration: in the pipeline test (2026-11-14) 58 of 59 profile-matched jobs scored below 60 (best 61), so Max Jobs 2 gave 1 document. Find out if the scoring (fresh graduate mode) or broad keywords cause it, and measure before changing (`tasks/archive/scrape-keyword-search/`).
-- [ ] Lighter writer: `qwen2.5:7b` took total GPU use to 7.2 to 7.3 of 8 GB on this machine. Measure `qwen2.5:3b` for letters and CVs with the writer and resume suites (quality guard first) to make the app usable on smaller GPUs.
+- [ ] Lighter writer: `qwen2.5:7b` took total GPU use to 7.2 to 7.3 of 8 GB on this machine. Measure `qwen2.5:3b` and `llama3.2:3b` (Meta Llama-3.2-3B-Instruct) for letters and CVs with the writer and resume suites (quality guard first) to make the app usable on smaller GPUs.
 - [ ] RAM during `make dev`: 0.6 to 1.1 GB free with heavy paging; the Next.js dev server is part of it. Measure a production build (`next start`) for everyday use.
+- [ ] Small clean-up: remove the old "Phase 36 to 44" feature list at the end of `setup.sh`.
 
 ## Done
+- [x] Setup on a fresh machine: `setup.sh` and `make dev` find a suitable Python or install `.python-version` into `.tools/` with a pinned uv (no sudo); checked on the laptop (`tasks/archive/python-version-setup/`; done 2026-11-14)
 - [x] One local model in GPU memory at a time by default, with a Settings switch; the no-op VRAM guard removed (`tasks/archive/one-model-at-a-time/`; done 2026-11-14)
 - [x] Cover letters: stock-phrase polish after every rewrite (Review & rewrite and the grounding rewrite) (`tasks/archive/letter-rewrite-polish/`; done 2026-11-14)
 - [x] Pipeline searches each keyword (was: all keywords at once, 0 jobs), a run with no jobs stops with a warning, Request Cancel hidden after a run (`tasks/archive/scrape-keyword-search/`; done 2026-11-14)

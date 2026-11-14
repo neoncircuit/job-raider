@@ -35,7 +35,7 @@ flowchart TD
 - [x] Script tests pass (find_python, launcher, dev deps, mprocs, setup llmfit); black and ruff pass.
 - [x] Ubuntu 22.04 container check passes.
 - [x] Full backend checks pass (pytest, mypy gate 0 new).
-- [ ] Applied after "Yes, apply it"; pushed after approval; `setup.sh` passes on the laptop.
+- [x] Applied after "Yes, apply it"; pushed after approval; `setup.sh` passes on the laptop.
 
 ## Status
-`review`
+`done` (2026-11-14)
