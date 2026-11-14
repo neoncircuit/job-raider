@@ -48,8 +48,8 @@ flowchart TD
 - [x] `_ensure_loaded()` and `_loaded_models()` added, with docstrings and type hints; `_unload_other_models()` uses `_loaded_models()`.
 - [x] Unit tests written red first, then green; existing Ollama client tests pass.
 - [x] CI checks pass on the clone: black, ruff, mypy gate (0 new), full backend pytest.
-- [ ] Measurement run: 0 cancelled loads and 0 request timeouts; results in `notes.md`.
-- [ ] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
+- [x] Measurement run: 0 cancelled loads and 0 request timeouts; results in `notes.md`.
+- [ ] Applied after "Yes, apply it" (done 2026-11-14); pushed after approval; the CI run passes.
 - [ ] `tasks/todo.md` updated; folder archived.
 
 ## Status

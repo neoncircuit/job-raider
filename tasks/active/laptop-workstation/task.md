@@ -21,9 +21,12 @@ flowchart TD
 ```
 
 ## Work order
-1. `tasks/active/ollama-load-timeout/` (plan complete, ready to build).
-2. `tasks/active/lean-setup/`: apply `make-app.patch` on a scratch clone, then measure before and after on the laptop (the desktop before run is a reference only).
-3. Lighter writer (`tasks/todo.md`, Next Up): `qwen2.5:3b` and `llama3.2:3b` with the writer and resume suites.
+1. Ollama steps (user): turn on systemd, retire the container, start the WSL service, pull the models. Done 2026-11-14 (`notes.md`).
+2. `tasks/active/ollama-load-timeout/`: the load-timeout fix (built and applied 2026-11-14; measured on the laptop).
+3. `tasks/active/lean-setup/`: the lean-setup measurements, measured again on the laptop. The desktop numbers are a reference only. Apply `make-app.patch` on a scratch clone first.
+4. Lighter writer (`tasks/todo.md`, Next Up): compare `qwen2.5:7b`, `qwen2.5:3b`, and `llama3.2:3b` with the writer and CV suites, on accuracy, stock phrases, speed, and peak memory.
+
+Memory note for steps 3 and 4 (user, 2026-11-14): WSL on the laptop gets 7.8 GB, so a `qwen2.5:7b` load has less room than on the desktop. Record Windows memory during these runs (the recorder does this), and note which Windows apps are open; the browser (Opera) uses about 3 GB.
 
 ## Acceptance Criteria
 - [x] `setup.sh` runs to the end on the laptop; `make dev` starts both services (2026-11-14).
