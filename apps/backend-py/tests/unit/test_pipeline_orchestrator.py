@@ -285,7 +285,8 @@ class TestCooperativeCancel:
                     A successful result.
                 """
                 ran.append(stage)
-                return ok(stage, [])
+                # Non-empty, so that Scrape does not end the run as 'no jobs'.
+                return ok(stage, [stage.value])
 
             return fake
 
@@ -298,3 +299,82 @@ class TestCooperativeCancel:
         assert result.success is False
         assert result.metadata["cancelled"] is True
         assert result.stages_completed == ["scrape", "deduplicate"]
+
+
+class TestNoJobsStop:
+    """A run that scrapes no listings stops after Scrape with a warning."""
+
+    def _run(
+        self,
+        profile: Any,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        scraped: List[Any],
+    ) -> Dict[str, Any]:
+        """
+        Run a full dry run with fake stages; Scrape returns ``scraped``.
+
+        Args:
+            profile: Profile fixture.
+            tmp_path: Temporary directory.
+            monkeypatch: Pytest monkeypatch fixture.
+            scraped: The listings that Scrape returns.
+
+        Returns:
+            The pipeline result and the stages that ran.
+        """
+        orchestrator = make_orchestrator(profile, tmp_path, mode="full", dry_run=True)
+        ran: List[PipelineStage] = []
+
+        def fake_for(stage: PipelineStage) -> Any:
+            """
+            Build a fake stage method.
+
+            Args:
+                stage: The stage.
+
+            Returns:
+                Fake method that records the stage.
+            """
+
+            def fake(*args: Any, **kwargs: Any) -> StageResult:
+                """
+                Record the stage and return its output.
+
+                Args:
+                    *args: Stage arguments.
+                    **kwargs: Stage keyword arguments.
+
+                Returns:
+                    A successful result.
+                """
+                ran.append(stage)
+                data = scraped if stage == PipelineStage.SCRAPE else [stage.value]
+                return ok(stage, data)
+
+            return fake
+
+        for stage, name in STAGE_METHOD_NAMES.items():
+            monkeypatch.setattr(orchestrator.stages, name, fake_for(stage))
+        return {"result": orchestrator.run(), "ran": ran}
+
+    def test_no_listings_stops_after_scrape_with_a_warning(
+        self, sample_user_profile: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No listings: only Scrape runs, the run succeeds, and it carries the warning."""
+        from src.pipeline.orchestrator import NO_JOBS_WARNING
+
+        out = self._run(sample_user_profile, tmp_path, monkeypatch, scraped=[])
+        result = out["result"]
+        assert out["ran"] == [PipelineStage.SCRAPE]
+        assert result.stages_completed == ["scrape"]
+        assert result.success is True
+        assert result.metadata["warning"] == NO_JOBS_WARNING
+
+    def test_listings_run_every_stage_without_a_warning(
+        self, sample_user_profile: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """With listings, every stage runs and there is no warning."""
+        out = self._run(sample_user_profile, tmp_path, monkeypatch, scraped=["job"])
+        assert out["ran"] == list(STAGE_ORDER)
+        assert out["result"].metadata["warning"] is None

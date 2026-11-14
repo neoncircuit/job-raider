@@ -126,3 +126,24 @@ def test_status_reports_zero_stock_phrases_without_the_field(
     pipeline_runs.pop("run_old_metadata")
 
     assert data["resumes_with_stock_phrases"] == 0
+
+
+def test_status_reports_the_run_warning(client: TestClient) -> None:
+    """The status carries the warning of a run that stopped early on purpose."""
+    store_run("run_warning", {PipelineStage.SCRAPE.value: {"listings_count": 0}})
+    pipeline_runs["run_warning"]["warning"] = "No jobs found."
+
+    data = client.get("/api/pipeline/status/run_warning").json()
+    pipeline_runs.pop("run_warning")
+
+    assert data["warning_message"] == "No jobs found."
+
+
+def test_status_has_no_warning_by_default(client: TestClient) -> None:
+    """A normal run has no warning."""
+    store_run("run_plain", {PipelineStage.SCRAPE.value: {"listings_count": 3}})
+
+    data = client.get("/api/pipeline/status/run_plain").json()
+    pipeline_runs.pop("run_plain")
+
+    assert data["warning_message"] is None

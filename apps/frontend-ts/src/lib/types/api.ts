@@ -104,6 +104,8 @@ export interface PipelineStatusResponse {
   started_at?: string | null;
   estimated_completion?: string | null;
   error_message?: string | null;
+  /** Set when the run completed early on purpose (for example: no jobs found). */
+  warning_message?: string | null;
   /** Stage values the run will execute, in order. */
   stages_planned?: string[];
   /** Stage values that finished successfully. */

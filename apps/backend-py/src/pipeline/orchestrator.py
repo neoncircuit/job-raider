@@ -112,6 +112,13 @@ class PipelineConfig:
     agent_timeout: float = 300.0  # 5 minutes
 
 
+# Shown when Scrape finds no listings; the run then stops after Scrape.
+NO_JOBS_WARNING = (
+    "No jobs found for these keywords and sources. The run stopped after "
+    "Scrape. Try other keywords, fewer keywords, or another source."
+)
+
+
 @dataclass
 class PipelineResult:
     """Result of pipeline execution."""
@@ -543,6 +550,7 @@ class PipelineOrchestrator:
         stage_results: Dict[str, StageResult] = {}
         stages_completed = []
         cancelled = False
+        warning: Optional[str] = None
 
         try:
             with cost_run_scope(resolved_run_id):
@@ -585,6 +593,12 @@ class PipelineOrchestrator:
                             self.logger.warning(
                                 f"After hook failed for {stage}: {str(e)}"
                             )
+
+                    # No jobs: the later stages would run on nothing.
+                    if stage == PipelineStage.SCRAPE and not result.data:
+                        warning = NO_JOBS_WARNING
+                        self.logger.warning(warning)
+                        break
         finally:
             cost_summary = self._write_cost_summary(
                 resolved_run_id,
@@ -607,12 +621,13 @@ class PipelineOrchestrator:
         self.logger.info("=" * 60)
 
         return PipelineResult(
-            success=not cancelled and len(stages_completed) == len(stages_to_run),
+            success=not cancelled
+            and (len(stages_completed) == len(stages_to_run) or warning is not None),
             stages_completed=stages_completed,
             stage_results=stage_results,
             start_time=start_time,
             end_time=end_time,
-            metadata={"cancelled": cancelled, "cost": cost_summary},
+            metadata={"cancelled": cancelled, "cost": cost_summary, "warning": warning},
         )
 
     def plan_stages(

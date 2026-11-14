@@ -280,6 +280,8 @@ async def run_pipeline_async(
 
         pipeline_runs[run_id]["status"] = "completed"
         pipeline_runs[run_id]["stage_progress"] = 100
+        # A run can complete early with a warning (for example: no jobs found).
+        pipeline_runs[run_id]["warning"] = (result.metadata or {}).get("warning")
 
         # Notify completion
         await manager.broadcast_pipeline_complete(
@@ -292,6 +294,7 @@ async def run_pipeline_async(
                 "jobs_applied": result.jobs_applied,
                 "stages_completed": len(result.stages_completed),
                 "mode": getattr(config, "mode", "discover"),
+                "warning": pipeline_runs[run_id]["warning"],
             },
         )
 
@@ -457,6 +460,7 @@ async def get_pipeline_status(run_id: str):
         applications_submitted=applications_submitted,
         started_at=run.get("started_at"),
         error_message=run.get("error"),
+        warning_message=run.get("warning"),
         stages_planned=run.get("stages_planned", []),
         stages_completed=run.get("stages_completed", []),
         cloud_documents=cloud_documents,

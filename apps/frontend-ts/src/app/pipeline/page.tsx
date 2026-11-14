@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
@@ -459,20 +459,31 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
 
 // ── Live monitor ───────────────────────────────────────────────────────────────
 
+/** Run statuses after which a run does not change any more. */
+const FINISHED_STATUSES = new Set(["completed", "failed", "cancelled"]);
+
+/**
+ * Query options for a run's status, shared by the Live Monitor and the page
+ * header so that both read one cached query. Polling stops when the run has
+ * finished.
+ *
+ * @param runId - The run ID.
+ * @returns The query options.
+ */
+function runStatusQuery(runId: string) {
+  return queryOptions({
+    queryKey: ["pipeline-status", runId],
+    queryFn: ({ signal }) => pipelineApi.getStatus(runId, signal),
+    refetchInterval: (q) =>
+      FINISHED_STATUSES.has(q.state.data?.status ?? "") ? false : 2000,
+  });
+}
+
 function LiveMonitor({ runId }: { runId: string }) {
   const { messages, wsStatus } = usePipelineWS(runId);
   const logRef = useRef<HTMLDivElement>(null);
 
-  const status = useQuery({
-    queryKey: ["pipeline-status", runId],
-    queryFn: ({ signal }) => pipelineApi.getStatus(runId, signal),
-    refetchInterval: (q) => {
-      const s = q.state.data?.status;
-      return s === "completed" || s === "failed" || s === "cancelled"
-        ? false
-        : 2000;
-    },
-  });
+  const status = useQuery(runStatusQuery(runId));
 
   useEffect(() => {
     if (logRef.current) {
@@ -546,6 +557,15 @@ function LiveMonitor({ runId }: { runId: string }) {
             className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
           >
             {errorText}
+          </div>
+        )}
+
+        {status.data?.warning_message && (
+          <div
+            role="status"
+            className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning"
+          >
+            {status.data.warning_message}
           </div>
         )}
 
@@ -742,6 +762,15 @@ export default function PipelinePage() {
     toast.success(`Pipeline started: ${runId.slice(0, 8)}…`);
   };
 
+  // The header's cancel button only makes sense while the run is running.
+  const activeStatus = useQuery({
+    ...runStatusQuery(activeRunId ?? ""),
+    enabled: Boolean(activeRunId),
+  });
+  const activeRunFinished = FINISHED_STATUSES.has(
+    activeStatus.data?.status ?? "",
+  );
+
   const cancel = useMutation({
     mutationFn: () => {
       if (!activeRunId) throw new Error("No active run");
@@ -763,7 +792,7 @@ export default function PipelinePage() {
         title="Pipeline"
         subtitle="Discover jobs (scrape and score), then review on Jobs before applying."
         actions={
-          activeRunId && tab === "monitor" ? (
+          activeRunId && tab === "monitor" && !activeRunFinished ? (
             <Button
               size="sm"
               variant="destructive"

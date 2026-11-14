@@ -95,7 +95,8 @@ def _ok(stage: PipelineStage) -> StageResult:
     return StageResult(
         stage_name=stage.value,
         success=True,
-        data=[],
+        # Non-empty, so that Scrape does not end the run as 'no jobs'.
+        data=[stage.value],
         metadata={},
         timestamp=datetime.now(),
     )

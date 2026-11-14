@@ -9,6 +9,7 @@ Date: 2026-04-20
 """
 
 import json
+import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
@@ -43,6 +44,40 @@ def available_sources() -> List[JobSource]:
     if careersatgov_enabled():
         sources.append(JobSource.CAREERSATGOV)
     return sources
+
+
+# Each keyword search gets at least this many results, so a long keyword
+# list does not shrink every search to almost nothing.
+MIN_RESULTS_PER_KEYWORD = 10
+
+
+def keyword_searches(params: SearchParams) -> List[SearchParams]:
+    """
+    Split a search into one search per keyword phrase.
+
+    The total ``limit`` is shared between the keywords (at least
+    ``MIN_RESULTS_PER_KEYWORD`` each), so more keywords do not multiply the
+    number of listings that the later stages must score.
+
+    Args:
+        params: The search, with one or more keyword phrases.
+
+    Returns:
+        One search per non-empty keyword phrase, in order. With no keyword,
+        the search as given (the scrapers use their own default).
+    """
+    phrases: List[str] = []
+    for keyword in params.keywords:
+        phrase = (keyword or "").strip()
+        if phrase and phrase.lower() not in {p.lower() for p in phrases}:
+            phrases.append(phrase)
+    if len(phrases) <= 1:
+        return [params.model_copy(update={"keywords": phrases})]
+    per_search = max(MIN_RESULTS_PER_KEYWORD, math.ceil(params.limit / len(phrases)))
+    return [
+        params.model_copy(update={"keywords": [phrase], "limit": per_search})
+        for phrase in phrases
+    ]
 
 
 class ScraperManager:
@@ -92,41 +127,71 @@ class ScraperManager:
         sources: Optional[List[JobSource]] = None,
     ) -> JobListingCollection:
         """
-        Search across multiple job boards in parallel.
+        Search across multiple job boards in parallel, one search per keyword.
+
+        Each keyword is its own search phrase ("python engineer" is one
+        phrase), so each source is searched once for each keyword and the
+        results are merged. A single search with all keywords would match
+        only postings that contain every keyword (often none).
 
         Args:
             params: Search parameters
             sources: List of sources to search (all if None)
 
         Returns:
-            Combined JobListingCollection with results from all sources
+            Combined JobListingCollection with results from all sources. Its
+            metadata ``searches`` lists each source and keyword with the
+            count found, or the error of a failed search.
         """
         if sources is None:
             sources = list(self.scrapers.keys())
 
-        self.logger.info(f"Searching {len(sources)} sources with params: {params}")
+        searches = keyword_searches(params)
+        self.logger.info(
+            f"Searching {len(sources)} sources x {len(searches)} keyword searches "
+            f"with params: {params}"
+        )
 
-        all_listings = []
+        all_listings: List[JobListing] = []
+        records: List[Dict[str, Any]] = []
 
-        # Run scrapers in parallel
+        # Run the searches in parallel
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = {}
 
             for source in sources:
-                if source in self.scrapers:
-                    future = executor.submit(self._search_source, source, params)
-                    futures[future] = source
+                if source not in self.scrapers:
+                    continue
+                for search in searches:
+                    future = executor.submit(self._search_source, source, search)
+                    futures[future] = (source, search)
 
             for future in as_completed(futures):
-                source = futures[future]
+                source, search = futures[future]
+                keyword = " ".join(search.keywords)
+                record: Dict[str, Any] = {
+                    "source": source.value,
+                    "keyword": keyword,
+                    "count": 0,
+                    "error": None,
+                }
                 try:
                     collection = future.result(timeout=120)
                     all_listings.extend(collection.listings)
+                    record["count"] = len(collection.listings)
                     self.logger.info(
-                        f"{source.value}: found {len(collection.listings)} listings"
+                        f"{source.value} [{keyword}]: found "
+                        f"{len(collection.listings)} listings"
                     )
                 except Exception as e:
-                    self.logger.error(f"{source.value}: scraping failed - {str(e)}")
+                    record["error"] = f"{type(e).__name__}: {e}"[:300]
+                    self.logger.error(
+                        f"{source.value} [{keyword}]: scraping failed - {str(e)}"
+                    )
+                records.append(record)
+
+        order = {" ".join(s.keywords): i for i, s in enumerate(searches)}
+        records.sort(key=lambda r: (r["source"], order.get(r["keyword"], 0)))
 
         # Create combined collection
         combined = JobListingCollection(
@@ -135,6 +200,7 @@ class ScraperManager:
                 "sources_searched": [s.value for s in sources],
                 "search_params": params.model_dump(),
                 "scraped_at": datetime.now().isoformat(),
+                "searches": records,
             },
         )
 

@@ -76,6 +76,10 @@ class CollectStages(StageBase):
                 "keywords": keywords,
                 "locations": locations,
                 "sources": sources,
+                # Count or error for each source and keyword search.
+                "searches": (getattr(collection, "metadata", None) or {}).get(
+                    "searches", []
+                ),
             }
 
             self.logger.info(f"Scraping complete: {len(listings)} listings found")

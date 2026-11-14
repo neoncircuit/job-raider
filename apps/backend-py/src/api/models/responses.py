@@ -38,6 +38,8 @@ class PipelineStatusResponse(BaseModel):
     started_at: Optional[datetime] = None
     estimated_completion: Optional[datetime] = None
     error_message: Optional[str] = None
+    # Set when the run completed early on purpose (for example: no jobs found).
+    warning_message: Optional[str] = None
     stages_planned: List[str] = []
     stages_completed: List[str] = []
     cloud_documents: int = 0

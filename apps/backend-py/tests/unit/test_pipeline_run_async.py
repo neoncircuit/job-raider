@@ -137,7 +137,7 @@ class FakeOrchestrator:
             stage_results=results,
             start_time=now,
             end_time=now,
-            metadata={"cancelled": cancelled},
+            metadata={"cancelled": cancelled, "warning": self.behavior.get("warning")},
         )
 
 
@@ -334,3 +334,21 @@ def test_cancel_during_a_stage_stops_before_the_next_stage(
     started = [args[1] for name, args in events if name == "broadcast_stage_started"]
     assert started == ["scrape"]
     assert not [name for name, _ in events if name == "broadcast_pipeline_complete"]
+
+
+def test_a_run_warning_is_stored_and_broadcast(
+    events: List[Tuple[str, Tuple[Any, ...]]],
+) -> None:
+    """A completed run with a warning keeps it for the status and sends it.
+
+    Args:
+        events: Recorded broadcasts.
+    """
+    FakeOrchestrator.behavior["warning"] = "No jobs found."
+    run_pipeline()
+
+    run = route.pipeline_runs[RUN_ID]
+    assert run["status"] == "completed"
+    assert run["warning"] == "No jobs found."
+    complete = [args for name, args in events if name == "broadcast_pipeline_complete"]
+    assert complete and complete[0][1]["warning"] == "No jobs found."
