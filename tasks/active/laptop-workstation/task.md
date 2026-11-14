@@ -4,7 +4,7 @@
 Continue the project on the laptop while the desktop waits for its SSD and RAM upgrades. Each new session on the laptop starts from this file.
 
 ## Context (2026-11-14)
-- Laptop: RTX 2070 (expected 8 GB VRAM; to be confirmed), 16 GB RAM, WSL Ubuntu 22.04, system Python 3.10.
+- Laptop: RTX 2070 Max-Q (8 GB VRAM, confirmed), 16 GB RAM (WSL gets 7.8 GB), WSL Ubuntu 22.04, system Python 3.10.
 - `setup.sh` installed Python 3.11 into `.tools/python` (pinned uv, no sudo). `make dev` starts the backend and the frontend.
 - Ollama runs on the laptop; the models must be `qwen2.5:7b` and `qwen2.5:3b`.
 - No MLflow container: the eval suites log to `apps/backend-py/data/mlflow.db`.
@@ -27,8 +27,8 @@ flowchart TD
 
 ## Acceptance Criteria
 - [x] `setup.sh` runs to the end on the laptop; `make dev` starts both services (2026-11-14).
-- [ ] Laptop hardware recorded in `notes.md`: GPU name and VRAM, RAM, idle GPU and RAM use with `make dev` running.
-- [ ] Ollama checked: WSL systemd service (one instance only), `qwen2.5:7b` and `qwen2.5:3b` present.
+- [x] Laptop hardware recorded in `notes.md`: GPU name and VRAM, RAM, idle GPU and RAM use with `make dev` running (2026-11-14).
+- [ ] Ollama checked: WSL systemd service (one instance only), `qwen2.5:7b` and `qwen2.5:3b` present. Checked 2026-11-14: fails. Ollama runs in a Docker Desktop container, and WSL does not boot systemd; the models are present in the container (`notes.md`).
 - [ ] The three tasks in the work order are done or moved on with the user.
 - [ ] When the desktop is upgraded and back in use: this task closed and archived.
 
