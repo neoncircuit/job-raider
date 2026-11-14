@@ -23,3 +23,10 @@ flowchart LR
 - Red: the guard found 56 lines in 15 files; the 20 rule examples passed.
 - Green: 21 tests pass. black (366 files unchanged), ruff (all checks passed), mypy gate (177 known errors, 0 new; it also reports 5 baseline errors fixed, which only the user removes from the baseline), full backend pytest (2389 passed).
 - Correction (2026-11-14): after "Yes, apply it", the guard failed on `main` at its own file (line 166, an example written as one literal string). In the clone, the new test file was not tracked during the green run, so `git ls-files` did not list it. The patch was reverted on `main`; nothing was committed. The example is now built from parts, the checks ran again with the file tracked, and the user is asked again.
+
+## Review (2026-11-14)
+
+- Applied on `main` after the second "Yes, apply it"; the diff on `main` was the same as the checked patch. On `main`: guard (21 passed), black, ruff, and mypy gate (0 new) passed.
+- Pushed after approval. CI run 43609576714 passed: 12 jobs passed, Build Docker Image skipped.
+- Push note: in WSL on the laptop, git uses `credential.helper=manager`, but Git Credential Manager is not installed in WSL, so an HTTPS push waits for a prompt. The push went over SSH (the `gh` account uses SSH for git). The git config was not changed; the user decides on the fix.
+- Not done in this task: `docker-rebuild.sh` keeps the Docker Desktop install path (allowed by the guard).

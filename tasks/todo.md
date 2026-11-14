@@ -3,7 +3,6 @@
 ## Active Focus
 - [ ] Laptop as the workstation until the desktop upgrades; start each laptop session from `tasks/active/laptop-workstation/task.md`.
 - [ ] Ollama load timeout: load the model first with a long timeout, so a slow load is not cancelled and restarted (`tasks/active/ollama-load-timeout/`).
-- [ ] Relative paths in documentation: no full host paths in tracked files, plus a guard test (`tasks/active/relative-paths-in-docs/`).
 - [ ] Lean setup for 16 GB RAM machines: `make app`, measured before and after (`tasks/active/lean-setup/`); the after run waits for the load timeout fix.
 
 ## Next Up
@@ -13,6 +12,7 @@
 - [ ] Small clean-up: remove the old "Phase 36 to 44" feature list at the end of `setup.sh`.
 
 ## Done
+- [x] Relative paths in documentation: no full host paths in tracked files; `test_no_host_paths.py` fails CI on a new one (`tasks/archive/relative-paths-in-docs/`; done 2026-11-14)
 - [x] Setup on a fresh machine: `setup.sh` and `make dev` find a suitable Python or install `.python-version` into `.tools/` with a pinned uv (no sudo); checked on the laptop (`tasks/archive/python-version-setup/`; done 2026-11-14)
 - [x] One local model in GPU memory at a time by default, with a Settings switch; the no-op VRAM guard removed (`tasks/archive/one-model-at-a-time/`; done 2026-11-14)
 - [x] Cover letters: stock-phrase polish after every rewrite (Review & rewrite and the grounding rewrite) (`tasks/archive/letter-rewrite-polish/`; done 2026-11-14)

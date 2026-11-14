@@ -47,8 +47,8 @@ Find them again with `git grep -nE` and the patterns in the guard test (step 2).
 - [x] Guard test written red first, then green; it names the file and line.
 - [x] `AGENTS.md` rule and the Environment line updated; lesson added.
 - [x] CI checks pass on the clone: black, ruff, mypy gate (0 new), full backend pytest.
-- [ ] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
-- [ ] `tasks/todo.md` updated; folder archived.
+- [x] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
+- [x] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`in-progress`
+`done` (2026-11-14)
