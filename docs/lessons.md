@@ -3823,3 +3823,16 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - Pick the interpreter with `scripts/find_python.sh` (newest `python3.X` that meets `.python-version`, then `python3`). Never hard-code `python3 -m venv`.
 - When nothing suitable exists, install one inside the repository (`ensure_python`: a pinned uv, checked against its SHA-256, puts the `.python-version` Python in the git-ignored `.tools/`). Setup scripts do not run `sudo` or `apt` and write nothing outside the repository; the user chose this over a system install (2026-11-14). The install commands are printed only when this fails.
 - Test setup changes against a clean distribution image (for example `ubuntu:22.04` in Docker), not only on the developer's machine.
+
+## Where project state lives (2026-11-14)
+
+### Track a change of workstation as a task, not as an agent memory
+
+**Lesson:** When the work moved to the laptop, Claude saved the move as a private memory note. The user asked for an active task in the repository instead, because a new session on the laptop starts from the repository, and private agent memory does not travel with it.
+
+**Why:** state that other sessions, machines, or agents need belongs in `tasks/`, where every agent reads it and git carries it.
+
+**How to apply:**
+- Put project state (where work happens, the work order, open checks) in `tasks/active/<slug>/task.md` and link it from `tasks/todo.md`.
+- Keep agent memory for facts about the user and how to work with them.
+- When work moves to a new machine, give the user a short first prompt that points the new session at the task file.
