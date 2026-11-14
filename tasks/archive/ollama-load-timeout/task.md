@@ -49,8 +49,8 @@ flowchart TD
 - [x] Unit tests written red first, then green; existing Ollama client tests pass.
 - [x] CI checks pass on the clone: black, ruff, mypy gate (0 new), full backend pytest.
 - [x] Measurement run: 0 cancelled loads and 0 request timeouts; results in `notes.md`.
-- [ ] Applied after "Yes, apply it" (done 2026-11-14); pushed after approval; the CI run passes.
-- [ ] `tasks/todo.md` updated; folder archived.
+- [x] Applied after "Yes, apply it" (done 2026-11-14); pushed after approval; the CI run passes.
+- [x] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`in-progress`
+`done` (2026-11-15)

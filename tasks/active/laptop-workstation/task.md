@@ -22,7 +22,7 @@ flowchart TD
 
 ## Work order
 1. Ollama steps (user): turn on systemd, retire the container, start the WSL service, pull the models. Done 2026-11-14 (`notes.md`).
-2. `tasks/active/ollama-load-timeout/`: the load-timeout fix (built and applied 2026-11-14; measured on the laptop).
+2. `tasks/archive/ollama-load-timeout/`: the load-timeout fix. Done 2026-11-15 (CI passed; laptop run: 0 cancelled loads, 0 timeouts).
 3. `tasks/active/lean-setup/`: the lean-setup measurements, measured again on the laptop. The desktop numbers are a reference only. Apply `make-app.patch` on a scratch clone first.
 4. Lighter writer (`tasks/todo.md`, Next Up): compare `qwen2.5:7b`, `qwen2.5:3b`, and `llama3.2:3b` with the writer and CV suites, on accuracy, stock phrases, speed, and peak memory.
 

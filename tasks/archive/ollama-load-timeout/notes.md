@@ -52,3 +52,9 @@ flowchart LR
   - Different machine and setup (laptop, no MLflow container), and the model files were in the page cache (pulled shortly before). No load took longer than the 120 s chat timeout in this run, so the run does not show the old retry loop. The unit tests prove the new behaviour; the run shows 0 cancelled loads, 0 timeouts, and no slowdown.
   - The first cold call on this laptop took 89.8 s earlier the same day (`tasks/active/laptop-workstation/notes.md`), so a cold load near or above 120 s can happen here with more memory pressure.
 - Observation for the lean-setup and lighter-writer tasks: with one model at a time on, each letter changes models about three times (3b for selection and checks, 7b for writing). Each change costs 4 to 20 s here, a large part of the 55 to 106 s per letter. Heavy paging on Windows (peak 115,931 pages/s) during the model changes matches the user's note to watch Windows memory.
+
+## Review (2026-11-15)
+
+- Applied on `main` after "Yes, apply it"; the diff on `main` was the same as the checked patch. On `main`: black, ruff, mypy gate (0 new), full backend pytest (2399 passed).
+- Pushed after approval with the plain `git push` (the remote now uses SSH). CI run 43613378598 passed: 12 jobs passed, Build Docker Image skipped.
+- Follow-up for other tasks: the model changes with one model at a time on (about three per letter, 4 to 20 s each) are a large part of the time per letter on the laptop. The lean-setup and lighter-writer measurements should report them.
