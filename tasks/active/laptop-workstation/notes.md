@@ -159,5 +159,5 @@ flowchart LR
 | `qwen2.5:7b` | 20.9 s | 22.3 s | 4528 MB | 4528 MB (100 %) | 4661 MiB |
 
 - After the unload: no model loaded, 16 MiB GPU memory used.
-- The first cold call took 89.8 s, near the 120 s chat timeout of the client. This supports `tasks/active/ollama-load-timeout/`.
+- The first cold call took 89.8 s, near the 120 s chat timeout of the client. This supports `tasks/archive/ollama-load-timeout/`.
 - Optional clean-up for the user: remove the container and its volume (about 23 GB) when the native service has worked for some time.

@@ -33,4 +33,4 @@ Finding (root cause of the slow first letter): under this memory pressure, a col
 - The session scratchpad was cleared, and the scratch clone with `make app` went with it. The change was rebuilt from the session record on a fresh clone and saved as `make-app.patch` (5 files: `scripts/dev.sh`, `mprocs.app.yaml`, `Makefile`, two test files). The 11 launcher and mprocs tests pass again; black, ruff, and `bash -n` pass. It is not applied to `main`.
 - To use it on a scratch clone: `git apply tasks/active/lean-setup/make-app.patch`.
 - `tools/profile_recorder.sh` (Windows host; argument: the output folder) and `tools/measure_letter_flow.py` (run from `apps/backend-py`; the eval pairs are in the repo) are the measurement tools from this task.
-- Order agreed with the user: first `tasks/active/ollama-load-timeout/`, then the lean-setup after run, then the `llama3.2:3b` experiment.
+- Order agreed with the user: first `tasks/archive/ollama-load-timeout/`, then the lean-setup after run, then the `llama3.2:3b` experiment.
