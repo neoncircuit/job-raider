@@ -135,3 +135,29 @@ flowchart LR
 - `scripts/dev.sh` loads Node only through the shell `PATH`. In a non-interactive shell (no `~/.bashrc`, so no nvm), it finds the Ubuntu Node 12, and `npm ci` fails with "Cannot find module 'node:fs'". `make dev-deps` stops, but the `--silent` flag hides the cause. Agents load nvm first in their WSL scripts.
 - MLflow store check (user approved, artifact paths only): `apps/backend-py/data/mlflow.db` does not exist on the laptop, so no old paths need a fix. The first eval run creates the store in the new folder.
 - Check before the user removes the old folder (`rsync -rcn` with checksums, same exclusions): only `.git/index` (the stat cache, which git writes again) and this `notes.md` (newer in the new folder) differ. No file exists only in the old folder. The git refs and stashes are the same. No process runs from the old folder. The old folder is safe to remove.
+
+## Ollama after the switch to the native service (2026-11-14)
+
+The user stopped the container (restart policy `no`), turned on systemd in WSL, started `ollama.service`, and ran `./setup.sh` to pull the models into the native store.
+
+```mermaid
+flowchart LR
+    A[Backend in WSL] --> P[127.0.0.1:11434]
+    P --> S[WSL systemd ollama.service]
+    C[Docker container ollama] -. exited, restart no .- X[ ]
+```
+
+- systemd is PID 1 (`systemctl is-system-running`: degraded, which is normal in WSL). `ollama.service` is active and enabled; it runs `ollama serve` (version 0.32.5).
+- One instance only: `127.0.0.1:11434` is held by the native `ollama serve`. The container has exited, with restart policy `no`.
+- Models in the native store (`/usr/share/ollama/.ollama/models`): `qwen2.5:7b` (4.7 GB), `qwen2.5:3b` (1.9 GB), `nomic-embed-text` (274 MB). The two large models from the container are not in the native store.
+- Ollama finds the GPU through CUDA (RTX 2070 Max-Q, compute 7.5, 7.0 of 8.0 GiB available).
+- GPU check through `/api/generate` (one short prompt per model, then unloaded):
+
+| Model | Wall time | Load time | Size | In VRAM | GPU memory used |
+|---|---|---|---|---|---|
+| `qwen2.5:3b` (first load after the start) | 89.8 s | 45.3 s | 2059 MB | 2059 MB (100 %) | 2185 MiB |
+| `qwen2.5:7b` | 20.9 s | 22.3 s | 4528 MB | 4528 MB (100 %) | 4661 MiB |
+
+- After the unload: no model loaded, 16 MiB GPU memory used.
+- The first cold call took 89.8 s, near the 120 s chat timeout of the client. This supports `tasks/active/ollama-load-timeout/`.
+- Optional clean-up for the user: remove the container and its volume (about 23 GB) when the native service has worked for some time.

@@ -28,7 +28,7 @@ flowchart TD
 ## Acceptance Criteria
 - [x] `setup.sh` runs to the end on the laptop; `make dev` starts both services (2026-11-14).
 - [x] Laptop hardware recorded in `notes.md`: GPU name and VRAM, RAM, idle GPU and RAM use with `make dev` running (2026-11-14).
-- [ ] Ollama checked: WSL systemd service (one instance only), `qwen2.5:7b` and `qwen2.5:3b` present. Checked 2026-11-14: fails. Ollama runs in a Docker Desktop container, and WSL does not boot systemd; the models are present in the container (`notes.md`).
+- [x] Ollama checked: WSL systemd service (one instance only), `qwen2.5:7b` and `qwen2.5:3b` present. First check 2026-11-14 failed (Docker container, no systemd); passed after the switch to the native service on the same day (`notes.md`).
 - [ ] The three tasks in the work order are done or moved on with the user.
 - [ ] When the desktop is upgraded and back in use: this task closed and archived.
 
