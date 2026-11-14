@@ -1,0 +1,305 @@
+diff --git a/Makefile b/Makefile
+index bf94c02..2ce328c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,7 +1,7 @@
+ # Job Raider - Makefile
+ # Convenient commands for development
+ 
+-.PHONY: help dev dev-api dev-frontend dev-deps install install-frontend test lint format clean \
++.PHONY: help dev dev-api dev-frontend dev-deps app install install-frontend test lint format clean \
+         docker-build docker-up docker-down docker-logs docker-restart type-check
+ 
+ # Default target
+@@ -13,6 +13,7 @@ help:
+ 	@echo "  make dev-api          - Start backend API only (port 8000)"
+ 	@echo "  make dev-frontend     - Start Next.js dev server only (port 3000)"
+ 	@echo "  make dev-deps         - Create, repair, or update .venv and node_modules only"
++	@echo "  make app              - Lean everyday run: production frontend, backend without reload"
+ 	@echo ""
+ 	@echo "Frontend:"
+ 	@echo "  make install-frontend - Install / update frontend Node dependencies"
+@@ -50,6 +51,10 @@ dev-frontend:
+ dev-deps:
+ 	@./scripts/dev.sh deps
+ 
++# Lean everyday run: production frontend, backend without reload (less RAM).
++app:
++	@./scripts/dev.sh app
++
+ # ── Dependencies ───────────────────────────────────────────────────────────────
+ 
+ install:
+diff --git a/apps/backend-py/tests/unit/test_dev_launcher.py b/apps/backend-py/tests/unit/test_dev_launcher.py
+index bee5c14..c2b726d 100644
+--- a/apps/backend-py/tests/unit/test_dev_launcher.py
++++ b/apps/backend-py/tests/unit/test_dev_launcher.py
+@@ -21,12 +21,13 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
+ DEV_SH = REPO_ROOT / "scripts" / "dev.sh"
+ 
+ 
+-def _run_dev_sh_api(tmp_path: Path) -> tuple[Path, List[str]]:
++def _run_dev_sh_api(tmp_path: Path, mode: str = "api") -> tuple[Path, List[str]]:
+     """
+-    Run ``dev.sh api`` in a temporary repository layout.
++    Run ``dev.sh api`` (or another backend mode) in a temporary repository layout.
+ 
+     Args:
+         tmp_path: Pytest temporary directory.
++        mode: The dev.sh mode to run, ``api`` (make dev) or ``app-api`` (make app).
+ 
+     Returns:
+         Tuple of (backend directory, arguments the stub ``python3`` received).
+@@ -50,7 +51,7 @@ def _run_dev_sh_api(tmp_path: Path) -> tuple[Path, List[str]]:
+     # This test is about how the API starts, not about the dependency checks
+     # (tests/unit/test_dev_deps.py), so it skips them as mprocs does.
+     result = subprocess.run(
+-        [bash, str(root / "scripts" / "dev.sh"), "api"],
++        [bash, str(root / "scripts" / "dev.sh"), mode],
+         capture_output=True,
+         text=True,
+         timeout=60,
+@@ -91,3 +92,91 @@ def test_dev_sh_api_binds_loopback(tmp_path: Path) -> None:
+ 
+     assert args[:2] == ["-m", "uvicorn"]
+     assert _flag_value(args, "--host") == "127.0.0.1"
++
++
++def test_dev_sh_api_keeps_auto_reload(tmp_path: Path) -> None:
++    """``dev.sh api`` (make dev) still reloads on changes in src and config."""
++    backend_dir, args = _run_dev_sh_api(tmp_path)
++
++    assert "--reload" in args
++    reload_dirs = [args[i + 1] for i, a in enumerate(args) if a == "--reload-dir"]
++    assert reload_dirs == [str(backend_dir / "src"), str(backend_dir / "config")]
++
++
++def test_dev_sh_app_api_runs_without_reload(tmp_path: Path) -> None:
++    """``dev.sh app-api`` (make app) has no reloader but keeps host and env file."""
++    backend_dir, args = _run_dev_sh_api(tmp_path, mode="app-api")
++
++    assert args[:2] == ["-m", "uvicorn"]
++    assert "--reload" not in args
++    assert "--reload-dir" not in args
++    assert _flag_value(args, "--host") == "127.0.0.1"
++    assert _flag_value(args, "--port") == "8000"
++    assert Path(_flag_value(args, "--env-file")).resolve() == backend_dir / ".env"
++
++
++def _run_dev_sh_app_frontend(tmp_path: Path, built: bool) -> List[str]:
++    """
++    Run ``dev.sh app-frontend`` with a stub ``npm`` that records each call.
++
++    Args:
++        tmp_path: Pytest temporary directory.
++        built: True to create a production build that is newer than the source.
++
++    Returns:
++        One line per ``npm`` call, with the arguments separated by spaces.
++    """
++    bash = shutil.which("bash")
++    if bash is None:
++        pytest.skip("bash is required to run scripts/dev.sh")
++
++    root = tmp_path / "repo"
++    (root / "scripts").mkdir(parents=True)
++    shutil.copy(DEV_SH, root / "scripts" / "dev.sh")
++    frontend_dir = root / "apps" / "frontend-ts"
++    (frontend_dir / "src").mkdir(parents=True)
++    source = frontend_dir / "src" / "page.tsx"
++    source.write_text("export {};\n")
++    (frontend_dir / "package.json").write_text("{}\n")
++    if built:
++        build_id = frontend_dir / ".next" / "BUILD_ID"
++        build_id.parent.mkdir()
++        build_id.write_text("build\n")
++        # The build is newer than every source file.
++        for path in (source, frontend_dir / "package.json"):
++            os.utime(path, (1_000_000_000, 1_000_000_000))
++
++    stub_bin = tmp_path / "bin"
++    stub_bin.mkdir()
++    calls_file = tmp_path / "npm-calls.txt"
++    npm = stub_bin / "npm"
++    npm.write_text(f'#!/bin/sh\necho "$*" >> "{calls_file}"\n')
++    npm.chmod(0o755)
++
++    result = subprocess.run(
++        [bash, str(root / "scripts" / "dev.sh"), "app-frontend"],
++        capture_output=True,
++        text=True,
++        timeout=60,
++        env={
++            **os.environ,
++            "DEV_DEPS_CHECKED": "1",
++            "PATH": f"{stub_bin}{os.pathsep}{os.environ['PATH']}",
++        },
++    )
++    assert result.returncode == 0, result.stdout + result.stderr
++    return calls_file.read_text().splitlines()
++
++
++def test_dev_sh_app_frontend_builds_when_there_is_no_build(tmp_path: Path) -> None:
++    """``dev.sh app-frontend`` builds first when no production build exists."""
++    calls = _run_dev_sh_app_frontend(tmp_path, built=False)
++
++    assert calls == ["run build", "run start -- --hostname 127.0.0.1 --port 3000"]
++
++
++def test_dev_sh_app_frontend_reuses_a_current_build(tmp_path: Path) -> None:
++    """``dev.sh app-frontend`` skips the build when it is newer than the source."""
++    calls = _run_dev_sh_app_frontend(tmp_path, built=True)
++
++    assert calls == ["run start -- --hostname 127.0.0.1 --port 3000"]
+diff --git a/apps/backend-py/tests/unit/test_dev_processes.py b/apps/backend-py/tests/unit/test_dev_processes.py
+index 0453c57..8eec29f 100644
+--- a/apps/backend-py/tests/unit/test_dev_processes.py
++++ b/apps/backend-py/tests/unit/test_dev_processes.py
+@@ -23,6 +23,20 @@ def test_mprocs_config_runs_the_two_dev_services() -> None:
+     assert procs["frontend"]["shell"] == "./scripts/dev.sh frontend"
+ 
+ 
++def test_mprocs_app_config_runs_the_two_lean_services() -> None:
++    """mprocs.app.yaml (make app) runs the lean backend and frontend modes."""
++    config = yaml.safe_load((REPO_ROOT / "mprocs.app.yaml").read_text())
++    procs = config["procs"]
++    assert procs["backend"]["shell"] == "./scripts/dev.sh app-api"
++    assert procs["frontend"]["shell"] == "./scripts/dev.sh app-frontend"
++
++
++def test_make_app_runs_the_app_mode() -> None:
++    """The Makefile has an ``app`` target that runs ``dev.sh app``."""
++    makefile = (REPO_ROOT / "Makefile").read_text()
++    assert "\napp:\n\t@./scripts/dev.sh app\n" in makefile
++
++
+ def test_mprocs_is_pinned_in_the_frontend_dev_dependencies() -> None:
+     """npm ci installs one exact mprocs version with the frontend."""
+     package = json.loads(
+@@ -36,6 +50,9 @@ def test_dev_sh_uses_mprocs_only_when_it_can() -> None:
+     script = (REPO_ROOT / "scripts" / "dev.sh").read_text()
+     assert 'MPROCS_BIN="$FRONTEND_DIR/node_modules/.bin/mprocs"' in script
+     assert '[ -t 1 ] && [ -x "$MPROCS_BIN" ] && [ -z "${DEV_PLAIN:-}" ]' in script
+-    assert 'exec "$MPROCS_BIN" --config "$PROJECT_ROOT/mprocs.yaml"' in script
++    # make dev uses mprocs.yaml; make app passes mprocs.app.yaml.
++    assert 'local config="${1:-mprocs.yaml}"' in script
++    assert 'exec "$MPROCS_BIN" --config "$PROJECT_ROOT/$config"' in script
++    assert "start_both mprocs.app.yaml" in script
+     # The plain fallback stays.
+     assert "start_api & start_frontend; wait" in script
+diff --git a/mprocs.app.yaml b/mprocs.app.yaml
+new file mode 100644
+index 0000000..26a50db
+--- /dev/null
++++ b/mprocs.app.yaml
+@@ -0,0 +1,14 @@
++# Job Raider - processes for `make app` (lean, everyday use)
++#
++# Like mprocs.yaml (make dev), but the backend runs without auto-reload and
++# the frontend runs the Next.js production server (built when the source
++# changed). It uses much less memory than make dev; use make dev to develop.
++#
++# Keys: j / k select, Ctrl+A switches focus to the output, r restarts,
++# x stops, s starts, z zooms, q quits and stops all.
++
++procs:
++  backend:
++    shell: "./scripts/dev.sh app-api"
++  frontend:
++    shell: "./scripts/dev.sh app-frontend"
+diff --git a/scripts/dev.sh b/scripts/dev.sh
+index 3276e6a..8ec5670 100755
+--- a/scripts/dev.sh
++++ b/scripts/dev.sh
+@@ -11,6 +11,7 @@
+ #   ./scripts/dev.sh api          # Backend only (port 8000)
+ #   ./scripts/dev.sh frontend     # Frontend only (port 3000)
+ #   ./scripts/dev.sh deps         # Only check and repair the dependencies
++#   ./scripts/dev.sh app          # Lean run: production frontend, backend without reload
+ 
+ set -e
+ 
+@@ -140,15 +141,38 @@ start_api() {
+     # folder includes data/, where folders that a container wrote as root
+     # (for example a browser session) stop the watcher with "Permission
+     # denied", and data writes would restart the server.
++    # APP_MODE=1 (make app): no auto-reload, so no file watcher and less
++    # memory and CPU. make dev keeps the reload.
++    local reload_args=(--reload --reload-dir "$BACKEND_DIR/src" --reload-dir "$BACKEND_DIR/config")
++    if [ -n "${APP_MODE:-}" ]; then
++        reload_args=()
++    fi
+     PYTHONPATH=. "$VENV_PYTHON" -m uvicorn src.api.main:app \
+-        --host 127.0.0.1 --port 8000 --reload \
+-        --reload-dir "$BACKEND_DIR/src" --reload-dir "$BACKEND_DIR/config" \
++        --host 127.0.0.1 --port 8000 "${reload_args[@]}" \
+         --env-file "$BACKEND_DIR/.env"
+ }
+ 
++# True when the production build is missing or older than the frontend source.
++frontend_build_needed() {
++    [ ! -f "$FRONTEND_DIR/.next/BUILD_ID" ] && return 0
++    [ -n "$(find "$FRONTEND_DIR/src" "$FRONTEND_DIR/public" "$FRONTEND_DIR/package.json" \
++        "$FRONTEND_DIR"/next.config.* -newer "$FRONTEND_DIR/.next/BUILD_ID" -print -quit 2> /dev/null)" ]
++}
++
+ start_frontend() {
+-    echo "Starting Next.js dev server on 127.0.0.1:3000..."
+     cd "$FRONTEND_DIR"
++    if [ -n "${APP_MODE:-}" ]; then
++        # Production server: much less memory than the dev server. Build only
++        # when the source changed since the last build.
++        if frontend_build_needed; then
++            echo "Building the Next.js frontend (production)..."
++            npm run build
++        fi
++        echo "Starting Next.js production server on 127.0.0.1:3000..."
++        npm run start -- --hostname 127.0.0.1 --port 3000
++        return
++    fi
++    echo "Starting Next.js dev server on 127.0.0.1:3000..."
+     # Bind to loopback only so other LAN devices cannot use the proxy
+     # (the proxy adds X-API-Key to every forwarded request).
+     npm run dev -- --hostname 127.0.0.1 --port 3000
+@@ -159,13 +183,14 @@ start_frontend() {
+ # status, and the selected process's output. Set DEV_PLAIN=1, or run without
+ # a terminal, for the plain mixed output.
+ start_both() {
++    local config="${1:-mprocs.yaml}"
+     MPROCS_BIN="$FRONTEND_DIR/node_modules/.bin/mprocs"
+     if [ -t 1 ] && [ -x "$MPROCS_BIN" ] && [ -z "${DEV_PLAIN:-}" ]; then
+         echo "Starting backend API + Next.js frontend in mprocs (q quits)..."
+         cd "$PROJECT_ROOT"
+         # The checks ran above; the two processes do not repeat them.
+         export DEV_DEPS_CHECKED=1
+-        exec "$MPROCS_BIN" --config "$PROJECT_ROOT/mprocs.yaml"
++        exec "$MPROCS_BIN" --config "$PROJECT_ROOT/$config"
+     fi
+     echo "Starting backend API + Next.js frontend..."
+     (trap 'kill 0' SIGINT; start_api & start_frontend; wait)
+@@ -196,8 +221,24 @@ case "$MODE" in
+         ensure_frontend
+         ensure_dirs
+         ;;
++    app)
++        ensure_backend
++        ensure_frontend
++        ensure_dirs
++        export APP_MODE=1
++        start_both mprocs.app.yaml
++        ;;
++    app-api)
++        ensure_backend
++        ensure_dirs
++        APP_MODE=1 start_api
++        ;;
++    app-frontend)
++        ensure_frontend
++        APP_MODE=1 start_frontend
++        ;;
+     *)
+-        echo "Usage: $0 [api|frontend|both|deps]"
++        echo "Usage: $0 [api|frontend|both|deps|app|app-api|app-frontend]"
+         exit 1
+         ;;
+ esac
