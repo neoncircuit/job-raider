@@ -3,6 +3,7 @@
 ## Active Focus
 - [ ] Laptop as the workstation until the desktop upgrades; start each laptop session from `tasks/active/laptop-workstation/task.md`.
 - [ ] Ollama load timeout: load the model first with a long timeout, so a slow load is not cancelled and restarted (`tasks/active/ollama-load-timeout/`).
+- [ ] Relative paths in documentation: no full host paths in tracked files, plus a guard test (`tasks/active/relative-paths-in-docs/`).
 - [ ] Lean setup for 16 GB RAM machines: `make app`, measured before and after (`tasks/active/lean-setup/`); the after run waits for the load timeout fix.
 
 ## Next Up
