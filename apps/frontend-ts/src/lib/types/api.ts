@@ -737,6 +737,8 @@ export interface CostLimits {
   enable_company_mission?: boolean;
   enable_prompt_cache?: boolean;
   ollama_keep_alive?: string | null;
+  /** Unload other Ollama models before each call (default on). */
+  ollama_one_model_at_a_time?: boolean;
 }
 
 export interface AppSettings {

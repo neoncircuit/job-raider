@@ -226,6 +226,13 @@ class CostLimits(BaseModel):
         default=None,
         description=("Ollama keep_alive duration for loaded models (e.g. 5m, 30m, -1)"),
     )
+    ollama_one_model_at_a_time: bool = Field(
+        default=True,
+        description=(
+            "Unload other Ollama models before each call, so only one model is "
+            "in GPU memory at a time. Turn off on a GPU with room for several."
+        ),
+    )
 
 
 class HardwareSettings(BaseModel):

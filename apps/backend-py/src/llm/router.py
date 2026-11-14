@@ -292,6 +292,8 @@ class LLMRouter:
         # Kind-B Anthropic prompt cache and Ollama keep_alive (from settings).
         self._enable_prompt_cache = False
         self._ollama_keep_alive: Optional[str] = None
+        # Unload other Ollama models before a call (Settings; default on).
+        self._ollama_one_model_at_a_time: bool = True
 
         # Statistics
         self._total_requests = 0
@@ -475,6 +477,9 @@ class LLMRouter:
                 self._response_cache.ttl = int(settings.cost_limits.cache_ttl)
                 self._enable_prompt_cache = bool(
                     settings.cost_limits.enable_prompt_cache
+                )
+                self._ollama_one_model_at_a_time = bool(
+                    settings.cost_limits.ollama_one_model_at_a_time
                 )
                 keep_alive = settings.cost_limits.ollama_keep_alive
                 self._ollama_keep_alive = (
@@ -678,8 +683,8 @@ class LLMRouter:
                 config=config or LLMConfig(model=model),
                 host=self.ollama_host,
                 port=self.ollama_port,
-                gpu_monitor=self.gpu_monitor,
                 keep_alive=self._ollama_keep_alive,
+                one_model_at_a_time=self._ollama_one_model_at_a_time,
             )
         elif provider == "gemini":
             client = GeminiClient(

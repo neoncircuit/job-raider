@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
+from ..utils.logger import Components, get_logger
 from .base import (
     BaseLLMClient,
     CostEstimate,
@@ -43,6 +44,9 @@ def extract_ollama_chat_content(message: Dict[str, Any]) -> str:
     return (message.get("content") or "").strip()
 
 
+logger = get_logger(Components.LLM)
+
+
 class OllamaClient(BaseLLMClient):
     """
     Ollama client for local model inference.
@@ -55,7 +59,6 @@ class OllamaClient(BaseLLMClient):
         config: LLMConfig,
         host: Optional[str] = None,
         port: Optional[int] = None,
-        gpu_monitor: Optional[Any] = None,
         **kwargs,
     ):
         """
@@ -65,12 +68,14 @@ class OllamaClient(BaseLLMClient):
             config: LLM configuration
             host: Ollama host (defaults to OLLAMA_HOST env var or localhost)
             port: Ollama port (defaults to OLLAMA_PORT env var or 11434)
-            gpu_monitor: Optional GPU monitor for VRAM tracking
-            **kwargs: Additional parameters
+            **kwargs: Additional parameters. ``keep_alive`` is sent with each
+                chat request; ``one_model_at_a_time`` (default False) unloads
+                any other loaded model before each chat request.
         """
         super().__init__(config, provider="ollama", **kwargs)
 
         self.keep_alive = kwargs.get("keep_alive")
+        self.one_model_at_a_time = bool(kwargs.get("one_model_at_a_time", False))
 
         raw_host = host or os.getenv("OLLAMA_HOST", "localhost")
         if ":" in raw_host:
@@ -80,7 +85,6 @@ class OllamaClient(BaseLLMClient):
             self.host = raw_host
             self.port = int(port or os.getenv("OLLAMA_PORT", "11434"))
         self.base_url = f"http://{self.host}:{self.port}"
-        self.gpu_monitor = gpu_monitor
 
         # Verify Ollama is running
         if not self._is_ollama_running():
@@ -144,25 +148,36 @@ class OllamaClient(BaseLLMClient):
             print(f"Failed to pull model {model}: {e}")
             return False
 
-    def _check_vram_before_inference(self) -> bool:
+    def _unload_other_models(self) -> None:
         """
-        Check if there's sufficient VRAM for GPU inference.
+        Unload every loaded Ollama model except this client's model.
 
-        Returns:
-            True if GPU can be used, False if should fall back to CPU
+        Asks Ollama which models are loaded (``/api/ps``) and sends each other
+        model a request with ``keep_alive: 0``, which unloads it. Errors are
+        logged and ignored: the chat request goes on either way.
         """
-        if not self.gpu_monitor:
-            return True  # No monitor, assume GPU is available
-
         try:
-            vram_usage = self.gpu_monitor.get_vram_usage()
-            if vram_usage >= 0.9:  # 90% threshold
-                print(f"VRAM usage at {vram_usage:.1%}, falling back to CPU")
-                return False
-            return True
-        except Exception as e:
-            print(f"Failed to check VRAM: {e}, using GPU")
-            return True
+            response = requests.get(f"{self.base_url}/api/ps", timeout=5)
+            response.raise_for_status()
+            loaded = [
+                str(item.get("name") or item.get("model") or "")
+                for item in (response.json().get("models") or [])
+            ]
+        except (requests.RequestException, ValueError) as exc:
+            logger.debug(f"Could not list loaded Ollama models: {exc}")
+            return
+        for name in loaded:
+            if not name or name == self.config.model:
+                continue
+            try:
+                requests.post(
+                    f"{self.base_url}/api/generate",
+                    json={"model": name, "keep_alive": 0},
+                    timeout=30,
+                ).raise_for_status()
+                logger.info(f"Unloaded Ollama model {name} before {self.config.model}")
+            except requests.RequestException as exc:
+                logger.debug(f"Could not unload Ollama model {name}: {exc}")
 
     def generate(self, messages: List[Message], **kwargs) -> LLMResponse:
         """
@@ -183,8 +198,9 @@ class OllamaClient(BaseLLMClient):
         """
         self.validate_messages(messages)
 
-        # Check VRAM before inference
-        self._check_vram_before_inference()
+        # Keep one model in GPU memory: unload any other loaded model first.
+        if self.one_model_at_a_time:
+            self._unload_other_models()
 
         # Build request payload. Do not set ``think`` unless the caller asked;
         # cover-letter writing passes think=False for Gemma 4 blank-output.

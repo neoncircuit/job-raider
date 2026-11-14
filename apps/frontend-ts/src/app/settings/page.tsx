@@ -77,6 +77,7 @@ const schema = z.object({
     enable_company_mission: z.boolean(),
     enable_prompt_cache: z.boolean(),
     ollama_keep_alive: z.string().optional(),
+    ollama_one_model_at_a_time: z.boolean(),
   }),
   hardware: z.object({
     vram_headroom_percent: z.number().int().min(30).max(100),
@@ -140,6 +141,8 @@ function SettingsForm({
           initial.cost_limits.enable_company_mission ?? false,
         enable_prompt_cache: initial.cost_limits.enable_prompt_cache ?? false,
         ollama_keep_alive: initial.cost_limits.ollama_keep_alive ?? "",
+        ollama_one_model_at_a_time:
+          initial.cost_limits.ollama_one_model_at_a_time ?? true,
       },
       hardware: {
         vram_headroom_percent: initial.hardware?.vram_headroom_percent ?? 75,
@@ -692,6 +695,28 @@ function SettingsForm({
                   request. Leave blank to use Ollama defaults.
                 </p>
               </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="ollama_one_model_at_a_time"
+                  checked={useWatch({
+                    control,
+                    name: "cost_limits.ollama_one_model_at_a_time",
+                  })}
+                  onCheckedChange={(v) =>
+                    setValue("cost_limits.ollama_one_model_at_a_time", v, {
+                      shouldDirty: true,
+                    })
+                  }
+                />
+                <Label htmlFor="ollama_one_model_at_a_time">
+                  One local model at a time
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Unloads other Ollama models before each call, so only one is in
+                GPU memory. Keep on for GPUs of 8 GB or less; turn off if your
+                GPU has room for several models. Default on.
+              </p>
             </CardContent>
           </Card>
 
