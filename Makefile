@@ -1,7 +1,7 @@
 # Job Raider - Makefile
 # Convenient commands for development
 
-.PHONY: help dev dev-api dev-frontend dev-deps install install-frontend test lint format clean \
+.PHONY: help dev dev-api dev-frontend dev-deps app install install-frontend test lint format clean \
         docker-build docker-up docker-down docker-logs docker-restart type-check
 
 # Default target
@@ -13,6 +13,7 @@ help:
 	@echo "  make dev-api          - Start backend API only (port 8000)"
 	@echo "  make dev-frontend     - Start Next.js dev server only (port 3000)"
 	@echo "  make dev-deps         - Create, repair, or update .venv and node_modules only"
+	@echo "  make app              - Lean everyday run: production frontend, backend without reload"
 	@echo ""
 	@echo "Frontend:"
 	@echo "  make install-frontend - Install / update frontend Node dependencies"
@@ -49,6 +50,10 @@ dev-frontend:
 
 dev-deps:
 	@./scripts/dev.sh deps
+
+# Lean everyday run: production frontend, backend without reload (less RAM).
+app:
+	@./scripts/dev.sh app
 
 # ── Dependencies ───────────────────────────────────────────────────────────────
 

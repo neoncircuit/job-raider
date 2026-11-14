@@ -11,6 +11,7 @@
 #   ./scripts/dev.sh api          # Backend only (port 8000)
 #   ./scripts/dev.sh frontend     # Frontend only (port 3000)
 #   ./scripts/dev.sh deps         # Only check and repair the dependencies
+#   ./scripts/dev.sh app          # Lean run: production frontend, backend without reload
 
 set -e
 
@@ -151,15 +152,38 @@ start_api() {
     # folder includes data/, where folders that a container wrote as root
     # (for example a browser session) stop the watcher with "Permission
     # denied", and data writes would restart the server.
+    # APP_MODE=1 (make app): no auto-reload, so no file watcher and less
+    # memory and CPU. make dev keeps the reload.
+    local reload_args=(--reload --reload-dir "$BACKEND_DIR/src" --reload-dir "$BACKEND_DIR/config")
+    if [ -n "${APP_MODE:-}" ]; then
+        reload_args=()
+    fi
     PYTHONPATH=. "$VENV_PYTHON" -m uvicorn src.api.main:app \
-        --host 127.0.0.1 --port 8000 --reload \
-        --reload-dir "$BACKEND_DIR/src" --reload-dir "$BACKEND_DIR/config" \
+        --host 127.0.0.1 --port 8000 "${reload_args[@]}" \
         --env-file "$BACKEND_DIR/.env"
 }
 
+# True when the production build is missing or older than the frontend source.
+frontend_build_needed() {
+    [ ! -f "$FRONTEND_DIR/.next/BUILD_ID" ] && return 0
+    [ -n "$(find "$FRONTEND_DIR/src" "$FRONTEND_DIR/public" "$FRONTEND_DIR/package.json" \
+        "$FRONTEND_DIR"/next.config.* -newer "$FRONTEND_DIR/.next/BUILD_ID" -print -quit 2> /dev/null)" ]
+}
+
 start_frontend() {
-    echo "Starting Next.js dev server on 127.0.0.1:3000..."
     cd "$FRONTEND_DIR"
+    if [ -n "${APP_MODE:-}" ]; then
+        # Production server: much less memory than the dev server. Build only
+        # when the source changed since the last build.
+        if frontend_build_needed; then
+            echo "Building the Next.js frontend (production)..."
+            npm run build
+        fi
+        echo "Starting Next.js production server on 127.0.0.1:3000..."
+        npm run start -- --hostname 127.0.0.1 --port 3000
+        return
+    fi
+    echo "Starting Next.js dev server on 127.0.0.1:3000..."
     # Bind to loopback only so other LAN devices cannot use the proxy
     # (the proxy adds X-API-Key to every forwarded request).
     npm run dev -- --hostname 127.0.0.1 --port 3000
@@ -170,13 +194,14 @@ start_frontend() {
 # status, and the selected process's output. Set DEV_PLAIN=1, or run without
 # a terminal, for the plain mixed output.
 start_both() {
+    local config="${1:-mprocs.yaml}"
     MPROCS_BIN="$FRONTEND_DIR/node_modules/.bin/mprocs"
     if [ -t 1 ] && [ -x "$MPROCS_BIN" ] && [ -z "${DEV_PLAIN:-}" ]; then
         echo "Starting backend API + Next.js frontend in mprocs (q quits)..."
         cd "$PROJECT_ROOT"
         # The checks ran above; the two processes do not repeat them.
         export DEV_DEPS_CHECKED=1
-        exec "$MPROCS_BIN" --config "$PROJECT_ROOT/mprocs.yaml"
+        exec "$MPROCS_BIN" --config "$PROJECT_ROOT/$config"
     fi
     echo "Starting backend API + Next.js frontend..."
     (trap 'kill 0' SIGINT; start_api & start_frontend; wait)
@@ -207,8 +232,24 @@ case "$MODE" in
         ensure_frontend
         ensure_dirs
         ;;
+    app)
+        ensure_backend
+        ensure_frontend
+        ensure_dirs
+        export APP_MODE=1
+        start_both mprocs.app.yaml
+        ;;
+    app-api)
+        ensure_backend
+        ensure_dirs
+        APP_MODE=1 start_api
+        ;;
+    app-frontend)
+        ensure_frontend
+        APP_MODE=1 start_frontend
+        ;;
     *)
-        echo "Usage: $0 [api|frontend|both|deps]"
+        echo "Usage: $0 [api|frontend|both|deps|app|app-api|app-frontend]"
         exit 1
         ;;
 esac

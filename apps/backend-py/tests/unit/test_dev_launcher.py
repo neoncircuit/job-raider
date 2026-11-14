@@ -21,12 +21,13 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 DEV_SH = REPO_ROOT / "scripts" / "dev.sh"
 
 
-def _run_dev_sh_api(tmp_path: Path) -> tuple[Path, List[str]]:
+def _run_dev_sh_api(tmp_path: Path, mode: str = "api") -> tuple[Path, List[str]]:
     """
-    Run ``dev.sh api`` in a temporary repository layout.
+    Run ``dev.sh api`` (or another backend mode) in a temporary repository layout.
 
     Args:
         tmp_path: Pytest temporary directory.
+        mode: The dev.sh mode to run, ``api`` (make dev) or ``app-api`` (make app).
 
     Returns:
         Tuple of (backend directory, arguments the stub ``python3`` received).
@@ -51,7 +52,7 @@ def _run_dev_sh_api(tmp_path: Path) -> tuple[Path, List[str]]:
     # This test is about how the API starts, not about the dependency checks
     # (tests/unit/test_dev_deps.py), so it skips them as mprocs does.
     result = subprocess.run(
-        [bash, str(root / "scripts" / "dev.sh"), "api"],
+        [bash, str(root / "scripts" / "dev.sh"), mode],
         capture_output=True,
         text=True,
         timeout=60,
@@ -92,3 +93,92 @@ def test_dev_sh_api_binds_loopback(tmp_path: Path) -> None:
 
     assert args[:2] == ["-m", "uvicorn"]
     assert _flag_value(args, "--host") == "127.0.0.1"
+
+
+def test_dev_sh_api_keeps_auto_reload(tmp_path: Path) -> None:
+    """``dev.sh api`` (make dev) still reloads on changes in src and config."""
+    backend_dir, args = _run_dev_sh_api(tmp_path)
+
+    assert "--reload" in args
+    reload_dirs = [args[i + 1] for i, a in enumerate(args) if a == "--reload-dir"]
+    assert reload_dirs == [str(backend_dir / "src"), str(backend_dir / "config")]
+
+
+def test_dev_sh_app_api_runs_without_reload(tmp_path: Path) -> None:
+    """``dev.sh app-api`` (make app) has no reloader but keeps host and env file."""
+    backend_dir, args = _run_dev_sh_api(tmp_path, mode="app-api")
+
+    assert args[:2] == ["-m", "uvicorn"]
+    assert "--reload" not in args
+    assert "--reload-dir" not in args
+    assert _flag_value(args, "--host") == "127.0.0.1"
+    assert _flag_value(args, "--port") == "8000"
+    assert Path(_flag_value(args, "--env-file")).resolve() == backend_dir / ".env"
+
+
+def _run_dev_sh_app_frontend(tmp_path: Path, built: bool) -> List[str]:
+    """
+    Run ``dev.sh app-frontend`` with a stub ``npm`` that records each call.
+
+    Args:
+        tmp_path: Pytest temporary directory.
+        built: True to create a production build that is newer than the source.
+
+    Returns:
+        One line per ``npm`` call, with the arguments separated by spaces.
+    """
+    bash = shutil.which("bash")
+    if bash is None:
+        pytest.skip("bash is required to run scripts/dev.sh")
+
+    root = tmp_path / "repo"
+    (root / "scripts").mkdir(parents=True)
+    shutil.copy(DEV_SH, root / "scripts" / "dev.sh")
+    shutil.copy(DEV_SH.parent / "find_python.sh", root / "scripts" / "find_python.sh")
+    frontend_dir = root / "apps" / "frontend-ts"
+    (frontend_dir / "src").mkdir(parents=True)
+    source = frontend_dir / "src" / "page.tsx"
+    source.write_text("export {};\n")
+    (frontend_dir / "package.json").write_text("{}\n")
+    if built:
+        build_id = frontend_dir / ".next" / "BUILD_ID"
+        build_id.parent.mkdir()
+        build_id.write_text("build\n")
+        # The build is newer than every source file.
+        for path in (source, frontend_dir / "package.json"):
+            os.utime(path, (1_000_000_000, 1_000_000_000))
+
+    stub_bin = tmp_path / "bin"
+    stub_bin.mkdir()
+    calls_file = tmp_path / "npm-calls.txt"
+    npm = stub_bin / "npm"
+    npm.write_text(f'#!/bin/sh\necho "$*" >> "{calls_file}"\n')
+    npm.chmod(0o755)
+
+    result = subprocess.run(
+        [bash, str(root / "scripts" / "dev.sh"), "app-frontend"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env={
+            **os.environ,
+            "DEV_DEPS_CHECKED": "1",
+            "PATH": f"{stub_bin}{os.pathsep}{os.environ['PATH']}",
+        },
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    return calls_file.read_text().splitlines()
+
+
+def test_dev_sh_app_frontend_builds_when_there_is_no_build(tmp_path: Path) -> None:
+    """``dev.sh app-frontend`` builds first when no production build exists."""
+    calls = _run_dev_sh_app_frontend(tmp_path, built=False)
+
+    assert calls == ["run build", "run start -- --hostname 127.0.0.1 --port 3000"]
+
+
+def test_dev_sh_app_frontend_reuses_a_current_build(tmp_path: Path) -> None:
+    """``dev.sh app-frontend`` skips the build when it is newer than the source."""
+    calls = _run_dev_sh_app_frontend(tmp_path, built=True)
+
+    assert calls == ["run start -- --hostname 127.0.0.1 --port 3000"]

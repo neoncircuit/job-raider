@@ -1,0 +1,14 @@
+# Job Raider - processes for `make app` (lean, everyday use)
+#
+# Like mprocs.yaml (make dev), but the backend runs without auto-reload and
+# the frontend runs the Next.js production server (built when the source
+# changed). It uses much less memory than make dev; use make dev to develop.
+#
+# Keys: j / k select, Ctrl+A switches focus to the output, r restarts,
+# x stops, s starts, z zooms, q quits and stops all.
+
+procs:
+  backend:
+    shell: "./scripts/dev.sh app-api"
+  frontend:
+    shell: "./scripts/dev.sh app-frontend"
