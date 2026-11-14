@@ -31,11 +31,11 @@ flowchart LR
 3. Order: build `letter-rewrite-polish` first, then this task.
 
 ## Acceptance Criteria
-- [ ] Only one model in GPU memory at a time by default; a Settings switch turns the rule off.
-- [ ] The no-op VRAM guard removed (`_check_vram_before_inference` and its call).
-- [ ] Unit tests, red step, and mutants; CI checks pass locally.
-- [ ] Measurement before and after (3 pairs or per decision 2): never two models loaded together after the change; peak GPU memory and time per letter reported.
-- [ ] The memory note about the guard corrected.
+- [x] Only one model in GPU memory at a time by default; a Settings switch turns the rule off.
+- [x] The no-op VRAM guard removed (`_check_vram_before_inference` and its call).
+- [x] Unit tests, red step, and mutants; CI checks pass locally.
+- [x] Measurement before and after (3 pairs or per decision 2): never two models loaded together after the change; peak GPU memory and time per letter reported.
+- [x] The memory note about the guard corrected.
 - [ ] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
 - [ ] `tasks/todo.md` updated; folder archived.
 
