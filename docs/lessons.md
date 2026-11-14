@@ -2533,12 +2533,12 @@
 **Lesson:** When the `.venv/bin/pytest` shebang points to a non-existent interpreter, invoke pytest as a module with the correct Python executable instead of relying on the wrapper script.
 
 **Why:**
-- The backend venv's `pytest` wrapper had a shebang pointing to `/mnt/d/GitHub/job-raider/.venv/bin/python3`, which does not exist.
+- The backend venv's `pytest` wrapper had a shebang pointing to `.venv/bin/python3` in an old repository folder on the D: drive, which does not exist.
 - Running `pytest` directly failed with a "bad interpreter" error before any tests executed.
 - This is a common side effect of recreating or relocating virtual environments without regenerating entry-point scripts.
 
 **How to apply:**
-- Use the explicit interpreter and module form: `/mnt/d/GitHub/job-raider/backend-py/.venv/bin/python -m pytest`.
+- Use the explicit interpreter and module form: `backend-py/.venv/bin/python -m pytest` (from the project root).
 - Recreate the venv or reinstall the package if the shebang issue persists across sessions.
 - Document the correct invocation in project runbooks so team members do not rely on the broken wrapper.
 
@@ -3760,7 +3760,7 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 
 ### Absolute paths in a moved store, and a log line that misled
 
-**Lesson:** After the move to `~/personal-projects/job-raider`, the local MLflow store (`apps/backend-py/data/mlflow.db`) still recorded its artifact folder as `file:///mnt/d/GitHub/job-raider/...`. The first eval run after the move wrote its artifact into the D: backup. Claude also first concluded that the store was new, because MLflow printed "Creating initial MLflow database tables"; MLflow prints that line each time it opens a SQLite store. Claude proposed to replace the store with the D: copy, and the user approved it. A file comparison then showed the real cause before anything was changed.
+**Lesson:** After the move to the WSL file system, the local MLflow store (`apps/backend-py/data/mlflow.db`) still recorded its artifact folder as `file:///mnt/d/...` (the old repository folder on the D: drive). The first eval run after the move wrote its artifact into the D: backup. Claude also first concluded that the store was new, because MLflow printed "Creating initial MLflow database tables"; MLflow prints that line each time it opens a SQLite store. Claude proposed to replace the store with the D: copy, and the user approved it. A file comparison then showed the real cause before anything was changed.
 
 **Why:** an MLflow SQLite store keeps absolute artifact paths in its `experiments` and `runs` tables, so a copied store still points at the old folder. A log line is not proof of state.
 
@@ -3836,3 +3836,21 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - Put project state (where work happens, the work order, open checks) in `tasks/active/<slug>/task.md` and link it from `tasks/todo.md`.
 - Keep agent memory for facts about the user and how to work with them.
 - When work moves to a new machine, give the user a short first prompt that points the new session at the task file.
+
+## Paths in a public repository (2026-11-14)
+
+### Write paths relative to the project root
+
+**Lesson:** Tracked files had full host paths: the account home folder, the projects folder in it, the old D: drive folder, and a Windows user folder. The repository is public, so these paths showed the user's account name and folder layout. The user made a rule: documentation writes paths relative to the project root, and says "the project root" for the repository folder.
+
+**Why:**
+- A full host path tells a reader the account name and how the machine is set up. That is a security concern, and the same concern is behind the rule that setup scripts change nothing outside the repository.
+- A full host path also stops working when the repository moves (the D: drive to WSL, the desktop to the laptop). A relative path works in every clone.
+
+**How to apply:**
+- In commands, run from the project root and use relative paths (`find . ...`, `apps/backend-py/...`). In prose, write "the project root", or "the repository folder in WSL" when the location is the point.
+- Use placeholders in angle brackets (`<project root>`, `C:\Users\<user>`) or `...` when a full form must be shown.
+- Container paths (the `jobraider` home folder in the Docker image), `~/.cache/...`, and `~/.nvm/...` show no account name; they are allowed.
+- `apps/backend-py/tests/unit/test_no_host_paths.py` reads every tracked text file and fails CI on a full host path, with the file and the line number. Agent notes and task files are tracked files too: write them the same way.
+- Git history keeps the old text. Do not rewrite history unless the user asks.
+- A guard that scans tracked files must also scan its own file. Mark a new test file as tracked (`git add -N`) before the green run. The first green run here missed a full path in the test's own examples, because the new file was not yet tracked; the run on `main` found it after "Yes, apply it".

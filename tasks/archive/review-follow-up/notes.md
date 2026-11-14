@@ -18,6 +18,6 @@ Source: [review-2026-10-18.md](review-2026-10-18.md), section 6. Each step has i
 All six steps of section 6 of `review-2026-10-18.md` are done. Each step's folder is in `tasks/archive/` (Step 6, hardware fit with llmfit, was added later and is in `tasks/archive/step-6-llmfit/`).
 
 - Step 1 was done on 2026-10-30, but this file still showed it as open. The manual dry runs `run_18ae691859d2` (the user) and `run_8e8837ffb270` (Claude) are recorded in `tasks/archive/step-1-core-flow/notes.md`: both reached `submit_applications` with `dry_run` true, 0 applied, 0 simulated, 2 manual, and no application record. On 2026-11-11 the user and Claude both took the open checkbox here as the truth, and a new dry run was nearly planned. The archived Step 1 task showed the real state on 2026-11-12.
-- After the move to `~/personal-projects/job-raider` (2026-11-11), the user built the Docker images from the new path on 2026-11-12. Both containers were up and healthy. No new pipeline run was made: the pipeline code runs inside the image and has not changed since the October runs.
+- After the move to the WSL file system (2026-11-11), the user built the Docker images from the new path on 2026-11-12. Both containers were up and healthy. No new pipeline run was made: the pipeline code runs inside the image and has not changed since the October runs.
 - The status lines above (from 2026-10-24) are kept without changes as a record.
 - One open question moves to `tasks/todo.md` (Next Up): allow LinkedIn country hosts such as `sg.linkedin.com`.

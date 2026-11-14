@@ -130,7 +130,7 @@ If you find the real cause is different, fix that cause and explain it in the su
 Fallback only: run the frontend checks from PowerShell:
 
 ```powershell
-docker run --rm -e CI=true -v "D:\GitHub\job-raider\apps\frontend-ts:/app" -w /app node:20 bash -c "npm run lint && npm run type-check && npm run format:check && npx vitest run && npm run build"
+docker run --rm -e CI=true -v "<project root>\apps\frontend-ts:/app" -w /app node:20 bash -c "npm run lint && npm run type-check && npm run format:check && npx vitest run && npm run build"
 ```
 
 - **Backend checks** still run in WSL through a script file (section 4.1 of `tasks/handoff-2026-10-19.md`). A full pytest run takes about 3 minutes; the first test waits about 90 s for imports on `/mnt/d`.

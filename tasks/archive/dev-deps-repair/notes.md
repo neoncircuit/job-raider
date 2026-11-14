@@ -2,7 +2,7 @@
 
 ## Move to the WSL filesystem (2026-11-10 and 11, Claude, on the user's request)
 
-The repository moved from `D:\GitHub\job-raider` (reached from WSL through `/mnt/d`, a 9p file bridge) to `~/personal-projects/job-raider` (ext4 in WSL). The D: copy is kept, unchanged, as a backup.
+The repository moved from a folder on the D: drive (reached from WSL through `/mnt/d`, a 9p file bridge) to a folder in the WSL file system (ext4). The D: copy is kept, unchanged, as a backup.
 
 - Fresh clone from `git@github.com:neoncircuit/job-raider.git` at `4eccf42`, the same commit as D: (nothing was unpushed). `merge.ours.driver=true` is set again; `core.hookspath` (it pointed at the D: hooks folder, which had no hooks) is not.
 - Copied without reading the contents: `apps/backend-py/.env` and `apps/frontend-ts/.env.local` (byte-identical), `apps/frontend-ts/.env.example`, `apps/backend-py/data/` (WSL could not read 294 files of `data/linkedin_session/`; Windows robocopy copied them, 0 failures), root `data/`, `apps/backend-py/scripts/output/`, the 2 untracked Step 2 handoffs, `.codebase-memory/`, and the small `.claude/` folders (`PRPs`, `commands`, `agents`).
@@ -30,10 +30,10 @@ Scenarios, run in the new folder with `./scripts/dev.sh deps`:
 - Red: with the old `dev.sh`, the 5 new tests fail; the launcher tests pass with both versions.
 - Mutants: 4 of 4 are caught (no package check, no backend stamp, `NO_LLMFIT` ignored, checks repeated in mprocs).
 - black and ruff pass; `bash -n` passes.
-- The user ran `make dev` from `~/personal-projects/job-raider` and confirmed that it starts cleanly ("Yes, it works", 2026-11-11).
+- The user ran `make dev` from the new repository folder in WSL and confirmed that it starts cleanly ("Yes, it works", 2026-11-11).
 
 ## Review
 
-Done (2026-11-11). Pushed from `~/personal-projects/job-raider` as `89d501c`; CI run 42855541242 passed (all 12 jobs).
+Done (2026-11-11). Pushed from the repository folder in WSL as `89d501c`; CI run 42855541242 passed (all 12 jobs).
 
 `make dev` now works on a fresh clone and repairs a broken or outdated environment by itself, and the move to the WSL filesystem cut the backend test time to about a third. The D: copy stays as a backup; it is not used any more.

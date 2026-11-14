@@ -458,7 +458,7 @@ flowchart TD
 ### Jobs desk inspired by SupCareer (parked)
 
 Preferred direction when Jobs UX is next opened. Not the next mandatory sprint.
-Roadmap: `C:/Users/James/.cursor/plans/jobs_desk_future_073ad2df.plan.md`
+Roadmap: the Cursor plan `jobs_desk_future_073ad2df.plan.md` (in the `.cursor/plans` folder of the user's Windows profile)
 
 **Grounding rule:** Prefer structured JD skill extractor output. Use description heuristics only when structured skills are empty, and always treat them as inferred. Never present heuristic skills with the same confidence as extractor-backed skills.
 

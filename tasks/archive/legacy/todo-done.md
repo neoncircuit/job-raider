@@ -1802,7 +1802,7 @@ Run the backend lint suite from `backend-py`:
 
 ```bash
 # Formatting (Black)
-cd /mnt/d/GitHub/job-raider/backend-py
+cd backend-py
 .venv/bin/python -m black --check src/ tests/
 
 # Import ordering (isort)
@@ -1821,7 +1821,7 @@ Results:
 Run the backend test suite with coverage:
 
 ```bash
-cd /mnt/d/GitHub/job-raider/backend-py
+cd backend-py
 PYTHONPATH=. .venv/bin/python -m pytest tests/ --cov=src --cov-report=term --verbose
 ```
 
@@ -1833,7 +1833,7 @@ Results:
 Run the backend type check (matches the CI `type-check` job; CI allows this job to fail):
 
 ```bash
-cd /mnt/d/GitHub/job-raider/backend-py
+cd backend-py
 .venv/bin/python -m mypy src/ --ignore-missing-imports --no-error-summary
 ```
 
@@ -1848,7 +1848,7 @@ Results:
 Run the frontend quality suite from `frontend-ts`:
 
 ```bash
-cd /mnt/d/GitHub/job-raider/frontend-ts
+cd frontend-ts
 npm run lint
 npm run type-check
 npm run test -- --run
@@ -1913,7 +1913,7 @@ Root cause: `AssessmentSession.status` is typed as the `SessionStatus` enum, but
 Run the backend quality suite:
 
 ```bash
-cd /mnt/d/GitHub/job-raider/backend-py
+cd backend-py
 .venv/bin/python -m black --check src/ tests/
 .venv/bin/python -m isort --check-only src/ tests/
 .venv/bin/python -m flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
@@ -1930,7 +1930,7 @@ Results:
 Confirm the manual Ollama test remains reachable:
 
 ```bash
-cd /mnt/d/GitHub/job-raider/backend-py
+cd backend-py
 PYTHONPATH=. .venv/bin/python -m pytest tests/manual --run-llm-tests --collect-only
 ```
 
@@ -1974,21 +1974,21 @@ Result: `1 test collected`.
 Run the backend cover-letter route tests:
 
 ```bash
-cd /mnt/d/GitHub/job-raider/backend-py
+cd backend-py
 .venv/bin/python -m pytest tests/unit/test_jobs_cover_letter.py -v
 ```
 
 Run the full backend suite:
 
 ```bash
-cd /mnt/d/GitHub/job-raider/backend-py
+cd backend-py
 .venv/bin/python -m pytest -q
 ```
 
 Run the frontend type checker and linter:
 
 ```bash
-cd /mnt/d/GitHub/job-raider/frontend-ts
+cd frontend-ts
 npm run type-check
 npm run lint
 ```
@@ -1996,14 +1996,14 @@ npm run lint
 Run the frontend unit tests:
 
 ```bash
-cd /mnt/d/GitHub/job-raider/frontend-ts
+cd frontend-ts
 npm run test -- --run
 ```
 
 Run the E2E cover-letter flow:
 
 ```bash
-cd /mnt/d/GitHub/job-raider/frontend-ts
+cd frontend-ts
 npx playwright test tests/e2e/jobs-page.spec.ts
 ```
 
@@ -2182,19 +2182,19 @@ npx playwright test tests/e2e/jobs-page.spec.ts
 **Goal:** Replace all stale `backend-py/` and `frontend-ts/` literal paths in docs and root markdown files to reflect the new monorepo layout under `apps/`.
 
 **Files to update:**
-- /mnt/d/GitHub/job-raider/README.md
-- /mnt/d/GitHub/job-raider/CLAUDE.md
-- /mnt/d/GitHub/job-raider/DOCKER.md
-- /mnt/d/GitHub/job-raider/COMPREHENSIVE_TESTING_STRATEGY.md
-- /mnt/d/GitHub/job-raider/docs/index.md
-- /mnt/d/GitHub/job-raider/docs/usage.md
-- /mnt/d/GitHub/job-raider/docs/deployment.md
-- /mnt/d/GitHub/job-raider/docs/troubleshooting.md
-- /mnt/d/GitHub/job-raider/docs/docker-storage.md
-- /mnt/d/GitHub/job-raider/docs/testing.md
-- /mnt/d/GitHub/job-raider/docs/api.md
-- /mnt/d/GitHub/job-raider/docs/architecture.md
-- /mnt/d/GitHub/job-raider/apps/backend-py/docs/agent-logging-strategy.md
+- README.md
+- CLAUDE.md
+- DOCKER.md
+- COMPREHENSIVE_TESTING_STRATEGY.md
+- docs/index.md
+- docs/usage.md
+- docs/deployment.md
+- docs/troubleshooting.md
+- docs/docker-storage.md
+- docs/testing.md
+- docs/api.md
+- docs/architecture.md
+- apps/backend-py/docs/agent-logging-strategy.md
 
 **Rules:**
 1. Replace `backend-py/` with `apps/backend-py/`.
@@ -2861,7 +2861,7 @@ npm run test -- tests/components/cover-letter-validation.test.tsx tests/app/cove
 Full gates from the repo root:
 
 ```bash
-cd /mnt/d/GitHub/job-raider
+# Run from the project root
 make lint          # exit 0 (ruff clean; mypy report-only noise is pre-existing)
 make type-check    # exit 0
 make test          # 534 passed
@@ -2930,7 +2930,7 @@ Start with **items 1 and 2** in parallel: they are the highest user-impact work 
 cd apps/backend-py
 .venv/bin/python -m pytest tests/unit/test_location_aliases.py -v   # 20 passed
 .venv/bin/python -m pytest tests/unit/test_pipeline_routes.py tests/unit/test_location_aliases.py -q  # 24 passed
-cd /mnt/d/GitHub/job-raider
+# Run from the project root
 make lint          # exit 0 (ruff clean; mypy noise is pre-existing and unrelated)
 make type-check    # exit 0
 make test          # 524 passed
@@ -2990,7 +2990,7 @@ PYTHONPATH=. .venv/bin/python -m pytest tests/unit/test_profile_storage.py tests
 Full gates from the repo root:
 
 ```bash
-cd /mnt/d/GitHub/job-raider
+# Run from the project root
 make lint          # exit 0
 make type-check    # exit 0
 make test          # 532 passed
@@ -3047,7 +3047,7 @@ npx prettier --check <changed files>   # all matched
 Full gates from the repo root:
 
 ```bash
-cd /mnt/d/GitHub/job-raider
+# Run from the project root
 make lint          # exit 0 (ruff clean; mypy report-only noise is pre-existing)
 make type-check    # exit 0
 make test           # 541 passed

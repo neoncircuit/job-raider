@@ -36,8 +36,8 @@ du -sh ~/.ollama
 du -sh ~/.cache/ms-playwright
 du -sh ~/.cache/puppeteer
 
-# Check Python cache in project
-find /mnt/d/GitHub/job-raider -name "__pycache__" -type d -exec du -sh {} \; 2>/dev/null | awk '{sum+=$1} END {print sum " total"}'
+# Check Python cache in the project (run from the project root)
+find . -name "__pycache__" -type d -exec du -sh {} \; 2>/dev/null | awk '{sum+=$1} END {print sum " total"}'
 
 # Check Docker usage
 docker system df
@@ -49,13 +49,13 @@ df -h /mnt/c
 For a comprehensive overview, run:
 
 ```bash
-# Quick space check script
+# Quick space check script (run from the project root)
 echo "=== Cache Directories ==="
 du -sh ~/.cache/pip ~/.cache/huggingface ~/.cache/ms-playwright ~/.ollama 2>/dev/null | sort -hr
 
 echo ""
 echo "=== Project Cache ==="
-find /mnt/d/GitHub/job-raider -name "__pycache__" -type d -exec du -sh {} \; 2>/dev/null | awk '{sum+=$1} END {print "Total __pycache__: " sum}'
+find . -name "__pycache__" -type d -exec du -sh {} \; 2>/dev/null | awk '{sum+=$1} END {print "Total __pycache__: " sum}'
 
 echo ""
 echo "=== Docker ==="
@@ -91,14 +91,14 @@ Your actual project files are on D drive and do not duplicate. The space on C dr
 # Clean pip cache (~14GB)
 pip cache purge
 
-# Clean Python bytecode (~95MB)
-find /mnt/d/GitHub/job-raider -type d -name "__pycache__" -exec rm -rf {} +
-find /mnt/d/GitHub/job-raider -type f -name "*.pyc" -delete
-find /mnt/d/GitHub/job-raider -type f -name "*.pyo" -delete
-rm -rf /mnt/d/GitHub/job-raider/.pytest_cache
+# Clean Python bytecode (~95MB; run from the project root)
+find . -type d -name "__pycache__" -exec rm -rf {} +
+find . -type f -name "*.pyc" -delete
+find . -type f -name "*.pyo" -delete
+rm -rf .pytest_cache
 
-# Clean coverage reports (~5MB)
-rm -rf /mnt/d/GitHub/job-raider/htmlcov
+# Clean coverage reports (~5MB; run from the project root)
+rm -rf htmlcov
 ```
 
 ### Medium Cleanup (Requires Reinstall)

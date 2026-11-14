@@ -420,6 +420,6 @@ Ran (WSL, `apps/backend-py` unless noted):
 Not run:
 
 - A real pipeline run with Ollama (Claude does this in the review).
-- Playwright E2E: `npm run test:e2e` started the Next server, then failed because Chromium is not installed at `/home/jamestjy/.cache/ms-playwright/chromium_headless_shell-1223/...`. CI runs these.
+- Playwright E2E: `npm run test:e2e` started the Next server, then failed because Chromium is not installed at `~/.cache/ms-playwright/chromium_headless_shell-1223/...`. CI runs these.
 - No read of `.env`, `.env.local`, or `user_settings.json`.
 - `data/dedupe_catalog/` was not opened.

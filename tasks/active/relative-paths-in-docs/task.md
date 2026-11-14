@@ -43,12 +43,12 @@ Find them again with `git grep -nE` and the patterns in the guard test (step 2).
 - Work on the laptop (`tasks/active/laptop-workstation/task.md`). Follow the workflow: scratch clone, "Yes, apply it", separate approval to push.
 
 ## Acceptance Criteria
-- [ ] All findings fixed or kept with the reason above; `git grep` with the guard patterns finds only allowed paths.
-- [ ] Guard test written red first, then green; it names the file and line.
-- [ ] `AGENTS.md` rule and the Environment line updated; lesson added.
-- [ ] CI checks pass on the clone: black, ruff, mypy gate (0 new), full backend pytest.
+- [x] All findings fixed or kept with the reason above; `git grep` with the guard patterns finds only allowed paths.
+- [x] Guard test written red first, then green; it names the file and line.
+- [x] `AGENTS.md` rule and the Environment line updated; lesson added.
+- [x] CI checks pass on the clone: black, ruff, mypy gate (0 new), full backend pytest.
 - [ ] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
 - [ ] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`review`
+`in-progress`

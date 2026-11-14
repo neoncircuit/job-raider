@@ -32,7 +32,7 @@ flowchart LR
 
 ## Environment
 
-- The repository is `~/personal-projects/job-raider` in WSL. Run commands there, with paths relative to the repository root.
+- The repository is a folder in the WSL file system (ext4), not on a Windows drive under `/mnt`. Run commands from the project root, with paths relative to it.
 - `make dev` repairs the environments, then starts the backend (port 8000) and the frontend (port 3000). `make dev-deps` runs only the repair.
 - Docker images contain the code: after a change, run `./docker-rebuild.sh`.
 
@@ -41,3 +41,4 @@ flowchart LR
 - Write in ASD-STE100 Simplified Technical English. No emojis. Include a mermaid flow diagram.
 - Put each terminal command in its own code block, with a label before it.
 - Tracking documents (`tasks/todo.md`, `docs/lessons.md`) describe state, not commit hashes.
+- Write paths relative to the project root. Never write a full host path (an account home folder, a Windows drive folder, a Windows user folder, a scratchpad folder). `apps/backend-py/tests/unit/test_no_host_paths.py` enforces this in CI.
