@@ -25,3 +25,12 @@ Script `rewrite_polish_check.py` (scratchpad, not committed): for the first 3 gr
 - The no-op VRAM guard printed "VRAM usage at 95.5%, falling back to CPU" and "93.9%" and did nothing (to be removed in `one-model-at-a-time`).
 
 - Applied (user approved, 2026-11-14): `main` fast-forwarded to `301ded7`; `git diff` against it is empty. Not pushed yet.
+
+## Push and CI (2026-11-14)
+
+- The user approved the push; `main` was pushed with the fix and the task notes.
+- CI run 43561847653 passed: 12 jobs passed, `Build Docker Image` skipped (push run). Backend 2,349 passed; mypy gate 177 known and 0 new; Vitest 69 files passed; E2E 45 and demo E2E 18 passed.
+
+## Review
+
+A letter rewritten after the reviewer's critique, or after a hard-fail validation, now gets the same stock-phrase polish as a first draft. Real-letter check: stock phrases in 2 rewrites to 1, no grounding flag added. Open: in one letter the polish changed nothing (3 target sentences); the reason will be read from the step's logs in the `one-model-at-a-time` measurement.

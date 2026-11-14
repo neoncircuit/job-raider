@@ -29,8 +29,8 @@ flowchart LR
 - [x] `rewrite` polishes its output; `stock_phrase_edits` recorded.
 - [x] Unit tests, red step, and mutants; CI checks pass locally.
 - [x] Real-letter check: fewer final letters with stock phrases; no letter gains a grounding flag.
-- [ ] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
-- [ ] `tasks/todo.md` updated; folder archived.
+- [x] Applied after "Yes, apply it"; pushed after approval; the CI run passes.
+- [x] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`review`
+`done` (2026-11-14)
