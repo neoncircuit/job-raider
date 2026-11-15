@@ -200,3 +200,9 @@ The shortlist of `run_0f3302c64278` still has "Senior Software Engineer - KT" an
 ## Pushed (2026-11-15)
 
 Changes A, B, and C pushed after approval. CI run 43729328301 passed, with both Playwright suites (also the C4 form change in a browser). Open: C1b (senior title word with a stated Mid Level) and the user's judgement of the latest shortlist.
+
+## Change C1b on a scratch clone (2026-11-15; user: "Yes, fix it")
+
+- `matcher.py`, `is_senior_role`: a senior title word (senior, sr, principal, staff, lead, head, director) now also decides when the job states Mid Level, not only when it states no level. MyCareersFuture gives "Senior Software Engineer" jobs the level "Executive" or "Professional", which maps to Mid Level. A stated Entry Level still wins over a title word.
+- Tests (`test_fresh_grad_seniority.py`, +6): red 4 failed (Mid Level jobs titled "Senior Software Engineer - KT", "Senior Full Stack Software Engineer", "Principal Engineer", "Lead Data Engineer"), 2 guards passed (a plain Mid Level title; "Lead Generation Analyst" at Entry Level); green 28 passed.
+- Checks on the clone: ranking pins (10) pass and the ranking metrics do not change (no fixture job has a senior title with Mid Level); fixture distribution unchanged; black, ruff, mypy gate (0 new), full backend pytest 2453 passed.

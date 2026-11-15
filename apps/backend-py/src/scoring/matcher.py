@@ -44,8 +44,11 @@ def is_senior_role(job: JobListing) -> bool:
     """
     Return True when a job is for a senior, lead, principal, or executive role.
 
-    The stated experience level decides. When the listing states no level, a
-    senior title word (for example "Senior" or "Principal") decides.
+    A senior stated level decides. When the listing states no level or Mid
+    Level, a senior title word (for example "Senior" or "Principal") decides:
+    MyCareersFuture gives "Senior Software Engineer" jobs the level
+    "Executive" or "Professional", which maps to Mid Level. A stated Entry
+    Level wins over a title word (for example "Lead Generation Analyst").
 
     Args:
         job: The job listing.
@@ -56,7 +59,7 @@ def is_senior_role(job: JobListing) -> bool:
     level = job.experience_level
     if level in SENIOR_LEVELS:
         return True
-    if level in (None, ExperienceLevel.NOT_SPECIFIED):
+    if level in (None, ExperienceLevel.NOT_SPECIFIED, ExperienceLevel.MID):
         return bool(SENIOR_TITLE_RE.search(job.title or ""))
     return False
 

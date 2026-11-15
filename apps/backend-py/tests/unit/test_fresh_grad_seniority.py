@@ -179,3 +179,62 @@ def test_distribution_counts_jobs_per_level() -> None:
     result = score_distribution(pairs)
 
     assert result["levels"] == {"Entry Level": 1, "Senior": 2}
+
+
+# --- C1b: senior title words also cap a stated Mid Level ----------------------
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Senior Software Engineer - KT",
+        "Senior Full Stack Software Engineer",
+        "Principal Engineer",
+        "Lead Data Engineer",
+    ],
+)
+def test_senior_title_caps_a_mid_level_job(
+    sample_job_listing, sample_user_profile, title: str
+) -> None:
+    """A senior title word caps a job that states Mid Level (MyCareersFuture)."""
+    matcher = JobMatcher(fresh_grad_mode=True)
+    job = job_with(
+        sample_job_listing, title=title, experience_level=ExperienceLevel.MID
+    )
+
+    score = matcher.score_job(job, sample_user_profile)
+
+    assert score.total_score <= matcher.threshold - 15
+    assert score.passed_threshold is False
+
+
+def test_mid_level_job_without_a_senior_title_is_not_capped(
+    sample_job_listing, sample_user_profile
+) -> None:
+    """A Mid Level job with a plain title keeps its full score."""
+    matcher = JobMatcher(fresh_grad_mode=True)
+    job = job_with(
+        sample_job_listing,
+        title="Software Engineer (Backend Development)",
+        experience_level=ExperienceLevel.MID,
+    )
+
+    score = matcher.score_job(job, sample_user_profile)
+
+    assert score.total_score == sum(score.breakdown.values())
+
+
+def test_entry_level_job_with_a_lead_word_is_not_capped(
+    sample_job_listing, sample_user_profile
+) -> None:
+    """A stated Entry Level wins over a title word (for example 'Lead Generation')."""
+    matcher = JobMatcher(fresh_grad_mode=True)
+    job = job_with(
+        sample_job_listing,
+        title="Lead Generation Analyst",
+        experience_level=ExperienceLevel.ENTRY,
+    )
+
+    score = matcher.score_job(job, sample_user_profile)
+
+    assert score.total_score == sum(score.breakdown.values())
