@@ -42,7 +42,7 @@ flowchart TD
 - [x] Unit tests red first, then green; the E2E spec added.
 - [x] Detail card and page changed; frontend checks pass on the clone.
 - [x] Before and after measurement at three sizes in `notes.md`, with screenshots for the user.
-- [ ] Applied after "Yes, apply it"; pushed after approval; the CI run passes (Playwright included).
+- [ ] Applied after "Yes, apply it" (done 2026-11-15); pushed after approval; the CI run passes (Playwright included).
 - [ ] `tasks/todo.md` updated; folder archived.
 
 ## Status

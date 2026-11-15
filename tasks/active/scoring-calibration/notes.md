@@ -165,3 +165,34 @@ flowchart TD
   - First try: the app suite found port 3000 in use (the user's `make app`); the demo suite had no demo build. Fix: `PLAYWRIGHT_PORT=3200`, and `npm run build:demo` first.
   - Second try: Playwright 1.60.0 needs Chromium build 1223; WSL had build 1255 only. With the user's approval, `npx playwright install chromium` downloaded build 1223 (into the user cache, outside the repository).
   - Third try: the browser does not start: "error while loading shared libraries: libasound.so.2". The system libraries come from `sudo npx playwright install-deps chromium` (apt), a system change for the user to decide.
+
+## Change C applied; rerun (2026-11-15, user, `run_0f3302c64278`)
+
+Applied after the user's choice "Apply, leave to CI" (commit "feat(scoring): keep senior roles out of fresh graduate results"); the files on `main` are the same as on the clone. On `main`: 50 suite tests, black, ruff, mypy gate (0 new), full backend pytest (2447 passed), vitest (388), eslint, tsc, prettier. App restarted. Settings: as before; Min Score 50 came from the form (C4); Max Jobs 10.
+
+```mermaid
+flowchart LR
+    S[Scrape 68] --> P[Profile filter 57]
+    P -- internship 3, no keyword 8 --> X[removed]
+    P --> R[Score: 26 at 50 or more, 7 at 60 or more] --> G[10 presented]
+```
+
+| | Before change C (`run_5dbd023e8f89`) | After change C |
+|---|---|---|
+| Removed by the internship rule | 26 | 3 |
+| Kept by the profile filter | 34 | 57 |
+| At 50 or more / at 60 or more | 23 / 1 | 26 / 7 |
+| Bands 30-39 / 50-59 / 60-69 | 3 / 22 / 1 | 20 / 19 / 7 |
+| Levels of the scored jobs | not recorded | Entry 5, Mid 34, Senior 9, Lead 8, Executive 1 |
+| Letters saved / need review | 5 / 5 | 7 / 3 |
+
+Findings:
+- 23 of the 26 jobs that the internship rule removed were not internships: the substring markers matched words such as "internal" and "international". The whole-word check (C3) keeps them.
+- The 18 senior, lead, and executive jobs are capped (the band 30-39 grew from 3 to 20). No senior job passes.
+- The jobs that pass are entry and mid level. Mid level on MyCareersFuture is "Executive" or "Professional" (often 2 to 5 years). The user judges whether these fit.
+- Component means are almost the same (projects 5.9, skills 18.6, education 17.0, experience 3.6, location 5.0): projects still give little.
+- The Playwright suites are left to CI (user's choice).
+
+## Gap in C1, seen in the shortlist (2026-11-15)
+
+The shortlist of `run_0f3302c64278` still has "Senior Software Engineer - KT" and "Senior Full Stack Software Engineer". C1 reads the title only when the job states no level; these jobs state Mid Level (MyCareersFuture "Executive" or "Professional"), so the "Senior" title word was not used. Proposed fix (C1b, for the user's choice): in fresh graduate mode a senior title word caps the job also when the stated level is Mid Level.
