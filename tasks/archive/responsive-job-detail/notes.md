@@ -28,3 +28,8 @@ Before: `main` (the user's `make app`). After: the clone's production build on p
 | 1920 x 1080 | 780 px | 307 px | 247 px | 726 px | 53 px | 0 |
 
 At 1366 x 768, after scrolling the detail card, the description fills the card and the action row stays in view (screenshot shown to the user).
+
+## Review (2026-11-15)
+
+- Applied after "Yes, apply it" (commit "feat(frontend): job details readable on laptop screens"); on `main`: vitest 392, eslint, tsc, prettier. Pushed after approval with the scoring changes A, B, and C.
+- CI run 43729328301 passed (12 jobs; Build Docker Image skipped), with both Playwright suites: the app suite (with the new 1366 x 768 Jobs test) and the demo suite. This is the first browser run of the change, because Playwright cannot start on the laptop.

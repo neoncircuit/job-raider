@@ -196,3 +196,7 @@ Findings:
 ## Gap in C1, seen in the shortlist (2026-11-15)
 
 The shortlist of `run_0f3302c64278` still has "Senior Software Engineer - KT" and "Senior Full Stack Software Engineer". C1 reads the title only when the job states no level; these jobs state Mid Level (MyCareersFuture "Executive" or "Professional"), so the "Senior" title word was not used. Proposed fix (C1b, for the user's choice): in fresh graduate mode a senior title word caps the job also when the stated level is Mid Level.
+
+## Pushed (2026-11-15)
+
+Changes A, B, and C pushed after approval. CI run 43729328301 passed, with both Playwright suites (also the C4 form change in a browser). Open: C1b (senior title word with a stated Mid Level) and the user's judgement of the latest shortlist.

@@ -57,8 +57,8 @@ Decision guards for any scoring change (fixed before step 5):
 - [x] Plan checked by the user (2026-11-15).
 - [x] Fixture measurement in `notes.md` (distribution per label and mode, component means, the parts that hold totals down).
 - [x] Code change A (score distribution in the stage metadata): tests red first, then green; CI checks pass; applied after "Yes, apply it".
-- [ ] Live run by the user; distribution recorded in `notes.md`.
-- [ ] Findings and options given to the user; the user's choice recorded.
+- [x] Live run by the user; distribution recorded in `notes.md`.
+- [x] Findings and options given to the user; the user's choice recorded.
 - [ ] The chosen change built and measured again against the guards; applied after "Yes, apply it"; pushed after approval; the CI run passes.
 - [ ] `tasks/todo.md` updated; folder archived.
 
