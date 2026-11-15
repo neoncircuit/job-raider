@@ -487,9 +487,11 @@ check_env() {
     fi
 
     # Ensure both files share a real API_KEY (never the public placeholder).
+    # Remove carriage returns: in a file with Windows line endings (CRLF), an
+    # empty "API_KEY=" line holds "\r", which is not a key.
     CURRENT_KEY=""
     if [ -f "$ENV_FILE" ]; then
-        CURRENT_KEY=$(grep -E '^API_KEY=' "$ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- || true)
+        CURRENT_KEY=$(grep -E '^API_KEY=' "$ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- | tr -d '\r' || true)
     fi
     if [ -z "$CURRENT_KEY" ] || [ "$CURRENT_KEY" = "your_api_key_here" ]; then
         GENERATED_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))" 2>/dev/null \
@@ -503,7 +505,7 @@ check_env() {
         # Keep frontend in sync when backend already has a real key.
         FE_KEY=""
         if [ -f "$FRONTEND_ENV_FILE" ]; then
-            FE_KEY=$(grep -E '^API_KEY=' "$FRONTEND_ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- || true)
+            FE_KEY=$(grep -E '^API_KEY=' "$FRONTEND_ENV_FILE" 2>/dev/null | head -n1 | cut -d= -f2- | tr -d '\r' || true)
         fi
         if [ -z "$FE_KEY" ] || [ "$FE_KEY" = "your_api_key_here" ] || [ "$FE_KEY" != "$CURRENT_KEY" ]; then
             _set_env_api_key "$FRONTEND_ENV_FILE" "$CURRENT_KEY"
