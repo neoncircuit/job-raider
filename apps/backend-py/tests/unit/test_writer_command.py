@@ -74,13 +74,14 @@ def test_writer_is_a_registered_suite() -> None:
     assert dataset_dir == writer_suite.DEFAULT_DATASET_DIR
 
 
-def test_writer_allow_list_has_the_four_approved_models() -> None:
-    """The allow-list holds the four approved local models."""
+def test_writer_allow_list_has_the_approved_models() -> None:
+    """The allow-list holds the approved local models (llama3.2:3b: lighter writer)."""
     assert writer_suite.WRITER_MODELS == (
         "qwen2.5:7b",
         "qwen3.5:4b",
         "qwen2.5:3b",
         "gemma3:4b",
+        "llama3.2:3b",
     )
 
 

@@ -67,8 +67,15 @@ CHECKS: tuple[str, ...] = (
     "scope_inflation",
     "unfilled_placeholder",
 )
-# Local models of 7B or smaller that the user approved for this host (Step 3.8).
-WRITER_MODELS: tuple[str, ...] = ("qwen2.5:7b", "qwen3.5:4b", "qwen2.5:3b", "gemma3:4b")
+# Local models of 7B or smaller that the user approved for this host (Step 3.8;
+# llama3.2:3b, Meta Llama-3.2-3B-Instruct, added by the lighter-writer task).
+WRITER_MODELS: tuple[str, ...] = (
+    "qwen2.5:7b",
+    "qwen3.5:4b",
+    "qwen2.5:3b",
+    "gemma3:4b",
+    "llama3.2:3b",
+)
 
 WriteFn = Callable[[JobListing, UserProfile, SelectionOutput], GeneratedCoverLetter]
 Clock = Callable[[], float]

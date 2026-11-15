@@ -14,9 +14,11 @@ the profile). The suite also reports the stock phrases in the prose
 (``generic_phrasing.py``).
 
 One run uses one model. ``ResumeWriter.write`` has no model override, so the
-run stops before any call when the ``resume_writing`` route is not Ollama
-with that model, and it sets the route's fallback to none. CVs from the
-writer's template fallback or from another model are counted, not scored.
+run's own router gets the model on its ``resume_writing`` route (the saved
+Settings do not change), and the route's fallback is set to none. The run
+stops before any call when the route is not Ollama or Ollama does not have
+the model. CVs from the writer's template fallback or from another model are
+counted, not scored.
 Tests pass a fake writer.
 """
 
@@ -318,29 +320,35 @@ def summarize(rows: Sequence[ResumeRow]) -> Dict[str, Optional[float]]:
 
 def local_resume_writer(router: Any, model: str) -> ResumeWriteFn:
     """
-    The app's CV writer, on a route that must use one local model, no fallback.
+    The app's CV writer, on a route fixed to one local model, no fallback.
 
+    ``ResumeWriter.write`` has no model argument, so the run's own router gets
+    ``model`` on its ``resume_writing`` route (the saved Settings do not
+    change). The CV writer and the suite's polish step then both use it.
     The writer's own polish step is off: the suite runs it itself, so that it
     can check the same CV before and after the step.
 
     Args:
-        router: The app's LLM router.
-        model: The Ollama model that the ``resume_writing`` route must use.
+        router: The run's LLM router.
+        model: The Ollama model of the run.
 
     Returns:
         The write function.
 
     Raises:
-        ValueError: When the ``resume_writing`` route does not resolve to
-            ``ollama/<model>``. No call is made.
+        ValueError: When the route is not Ollama, or Ollama does not have
+            ``model`` (the router accepts an override only for an installed
+            model). No call is made.
     """
-    provider, resolved = router.resolve_primary_model(TaskType.RESUME_WRITING)
+    provider, resolved = router.resolve_primary_model(TaskType.RESUME_WRITING, model)
     if provider != "ollama" or resolved != model:
         raise ValueError(
             f"The resume writing route uses {provider}/{resolved}, not ollama/{model}. "
-            "Set the resume writing route to Ollama with that model in Settings."
+            "Pull the model, or set the resume writing route to Ollama in Settings."
         )
-    router.routes[TaskType.RESUME_WRITING].fallback_provider = "none"
+    route = router.routes[TaskType.RESUME_WRITING]
+    route.primary_model = model
+    route.fallback_provider = "none"
     writer = ResumeWriter(router)
 
     def write(
