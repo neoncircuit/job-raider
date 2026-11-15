@@ -24,6 +24,42 @@ from .filter import JobFilter
 # when the job has no skill list (Step 3.4, R4).
 DESCRIPTION_SKILL_TARGET = 4
 
+# Fresh graduate mode caps these jobs below the threshold (scoring-calibration
+# task): their skills, education, and location points let them pass otherwise.
+SENIOR_LEVELS = frozenset(
+    {
+        ExperienceLevel.SENIOR,
+        ExperienceLevel.LEAD,
+        ExperienceLevel.PRINCIPAL,
+        ExperienceLevel.EXECUTIVE,
+    }
+)
+# Title words that mark a senior job when the listing states no level.
+SENIOR_TITLE_RE = re.compile(
+    r"\b(senior|sr|principal|staff|lead|head|director)\b", re.IGNORECASE
+)
+
+
+def is_senior_role(job: JobListing) -> bool:
+    """
+    Return True when a job is for a senior, lead, principal, or executive role.
+
+    The stated experience level decides. When the listing states no level, a
+    senior title word (for example "Senior" or "Principal") decides.
+
+    Args:
+        job: The job listing.
+
+    Returns:
+        Whether the job is a senior role.
+    """
+    level = job.experience_level
+    if level in SENIOR_LEVELS:
+        return True
+    if level in (None, ExperienceLevel.NOT_SPECIFIED):
+        return bool(SENIOR_TITLE_RE.search(job.title or ""))
+    return False
+
 
 def term_in_text(term: str, text: str) -> bool:
     """
@@ -212,6 +248,11 @@ class JobMatcher:
             intern_mismatch = True
             total_score = min(total_score, max(self.threshold - 15, 0))
 
+        # Fresh graduate mode: a senior role cannot pass, whatever its other points.
+        senior_mismatch = self.fresh_grad_mode and is_senior_role(job)
+        if senior_mismatch:
+            total_score = min(total_score, max(self.threshold - 15, 0))
+
         # Determine recommendation
         recommendation, reasoning = self._get_recommendation(
             total_score,
@@ -230,6 +271,7 @@ class JobMatcher:
                 total_score >= self.threshold
                 and not apprenticeship_blocked
                 and not intern_mismatch
+                and not senior_mismatch
             ),
             breakdown=breakdown,
             matched_keywords=matched_keywords,

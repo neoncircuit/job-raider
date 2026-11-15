@@ -93,3 +93,75 @@ flowchart LR
 - Tests: `test_filter_removal_counts.py` (6): one per rule (except salary, which the pipeline does not turn on), the counts add up to the removed jobs, and the stage metadata has the counts. Red: all 6 fail without the change (the stage test checked alone: `pytest.ini` has `--maxfail=5`, so the first red run stopped after 5 failures and did not run the sixth test). Green: 6 passed.
 - Checks on the clone: filter, scorer, and stage tests (51), black, ruff, mypy gate (0 new), full backend pytest (2425 passed).
 - Seen in the code, not changed: the internship text markers include `" intern"` without a word end, so "internal" and "international" also match. The counts show whether this rule removes many jobs.
+
+## Code change B applied; rerun at Min Score 50 (2026-11-15, user, `run_5dbd023e8f89`)
+
+Change B applied after "Yes, apply it" (commit "feat(scoring): count the jobs that each profile filter rule removes"); on `main`: 47 filter, scorer, and stage tests, black, ruff, mypy gate (0 new), full backend pytest (2425 passed). App restarted (`make app` has no reload). Rerun settings: as before, but Min Score 50 and Max Jobs 10.
+
+```mermaid
+flowchart LR
+    S[Scrape 68] --> P[Profile filter 34]
+    P -- internship rule 26 --> X1[removed]
+    P -- no keyword match 8 --> X2[removed]
+    P --> R[Score: 23 at 50 or more] --> G[10 presented, 10 CVs and letters]
+```
+
+| Stage | Result |
+|---|---|
+| Profile filter, removed per rule | internship 26, no_keyword_match 8, remote 0, salary 0, experience_level 0 |
+| Score and rank (cut-off 50) | 34 scored, 23 passed (was 1 at 60), mean of passed 55, best 61 |
+| Score distribution | the same as the previous run (bands, component means) |
+| Generation | 10 presented, 10 CVs (validation mean 100), 10 letters: 5 saved, 5 need review |
+
+Findings:
+- The internship rule removed 26 of 68 jobs (38 %), more than the keyword rule (8). Either the searches return many real internships, or the text markers match words such as "internal" and "international" (`" intern"` has no word end). The counts do not say which.
+- At cut-off 50, 23 of 34 scored jobs pass. The user judges whether the presented jobs fit.
+- The score distribution is the same in both runs: the scoring is deterministic for the same jobs.
+
+## User judgement of the rerun (2026-11-15)
+
+The user read some of the 10 presented jobs: few fit. Several were senior roles; the user wants junior or fresh-graduate-friendly roles.
+
+## Cause of the senior roles (code reading, 2026-11-15)
+
+- `_score_experience` (fresh graduate weight 10): for 0 to 1 years of experience, a senior job (5 to 10 years) gets 1 point, a mid job 4, an unspecified level 5, an entry job 10. A senior job loses only 9 points. Skills, education, and location give about 41 points on their own (live means 19.3 + 17.0 + 5.0), so a senior job with matching skills passes 50. The live experience mean (3.1 of 10) shows that many scored jobs were mid or senior.
+- MyCareersFuture level mapping (`_map_position_levels`): "Junior Executive" maps to MID (the check for "executive" comes before "junior"); "Fresh/entry level" maps to nothing, so the level comes from the minimum years.
+- The internship cap already exists (`score_job`: total capped at threshold - 15 when the profile excludes internships and the job looks like one). There is no such cap for senior jobs.
+
+## Proposed change C (for the user's choice)
+
+| Part | Change |
+|---|---|
+| C1 | Fresh graduate mode: cap the total of senior, lead, principal, and executive jobs at threshold - 15, as for internships |
+| C2 | MyCareersFuture mapping: "Fresh/entry level" to ENTRY; check "junior" before "executive" |
+| C3 | Internship text markers: whole words only ("intern", "internship", "interns"), so "internal" and "international" do not match |
+| C4 | The default pipeline cut-off follows the mode: the matcher threshold (50 in fresh graduate mode, 60 otherwise) when the user does not set Min Score |
+| Measurement | The score distribution also counts the scored jobs per experience level (numbers only) |
+
+Guards (from the plan): ranking pins not below; `fresh_ml` label-0 jobs above the cut-off at most +2 of 43; a live rerun with the same settings, judged by the user.
+
+## Change C on a scratch clone (2026-11-15; the user chose all four parts)
+
+```mermaid
+flowchart TD
+    J[Job] --> I{Internship? whole words only}
+    I -- yes, internships excluded --> X1[filtered or capped]
+    I -- no --> S{Fresh graduate mode and senior role?}
+    S -- yes --> X2[capped at threshold - 15]
+    S -- no --> P[scored as before]
+    F[Form: fresh graduate on] --> M[Min Score 50 unless typed]
+```
+
+- C1 (`matcher.py`): `SENIOR_LEVELS`, `SENIOR_TITLE_RE`, `is_senior_role()`. In fresh graduate mode a senior, lead, principal, or executive job (or a senior title word when the level is not given) is capped at threshold - 15 and does not pass, as the existing internship cap does. Standard mode does not change.
+- C2 (`mycareersfuture_scraper.py`): "Fresh/entry level", "Junior Executive", and "Non-executive" map to ENTRY (checked before "executive").
+- C3 (`filter.py`): the internship text check is a whole-word regex (`intern`, `interns`, `internship`, `internships`); "internal", "international", and "internet" no longer match.
+- C4 (`apps/frontend-ts/src/app/pipeline/page.tsx`): turning fresh graduate scoring on sets Min Score to 50, off to 60, unless the user has typed a value. The Min Score label is linked to its input (`htmlFor`/`id`).
+- Measurement: `score_distribution` also counts the scored jobs per experience level (`levels`).
+- Tests: backend `test_fresh_grad_seniority.py` (22): red 11 failed (C1 5, C2 3, C3 2, levels 1), 11 guard cases passed; green 22 passed. Frontend `page.test.tsx` (+3): red 3 failed; green 9 passed.
+- Ranking suite (heuristic): `fresh_ml` NDCG@10 0.7667 to 0.8621, recall@10 0.500 to 0.625; `mid_backend` unchanged. The pin test asked to tighten; `thresholds.json` now pins 0.8621 and 0.625, with MLflow run `eb4fb12da48e4d47a75e1c1206cfaf33` (logged from the clone to the local store).
+- Fixtures, `fresh_ml`, fresh graduate mode: label 2 at 50 or more 7 of 8 (was 6), at 60 or more 5 of 8 (was 4); label 0 at 50 or more 7 of 43 (was 8; guard: at most 10), maximum 53 (was 59).
+- Checks on the clone: black, ruff, mypy gate (0 new), full backend pytest 2447 passed; vitest 388 passed (70 files), eslint, tsc, prettier, Next.js build pass. E2E: see below.
+- E2E (Playwright) on the laptop could not run, so it is not a result:
+  - First try: the app suite found port 3000 in use (the user's `make app`); the demo suite had no demo build. Fix: `PLAYWRIGHT_PORT=3200`, and `npm run build:demo` first.
+  - Second try: Playwright 1.60.0 needs Chromium build 1223; WSL had build 1255 only. With the user's approval, `npx playwright install chromium` downloaded build 1223 (into the user cache, outside the repository).
+  - Third try: the browser does not start: "error while loading shared libraries: libasound.so.2". The system libraries come from `sudo npx playwright install-deps chromium` (apt), a system change for the user to decide.

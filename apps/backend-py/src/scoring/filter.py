@@ -8,6 +8,7 @@ Author: Job Raider
 Date: 2026-04-20
 """
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional, Set
@@ -29,14 +30,10 @@ class MatchReason(str, Enum):
     REMOTE = "remote"
 
 
-# Substrings that indicate an internship listing (title/description).
-_INTERNSHIP_TEXT_MARKERS = (
-    "internship",
-    "intern ",
-    " intern",
-    "summer intern",
-    "student intern",
-)
+# Whole words that indicate an internship listing (title/description):
+# "intern", "interns", "internship", "internships". Substring markers also
+# matched "internal", "international", and "internet" (scoring-calibration).
+_INTERNSHIP_TEXT_RE = re.compile(r"\bintern(?:s|ships?)?\b", re.IGNORECASE)
 
 
 # Rules that can remove a job, in the order the filter checks them. The counts
@@ -353,8 +350,8 @@ class JobFilter:
             )
             if "internship" in job_type_value.lower():
                 return True
-        searchable = f"{listing.title} {listing.description or ''}".lower()
-        return any(marker in searchable for marker in _INTERNSHIP_TEXT_MARKERS)
+        searchable = f"{listing.title} {listing.description or ''}"
+        return bool(_INTERNSHIP_TEXT_RE.search(searchable))
 
     @staticmethod
     def _experience_level_allowed(

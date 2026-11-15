@@ -505,6 +505,10 @@ class MyCareersFutureScraper(BaseScraper):
         """
         Map MCF position levels to ExperienceLevel.
 
+        The entry-level labels ("Fresh/entry level", "Junior Executive",
+        "Non-executive") are checked before "executive", because they contain
+        that word.
+
         Args:
             levels: MCF positionLevels array.
 
@@ -522,10 +526,12 @@ class MyCareersFutureScraper(BaseScraper):
             return ExperienceLevel.LEAD
         if "senior" in labels:
             return ExperienceLevel.SENIOR
+        if any(
+            term in labels for term in ("fresh", "entry", "non-executive", "junior")
+        ):
+            return ExperienceLevel.ENTRY
         if "professional" in labels or "executive" in labels:
             return ExperienceLevel.MID
-        if "non-executive" in labels or "junior" in labels:
-            return ExperienceLevel.ENTRY
         return None
 
     @staticmethod

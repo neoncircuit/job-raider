@@ -91,8 +91,9 @@ def score_distribution(pairs: Sequence[Tuple[Any, Any]]) -> Dict[str, Any]:
     Returns:
         A dict with ``count``, ``bands`` (label to count), ``at_or_above_50``,
         ``at_or_above_60``, ``component_means`` (component to mean points over
-        all jobs, rounded to 0.1), and ``without_skill_list`` (``count``,
-        ``median`` or ``None``, and the two cut counts).
+        all jobs, rounded to 0.1), ``levels`` (experience level to the number
+        of scored jobs), and ``without_skill_list`` (``count``, ``median`` or
+        ``None``, and the two cut counts).
     """
     totals: List[float] = [float(score.total_score) for _, score in pairs]
     bands = {label: 0 for label in BAND_LABELS}
@@ -106,6 +107,12 @@ def score_distribution(pairs: Sequence[Tuple[Any, Any]]) -> Dict[str, Any]:
     component_means = {
         name: round(statistics.mean(values), 1) for name, values in components.items()
     }
+
+    levels: Dict[str, int] = {}
+    for job, _ in pairs:
+        level = getattr(job, "experience_level", None)
+        name = str(getattr(level, "value", level) or "Not Specified")
+        levels[name] = levels.get(name, 0) + 1
 
     no_skill_totals = [
         float(score.total_score)
@@ -121,6 +128,7 @@ def score_distribution(pairs: Sequence[Tuple[Any, Any]]) -> Dict[str, Any]:
         "bands": bands,
         **_cut_counts(totals),
         "component_means": component_means,
+        "levels": levels,
         "without_skill_list": {
             "count": len(no_skill_totals),
             "median": median,

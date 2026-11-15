@@ -137,6 +137,49 @@ describe("PipelinePage start form", () => {
     });
   });
 
+  it("sets Min Score to 50 when fresh graduate scoring is turned on", async () => {
+    const user = renderPage();
+    await user.type(screen.getByPlaceholderText(/Python, FastAPI/), "Python");
+    await user.click(
+      screen.getByRole("switch", { name: /Fresh graduate scoring/i }),
+    );
+    expect(screen.getByLabelText(/Min Score/)).toHaveValue(50);
+    await user.click(screen.getByRole("button", { name: /Start Discover/i }));
+
+    expect(await startPayload()).toMatchObject({
+      fresh_grad_mode: true,
+      min_score: 50,
+    });
+  });
+
+  it("returns Min Score to 60 when fresh graduate scoring is turned off", async () => {
+    const user = renderPage();
+    const freshGrad = screen.getByRole("switch", {
+      name: /Fresh graduate scoring/i,
+    });
+    await user.click(freshGrad);
+    await user.click(freshGrad);
+
+    expect(screen.getByLabelText(/Min Score/)).toHaveValue(60);
+  });
+
+  it("keeps a Min Score that the user typed", async () => {
+    const user = renderPage();
+    await user.type(screen.getByPlaceholderText(/Python, FastAPI/), "Python");
+    const minScore = screen.getByLabelText(/Min Score/);
+    await user.clear(minScore);
+    await user.type(minScore, "70");
+    await user.click(
+      screen.getByRole("switch", { name: /Fresh graduate scoring/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /Start Discover/i }));
+
+    expect(await startPayload()).toMatchObject({
+      fresh_grad_mode: true,
+      min_score: 70,
+    });
+  });
+
   it("sends submission delay and hourly cap in full mode", async () => {
     const user = renderPage();
     await user.type(screen.getByPlaceholderText(/Python, FastAPI/), "Python");

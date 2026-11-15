@@ -88,6 +88,11 @@ function usePipelineWS(runId: string | null) {
 
 // ── Start form schema ─────────────────────────────────────────────────────────
 
+/** Default Min Score: the matcher threshold of standard scoring. */
+const DEFAULT_MIN_SCORE = 60;
+/** Default Min Score in fresh graduate scoring: the matcher's fresh graduate threshold. */
+const FRESH_GRAD_MIN_SCORE = 50;
+
 const schema = z.object({
   keywords: z.string().min(1, "At least one keyword required"),
   locations: z.string(),
@@ -130,13 +135,13 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
     control,
     setValue,
     getValues,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       keywords: "",
       locations: "Singapore",
-      minScore: 60,
+      minScore: DEFAULT_MIN_SCORE,
       maxJobs: 50,
       scamThreshold: 1.0, // DEFAULT_SCAM_THRESHOLD
       mode: "discover",
@@ -194,6 +199,19 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
   const freshGrad = useWatch({ control, name: "freshGrad" });
   const stopStages =
     mode === "full" ? PIPELINE_STAGES : DISCOVER_PIPELINE_STAGES;
+
+  /**
+   * Turn fresh graduate scoring on or off. Min Score follows the scoring
+   * mode's threshold (50 or 60) unless the user has typed their own value.
+   *
+   * @param enabled - Whether fresh graduate scoring is on.
+   */
+  const selectFreshGrad = (enabled: boolean) => {
+    setValue("freshGrad", enabled);
+    if (!dirtyFields.minScore) {
+      setValue("minScore", enabled ? FRESH_GRAD_MIN_SCORE : DEFAULT_MIN_SCORE);
+    }
+  };
 
   /**
    * Switch run mode and clear a stop stage the new mode does not allow.
@@ -297,8 +315,9 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
           <Input placeholder="Singapore, Remote…" {...register("locations")} />
         </div>
         <div className="space-y-1">
-          <Label>Min Score (0–100)</Label>
+          <Label htmlFor="min_score">Min Score (0–100)</Label>
           <Input
+            id="min_score"
             type="number"
             min={0}
             max={100}
@@ -374,7 +393,7 @@ function StartForm({ onStarted }: { onStarted: (runId: string) => void }) {
             <Switch
               id="fresh_grad"
               checked={freshGrad}
-              onCheckedChange={(v) => setValue("freshGrad", v)}
+              onCheckedChange={selectFreshGrad}
             />
             <Label htmlFor="fresh_grad">Fresh graduate scoring</Label>
           </div>
