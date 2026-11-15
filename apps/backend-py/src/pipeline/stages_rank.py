@@ -10,6 +10,7 @@ from typing import List, Tuple
 
 from ..models.job_listing import JobListing
 from ..rag.ranker import RAGMatchScore
+from ..scoring.distribution import score_distribution
 from ..scoring.matcher import MatchScore
 from ..submission.applied_guard import AppliedGuard
 from ..submission.detector import ApplyMethod, SubmissionInfo
@@ -41,11 +42,13 @@ class RankStages(StageBase):
             self.logger.info(f"Scoring {len(listings)} listings")
 
             scored = []
+            all_scored = []  # Every job, also below the cut-off (distribution only).
             for job in listings:
                 score = self.job_matcher.score_job(
                     job=job,
                     profile=self.context.user_profile,
                 )
+                all_scored.append((job, score))
                 if score.total_score >= min_score:
                     scored.append((job, score))
 
@@ -63,6 +66,8 @@ class RankStages(StageBase):
                 "min_score": min_score,
                 "avg_score": sum(scores) / len(scores) if scores else 0,
                 "max_score": max(scores) if scores else 0,
+                # Numbers only (bands, cut counts, component means), for calibration.
+                "distribution": score_distribution(all_scored),
             }
 
             self.logger.info(
