@@ -3854,3 +3854,25 @@ One narrator sentence ("The text says only ...") fired a detector pattern, so th
 - `apps/backend-py/tests/unit/test_no_host_paths.py` reads every tracked text file and fails CI on a full host path, with the file and the line number. Agent notes and task files are tracked files too: write them the same way.
 - Git history keeps the old text. Do not rewrite history unless the user asks.
 - A guard that scans tracked files must also scan its own file. Mark a new test file as tracked (`git add -N`) before the green run. The first green run here missed a full path in the test's own examples, because the new file was not yet tracked; the run on `main` found it after "Yes, apply it".
+
+## Red runs and applied patches (2026-11-15)
+
+### A red run must show every new test failing
+
+**Lesson:** The red run of six new tests reported "5 failed" and no passes. `pytest.ini` has `--maxfail=5`, so pytest stopped after five failures and did not run the sixth test. The sixth test was checked alone afterwards; it failed as it had to.
+
+**Why:** a red run that stops early does not prove that the remaining tests can fail. A test that cannot fail gives a false green later.
+
+**How to apply:**
+- Run red checks with `--maxfail=100` (or check the count: failed plus passed must equal the number of new tests).
+- When a count is lower than the number of tests, find out why before the green run.
+
+### `git apply` can drop the execute bit, and git does not show it
+
+**Lesson:** After `git apply`, `scripts/dev.sh` and `setup.sh` had mode 644 on disk, so `./scripts/dev.sh` (called by the Makefile) could not run. The repository has `core.filemode=false` (from the Windows checkout), so `git status` showed nothing, and the commit kept mode 100755. Patches from a scratch clone (`core.filemode=true`) can also carry a mode line.
+
+**Why:** a script that cannot run breaks `make dev` and `make app`, and no git check catches it.
+
+**How to apply:**
+- After applying a patch that changes a script, run `stat -c '%a' <script>` and run the script once (for example `./setup.sh --help`).
+- Set the mode back with `chmod 744` when it changed; check `git show --summary` for mode lines before the commit.
