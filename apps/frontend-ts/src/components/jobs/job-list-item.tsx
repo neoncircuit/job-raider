@@ -120,6 +120,24 @@ export function JobListItem({
               Scraped today
             </Badge>
           )}
+          {job.required_years != null && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0"
+              title="Years of experience the posting asks for"
+            >
+              {job.required_years}+ yrs
+            </Badge>
+          )}
+          {job.fresh_grad_friendly && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 border-success/30 bg-success/10 text-success"
+              title="The posting says that fresh graduates are welcome"
+            >
+              Fresh grad friendly
+            </Badge>
+          )}
           {showApplied && (
             <Badge className="text-[10px] px-1.5 py-0 bg-success text-success-foreground">
               Applied

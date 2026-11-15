@@ -17,6 +17,9 @@ from __future__ import annotations
 import statistics
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from .experience_signals import job_is_fresh_grad_friendly, structured_required_years
+from .matcher import FRESH_GRAD_MAX_YEARS
+
 BAND_LABELS: Tuple[str, ...] = (
     "0-9",
     "10-19",
@@ -79,6 +82,30 @@ def _breakdown(score: Any) -> Dict[str, float]:
     }
 
 
+def _signal_counts(pairs: Sequence[Tuple[Any, Any]]) -> Dict[str, int]:
+    """
+    Count the scored jobs with experience signals (numbers only).
+
+    Args:
+        pairs: ``(job, score)`` pairs; a job may have ``requirements``,
+            ``title``, and ``description``.
+
+    Returns:
+        ``required_years_at_or_above_3`` (structured required years at
+        ``FRESH_GRAD_MAX_YEARS`` or more) and ``fresh_grad_friendly``.
+    """
+    many_years = 0
+    friendly = 0
+    for job, _ in pairs:
+        years = structured_required_years(job)
+        many_years += years is not None and years >= FRESH_GRAD_MAX_YEARS
+        friendly += job_is_fresh_grad_friendly(job)
+    return {
+        f"required_years_at_or_above_{FRESH_GRAD_MAX_YEARS}": many_years,
+        "fresh_grad_friendly": friendly,
+    }
+
+
 def score_distribution(pairs: Sequence[Tuple[Any, Any]]) -> Dict[str, Any]:
     """
     Summarize the scores of all scored jobs of one run.
@@ -92,7 +119,11 @@ def score_distribution(pairs: Sequence[Tuple[Any, Any]]) -> Dict[str, Any]:
         A dict with ``count``, ``bands`` (label to count), ``at_or_above_50``,
         ``at_or_above_60``, ``component_means`` (component to mean points over
         all jobs, rounded to 0.1), ``levels`` (experience level to the number
-        of scored jobs), and ``without_skill_list`` (``count``, ``median`` or
+        of scored jobs), ``required_years_at_or_above_3`` (the number of
+        scored jobs whose stated required years reach
+        ``FRESH_GRAD_MAX_YEARS``), ``fresh_grad_friendly`` (the number of
+        scored jobs whose text welcomes fresh graduates), and
+        ``without_skill_list`` (``count``, ``median`` or
         ``None``, and the two cut counts).
     """
     totals: List[float] = [float(score.total_score) for _, score in pairs]
@@ -129,6 +160,7 @@ def score_distribution(pairs: Sequence[Tuple[Any, Any]]) -> Dict[str, Any]:
         **_cut_counts(totals),
         "component_means": component_means,
         "levels": levels,
+        **_signal_counts(pairs),
         "without_skill_list": {
             "count": len(no_skill_totals),
             "median": median,

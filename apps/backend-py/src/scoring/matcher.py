@@ -18,6 +18,7 @@ from ..models.job_listing import ExperienceLevel, JobListing
 from ..models.user_profile import Project, UserProfile
 from ..utils.logger import Components, get_logger
 from ..utils.source_geography import listing_matches_requested_locations
+from .experience_signals import job_is_fresh_grad_friendly, structured_required_years
 from .filter import JobFilter
 
 # Matches of profile skills in a description that count as a full match
@@ -71,6 +72,48 @@ def is_senior_role(job: JobListing) -> bool:
     if level in (None, ExperienceLevel.NOT_SPECIFIED, ExperienceLevel.MID):
         return bool(SENIOR_TITLE_RE.search(job.title or ""))
     return False
+
+
+# Fresh graduate mode caps jobs that ask for this many years or more (user
+# decision 2026-11-16, project-scoring task change D), whatever their level.
+FRESH_GRAD_MAX_YEARS = 3
+
+
+def required_years(job: JobListing) -> Optional[float]:
+    """
+    Return the largest number of years of experience that a job asks for.
+
+    Only structured values count (``JobRequirement.years_of_experience``, for
+    example the MyCareersFuture minimum years). Years written only in the
+    description text are not read.
+
+    Args:
+        job: The job listing.
+
+    Returns:
+        The largest stated years, or None when the job states none.
+    """
+    return structured_required_years(job)
+
+
+def asks_too_many_years(job: JobListing) -> bool:
+    """
+    Return True when a job asks for ``FRESH_GRAD_MAX_YEARS`` years or more.
+
+    Only the structured years count (job-card-labels task, choice C1a: a
+    wrong text reading must not hide a job). A posting that welcomes fresh
+    graduates does not count, whatever years it asks for.
+
+    Args:
+        job: The job listing.
+
+    Returns:
+        Whether the job's required years reach the fresh graduate limit.
+    """
+    years = required_years(job)
+    if years is None or years < FRESH_GRAD_MAX_YEARS:
+        return False
+    return not job_is_fresh_grad_friendly(job)
 
 
 def term_in_text(term: str, text: str) -> bool:
@@ -347,8 +390,11 @@ class JobMatcher:
             intern_mismatch = True
             total_score = min(total_score, max(self.threshold - 15, 0))
 
-        # Fresh graduate mode: a senior role cannot pass, whatever its other points.
-        senior_mismatch = self.fresh_grad_mode and is_senior_role(job)
+        # Fresh graduate mode: a senior role, or a job that asks for too many
+        # years, cannot pass, whatever its other points.
+        senior_mismatch = self.fresh_grad_mode and (
+            is_senior_role(job) or asks_too_many_years(job)
+        )
         if senior_mismatch:
             total_score = min(total_score, max(self.threshold - 15, 0))
 

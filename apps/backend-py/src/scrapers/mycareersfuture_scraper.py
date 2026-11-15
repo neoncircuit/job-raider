@@ -338,6 +338,20 @@ class MyCareersFutureScraper(BaseScraper):
         years = raw.get("minimumYearsExperience")
         if experience_level is None and isinstance(years, (int, float)):
             experience_level = self._years_to_level(float(years))
+        # Keep the minimum years also when a position level is given: MCF maps
+        # "Professional" to Mid Level for jobs that ask for 4 or more years.
+        if (
+            isinstance(years, (int, float))
+            and not isinstance(years, bool)
+            and years > 0
+        ):
+            requirements.append(
+                JobRequirement(
+                    category="Experience",
+                    text=f"At least {float(years):g} years of experience",
+                    years_of_experience=float(years),
+                )
+            )
         if job_type is None:
             job_type = JobType.FULL_TIME
         if experience_level is None:

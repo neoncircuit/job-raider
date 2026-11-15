@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ..models.job_listing import JobListing, JobSource
 from ..rag.ranker import RAGMatchScore
+from ..scoring.experience_signals import job_is_fresh_grad_friendly, job_required_years
 from ..scoring.matcher import MatchScore
 from ..scrapers.listing_lifecycle import attach_lifecycle_fields, lifecycle_fields
 from ..utils.location_normalizer import normalize_all_locations
@@ -137,6 +138,9 @@ def serialize_listing(listing: JobListing) -> Dict[str, Any]:
             if hasattr(listing, "scraped_at") and listing.scraped_at
             else None
         ),
+        # Job card labels, read from the full text (not the 5000-character cut).
+        "required_years": job_required_years(listing),
+        "fresh_grad_friendly": job_is_fresh_grad_friendly(listing),
     }
     job_data.update(lifecycle_fields(listing))
     return job_data

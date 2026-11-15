@@ -35,4 +35,36 @@ describe("JobListItem", () => {
 
     expect(screen.getByText("80/100")).toBeInTheDocument();
   });
+
+  it("shows the required years and the fresh grad label", () => {
+    render(
+      <JobListItem
+        job={{ ...job, required_years: 4, fresh_grad_friendly: true }}
+        isSelected={false}
+        isSaved={false}
+        isAppliedExternally={false}
+        onClick={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("4+ yrs")).toBeInTheDocument();
+    expect(screen.getByText("Fresh grad friendly")).toBeInTheDocument();
+  });
+
+  it("hides both labels when the job states neither", () => {
+    render(
+      <JobListItem
+        job={{ ...job, required_years: null, fresh_grad_friendly: false }}
+        isSelected={false}
+        isSaved={false}
+        isAppliedExternally={false}
+        onClick={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/\+ yrs$/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Fresh grad friendly")).not.toBeInTheDocument();
+  });
 });
