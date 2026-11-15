@@ -249,3 +249,5 @@ flowchart LR
 - Ranking suite (heuristic, `fresh_ml`): NDCG@10 0.7667 to 0.8621, recall@10 0.500 to 0.625; pins raised (MLflow run `eb4fb12da48e4d47a75e1c1206cfaf33`).
 - Pushed commits: A (score distribution), B (filter removal counts), C (seniority cap, whole-word internship check, MCF levels, Min Score 50 in the form, level counts), C1b (senior titles with Mid Level). CI runs 43729328301 and 43732231197 passed, with both Playwright suites.
 - Open finding, not in this task: projects give about 6 of 35 points in fresh graduate mode (project points come only from overlap with the job's skill list), so the scores of the passed jobs are close together (50 to 63). A follow-up can match projects against the job description too. `scoring_config.yaml` is still not loaded by any code.
+
+User decision (2026-11-16): some Mid Level jobs stay in the fresh graduate shortlist, and that is wanted: "any application is better than nothing, even if it's a mid level position". Later scoring changes must not remove Mid Level jobs from fresh graduate results; only senior, lead, principal, and executive roles (and senior title words) are capped.

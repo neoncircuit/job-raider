@@ -4,7 +4,7 @@
 - [ ] Laptop as the workstation until the desktop upgrades; start each laptop session from `tasks/active/laptop-workstation/task.md`.
 
 ## Next Up
-- [ ] Project scoring in fresh graduate mode: projects give about 6 of 35 points (only overlap with the job's skill list counts), so passed scores are close together (50 to 63). Match projects against the job description too, and measure with the ranking suite and a live run (`tasks/archive/scoring-calibration/notes.md`). Also: `config/scoring_config.yaml` is not loaded by any code.
+- [ ] Project scoring in fresh graduate mode: projects give about 6 of 35 points (only overlap with the job's skill list counts), so passed scores are close together (50 to 63). Match projects against the job description too, and measure with the ranking suite and a live run (`tasks/archive/scoring-calibration/notes.md`). Also: `config/scoring_config.yaml` is not loaded by any code. Keep Mid Level jobs in fresh graduate results (user, 2026-11-16).
 - [ ] CV writer for smaller GPUs: `qwen2.5:3b` passed the CV checks with half the GPU memory and time (`tasks/archive/lighter-writer/`). The user decides on a default change; measure the model changes per CV first.
 - [ ] Small clean-up: remove the old "Phase 36 to 44" feature list at the end of `setup.sh`.
 
