@@ -29,7 +29,7 @@ flowchart TD
 2. Page (`jobs/page.tsx`): the job browser area gets a minimum height, so that on a very short window the page scrolls instead of squeezing the list and the details.
 3. Tests, red first:
    - Unit (vitest, `tests/components/jobs/`): the Apply button is in the fixed action row; the analysis buttons and the description are inside the scroll area.
-   - E2E (Playwright, new spec at 1366 x 768): select a job, scroll the detail card, the description is visible, and the Apply button stays visible. Playwright cannot start on the laptop (missing system libraries, `tasks/active/scoring-calibration/notes.md`), so CI runs it.
+   - E2E (Playwright, new spec at 1366 x 768): select a job, scroll the detail card, the description is visible, and the Apply button stays visible. Playwright cannot start on the laptop (missing system libraries, `tasks/archive/scoring-calibration/notes.md`), so CI runs it.
 4. Measure before and after in the built-in browser at 1280 x 720, 1366 x 768, and 1920 x 1080: the visible height of the scroll area, and that the description is reachable. Screenshots for the user.
 
 ## Constraints & Context
