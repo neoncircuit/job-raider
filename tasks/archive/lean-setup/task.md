@@ -42,8 +42,8 @@ flowchart LR
 - [x] `make app` added (per decision 1) with a check that it starts both services and serves the app; `make dev` unchanged.
 - [x] After run with the lean setup recorded; the comparison in `notes.md`.
 - [x] `docs/low-memory-guide.md` written and linked from `docs/index.md`.
-- [ ] CI checks pass; applied after "Yes, apply it"; pushed after approval; the CI run passes.
-- [ ] `tasks/todo.md` updated (the RAM item in Next Up closed or narrowed); folder archived.
+- [x] CI checks pass; applied after "Yes, apply it"; pushed after approval; the CI run passes.
+- [x] `tasks/todo.md` updated (the RAM item in Next Up closed or narrowed); folder archived.
 
 ## Status
-`in-progress`
+`done` (2026-11-15)

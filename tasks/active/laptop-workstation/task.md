@@ -9,7 +9,7 @@ Continue the project on the laptop while the desktop waits for its SSD and RAM u
 - Ollama runs on the laptop; the models must be `qwen2.5:7b` and `qwen2.5:3b`.
 - No MLflow container: the eval suites log to `apps/backend-py/data/mlflow.db`.
 - Private files (`apps/backend-py/.env`, `apps/frontend-ts/.env.local`, `apps/backend-py/data/`) are copied by the user only when needed. Agents never read them.
-- The desktop is not used for the project until its upgrades. Its RAM figures in `tasks/active/lean-setup/notes.md` are for the desktop only; measure again on the laptop.
+- The desktop is not used for the project until its upgrades. Its RAM figures in `tasks/archive/lean-setup/notes.md` are for the desktop only; the laptop figures are in the same file.
 
 ```mermaid
 flowchart TD
@@ -23,7 +23,7 @@ flowchart TD
 ## Work order
 1. Ollama steps (user): turn on systemd, retire the container, start the WSL service, pull the models. Done 2026-11-14 (`notes.md`).
 2. `tasks/archive/ollama-load-timeout/`: the load-timeout fix. Done 2026-11-15 (CI passed; laptop run: 0 cancelled loads, 0 timeouts).
-3. `tasks/active/lean-setup/`: the lean-setup measurements, measured again on the laptop. The desktop numbers are a reference only. Apply `make-app.patch` on a scratch clone first.
+3. `tasks/archive/lean-setup/`: the lean-setup measurements on the laptop. Done 2026-11-15 (`make app`, `docs/low-memory-guide.md`).
 4. Lighter writer (`tasks/todo.md`, Next Up): compare `qwen2.5:7b`, `qwen2.5:3b`, and `llama3.2:3b` with the writer and CV suites, on accuracy, stock phrases, speed, and peak memory.
 
 Memory note for steps 3 and 4 (user, 2026-11-14): WSL on the laptop gets 7.8 GB, so a `qwen2.5:7b` load has less room than on the desktop. Record Windows memory during these runs (the recorder does this), and note which Windows apps are open; the browser (Opera) uses about 3 GB.

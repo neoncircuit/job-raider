@@ -136,3 +136,10 @@ Samples every 60 s after the run ended (10:12:50), no app running, no model load
 
 - The release started about 3 minutes after the run and continued at about 0.3 GB per minute (2.4 GB in 10 minutes). Without the setting, WSL keeps its page cache until it stops.
 - A memory cap (decision 2) is not needed for now: gradual reclaim returns the memory when the work stops, and a cap could slow the model loads during the work (not measured).
+
+## Review (2026-11-15)
+
+- `make app` applied after "Yes, apply it" (the diff on `main` was the same as the checked patch, with the test helper fix). The guide and the measurements were committed after the user's approval. Pushed; CI run 43669248430 passed (12 jobs passed, Build Docker Image skipped).
+- Result on the laptop: 18 % less time for 3 letters, about 4.5 GB less committed memory at the peak, half the paging peak. Gradual reclaim returned 2.4 GB in 10 idle minutes. A memory cap is not needed for now.
+- `make-app.patch` in this folder is the version from the desktop; the applied change also has the `find_python.sh` copy in the `app-frontend` test helper.
+- Follow-ups: the `setup.sh` defect (it reads a carriage return as an API key) is a separate fix. The model changes with one model at a time on (about three per letter) are measured again in the lighter-writer task.

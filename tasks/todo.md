@@ -2,15 +2,14 @@
 
 ## Active Focus
 - [ ] Laptop as the workstation until the desktop upgrades; start each laptop session from `tasks/active/laptop-workstation/task.md`.
-- [ ] Lean setup for 16 GB RAM machines: `make app`, measured before and after (`tasks/active/lean-setup/`); the after run is measured on the laptop.
 
 ## Next Up
 - [ ] Scoring calibration: in the pipeline test (2026-11-14) 58 of 59 profile-matched jobs scored below 60 (best 61), so Max Jobs 2 gave 1 document. Find out if the scoring (fresh graduate mode) or broad keywords cause it, and measure before changing (`tasks/archive/scrape-keyword-search/`).
 - [ ] Lighter writer: `qwen2.5:7b` took total GPU use to 7.2 to 7.3 of 8 GB on this machine. Measure `qwen2.5:3b` and `llama3.2:3b` (Meta Llama-3.2-3B-Instruct) for letters and CVs with the writer and resume suites (quality guard first) to make the app usable on smaller GPUs.
-- [ ] RAM during `make dev`: 0.6 to 1.1 GB free with heavy paging; the Next.js dev server is part of it. Measure a production build (`next start`) for everyday use.
 - [ ] Small clean-up: remove the old "Phase 36 to 44" feature list at the end of `setup.sh`.
 
 ## Done
+- [x] Lean setup for 16 GB RAM: `make app` (production frontend, backend without reload), `docs/low-memory-guide.md`; laptop run 168 s against 204 s for 3 letters, committed memory peak 4.5 GB lower, paging peak halved (`tasks/archive/lean-setup/`; done 2026-11-15). Closes the Next Up item "RAM during make dev".
 - [x] Ollama load timeout: the client loads the model first with a 600 s timeout, so the 120 s chat timeout no longer cancels a slow load and the retry no longer starts it again; laptop run: 0 cancelled loads, 0 timeouts, 3 letters in 218 s (`tasks/archive/ollama-load-timeout/`; done 2026-11-15)
 - [x] Relative paths in documentation: no full host paths in tracked files; `test_no_host_paths.py` fails CI on a new one (`tasks/archive/relative-paths-in-docs/`; done 2026-11-14)
 - [x] Setup on a fresh machine: `setup.sh` and `make dev` find a suitable Python or install `.python-version` into `.tools/` with a pinned uv (no sudo); checked on the laptop (`tasks/archive/python-version-setup/`; done 2026-11-14)

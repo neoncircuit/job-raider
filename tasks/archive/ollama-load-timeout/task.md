@@ -3,7 +3,7 @@
 ## Goal
 Stop the retry loop that restarts a slow model load. When the model is not loaded, the client loads it first with a long timeout. The chat timeout (120 s) then applies to the answer only.
 
-## Problem (measured 2026-11-14, `tasks/active/lean-setup/notes.md`)
+## Problem (measured 2026-11-14, `tasks/archive/lean-setup/notes.md`)
 - With low free RAM, a cold model load took more than 120 s.
 - The chat request timed out at 120 s. The timeout cancelled the load in Ollama ("Load failed ... timed out waiting for llama-server to start: context canceled").
 - The retry started the load again from zero. Ollama logged 9 cancelled loads in 20 minutes. The first letter took 1,285 s, and its selection step failed ("Request timed out after 120s").
