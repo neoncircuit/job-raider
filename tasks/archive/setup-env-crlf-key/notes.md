@@ -19,3 +19,8 @@ flowchart LR
 ## Applied on `main` (2026-11-15)
 
 - Applied after "Yes, apply it"; the diff on `main` is the same as the checked patch. `setup.sh` mode set back to 744 on disk (git keeps 100755). On `main`: `bash -n`, 4 new tests, black, ruff, mypy gate (0 new), full backend pytest.
+
+## Review (2026-11-15)
+
+- Pushed after approval. CI run 43671747182 passed.
+- The patch from the clone had a mode line for `setup.sh` (100755 to 100644), because the copy in the clone had lost its execute bit. `main` has `core.filemode=false`, so the commit kept mode 100755; the file contents were the same as in the clone.

@@ -9,6 +9,7 @@
 - [ ] Small clean-up: remove the old "Phase 36 to 44" feature list at the end of `setup.sh`.
 
 ## Done
+- [x] `setup.sh` ignores a carriage return when it reads `API_KEY`: env files with Windows line endings and an empty key now get a generated shared key (`tasks/archive/setup-env-crlf-key/`; done 2026-11-15)
 - [x] Lean setup for 16 GB RAM: `make app` (production frontend, backend without reload), `docs/low-memory-guide.md`; laptop run 168 s against 204 s for 3 letters, committed memory peak 4.5 GB lower, paging peak halved (`tasks/archive/lean-setup/`; done 2026-11-15). Closes the Next Up item "RAM during make dev".
 - [x] Ollama load timeout: the client loads the model first with a 600 s timeout, so the 120 s chat timeout no longer cancels a slow load and the retry no longer starts it again; laptop run: 0 cancelled loads, 0 timeouts, 3 letters in 218 s (`tasks/archive/ollama-load-timeout/`; done 2026-11-15)
 - [x] Relative paths in documentation: no full host paths in tracked files; `test_no_host_paths.py` fails CI on a new one (`tasks/archive/relative-paths-in-docs/`; done 2026-11-14)

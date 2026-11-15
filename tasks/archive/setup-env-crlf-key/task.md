@@ -37,8 +37,8 @@ flowchart TD
 - [x] Tests written red first (the CRLF cases fail on the current `setup.sh`), then green.
 - [x] `check_env` removes carriage returns when it reads both keys.
 - [x] CI checks pass on the clone: black, ruff, mypy gate (0 new), full backend pytest, `bash -n setup.sh`.
-- [ ] Applied after "Yes, apply it" (done 2026-11-15); pushed after approval; the CI run passes.
-- [ ] `tasks/todo.md` updated; folder archived.
+- [x] Applied after "Yes, apply it" (done 2026-11-15); pushed after approval; the CI run passes.
+- [x] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`in-progress`
+`done` (2026-11-15)
