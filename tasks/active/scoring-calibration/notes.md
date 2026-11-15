@@ -206,3 +206,21 @@ Changes A, B, and C pushed after approval. CI run 43729328301 passed, with both 
 - `matcher.py`, `is_senior_role`: a senior title word (senior, sr, principal, staff, lead, head, director) now also decides when the job states Mid Level, not only when it states no level. MyCareersFuture gives "Senior Software Engineer" jobs the level "Executive" or "Professional", which maps to Mid Level. A stated Entry Level still wins over a title word.
 - Tests (`test_fresh_grad_seniority.py`, +6): red 4 failed (Mid Level jobs titled "Senior Software Engineer - KT", "Senior Full Stack Software Engineer", "Principal Engineer", "Lead Data Engineer"), 2 guards passed (a plain Mid Level title; "Lead Generation Analyst" at Entry Level); green 28 passed.
 - Checks on the clone: ranking pins (10) pass and the ranking metrics do not change (no fixture job has a senior title with Mid Level); fixture distribution unchanged; black, ruff, mypy gate (0 new), full backend pytest 2453 passed.
+
+## C1b applied and pushed (2026-11-15)
+
+Applied after "Yes, apply it" (commit "fix(scoring): cap senior titles that state Mid Level in fresh graduate mode"); on `main`: 38 seniority and ranking tests, black, ruff, mypy gate (0 new), full backend pytest (2453 passed). Pushed after approval; CI run 43732231197 passed (both Playwright suites). Open: a live rerun and the user's judgement of the shortlist.
+
+## Rerun after C1b (2026-11-16, user, `run_d7bc220cfd58`)
+
+Settings as before (fresh graduate on, Min Score 50 from the form, Max Jobs 10). App restarted.
+
+| | After change C (`run_0f3302c64278`) | After C1b |
+|---|---|---|
+| Kept by the profile filter | 57 | 57 |
+| At 50 or more / at 60 or more | 26 / 7 | 21 / 6 |
+| Band 30-39 | 20 | 29 |
+| Letters saved / need review | 7 / 3 | 9 / 1 |
+
+- Five Mid Level jobs with a senior title word are now capped (26 to 21 passed).
+- Shortlist titles (read in the built-in browser, 19 shown, 2 expired hidden): no title with senior, sr, principal, staff, lead, head, director, or manager. The two "Senior ... Engineer" jobs are gone. Titles that may still not fit: "AI Marketer" (marketing) and "AI Solution Architect" (architect roles are often senior). The user judges the fit.
