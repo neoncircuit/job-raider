@@ -4,11 +4,12 @@
 - [ ] Laptop as the workstation until the desktop upgrades; start each laptop session from `tasks/active/laptop-workstation/task.md`.
 
 ## Next Up
-- [ ] Scoring calibration (`tasks/active/scoring-calibration/`): changes A to C done and pushed (score and filter counts per run, senior roles capped in fresh graduate mode, internship check on whole words, Min Score 50 in fresh graduate mode). Open: senior title words with a stated Mid Level (C1b), and the user's judgement of the shortlist.
+- [ ] Project scoring in fresh graduate mode: projects give about 6 of 35 points (only overlap with the job's skill list counts), so passed scores are close together (50 to 63). Match projects against the job description too, and measure with the ranking suite and a live run (`tasks/archive/scoring-calibration/notes.md`). Also: `config/scoring_config.yaml` is not loaded by any code.
 - [ ] CV writer for smaller GPUs: `qwen2.5:3b` passed the CV checks with half the GPU memory and time (`tasks/archive/lighter-writer/`). The user decides on a default change; measure the model changes per CV first.
 - [ ] Small clean-up: remove the old "Phase 36 to 44" feature list at the end of `setup.sh`.
 
 ## Done
+- [x] Scoring calibration (fresh graduate mode): per-run score and filter counts, senior roles capped, whole-word internship check, MyCareersFuture levels, Min Score 50 in fresh graduate mode; same 68 jobs: 1 passed to 21 passed, no senior titles, most fit (user) (`tasks/archive/scoring-calibration/`; done 2026-11-16)
 - [x] Job details readable on laptop screens: one scroll area and a fixed Apply row; description area 40 to 414 px at 1366 x 768 (`tasks/archive/responsive-job-detail/`; done 2026-11-15)
 - [x] Lighter writer on the laptop: letters stay on `qwen2.5:7b` (neither `qwen2.5:3b` nor `llama3.2:3b` passed); for CVs `qwen2.5:3b` passed and `llama3.2:3b` failed; low-memory guide section (`tasks/archive/lighter-writer/`; done 2026-11-15)
 - [x] `setup.sh` ignores a carriage return when it reads `API_KEY`: env files with Windows line endings and an empty key now get a generated shared key (`tasks/archive/setup-env-crlf-key/`; done 2026-11-15)

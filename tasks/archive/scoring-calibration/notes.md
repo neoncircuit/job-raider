@@ -224,3 +224,28 @@ Settings as before (fresh graduate on, Min Score 50 from the form, Max Jobs 10).
 
 - Five Mid Level jobs with a senior title word are now capped (26 to 21 passed).
 - Shortlist titles (read in the built-in browser, 19 shown, 2 expired hidden): no title with senior, sr, principal, staff, lead, head, director, or manager. The two "Senior ... Engineer" jobs are gone. Titles that may still not fit: "AI Marketer" (marketing) and "AI Solution Architect" (architect roles are often senior). The user judges the fit.
+
+## Review (2026-11-16)
+
+The user read the shortlist of `run_d7bc220cfd58`: most jobs fit now.
+
+```mermaid
+flowchart LR
+    A[Start: 34 kept, 1 passed at 60] --> B[A, B: counts per run]
+    B --> C[C: senior cap, whole-word internship check, Min Score 50, MCF levels]
+    C --> D[C1b: senior titles with Mid Level]
+    D --> E[57 kept, 21 passed, no senior titles; most fit]
+```
+
+| Same 68 scraped jobs | Start (`run_fc52416bf9ce`, Min Score 60) | End (`run_d7bc220cfd58`) |
+|---|---|---|
+| Removed as internships | 26 (23 of them not internships) | 3 |
+| Kept by the profile filter | 34 | 57 |
+| Passed scoring | 1 | 21 |
+| Senior titles in the shortlist | several | none |
+| Letters saved / need review | 1 / 0 (1 job) | 9 / 1 |
+
+- Causes found by measurement, not by guessing: the internship substring bug (the largest), seniority that cost only 9 points in fresh graduate mode, the MyCareersFuture level mapping, and the 60 cut-off against the matcher's 50.
+- Ranking suite (heuristic, `fresh_ml`): NDCG@10 0.7667 to 0.8621, recall@10 0.500 to 0.625; pins raised (MLflow run `eb4fb12da48e4d47a75e1c1206cfaf33`).
+- Pushed commits: A (score distribution), B (filter removal counts), C (seniority cap, whole-word internship check, MCF levels, Min Score 50 in the form, level counts), C1b (senior titles with Mid Level). CI runs 43729328301 and 43732231197 passed, with both Playwright suites.
+- Open finding, not in this task: projects give about 6 of 35 points in fresh graduate mode (project points come only from overlap with the job's skill list), so the scores of the passed jobs are close together (50 to 63). A follow-up can match projects against the job description too. `scoring_config.yaml` is still not loaded by any code.

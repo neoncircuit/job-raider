@@ -59,8 +59,8 @@ Decision guards for any scoring change (fixed before step 5):
 - [x] Code change A (score distribution in the stage metadata): tests red first, then green; CI checks pass; applied after "Yes, apply it".
 - [x] Live run by the user; distribution recorded in `notes.md`.
 - [x] Findings and options given to the user; the user's choice recorded.
-- [ ] The chosen change built and measured again against the guards; applied after "Yes, apply it"; pushed after approval; the CI run passes.
-- [ ] `tasks/todo.md` updated; folder archived.
+- [x] The chosen change built and measured again against the guards; applied after "Yes, apply it"; pushed after approval; the CI run passes.
+- [x] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`in-progress`
+`done` (2026-11-16)
