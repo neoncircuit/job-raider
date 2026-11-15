@@ -116,6 +116,27 @@ Workload: 3 cover letters with Deep validation and Review & rewrite on. Before: 
 - Free RAM stays low during a run. Windows uses free memory as cache, and WSL keeps its file cache while it works.
 - WSL gives memory back after the run, when it is idle. With `autoMemoryReclaim=gradual`, the release started about 3 minutes after the run and continued at about 0.3 GB per minute. After 10 minutes, `vmmemWSL` was 4.2 GB (from 6.6 GB) and Windows free RAM was 2.5 GB (from 1.1 GB).
 
+## Smaller GPUs: Writer Models
+
+The writer models use the most GPU memory. A comparison on the laptop (2026-11-15, `tasks/archive/lighter-writer/notes.md`) measured `qwen2.5:7b`, `qwen2.5:3b`, and `llama3.2:3b` with the writer suite (195 letters each) and the resume suite (65 CVs each), against a rule that was fixed before the runs.
+
+```mermaid
+flowchart LR
+    G{GPU memory} -- 8 GB or more --> A[Letters and CVs: qwen2.5:7b]
+    G -- less than 8 GB --> B[Letters: qwen2.5:7b if it fits; CVs: qwen2.5:3b passed the CV checks]
+```
+
+| | `qwen2.5:7b` | `qwen2.5:3b` | `llama3.2:3b` |
+|---|---|---|---|
+| GPU memory | 4.7 GB | 2.2 GB | 2.6 GB |
+| Letters: result | baseline | not good enough: unfilled placeholders (21 of 195), more stock phrases | not good enough: placeholders, one invented technology, short letters |
+| CVs: result | baseline | good enough: no invented skills, no unsupported numbers, no stock phrases after the polish step | not good enough: stock phrases stay after the polish step |
+| Time per CV (p50) | 7.2 s | 4.1 s | 4.4 s |
+
+- Keep `qwen2.5:7b` for cover letters. No smaller model wrote letters of the same quality.
+- `qwen2.5:3b` wrote CVs as accurate as `qwen2.5:7b`, with half the GPU memory and about half the time. Its CV text is shorter (median 68 words of prose, against 82). The default CV writer is still `qwen2.5:7b`; a change is a separate decision.
+- Do not use `llama3.2:3b` as a writer. In the samples, it wrote a letter in the third person, invented a project, and put job-ad duties into a CV as experience.
+
 ## Problems and Solutions
 
 | Problem | Cause | Solution |
