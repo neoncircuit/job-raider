@@ -75,3 +75,34 @@ test.describe("Jobs page", () => {
     await expect(page.getByText("Quality Breakdown")).toBeVisible();
   });
 });
+
+test.describe("Jobs page on a laptop window", () => {
+  // A 1366 x 768 window (responsive-job-detail task): the detail card's
+  // fixed header and footer used to leave the description about 40 px.
+  test.use({ viewport: { width: 1366, height: 768 } });
+
+  test("shows the description and keeps the apply row in view", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "chromium",
+      "Desktop window size: the mobile project uses the bottom sheet",
+    );
+    await page.goto("/jobs");
+    await searchJobs(page, "Software Engineer");
+    await page
+      .getByRole("button", { name: /View Senior Software Engineer/ })
+      .first()
+      .click();
+
+    const scroll = page.getByTestId("job-detail-scroll");
+    await expect(scroll).toBeVisible();
+    const visibleHeight = await scroll.evaluate((el) => el.clientHeight);
+    expect(visibleHeight).toBeGreaterThan(250);
+
+    const description = scroll.getByText("Job Description");
+    await description.scrollIntoViewIfNeeded();
+    await expect(description).toBeInViewport();
+    await expect(page.getByTestId("job-detail-actions")).toBeInViewport();
+  });
+});

@@ -173,7 +173,7 @@ export default function JobsPage() {
   };
 
   const renderJobBrowser = () => (
-    <div className="flex flex-1 flex-col gap-4 min-h-0 overflow-hidden lg:flex-row">
+    <div className="flex flex-1 flex-col gap-4 min-h-0 overflow-hidden lg:min-h-[28rem] lg:flex-row">
       <div className="flex w-full shrink-0 flex-col gap-2 overflow-y-auto lg:w-96">
         <p className="text-xs text-muted-foreground">
           {visibleJobs.length} results · page {jobsPage + 1}/{totalPages || 1}
