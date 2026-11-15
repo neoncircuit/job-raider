@@ -109,3 +109,8 @@ Reported only: stock phrases before polish 0.492 / 0.015 / 0.831; CVs gaining an
 - With one model at a time on, `qwen2.5:3b` is already loaded for the selection and checks, so `qwen2.5:3b` as the CV writer would also remove model changes during CV generation (not measured in this task).
 - `llama3.2:3b` is not suitable for either document type.
 - The default writer does not change in this task (plan). The user decides on a CV change as a separate step.
+
+## Review (2026-11-15)
+
+- Code change, results, and the guide section pushed after approval. CI run 43681265853 passed (all jobs; Build Docker Image skipped).
+- Open decision for the user (Next Up in `tasks/todo.md`): `qwen2.5:3b` as the default CV writer. Before a change, measure the effect on the model changes per CV with one model at a time on.

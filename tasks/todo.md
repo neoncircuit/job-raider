@@ -5,10 +5,11 @@
 
 ## Next Up
 - [ ] Scoring calibration: in the pipeline test (2026-11-14) 58 of 59 profile-matched jobs scored below 60 (best 61), so Max Jobs 2 gave 1 document. Find out if the scoring (fresh graduate mode) or broad keywords cause it, and measure before changing (`tasks/archive/scrape-keyword-search/`).
-- [ ] Lighter writer: `qwen2.5:7b` took total GPU use to 7.2 to 7.3 of 8 GB on this machine. Measure `qwen2.5:3b` and `llama3.2:3b` (Meta Llama-3.2-3B-Instruct) for letters and CVs with the writer and resume suites (quality guard first) to make the app usable on smaller GPUs.
+- [ ] CV writer for smaller GPUs: `qwen2.5:3b` passed the CV checks with half the GPU memory and time (`tasks/archive/lighter-writer/`). The user decides on a default change; measure the model changes per CV first.
 - [ ] Small clean-up: remove the old "Phase 36 to 44" feature list at the end of `setup.sh`.
 
 ## Done
+- [x] Lighter writer on the laptop: letters stay on `qwen2.5:7b` (neither `qwen2.5:3b` nor `llama3.2:3b` passed); for CVs `qwen2.5:3b` passed and `llama3.2:3b` failed; low-memory guide section (`tasks/archive/lighter-writer/`; done 2026-11-15)
 - [x] `setup.sh` ignores a carriage return when it reads `API_KEY`: env files with Windows line endings and an empty key now get a generated shared key (`tasks/archive/setup-env-crlf-key/`; done 2026-11-15)
 - [x] Lean setup for 16 GB RAM: `make app` (production frontend, backend without reload), `docs/low-memory-guide.md`; laptop run 168 s against 204 s for 3 letters, committed memory peak 4.5 GB lower, paging peak halved (`tasks/archive/lean-setup/`; done 2026-11-15). Closes the Next Up item "RAM during make dev".
 - [x] Ollama load timeout: the client loads the model first with a 600 s timeout, so the 120 s chat timeout no longer cancels a slow load and the retry no longer starts it again; laptop run: 0 cancelled loads, 0 timeouts, 3 letters in 218 s (`tasks/archive/ollama-load-timeout/`; done 2026-11-15)

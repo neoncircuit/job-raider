@@ -24,7 +24,7 @@ flowchart TD
 1. Ollama steps (user): turn on systemd, retire the container, start the WSL service, pull the models. Done 2026-11-14 (`notes.md`).
 2. `tasks/archive/ollama-load-timeout/`: the load-timeout fix. Done 2026-11-15 (CI passed; laptop run: 0 cancelled loads, 0 timeouts).
 3. `tasks/archive/lean-setup/`: the lean-setup measurements on the laptop. Done 2026-11-15 (`make app`, `docs/low-memory-guide.md`).
-4. Lighter writer (`tasks/todo.md`, Next Up): compare `qwen2.5:7b`, `qwen2.5:3b`, and `llama3.2:3b` with the writer and CV suites, on accuracy, stock phrases, speed, and peak memory.
+4. `tasks/archive/lighter-writer/`: `qwen2.5:7b`, `qwen2.5:3b`, and `llama3.2:3b` compared with the writer and CV suites. Done 2026-11-15 (letters stay on 7b; `qwen2.5:3b` passed for CVs).
 
 Memory note for steps 3 and 4 (user, 2026-11-14): WSL on the laptop gets 7.8 GB, so a `qwen2.5:7b` load has less room than on the desktop. Record Windows memory during these runs (the recorder does this), and note which Windows apps are open; the browser (Opera) uses about 3 GB.
 
@@ -32,7 +32,7 @@ Memory note for steps 3 and 4 (user, 2026-11-14): WSL on the laptop gets 7.8 GB,
 - [x] `setup.sh` runs to the end on the laptop; `make dev` starts both services (2026-11-14).
 - [x] Laptop hardware recorded in `notes.md`: GPU name and VRAM, RAM, idle GPU and RAM use with `make dev` running (2026-11-14).
 - [x] Ollama checked: WSL systemd service (one instance only), `qwen2.5:7b` and `qwen2.5:3b` present. First check 2026-11-14 failed (Docker container, no systemd); passed after the switch to the native service on the same day (`notes.md`).
-- [ ] The three tasks in the work order are done or moved on with the user.
+- [x] The tasks in the work order are done or moved on with the user (2026-11-15).
 - [ ] When the desktop is upgraded and back in use: this task closed and archived.
 
 ## Status

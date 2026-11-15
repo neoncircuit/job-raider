@@ -63,8 +63,8 @@ flowchart TD
 - [x] Baseline runs (7b, writer and resume) with the recorder; guard metrics below their ceiling (except the ungrounded share, as planned).
 - [x] Runs for `qwen2.5:3b` and `llama3.2:3b` with the recorder.
 - [x] Rule applied per model and per document type; real output read; results in `notes.md`.
-- [ ] `docs/low-memory-guide.md` updated; pushed after approval; the CI run passes.
-- [ ] `tasks/todo.md` updated; folder archived.
+- [x] `docs/low-memory-guide.md` updated; pushed after approval; the CI run passes.
+- [x] `tasks/todo.md` updated; folder archived.
 
 ## Status
-`in-progress`
+`done` (2026-11-15)
