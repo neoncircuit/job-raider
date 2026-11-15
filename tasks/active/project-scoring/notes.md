@@ -94,6 +94,53 @@ flowchart LR
 - Checks on `main`: black, ruff, mypy gate (0 new), full backend pytest 2463 passed, vitest 392 passed, eslint, tsc, prettier. The demo build ran on the clone only, so it does not replace the production build that `make app` uses; the files are the same.
 - Commit "feat(scoring): score projects by their relevance to the job in fresh graduate mode". Not pushed.
 
+## Live run (2026-11-16, user, `run_4d7909177390`)
+
+Settings: dry run, MyCareersFuture, Singapore, fresh graduate on, Min Score 50, Max Jobs 10. App restarted after the apply. Read through `http://localhost:3000/api/proxy/pipeline/results/{run_id}`: `score_and_rank.metadata.distribution` and `filter_by_profile.metadata.removed_by` only.
+
+```mermaid
+flowchart LR
+    S[Scrape] --> P[Profile filter: internship 3, no keyword 8 removed]
+    P --> R[57 scored: 24 at 50 or more, 16 at 60 or more] --> G[10 presented]
+```
+
+| | Before (`run_d7bc220cfd58`) | After (`run_4d7909177390`) |
+|---|---|---|
+| Scored (kept by the profile filter) | 57 | 57 |
+| Removed: internship / no keyword match | 3 / 8 | 3 / 8 |
+| Levels of the scored jobs | Entry 5, Mid 34, Senior 9, Lead 8, Executive 1 (run of change C) | Entry 5, Mid 33, Senior 10, Lead 8, Executive 1 |
+| At 50 or more / at 60 or more | 21 / 6 | 24 / 16 |
+| Band 30-39 (capped senior jobs and weak fits) | 29 | 30 |
+| Bands 50-59 / 60-69 / 70-79 / 80-89 | most in 50-59, best 63 | 8 / 5 / 9 / 2 |
+| Project mean (of 35) | 5.9 | 16.1 |
+| Other means: skills / education / experience / location | 18.6 / 17.0 / 3.6 / 5.0 | 18.5 / 17.0 / 3.6 / 5.0 |
+
+- The filter counts, the scored count, and the levels are almost the same, so the scrape returned almost the same jobs as before: this is close to a paired comparison.
+- L3 holds: the project mean rose from 5.9 to 16.1, and the passed jobs now spread from 50 to 89 (was 50 to 63). The other components did not change.
+- Three more jobs pass (21 to 24). Mid Level jobs stay in the results (33 scored); the senior cap still holds (band 30-39 has 30 jobs).
+- L4: the user judges the shortlist.
+
+## Change D on the scratch clone: required years (2026-11-16)
+
+User judgement of `run_4d7909177390`: a full-stack developer job scored 84 but asks for at least 4 years. Cause: MyCareersFuture minimum years were dropped when the listing gives a position level. User decision: cap from 3 or more years.
+
+```mermaid
+flowchart LR
+    M[MCF minimumYearsExperience] --> R[Experience requirement with years]
+    R --> Y{Fresh graduate mode, 3 or more years?}
+    Y -- yes --> C[Capped at threshold - 15]
+    Y -- no --> S[Scored as before]
+```
+
+- D1 `mycareersfuture_scraper.py`: minimum years above 0 become a `JobRequirement` (category "Experience", `years_of_experience`), also when a level is given.
+- D2 `matcher.py`: `FRESH_GRAD_MAX_YEARS` (3), `required_years`, `asks_too_many_years`; fresh graduate mode caps such jobs like senior roles. A stated level does not override the years.
+- D3 `distribution.py`: `required_years_at_or_above_3`.
+- Tests `test_fresh_grad_required_years.py` (11): red 6 failed (MCF keeps years with a level; `required_years`; 3 and 4 years capped; Entry Level with 3 years capped; distribution count), 5 guards passed (0 or missing MCF years add nothing; Mid Level with no years or 2 years keeps its score; standard mode ignores years). 11 of 11 ran. Green: 11 passed.
+- D-G1: ranking metrics unchanged (`fresh_ml` 0.9455 / 0.875, `mid_backend` 0.8685 / 0.6364, BM25 unchanged); the fixture distribution is unchanged (the fixture jobs have no structured years). D-G2, D-G3: pass (tests). D-G4: black, ruff, mypy gate (0 new), full backend pytest 2474 passed.
+- Applied to `main` together with the job card labels (`tasks/active/job-card-labels/`, choice C2a) after "Yes, apply it" (2026-11-16); in `job-card-labels` the cap is lifted for fresh-grad-friendly postings. Checks on `main` in that task's notes.
+
+User idea during change D (2026-11-16): show the required years as a label on each job card, and a "fresh grad friendly" label when the posting says fresh graduates are welcome even with many years asked. Such a sign should also lift the change D cap.
+
 Follow-ups found (not in this task):
 - `scripts/build_demo_data.py` continues when the embedding step fails, with heuristic scores only and no error (run 1). It should stop, as a run that did no work must not look like success.
 - The letter writer sometimes places a personal project inside the internship (both seed runs).

@@ -89,6 +89,34 @@ flowchart LR
 8. Live check L1 to L4, numbers in `notes.md`.
 9. Push after approval; read CI; record it; update `tasks/todo.md`; archive this folder.
 
+## Change D: required years in fresh graduate mode (added 2026-11-16)
+
+User finding in the live run `run_4d7909177390` (check L4): a full-stack developer job scored 84 although it asks for at least 4 years. Cause (code reading): MyCareersFuture gives `minimumYearsExperience` and a position level; the scraper uses the years only when there is no level (`mycareersfuture_scraper.py`), so a Mid Level job keeps no years, and the matcher never reads required years. User decision (2026-11-16): cap from 3 or more required years.
+
+```mermaid
+flowchart TD
+    M[MCF minimumYearsExperience] --> R[JobRequirement category Experience, years_of_experience set]
+    R --> Y[required_years: the largest years_of_experience of the job]
+    Y --> C{Fresh graduate mode and required years 3 or more?}
+    C -- yes --> X[Capped at threshold - 15, does not pass]
+    C -- no --> S[Scored as before; Mid Level with fewer years still passes]
+```
+
+| Part | Change |
+|---|---|
+| D1 | MCF scraper: when `minimumYearsExperience` is a number above 0, add a `JobRequirement` (category "Experience", text "At least N years of experience", `years_of_experience` N), also when a position level is given. The level mapping does not change. |
+| D2 | `matcher.py`: `FRESH_GRAD_MAX_YEARS` = 3, `required_years(job)` (the largest `years_of_experience` in the job's requirements, or None). In fresh graduate mode a job with required years of 3 or more is capped at threshold - 15 and does not pass, as senior roles are. The stated level does not override the years. Standard mode does not change. |
+| D3 | `score_distribution`: `required_years_at_or_above_3` (count of scored jobs), numbers only, so the live run shows how many jobs the rule caps. |
+
+Not changed: the senior cap, Mid Level jobs that ask for fewer than 3 years or state no years, the cut-offs, the project scoring above. Years written only in the description text are not read (a possible follow-up for other sources).
+
+Decision rule for D (fixed before the code change):
+- D-G1. Ranking suite: heuristic pins not below (`fresh_ml` 0.9455 / 0.875 after the project change; `mid_backend` 0.8685 / 0.6364). The fixture jobs have no structured years, so no change is expected.
+- D-G2. Standard mode: a job with 5 required years scores the same as before.
+- D-G3. Tests: a Mid Level job with 2 required years, or none, is not capped; with 3 or 4 it is capped; the MCF scraper keeps the years when a level is given.
+- D-G4. Full backend checks pass (black, ruff, mypy gate 0 new, pytest).
+- Live: one rerun with the same settings; the 84-point full-stack job no longer passes; `required_years_at_or_above_3` and the passed count recorded; the user judges the shortlist (check L4) before the push.
+
 ## Constraints & Context
 - Never read `apps/backend-py/.env`, `apps/frontend-ts/.env.local`, `user_settings.json`, or the contents of any `data/` folder. The live profile is not visible; only the distribution numbers are read.
 - Playwright cannot start on this laptop (missing system libraries); CI runs the browser suites.
