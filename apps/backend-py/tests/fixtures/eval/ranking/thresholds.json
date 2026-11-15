@@ -8,8 +8,8 @@
     "bm25_fresh_ml_recall_at_10": 0.75,
     "bm25_mid_backend_ndcg_at_10": 0.9669,
     "bm25_mid_backend_recall_at_10": 0.8182,
-    "heuristic_fresh_ml_ndcg_at_10": 0.8621,
-    "heuristic_fresh_ml_recall_at_10": 0.625,
+    "heuristic_fresh_ml_ndcg_at_10": 0.9455,
+    "heuristic_fresh_ml_recall_at_10": 0.875,
     "heuristic_mid_backend_ndcg_at_10": 0.8685,
     "heuristic_mid_backend_recall_at_10": 0.6364
   },
@@ -23,6 +23,11 @@
       "date": "2026-11-15",
       "reason": "Raised the heuristic fresh_ml pins after the scoring-calibration change C (senior roles capped in fresh graduate mode, internship check on whole words). Pinned with no margin, from the run on the scratch clone, logged to the local MLflow store; the other pins do not change.",
       "mlflow_run": "eb4fb12da48e4d47a75e1c1206cfaf33"
+    },
+    {
+      "date": "2026-11-16",
+      "reason": "Raised the heuristic fresh_ml pins after the project-scoring change (project points from project terms found in the job title, description, requirements, responsibilities, and skill names; no base for the project count). Pinned with no margin, from the run on the scratch clone, logged to the local MLflow store; the other pins do not change.",
+      "mlflow_run": "e7ec91558e4c488fb3668a7d2e310e1b"
     }
   ]
 }

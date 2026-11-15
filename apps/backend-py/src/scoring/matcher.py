@@ -11,11 +11,11 @@ Date: 2026-04-20
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 from ..generation.career_stage import should_exclude_intern_listings
 from ..models.job_listing import ExperienceLevel, JobListing
-from ..models.user_profile import UserProfile
+from ..models.user_profile import Project, UserProfile
 from ..utils.logger import Components, get_logger
 from ..utils.source_geography import listing_matches_requested_locations
 from .filter import JobFilter
@@ -23,6 +23,15 @@ from .filter import JobFilter
 # Matches of profile skills in a description that count as a full match
 # when the job has no skill list (Step 3.4, R4).
 DESCRIPTION_SKILL_TARGET = 4
+
+# Project points in fresh graduate mode (project-scoring task). Having projects
+# gives a small base; the rest comes from how relevant the projects are to the
+# job. A project is fully relevant when PROJECT_FULL_HITS of its terms occur in
+# the job text. The best project and the mean of the best few are combined.
+PROJECT_BASE_SHARE = 0.10
+PROJECT_FULL_HITS = 3
+PROJECT_BEST_SHARE = 0.6
+PROJECT_TOP_COUNT = 3
 
 # Fresh graduate mode caps these jobs below the threshold (scoring-calibration
 # task): their skills, education, and location points let them pass otherwise.
@@ -86,6 +95,93 @@ def term_in_text(term: str, text: str) -> bool:
     pattern = r"\s+".join(re.escape(word) for word in words)
     found = re.search(rf"(?<![a-z0-9]){pattern}(?![a-z0-9])", text, re.IGNORECASE)
     return found is not None
+
+
+def job_text(job: JobListing) -> str:
+    """
+    Join the text parts of a job that project terms are matched against.
+
+    Args:
+        job: The job listing.
+
+    Returns:
+        The title, description, requirement texts, responsibility texts, and
+        skill names, separated by new lines.
+    """
+    parts = [job.title or "", job.description or ""]
+    parts.extend(req.text for req in job.requirements)
+    parts.extend(resp.text for resp in job.responsibilities)
+    parts.extend(skill.name for skill in job.skills)
+    return "\n".join(parts)
+
+
+def project_terms(project: Project, skill_names: Iterable[str]) -> Set[str]:
+    """
+    Collect the terms that describe what a project used.
+
+    The terms are the project's technologies, and each profile skill that the
+    project text (name, description, long description, highlights) names as a
+    whole term. Terms shorter than two characters are left out.
+
+    Args:
+        project: The profile project.
+        skill_names: The profile's skill names.
+
+    Returns:
+        The lower-case project terms.
+    """
+    text = " ".join(
+        [
+            project.name,
+            project.description or "",
+            project.long_description or "",
+            *project.highlights,
+        ]
+    )
+    terms = {tech.strip().lower() for tech in project.technologies}
+    terms.update(
+        name.strip().lower() for name in skill_names if term_in_text(name, text)
+    )
+    return {term for term in terms if len(term) >= 2}
+
+
+def projects_relevance(job: JobListing, profile: UserProfile) -> float:
+    """
+    Measure how relevant the profile's projects are to a job, from 0 to 1.
+
+    A project's relevance is the number of its terms (``project_terms``) that
+    occur in the job text (``job_text``) as whole terms, divided by
+    ``PROJECT_FULL_HITS`` and capped at 1. The result combines the best
+    project (``PROJECT_BEST_SHARE``) with the mean of the best
+    ``PROJECT_TOP_COUNT`` projects, so one strong project counts more than one
+    weak hit in each project.
+
+    Args:
+        job: The job listing.
+        profile: The user profile.
+
+    Returns:
+        The relevance from 0 to 1; 0 when the profile has no projects.
+    """
+    if not profile.projects:
+        return 0.0
+    text = job_text(job)
+    skill_names = [skill.name for skill in profile.skills if skill.name]
+    scores = sorted(
+        (
+            min(
+                sum(term_in_text(term, text) for term in project_terms(p, skill_names))
+                / PROJECT_FULL_HITS,
+                1.0,
+            )
+            for p in profile.projects
+        ),
+        reverse=True,
+    )
+    top = scores[:PROJECT_TOP_COUNT]
+    return PROJECT_BEST_SHARE * top[0] + (1 - PROJECT_BEST_SHARE) * (
+        sum(top) / len(top)
+    )
 
 
 class ScoreCategory(str, Enum):
@@ -501,6 +597,12 @@ class JobMatcher:
         """
         Score projects and portfolio work (fresh grad mode).
 
+        A profile with projects gets a small base (``PROJECT_BASE_SHARE`` of
+        the weight). The rest of the weight comes from how relevant the
+        projects are to this job (``projects_relevance``). The project count
+        alone adds nothing. The quality bonus (project URL, highlights) is
+        added last, and the total is capped at the weight.
+
         Args:
             job: Job listing
             profile: User profile
@@ -515,32 +617,9 @@ class JobMatcher:
             return weight // 4  # Minimal credit if no projects listed
 
         projects = profile.projects
-        project_count = len(projects)
-
-        score = 0
-
-        # Base score for having projects
-        if project_count >= 3:
-            score = int(weight * 0.25)
-        elif project_count >= 1:
-            score = int(weight * 0.12)
-
-        # Bonus for relevant projects
-        job_skills_lower = {skill.name.lower() for skill in job.skills}
-        for project in projects:
-            # Check project technologies and description
-            proj_text = f"{project.name} {project.description or ''} {' '.join(project.technologies)}".lower()
-
-            # Count matching skills
-            matching_skills = 0
-            for job_skill in job_skills_lower:
-                if term_in_text(job_skill, proj_text):
-                    matching_skills += 1
-
-            if matching_skills >= 2:
-                score += int(weight * 0.12)
-            elif matching_skills >= 1:
-                score += int(weight * 0.06)
+        base = int(weight * PROJECT_BASE_SHARE)
+        relevance = projects_relevance(job, profile)
+        score = base + round(relevance * (weight - base))
 
         # Bonus for project quality indicators
         for project in projects:
