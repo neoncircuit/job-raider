@@ -39,6 +39,17 @@ _INTERNSHIP_TEXT_MARKERS = (
 )
 
 
+# Rules that can remove a job, in the order the filter checks them. The counts
+# per rule go into the collection metadata as ``removed_by`` (numbers only).
+REMOVAL_RULES = (
+    "remote",
+    "salary",
+    "no_keyword_match",
+    "internship",
+    "experience_level",
+)
+
+
 @dataclass
 class FilterResult:
     """Result of filtering a job listing."""
@@ -49,6 +60,7 @@ class FilterResult:
     matched_skills: List[str]
     match_reasons: List[MatchReason]
     score: int = 0
+    rejected_by: Optional[str] = None  # The removal rule when ``matched`` is False.
 
 
 class JobFilter:
@@ -95,11 +107,14 @@ class JobFilter:
             Filtered JobListingCollection
         """
         filtered_listings = []
+        removed_by = {rule: 0 for rule in REMOVAL_RULES}
 
         for listing in collection.listings:
             result = self.filter_listing(listing)
             if result.matched:
                 filtered_listings.append(listing)
+            else:
+                removed_by[result.rejected_by or "no_keyword_match"] += 1
 
         self.logger.info(
             f"Filtered {len(collection.listings)} -> {len(filtered_listings)} listings"
@@ -110,6 +125,7 @@ class JobFilter:
             source=collection.source,
             metadata={
                 **collection.metadata,
+                "removed_by": removed_by,
                 "filtered": True,
                 "original_count": collection.total_count,
                 "filter_criteria": {
@@ -174,6 +190,7 @@ class JobFilter:
                 matched_skills=[],
                 match_reasons=[],
                 score=0,
+                rejected_by="remote",
             )
 
         # Check salary
@@ -186,6 +203,7 @@ class JobFilter:
                 matched_skills=[],
                 match_reasons=[],
                 score=0,
+                rejected_by="salary",
             )
 
         # Determine if matched (at least one keyword or skill match)
@@ -198,6 +216,7 @@ class JobFilter:
             matched_skills=matched_skills,
             match_reasons=match_reasons,
             score=score,
+            rejected_by=None if matched else "no_keyword_match",
         )
 
     def filter_by_profile(
@@ -273,13 +292,18 @@ class JobFilter:
         if not exclude_internships and not hard_level_filter:
             return collection
 
+        removed_by = {rule: 0 for rule in REMOVAL_RULES} | collection.metadata.get(
+            "removed_by", {}
+        )
         kept: List[JobListing] = []
         for listing in collection.listings:
             if exclude_internships and self._looks_like_internship(listing):
+                removed_by["internship"] += 1
                 continue
             if hard_level_filter and not self._experience_level_allowed(
                 listing, allowed_levels
             ):
+                removed_by["experience_level"] += 1
                 continue
             kept.append(listing)
 
@@ -297,6 +321,7 @@ class JobFilter:
             source=collection.source,
             metadata={
                 **collection.metadata,
+                "removed_by": removed_by,
                 "preference_constraints": {
                     "exclude_internships": exclude_internships,
                     "hard_level_filter": hard_level_filter,

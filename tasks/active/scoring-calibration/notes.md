@@ -47,3 +47,49 @@ flowchart LR
 - Tests: `test_score_distribution.py` (6): bands and cut counts; component means over all jobs; jobs without a skill list apart; no jobs; a score without a breakdown; the stage metadata covers a job below the cut-off while the stage result keeps only the job above it. Red: collection error (no module). Green: 6 passed.
 - Checks on the clone: stage and orchestrator tests (39), ranking pins (10), black (after formatting `distribution.py`), ruff, mypy gate (0 new), full backend pytest (2419 passed).
 - Reading the live run: `GET /api/pipeline/results/{run_id}` returns each stage's `metadata`; agents print only `score_and_rank.metadata.distribution`.
+
+## Code change A applied (2026-11-15)
+
+Applied after "Yes, apply it" (commit "feat(scoring): record the score distribution of every scored job"); the files on `main` are the same as on the clone. On `main`: 39 stage tests and ranking pins, black, ruff, mypy gate (0 new), full backend pytest (2419 passed). Not pushed yet.
+
+## Live run (2026-11-15, user, `run_fc52416bf9ce`)
+
+Settings as on 2026-11-14: full mode, dry run, MyCareersFuture, Singapore, Max Jobs 2, Min Score 60, fresh graduate scoring on. Read through `GET /api/pipeline/results/{run_id}` (stage counts and `score_and_rank.metadata.distribution` only, with the user's approval).
+
+```mermaid
+flowchart LR
+    S[Scrape 68] --> D[Dedupe 68] --> F[Scam filter 68] --> P[Profile filter 34] --> R[Score: 1 at 60 or more]
+```
+
+| Band | 20-29 | 30-39 | 40-49 | 50-59 | 60-69 | 70 or more |
+|---|---|---|---|---|---|---|
+| Jobs | 1 | 3 | 7 | 22 | 1 | 0 |
+
+- 34 scored: 23 at 50 or more, 1 at 60 or more (61). The run made 1 CV and 1 letter (Max Jobs 2).
+- Component means (fresh graduate mode): projects 5.9 of 35, skills 19.3 of 30, education 17.0 of 20, experience 3.1 of 10, location 5.0 of 5.
+- Jobs without a skill list: 0 of 34. The fallback credit that lifted not-relevant fixture jobs does not occur in this run (MyCareersFuture gives skills).
+
+Findings:
+- The immediate cause is the cut-off: 22 of 34 jobs are in 50-59. The matcher's own fresh graduate threshold (50) would pass 23 instead of 1.
+- Projects give almost nothing (5.9 of 35, mostly the base credit): project points come only from overlap with the job's skill list. Experience is low (3.1 of 10).
+- The totals are close together (22 jobs inside 10 points), so the scores separate the jobs weakly, and the exact cut-off decides much.
+
+## Code change B on a scratch clone: removal counts of the profile filter (2026-11-15)
+
+The user asked where the other 34 of 68 jobs went: the profile filter removed them before scoring, and the run recorded only the totals.
+
+```mermaid
+flowchart LR
+    J[Job] --> R{remote only and not remote?} -- yes --> X1[remote]
+    R -- no --> S{salary required and none?} -- yes --> X2[salary]
+    S -- no --> K{a target keyword in the job?} -- no --> X3[no_keyword_match]
+    K -- yes --> I{internship excluded and looks like one?} -- yes --> X4[internship]
+    I -- no --> L{filter mode and level not allowed?} -- yes --> X5[experience_level]
+    L -- no --> OK[kept]
+```
+
+- `src/scoring/filter.py`: `REMOVAL_RULES`; `FilterResult.rejected_by`; `filter_collection` counts `remote`, `salary`, `no_keyword_match`; `_apply_preference_constraints` adds `internship` and `experience_level`. The counts go into the collection metadata as `removed_by` (all five rules, also with zero). A job counts under the first rule that removes it, in the order of the existing checks. The kept jobs do not change.
+- `src/pipeline/stages_collect.py`: the filter stage copies `removed_by` into its metadata.
+- Tests: `test_filter_removal_counts.py` (6): one per rule (except salary, which the pipeline does not turn on), the counts add up to the removed jobs, and the stage metadata has the counts. Red: all 6 fail without the change (the stage test checked alone: `pytest.ini` has `--maxfail=5`, so the first red run stopped after 5 failures and did not run the sixth test). Green: 6 passed.
+- Checks on the clone: filter, scorer, and stage tests (51), black, ruff, mypy gate (0 new), full backend pytest (2425 passed).
+- Seen in the code, not changed: the internship text markers include `" intern"` without a word end, so "internal" and "international" also match. The counts show whether this rule removes many jobs.

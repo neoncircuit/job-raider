@@ -319,6 +319,8 @@ class CollectStages(StageBase):
                 "removed_count": len(listings) - len(filtered),
                 "target_keywords": self.context.user_profile.targets.keywords,
                 "target_locations": self.context.user_profile.targets.locations,
+                # Jobs removed per filter rule (numbers only), for calibration.
+                "removed_by": dict(filtered_collection.metadata.get("removed_by", {})),
             }
 
             self.logger.info(
