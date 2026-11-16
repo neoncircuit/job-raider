@@ -190,11 +190,11 @@ def test_serializer_reads_text_after_the_description_cut(
 
 
 def test_fresh_grad_friendly_lifts_the_years_cap(fresh_ml: SimpleNamespace) -> None:
-    """A 4-year job that welcomes fresh graduates is not capped for its years."""
+    """A 6-year job that welcomes fresh graduates is not capped for its years."""
     matcher = JobMatcher(fresh_grad_mode=True)
-    capped = variant(fresh_ml.job, years=4)
+    capped = variant(fresh_ml.job, years=6)
     friendly = variant(
-        fresh_ml.job, years=4, extra_text="Fresh graduates are welcome to apply."
+        fresh_ml.job, years=6, extra_text="Fresh graduates are welcome to apply."
     )
 
     assert not matcher.score_job(capped, fresh_ml.profile).passed_threshold

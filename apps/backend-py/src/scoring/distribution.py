@@ -91,7 +91,7 @@ def _signal_counts(pairs: Sequence[Tuple[Any, Any]]) -> Dict[str, int]:
             ``title``, and ``description``.
 
     Returns:
-        ``required_years_at_or_above_3`` (structured required years at
+        ``required_years_at_or_above_5`` (structured required years at
         ``FRESH_GRAD_MAX_YEARS`` or more) and ``fresh_grad_friendly``.
     """
     many_years = 0
@@ -119,7 +119,7 @@ def score_distribution(pairs: Sequence[Tuple[Any, Any]]) -> Dict[str, Any]:
         A dict with ``count``, ``bands`` (label to count), ``at_or_above_50``,
         ``at_or_above_60``, ``component_means`` (component to mean points over
         all jobs, rounded to 0.1), ``levels`` (experience level to the number
-        of scored jobs), ``required_years_at_or_above_3`` (the number of
+        of scored jobs), ``required_years_at_or_above_5`` (the number of
         scored jobs whose stated required years reach
         ``FRESH_GRAD_MAX_YEARS``), ``fresh_grad_friendly`` (the number of
         scored jobs whose text welcomes fresh graduates), and

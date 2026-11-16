@@ -75,8 +75,10 @@ def is_senior_role(job: JobListing) -> bool:
 
 
 # Fresh graduate mode caps jobs that ask for this many years or more (user
-# decision 2026-11-16, project-scoring task change D), whatever their level.
-FRESH_GRAD_MAX_YEARS = 3
+# decisions 2026-11-16: 3 in change D, raised to 5 after a live run capped
+# almost every Mid Level job), whatever their level. A posting that welcomes
+# fresh graduates is not capped for its years.
+FRESH_GRAD_MAX_YEARS = 5
 
 
 def required_years(job: JobListing) -> Optional[float]:

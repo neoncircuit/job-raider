@@ -3,10 +3,10 @@ Tests for change D of the project-scoring task: required years.
 
 - D1: the MyCareersFuture scraper keeps ``minimumYearsExperience`` as an
   experience requirement, also when the listing gives a position level.
-- D2: in fresh graduate mode, a job that asks for 3 or more years is capped
-  below the threshold, whatever its stated level. Fewer years, or no stated
+- D2: in fresh graduate mode, a job that asks for 5 or more years is capped
+  below the threshold, whatever its stated level. Fewer years (3 or 4 included), or no stated
   years, do not change the score. Standard mode does not change.
-- D3: the score distribution counts the scored jobs that ask for 3 or more
+- D3: the score distribution counts the scored jobs that ask for 5 or more
   years.
 """
 
@@ -120,9 +120,9 @@ def test_required_years_is_the_largest_stated_value(fresh_ml: SimpleNamespace) -
     assert required_years(two_and_four) == 4
 
 
-@pytest.mark.parametrize("years", [3, 4])
+@pytest.mark.parametrize("years", [5, 6])
 def test_three_or_more_years_are_capped(fresh_ml: SimpleNamespace, years: int) -> None:
-    """A Mid Level job that asks for 3 or more years cannot pass in fresh graduate mode."""
+    """A Mid Level job that asks for 5 or more years cannot pass in fresh graduate mode."""
     matcher = JobMatcher(fresh_grad_mode=True)
     plain = with_years(fresh_ml.job, None, ExperienceLevel.MID)
     asks = with_years(fresh_ml.job, years, ExperienceLevel.MID)
@@ -133,11 +133,11 @@ def test_three_or_more_years_are_capped(fresh_ml: SimpleNamespace, years: int) -
     assert score.total_score <= matcher.threshold - 15
 
 
-@pytest.mark.parametrize("years", [None, 2])
+@pytest.mark.parametrize("years", [None, 2, 3, 4])
 def test_mid_level_with_fewer_years_still_passes(
     fresh_ml: SimpleNamespace, years: Optional[int]
 ) -> None:
-    """Mid Level jobs that ask for fewer than 3 years, or state none, keep their score."""
+    """Mid Level jobs that ask for fewer than 5 years, or state none, keep their score."""
     matcher = JobMatcher(fresh_grad_mode=True)
     plain = with_years(fresh_ml.job, None, ExperienceLevel.MID)
     asks = with_years(fresh_ml.job, years, ExperienceLevel.MID)
@@ -149,9 +149,9 @@ def test_mid_level_with_fewer_years_still_passes(
 
 
 def test_years_override_a_stated_entry_level(fresh_ml: SimpleNamespace) -> None:
-    """An Entry Level job that asks for 3 years is capped: the years decide."""
+    """An Entry Level job that asks for 5 years is capped: the years decide."""
     matcher = JobMatcher(fresh_grad_mode=True)
-    job = with_years(fresh_ml.job, 3, ExperienceLevel.ENTRY)
+    job = with_years(fresh_ml.job, 5, ExperienceLevel.ENTRY)
 
     assert not matcher.score_job(job, fresh_ml.profile).passed_threshold
 
@@ -168,19 +168,19 @@ def test_standard_mode_ignores_required_years(fresh_ml: SimpleNamespace) -> None
     )
 
 
-# --- D3: the distribution counts jobs that ask for 3 or more years -----------
+# --- D3: the distribution counts jobs that ask for 5 or more years -----------
 
 
-def test_distribution_counts_jobs_with_three_or_more_years(
+def test_distribution_counts_jobs_with_five_or_more_years(
     fresh_ml: SimpleNamespace,
 ) -> None:
-    """``required_years_at_or_above_3`` counts scored jobs, numbers only."""
+    """``required_years_at_or_above_5`` counts scored jobs, numbers only."""
     profile: UserProfile = fresh_ml.profile
     matcher = JobMatcher(fresh_grad_mode=True)
     jobs = [
         with_years(fresh_ml.job, years, ExperienceLevel.MID)
-        for years in (None, 2, 3, 5)
+        for years in (None, 2, 4, 5, 7)
     ]
     pairs = [(job, matcher.score_job(job, profile)) for job in jobs]
 
-    assert score_distribution(pairs)["required_years_at_or_above_3"] == 2
+    assert score_distribution(pairs)["required_years_at_or_above_5"] == 2
