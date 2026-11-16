@@ -77,3 +77,32 @@ If E2 or E3 fails, one revision of the patterns is allowed, and both results go 
 
 ## Status
 `review`
+
+## Change F: years from the description only, as a range (added 2026-11-16)
+
+User finding in `run_f9cfd32ec0e9`: the MSI Global software engineer job says "1 to 5 years" in its description, but the card showed "3+ yrs" (the MyCareersFuture form field). User decisions: show the range that the description states, use no fallback ("we do not want to assume"), and cap on the description minimum.
+
+```mermaid
+flowchart TD
+    D[Description and requirement texts] --> R{Years stated?}
+    R -- range --> L1[Label 'min-max yrs']
+    R -- minimum only --> L2[Label 'min+ yrs']
+    R -- none --> L3[No label, no years cap]
+    R --> C{Fresh graduate mode: minimum 5 or more and not fresh grad friendly?}
+    C -- yes --> X[Capped]
+    M[MCF form field years] -. stored, not used .-> R
+```
+
+| Part | Change |
+|---|---|
+| F1 | `years_range_from_text(text)`: the stated phrase with the largest lower bound, as (minimum, maximum or None). "Up to N years" is (0, N). `years_from_text` returns its minimum. |
+| F2 | The signal text leaves out requirements that carry `years_of_experience` (the scraper's form-field requirement), so the form field never reaches the label or the cap. |
+| F3 | `job_required_years` and the new `job_required_years_range` use the text only (no structured fallback). |
+| F4 | The years cap and the `required_years_at_or_above_5` count use the description minimum. Fresh-grad-friendly postings stay exempt. |
+| F5 | API: `required_years_max` next to `required_years`. Card: "1-5 yrs" for a range, "5+ yrs" for a minimum, nothing when the text states no years. |
+
+Decision rule for F (fixed before the code change):
+- F-G1. Labelled set with range cases added (and `years_max` on every case): minimum exact on at least 90 % of the cases that state years, maximum exact on at least 90 % of the range cases, no invented values; fresh-grad rule unchanged (precision 1.0, recall at least 0.85).
+- F-G2. Tests: the form field alone gives no label and no cap; form field 3 with text "1 to 5 years" gives (1, 5) and no cap; text minimum 5 or more caps unless fresh grad friendly.
+- F-G3. Ranking pins not below; backend and frontend CI checks pass.
+- Live: one rerun; the user checks the MSI Global card and others before the push.

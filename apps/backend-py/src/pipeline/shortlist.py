@@ -17,7 +17,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ..models.job_listing import JobListing, JobSource
 from ..rag.ranker import RAGMatchScore
-from ..scoring.experience_signals import job_is_fresh_grad_friendly, job_required_years
+from ..scoring.experience_signals import (
+    job_is_fresh_grad_friendly,
+    job_required_years_range,
+)
 from ..scoring.matcher import MatchScore
 from ..scrapers.listing_lifecycle import attach_lifecycle_fields, lifecycle_fields
 from ..utils.location_normalizer import normalize_all_locations
@@ -77,6 +80,24 @@ def _job_and_score(
         return item.job, None, display
     job, score = item
     return job, score, float(score.total_score) if score else None
+
+
+def _years_fields(listing: JobListing) -> Dict[str, Optional[float]]:
+    """
+    The years label fields: the range that the posting text states.
+
+    Args:
+        listing: Job listing.
+
+    Returns:
+        ``required_years`` (minimum) and ``required_years_max`` (maximum),
+        each None when the text does not state it.
+    """
+    found = job_required_years_range(listing)
+    return {
+        "required_years": found[0] if found else None,
+        "required_years_max": found[1] if found else None,
+    }
 
 
 def serialize_listing(listing: JobListing) -> Dict[str, Any]:
@@ -139,7 +160,7 @@ def serialize_listing(listing: JobListing) -> Dict[str, Any]:
             else None
         ),
         # Job card labels, read from the full text (not the 5000-character cut).
-        "required_years": job_required_years(listing),
+        **_years_fields(listing),
         "fresh_grad_friendly": job_is_fresh_grad_friendly(listing),
     }
     job_data.update(lifecycle_fields(listing))

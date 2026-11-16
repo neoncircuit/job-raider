@@ -124,9 +124,11 @@ export function JobListItem({
             <Badge
               variant="outline"
               className="text-[10px] px-1.5 py-0"
-              title="Years of experience the posting asks for"
+              title="Years of experience that the posting states"
             >
-              {job.required_years}+ yrs
+              {job.required_years_max != null
+                ? `${job.required_years}-${job.required_years_max} yrs`
+                : `${job.required_years}+ yrs`}
             </Badge>
           )}
           {job.fresh_grad_friendly && (

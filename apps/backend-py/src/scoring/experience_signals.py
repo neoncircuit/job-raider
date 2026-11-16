@@ -6,9 +6,9 @@ whether it says that fresh graduates are welcome (job-card-labels task). The
 job card shows both as labels. In fresh graduate mode, a fresh-grad-friendly
 posting is not capped for its required years.
 
-The years come from the structured value (``JobRequirement.years_of_experience``,
-for example the MyCareersFuture minimum years) when there is one, and from the
-text otherwise. The labelled set ``tests/fixtures/eval/experience_signals``
+The years come from the posting text only, as a range when the text states
+one (change F): the MyCareersFuture form field is stored but not used, because
+it can differ from what the employer wrote. The labelled set ``tests/fixtures/eval/experience_signals``
 checks the text rules.
 
 Author: Job Raider
@@ -18,7 +18,7 @@ Date: 2026-11-16
 from __future__ import annotations
 
 import re
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 NUMBER_WORDS = {
     "one": 1,
@@ -62,6 +62,11 @@ NO_EXPERIENCE_RE = re.compile(
     r"(?:required|needed|necessary)\b",
     re.IGNORECASE,
 )
+# "Up to N years" just before a match: the range is 0 to N.
+UP_TO_RE = re.compile(r"\bup\s+to\s*$", re.IGNORECASE)
+YearsRange = Tuple[float, Optional[float]]
+"""Minimum and maximum years (maximum None when the text states only a minimum)."""
+
 # A sentence ends at ".", "!", "?", or ";" before a space or the end, or at a
 # new line, so "2.5 years" stays in one sentence.
 SENTENCE_END_RE = re.compile(r"[.!?;]+(?=\s|$)|\n+")
@@ -94,28 +99,51 @@ def _number(token: str) -> float:
     return float(NUMBER_WORDS[word]) if word in NUMBER_WORDS else float(token)
 
 
-def years_from_text(text: str) -> Optional[float]:
+def years_range_from_text(text: str) -> Optional[YearsRange]:
     """
-    Find the years of experience that a posting text asks for.
+    Find the range of years of experience that a posting text states.
 
-    A value counts only when "experience" follows the years within a few
+    A phrase counts only when "experience" follows the years within a few
     words, and when its sentence does not make it optional ("preferred",
-    "advantage", "a plus", "bonus", "nice to have"). A range counts as its
-    lower bound. When the text states several values, the largest counts.
+    "advantage", "a plus", "bonus", "nice to have"). "1 to 5 years" gives
+    (1, 5), "5+ years" gives (5, None), and "up to 2 years" gives (0, 2).
+    When the text states several phrases, the one with the largest minimum
+    counts.
 
     Args:
         text: The posting text.
 
     Returns:
-        The required years, or None when the text states none.
+        The minimum and maximum years, or None when the text states none.
     """
-    values = [
-        _number(match.group(1))
-        for sentence in _sentences(text or "")
-        if not OPTIONAL_RE.search(sentence)
-        for match in YEARS_RE.finditer(sentence)
-    ]
-    return max(values) if values else None
+    found: List[YearsRange] = []
+    for sentence in _sentences(text or ""):
+        if OPTIONAL_RE.search(sentence):
+            continue
+        for match in YEARS_RE.finditer(sentence):
+            low = _number(match.group(1))
+            high = _number(match.group(2)) if match.group(2) else None
+            if UP_TO_RE.search(sentence[: match.start()]):
+                low, high = 0.0, low
+            found.append((low, high))
+    if not found:
+        return None
+    return max(found, key=lambda item: (item[0], item[1] or 0.0))
+
+
+def years_from_text(text: str) -> Optional[float]:
+    """
+    Find the minimum years of experience that a posting text asks for.
+
+    Args:
+        text: The posting text.
+
+    Returns:
+        The minimum of ``years_range_from_text``, or None when the text
+        states no years.
+    """
+    found = years_range_from_text(text)
+    return found[0] if found else None
 
 
 def is_fresh_grad_friendly(text: str) -> bool:
@@ -172,6 +200,9 @@ def job_signal_text(job: Any) -> str:
     Join the text of a job that the signals are read from.
 
     The full description is used, not the 5000-character API cut.
+    Requirements that carry structured ``years_of_experience`` (the
+    MyCareersFuture form field) are left out: the years must come from what
+    the employer wrote (change F, user decision 2026-11-16).
 
     Args:
         job: The job listing (title, description, requirements).
@@ -183,26 +214,40 @@ def job_signal_text(job: Any) -> str:
     parts.extend(
         getattr(req, "text", "") or ""
         for req in getattr(job, "requirements", None) or []
+        if getattr(req, "years_of_experience", None) is None
     )
     return "\n".join(parts)
 
 
-def job_required_years(job: Any) -> Optional[float]:
+def job_required_years_range(job: Any) -> Optional[YearsRange]:
     """
-    Return the years of experience a job asks for, for the job card label.
+    Return the range of years that a job's text states, for the job card label.
 
-    The structured value decides when there is one; the text otherwise.
+    Only the text counts; there is no fallback to the form field.
 
     Args:
         job: The job listing.
 
     Returns:
-        The required years, or None.
+        The minimum and maximum years, or None when the text states none.
     """
-    structured = structured_required_years(job)
-    if structured is not None:
-        return structured
-    return years_from_text(job_signal_text(job))
+    return years_range_from_text(job_signal_text(job))
+
+
+def job_required_years(job: Any) -> Optional[float]:
+    """
+    Return the minimum years of experience that a job's text asks for.
+
+    The years cap and the run counts read this value. Only the text counts.
+
+    Args:
+        job: The job listing.
+
+    Returns:
+        The minimum years, or None when the text states none.
+    """
+    found = job_required_years_range(job)
+    return found[0] if found else None
 
 
 def job_is_fresh_grad_friendly(job: Any) -> bool:

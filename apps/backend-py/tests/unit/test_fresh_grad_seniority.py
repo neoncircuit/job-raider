@@ -84,6 +84,7 @@ def test_entry_level_job_is_not_capped(sample_job_listing, sample_user_profile) 
         sample_job_listing,
         title="Junior Data Engineer",
         experience_level=ExperienceLevel.ENTRY,
+        requirements=[],  # The sample asks for 5+ years: a separate cap (change F).
     )
 
     score = matcher.score_job(entry, sample_user_profile)
@@ -217,6 +218,7 @@ def test_mid_level_job_without_a_senior_title_is_not_capped(
         sample_job_listing,
         title="Software Engineer (Backend Development)",
         experience_level=ExperienceLevel.MID,
+        requirements=[],  # The sample asks for 5+ years: a separate cap (change F).
     )
 
     score = matcher.score_job(job, sample_user_profile)
@@ -233,6 +235,7 @@ def test_entry_level_job_with_a_lead_word_is_not_capped(
         sample_job_listing,
         title="Lead Generation Analyst",
         experience_level=ExperienceLevel.ENTRY,
+        requirements=[],  # The sample asks for 5+ years: a separate cap (change F).
     )
 
     score = matcher.score_job(job, sample_user_profile)

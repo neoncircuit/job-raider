@@ -1,40 +1,46 @@
-{"case_id": "es-01", "text": "You will build REST APIs in Python. Requirements: at least 3 years of experience in backend development.", "years": 3, "fresh_grad": false, "note": "at least N years of experience"}
-{"case_id": "es-02", "text": "We need a data engineer with a minimum of 5 years of relevant experience with Spark and Airflow.", "years": 5, "fresh_grad": false, "note": "minimum of N years of relevant experience"}
-{"case_id": "es-03", "text": "Requirements:\n- 4+ years of full stack web development experience\n- React and Node.js", "years": 4, "fresh_grad": false, "note": "N+ years, words between years and experience"}
-{"case_id": "es-04", "text": "The ideal candidate has 3-5 years of experience in machine learning.", "years": 3, "fresh_grad": false, "note": "range: lower bound"}
-{"case_id": "es-05", "text": "Candidates should have 2 to 4 years of working experience in a similar role.", "years": 2, "fresh_grad": false, "note": "range with to"}
-{"case_id": "es-06", "text": "You bring three years of experience with cloud infrastructure.", "years": 3, "fresh_grad": false, "note": "number word"}
-{"case_id": "es-07", "text": "Minimum five (5) years of experience in software engineering.", "years": 5, "fresh_grad": false, "note": "number word with digit in brackets"}
-{"case_id": "es-08", "text": "We are a company with 10 years in business and a growing team. You will support our sales staff with reports in Excel.", "years": null, "fresh_grad": false, "note": "trap: years not tied to experience"}
-{"case_id": "es-09", "text": "Applicants must be at least 21 years old. Retail experience is not needed; we will train you.", "years": null, "fresh_grad": false, "note": "trap: age"}
-{"case_id": "es-10", "text": "Experience with Docker is a plus. 5 years of experience with Kubernetes is an advantage. You will write Python services.", "years": null, "fresh_grad": false, "note": "trap: years only in an advantage sentence"}
-{"case_id": "es-11", "text": "At least 2 years of experience in Python. 6 years of experience in finance is preferred.", "years": 2, "fresh_grad": false, "note": "preferred sentence ignored, required one kept"}
-{"case_id": "es-12", "text": "Requirements: 3 years of experience in Java. Overall, 5+ years of software development experience.", "years": 5, "fresh_grad": false, "note": "several values: largest lower bound"}
-{"case_id": "es-13", "text": "Join our graduate programme. You will rotate through three teams over two years.", "years": null, "fresh_grad": false, "note": "trap: programme length, no experience"}
-{"case_id": "es-14", "text": "Build dashboards in Tableau and SQL for the finance team. A degree in a quantitative field is required.", "years": null, "fresh_grad": false, "note": "no years, no fresh grad phrase"}
-{"case_id": "es-15", "text": "Fresh graduates are welcome to apply. You will learn our data stack with a mentor.", "years": null, "fresh_grad": true, "note": "fresh graduates are welcome to apply"}
-{"case_id": "es-16", "text": "At least 5 years of experience in software engineering. Fresh graduates are also welcome to apply.", "years": 5, "fresh_grad": true, "note": "both signals"}
-{"case_id": "es-17", "text": "Minimum 2 years of experience, but fresh grads are encouraged to apply.", "years": 2, "fresh_grad": true, "note": "fresh grads encouraged"}
-{"case_id": "es-18", "text": "This role is open to fresh graduates with a strong interest in machine learning.", "years": null, "fresh_grad": true, "note": "open to fresh graduates"}
-{"case_id": "es-19", "text": "Suitable for fresh graduates. Training will be provided.", "years": null, "fresh_grad": true, "note": "suitable for fresh graduates"}
-{"case_id": "es-20", "text": "No experience required. We provide full training on our tools.", "years": null, "fresh_grad": true, "note": "no experience required"}
-{"case_id": "es-21", "text": "Fresh graduate with a Diploma or Degree in Computer Science is welcome.", "years": null, "fresh_grad": true, "note": "fresh graduate ... is welcome"}
-{"case_id": "es-22", "text": "Entry level role. Fresh grads may apply.", "years": null, "fresh_grad": true, "note": "fresh grads may apply"}
-{"case_id": "es-23", "text": "Candidates with 3+ years of experience preferred; fresh graduates will also be considered.", "years": null, "fresh_grad": true, "note": "preferred years ignored; will also be considered"}
-{"case_id": "es-24", "text": "This position is not suitable for fresh graduates. At least 4 years of experience in network engineering.", "years": 4, "fresh_grad": false, "note": "trap: negated fresh grad phrase"}
-{"case_id": "es-25", "text": "Fresh graduates need not apply. Minimum 6 years of experience leading teams.", "years": 6, "fresh_grad": false, "note": "trap: need not apply"}
-{"case_id": "es-26", "text": "We do not consider fresh graduates for this role. 3 years of relevant experience required.", "years": 3, "fresh_grad": false, "note": "trap: do not consider"}
-{"case_id": "es-27", "text": "You will mentor fresh graduates who join the team. Requirements: 7 years of experience in data science.", "years": 7, "fresh_grad": false, "note": "trap: fresh graduates as people to mentor"}
-{"case_id": "es-28", "text": "Our programme has trained over 500 fresh graduates since 2015. You need 5 years of sales experience.", "years": 5, "fresh_grad": false, "note": "trap: fresh graduates as a statistic"}
-{"case_id": "es-29", "text": "Requirements: Degree in Engineering. 1 year of experience in a laboratory.", "years": 1, "fresh_grad": false, "note": "singular year"}
-{"case_id": "es-30", "text": "Requirements: 2 yrs experience in customer support.", "years": 2, "fresh_grad": false, "note": "yrs abbreviation"}
-{"case_id": "es-31", "text": "Requires 8 or more years of experience in enterprise architecture.", "years": 8, "fresh_grad": false, "note": "N or more years"}
-{"case_id": "es-32", "text": "Over 10 years of hands-on experience in embedded systems.", "years": 10, "fresh_grad": false, "note": "over N years, words before experience"}
-{"case_id": "es-33", "text": "Our clients have trusted us for over 20 years. You will design marketing emails in HTML.", "years": null, "fresh_grad": false, "note": "trap: company history with over"}
-{"case_id": "es-34", "text": "Contract of 2 years, renewable. Experience with SAP is an advantage.", "years": null, "fresh_grad": false, "note": "trap: contract length; experience in another sentence"}
-{"case_id": "es-35", "text": "Recent graduates are welcome to apply for this junior analyst role.", "years": null, "fresh_grad": true, "note": "recent graduates welcome"}
-{"case_id": "es-36", "text": "Fresh graduates who are passionate about AI are encouraged to apply. At least 1 year of internship experience is a bonus.", "years": null, "fresh_grad": true, "note": "fresh grads encouraged; years only in a bonus sentence"}
-{"case_id": "es-37", "text": "Minimum of 3 years experience in accounting. Fresh graduates are not eligible.", "years": 3, "fresh_grad": false, "note": "trap: not eligible"}
-{"case_id": "es-38", "text": "We welcome fresh graduates and career switchers. Basic Python is needed.", "years": null, "fresh_grad": true, "note": "we welcome fresh graduates"}
-{"case_id": "es-39", "text": "5 years experience: Python, SQL, and Airflow.", "years": 5, "fresh_grad": false, "note": "N years experience without of"}
-{"case_id": "es-40", "text": "Applicants with at least 2 years of experience, or fresh graduates with relevant internships, are welcome.", "years": 2, "fresh_grad": true, "note": "both signals in one sentence"}
+{"case_id": "es-01", "text": "You will build REST APIs in Python. Requirements: at least 3 years of experience in backend development.", "years": 3, "years_max": null, "fresh_grad": false, "note": "at least N years of experience"}
+{"case_id": "es-02", "text": "We need a data engineer with a minimum of 5 years of relevant experience with Spark and Airflow.", "years": 5, "years_max": null, "fresh_grad": false, "note": "minimum of N years of relevant experience"}
+{"case_id": "es-03", "text": "Requirements:\n- 4+ years of full stack web development experience\n- React and Node.js", "years": 4, "years_max": null, "fresh_grad": false, "note": "N+ years, words between years and experience"}
+{"case_id": "es-04", "text": "The ideal candidate has 3-5 years of experience in machine learning.", "years": 3, "years_max": 5, "fresh_grad": false, "note": "range: lower bound"}
+{"case_id": "es-05", "text": "Candidates should have 2 to 4 years of working experience in a similar role.", "years": 2, "years_max": 4, "fresh_grad": false, "note": "range with to"}
+{"case_id": "es-06", "text": "You bring three years of experience with cloud infrastructure.", "years": 3, "years_max": null, "fresh_grad": false, "note": "number word"}
+{"case_id": "es-07", "text": "Minimum five (5) years of experience in software engineering.", "years": 5, "years_max": null, "fresh_grad": false, "note": "number word with digit in brackets"}
+{"case_id": "es-08", "text": "We are a company with 10 years in business and a growing team. You will support our sales staff with reports in Excel.", "years": null, "years_max": null, "fresh_grad": false, "note": "trap: years not tied to experience"}
+{"case_id": "es-09", "text": "Applicants must be at least 21 years old. Retail experience is not needed; we will train you.", "years": null, "years_max": null, "fresh_grad": false, "note": "trap: age"}
+{"case_id": "es-10", "text": "Experience with Docker is a plus. 5 years of experience with Kubernetes is an advantage. You will write Python services.", "years": null, "years_max": null, "fresh_grad": false, "note": "trap: years only in an advantage sentence"}
+{"case_id": "es-11", "text": "At least 2 years of experience in Python. 6 years of experience in finance is preferred.", "years": 2, "years_max": null, "fresh_grad": false, "note": "preferred sentence ignored, required one kept"}
+{"case_id": "es-12", "text": "Requirements: 3 years of experience in Java. Overall, 5+ years of software development experience.", "years": 5, "years_max": null, "fresh_grad": false, "note": "several values: largest lower bound"}
+{"case_id": "es-13", "text": "Join our graduate programme. You will rotate through three teams over two years.", "years": null, "years_max": null, "fresh_grad": false, "note": "trap: programme length, no experience"}
+{"case_id": "es-14", "text": "Build dashboards in Tableau and SQL for the finance team. A degree in a quantitative field is required.", "years": null, "years_max": null, "fresh_grad": false, "note": "no years, no fresh grad phrase"}
+{"case_id": "es-15", "text": "Fresh graduates are welcome to apply. You will learn our data stack with a mentor.", "years": null, "years_max": null, "fresh_grad": true, "note": "fresh graduates are welcome to apply"}
+{"case_id": "es-16", "text": "At least 5 years of experience in software engineering. Fresh graduates are also welcome to apply.", "years": 5, "years_max": null, "fresh_grad": true, "note": "both signals"}
+{"case_id": "es-17", "text": "Minimum 2 years of experience, but fresh grads are encouraged to apply.", "years": 2, "years_max": null, "fresh_grad": true, "note": "fresh grads encouraged"}
+{"case_id": "es-18", "text": "This role is open to fresh graduates with a strong interest in machine learning.", "years": null, "years_max": null, "fresh_grad": true, "note": "open to fresh graduates"}
+{"case_id": "es-19", "text": "Suitable for fresh graduates. Training will be provided.", "years": null, "years_max": null, "fresh_grad": true, "note": "suitable for fresh graduates"}
+{"case_id": "es-20", "text": "No experience required. We provide full training on our tools.", "years": null, "years_max": null, "fresh_grad": true, "note": "no experience required"}
+{"case_id": "es-21", "text": "Fresh graduate with a Diploma or Degree in Computer Science is welcome.", "years": null, "years_max": null, "fresh_grad": true, "note": "fresh graduate ... is welcome"}
+{"case_id": "es-22", "text": "Entry level role. Fresh grads may apply.", "years": null, "years_max": null, "fresh_grad": true, "note": "fresh grads may apply"}
+{"case_id": "es-23", "text": "Candidates with 3+ years of experience preferred; fresh graduates will also be considered.", "years": null, "years_max": null, "fresh_grad": true, "note": "preferred years ignored; will also be considered"}
+{"case_id": "es-24", "text": "This position is not suitable for fresh graduates. At least 4 years of experience in network engineering.", "years": 4, "years_max": null, "fresh_grad": false, "note": "trap: negated fresh grad phrase"}
+{"case_id": "es-25", "text": "Fresh graduates need not apply. Minimum 6 years of experience leading teams.", "years": 6, "years_max": null, "fresh_grad": false, "note": "trap: need not apply"}
+{"case_id": "es-26", "text": "We do not consider fresh graduates for this role. 3 years of relevant experience required.", "years": 3, "years_max": null, "fresh_grad": false, "note": "trap: do not consider"}
+{"case_id": "es-27", "text": "You will mentor fresh graduates who join the team. Requirements: 7 years of experience in data science.", "years": 7, "years_max": null, "fresh_grad": false, "note": "trap: fresh graduates as people to mentor"}
+{"case_id": "es-28", "text": "Our programme has trained over 500 fresh graduates since 2015. You need 5 years of sales experience.", "years": 5, "years_max": null, "fresh_grad": false, "note": "trap: fresh graduates as a statistic"}
+{"case_id": "es-29", "text": "Requirements: Degree in Engineering. 1 year of experience in a laboratory.", "years": 1, "years_max": null, "fresh_grad": false, "note": "singular year"}
+{"case_id": "es-30", "text": "Requirements: 2 yrs experience in customer support.", "years": 2, "years_max": null, "fresh_grad": false, "note": "yrs abbreviation"}
+{"case_id": "es-31", "text": "Requires 8 or more years of experience in enterprise architecture.", "years": 8, "years_max": null, "fresh_grad": false, "note": "N or more years"}
+{"case_id": "es-32", "text": "Over 10 years of hands-on experience in embedded systems.", "years": 10, "years_max": null, "fresh_grad": false, "note": "over N years, words before experience"}
+{"case_id": "es-33", "text": "Our clients have trusted us for over 20 years. You will design marketing emails in HTML.", "years": null, "years_max": null, "fresh_grad": false, "note": "trap: company history with over"}
+{"case_id": "es-34", "text": "Contract of 2 years, renewable. Experience with SAP is an advantage.", "years": null, "years_max": null, "fresh_grad": false, "note": "trap: contract length; experience in another sentence"}
+{"case_id": "es-35", "text": "Recent graduates are welcome to apply for this junior analyst role.", "years": null, "years_max": null, "fresh_grad": true, "note": "recent graduates welcome"}
+{"case_id": "es-36", "text": "Fresh graduates who are passionate about AI are encouraged to apply. At least 1 year of internship experience is a bonus.", "years": null, "years_max": null, "fresh_grad": true, "note": "fresh grads encouraged; years only in a bonus sentence"}
+{"case_id": "es-37", "text": "Minimum of 3 years experience in accounting. Fresh graduates are not eligible.", "years": 3, "years_max": null, "fresh_grad": false, "note": "trap: not eligible"}
+{"case_id": "es-38", "text": "We welcome fresh graduates and career switchers. Basic Python is needed.", "years": null, "years_max": null, "fresh_grad": true, "note": "we welcome fresh graduates"}
+{"case_id": "es-39", "text": "5 years experience: Python, SQL, and Airflow.", "years": 5, "years_max": null, "fresh_grad": false, "note": "N years experience without of"}
+{"case_id": "es-40", "text": "Applicants with at least 2 years of experience, or fresh graduates with relevant internships, are welcome.", "years": 2, "years_max": null, "fresh_grad": true, "note": "both signals in one sentence"}
+{"case_id": "es-41", "text": "Requirements: 1 to 5 years of experience in software development.", "years": 1, "years_max": 5, "fresh_grad": false, "note": "range with to, as in the MSI Global posting"}
+{"case_id": "es-42", "text": "1-5 yrs of experience with embedded C.", "years": 1, "years_max": 5, "fresh_grad": false, "note": "range with yrs"}
+{"case_id": "es-43", "text": "We look for 2 – 4 years of experience in QA testing.", "years": 2, "years_max": 4, "fresh_grad": false, "note": "range with an en dash and spaces"}
+{"case_id": "es-44", "text": "Up to two years of experience, including internships, is fine.", "years": 0, "years_max": 2, "fresh_grad": false, "note": "up to N years: 0 to N"}
+{"case_id": "es-45", "text": "Software engineer with 5 to 8 years of experience in Java.", "years": 5, "years_max": 8, "fresh_grad": false, "note": "range starting at 5"}
+{"case_id": "es-46", "text": "At least 3 years of experience in Python; experience with Go is a plus.", "years": 3, "years_max": null, "fresh_grad": false, "note": "minimum only; the plus clause is its own sentence"}

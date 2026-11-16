@@ -17,7 +17,7 @@ from __future__ import annotations
 import statistics
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from .experience_signals import job_is_fresh_grad_friendly, structured_required_years
+from .experience_signals import job_is_fresh_grad_friendly, job_required_years
 from .matcher import FRESH_GRAD_MAX_YEARS
 
 BAND_LABELS: Tuple[str, ...] = (
@@ -91,13 +91,13 @@ def _signal_counts(pairs: Sequence[Tuple[Any, Any]]) -> Dict[str, int]:
             ``title``, and ``description``.
 
     Returns:
-        ``required_years_at_or_above_5`` (structured required years at
-        ``FRESH_GRAD_MAX_YEARS`` or more) and ``fresh_grad_friendly``.
+        ``required_years_at_or_above_5`` (a text minimum of
+        ``FRESH_GRAD_MAX_YEARS`` years or more) and ``fresh_grad_friendly``.
     """
     many_years = 0
     friendly = 0
     for job, _ in pairs:
-        years = structured_required_years(job)
+        years = job_required_years(job)
         many_years += years is not None and years >= FRESH_GRAD_MAX_YEARS
         friendly += job_is_fresh_grad_friendly(job)
     return {

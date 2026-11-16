@@ -201,8 +201,10 @@ export interface JobListing {
   listing_status?: "active" | "expired";
   scraped_today?: boolean;
   days_since_posted?: number | null;
-  /** Years of experience the posting asks for (structured value, else the text). */
+  /** Minimum years of experience that the posting text states. */
   required_years?: number | null;
+  /** Maximum years when the posting text states a range. */
+  required_years_max?: number | null;
   /** True when the posting says that fresh graduates are welcome. */
   fresh_grad_friendly?: boolean;
   relevance_score?: number | null;

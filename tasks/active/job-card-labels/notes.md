@@ -82,3 +82,40 @@ flowchart LR
 - Code: `FRESH_GRAD_MAX_YEARS` 3 to 5 in `matcher.py`, with the reason in its comment; docstrings in `distribution.py`. Frontend unchanged.
 - Green: 23 passed. Ranking pins unchanged (`fresh_ml` 0.9455 / 0.875, `mid_backend` 0.8685 / 0.6364, BM25 unchanged). Black, ruff, mypy gate (0 new), full backend pytest 2486 passed.
 - Applied to `main` after "Yes, apply it" (2026-11-16): the 4 files are the same as on the clone; on `main` black, ruff, mypy gate (0 new), full backend pytest 2486 passed. Commit "fix(scoring): raise the fresh graduate years cap to 5". Not pushed.
+
+## Live run with limit 5 (2026-11-16, user, `run_f9cfd32ec0e9`)
+
+Same settings; app restarted after the apply. Counts only.
+
+| | No years cap (`run_4d7909177390`) | Limit 3 (`run_7b7f03e34804`) | Limit 5 (`run_f9cfd32ec0e9`) |
+|---|---|---|---|
+| Scored; removed internship / no keyword | 57; 3 / 8 | 57; 3 / 8 | 57; 3 / 8 |
+| At 50 or more / at 60 or more | 24 / 16 | 6 / 6 | 17 / 12 |
+| Band 30-39 | 30 | 50 | 37 |
+| Jobs at or above the years limit | not recorded | 50 (3 or more) | 32 (5 or more) |
+| Fresh grad friendly | not recorded | 1 | 1 |
+| Bands 50-59 / 60-69 / 70-79 / 80-89 | 8 / 5 / 9 / 2 | 0 / 2 / 4 / 0 | 5 / 4 / 6 / 2 |
+
+- The same jobs were scraped in all three runs (same counts and levels).
+- With limit 5, 17 jobs pass. Compared with no cap, 7 more jobs sit in band 30-39: jobs that pass on their points but state 5 or more years. The 32 jobs at 5 or more years include the 19 senior, lead, and executive jobs, which were capped already.
+- Component means are unchanged; the cap changes totals only.
+- The user judges the cards (years labels, fresh grad label) and the shortlist before the push.
+
+## Change F on the scratch clone: years from the description only, as a range (2026-11-16)
+
+User finding: the MSI Global software engineer card showed "3+ yrs" (MyCareersFuture form field) while its description says "1 to 5 years". User decisions: show the stated range, no fallback, cap on the description minimum.
+
+```mermaid
+flowchart LR
+    T[Description and requirement texts, without the form-field requirement] --> R[years_range_from_text]
+    R --> L[Card: 1-5 yrs or 5+ yrs or nothing]
+    R --> C[Cap: text minimum 5 or more, unless fresh grad friendly]
+```
+
+- Labelled set extended before the code: `years_max` on every case (ranges es-04, es-05) and 6 new cases es-41 to es-46 (the MSI Global wording "1 to 5 years", "1-5 yrs", an en dash range, "up to two years" as 0 to 2, "5 to 8 years", a minimum with a separate "a plus" clause). Now 46 cases: 29 state years, 7 ranges, 13 fresh grad friendly.
+- Red: 11 backend tests failed (range rule, form field not used, serializer range fields, the cut test, the fresh-grad lift with text years, the text minimum deciding the cap, the form field alone not capping, text years 5 and 6 capped, Entry Level with text years capped, the distribution count), 14 passed; card: 1 failed (range label), 3 passed.
+- Code: `experience_signals.py` (`years_range_from_text`, `UP_TO_RE`, `job_required_years_range`; `job_signal_text` leaves out requirements with structured years; `job_required_years` reads the text only); `matcher.py` (`asks_too_many_years` reads the text minimum); `distribution.py` (count on the text minimum); `shortlist.py` (`required_years_max`); card label "min-max yrs" or "min+ yrs".
+- Green: 25 backend tests, 4 card tests. On the labelled set every case is exact (46 of 46: minimum, maximum, and the fresh-grad flag).
+- Three seniority tests (`test_fresh_grad_seniority.py`: Entry Level, plain Mid Level, "Lead Generation Analyst" at Entry Level) failed in the full run: the shared sample job has the requirement "5+ years of Python experience", which the text cap now reads. These tests check the senior-title cap, so they now clear the sample requirements (`requirements=[]`, with a comment); the 5+ years case is covered by the change F tests.
+- Checks on the clone: ranking pins unchanged; black, ruff, mypy gate (0 new); full backend pytest 2488 passed; vitest 395 passed (71 files), eslint, tsc, prettier, `build`, `build:demo` pass.
+- Applied to `main` after "Yes, apply it" (2026-11-16): the 11 files are the same as on the clone; on `main` black, ruff, mypy gate (0 new), full backend pytest 2488 passed, vitest 395 passed, eslint, tsc, prettier. Commit "feat(scoring): read required years from the description only, and show the stated range". Not pushed.

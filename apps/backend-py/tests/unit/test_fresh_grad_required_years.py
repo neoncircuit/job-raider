@@ -56,7 +56,10 @@ def fresh_ml() -> SimpleNamespace:
 
 
 def with_years(
-    job: JobListing, years: Optional[float], level: ExperienceLevel
+    job: JobListing,
+    years: Optional[float],
+    level: ExperienceLevel,
+    in_text: bool = True,
 ) -> JobListing:
     """
     A copy of a job with a stated level and, optionally, required years.
@@ -65,12 +68,18 @@ def with_years(
         job: The base job.
         years: Required years, or None for no experience requirement.
         level: The stated experience level.
+        in_text: True to state the years in the description (what the cap
+            reads, change F); False to add only a structured requirement, as
+            the MyCareersFuture form field does (stored, not used).
 
     Returns:
         The job copy.
     """
     requirements = list(job.requirements)
-    if years is not None:
+    description = job.description or ""
+    if years is not None and in_text:
+        description = f"{description} At least {years:g} years of experience."
+    elif years is not None:
         requirements.append(
             JobRequirement(
                 category="Experience",
@@ -79,7 +88,11 @@ def with_years(
             )
         )
     return job.model_copy(
-        update={"requirements": requirements, "experience_level": level}
+        update={
+            "requirements": requirements,
+            "experience_level": level,
+            "description": description,
+        }
     )
 
 
@@ -112,17 +125,27 @@ def test_required_years_is_the_largest_stated_value(fresh_ml: SimpleNamespace) -
     """``required_years`` gives the largest stated years, or None."""
     from src.scoring.matcher import required_years
 
-    two = with_years(fresh_ml.job, 2, ExperienceLevel.MID)
-    two_and_four = with_years(two, 4, ExperienceLevel.MID)
+    two = with_years(fresh_ml.job, 2, ExperienceLevel.MID, in_text=False)
+    two_and_four = with_years(two, 4, ExperienceLevel.MID, in_text=False)
 
     assert required_years(fresh_ml.job) is None
     assert required_years(two) == 2
     assert required_years(two_and_four) == 4
 
 
+def test_form_field_years_alone_do_not_cap(fresh_ml: SimpleNamespace) -> None:
+    """Structured form-field years with no years in the text do not cap (change F)."""
+    matcher = JobMatcher(fresh_grad_mode=True)
+    field_only = with_years(fresh_ml.job, 6, ExperienceLevel.MID, in_text=False)
+
+    assert matcher.score_job(field_only, fresh_ml.profile).passed_threshold
+
+
 @pytest.mark.parametrize("years", [5, 6])
-def test_three_or_more_years_are_capped(fresh_ml: SimpleNamespace, years: int) -> None:
-    """A Mid Level job that asks for 5 or more years cannot pass in fresh graduate mode."""
+def test_five_or_more_text_years_are_capped(
+    fresh_ml: SimpleNamespace, years: int
+) -> None:
+    """A Mid Level job whose text asks for 5 or more years cannot pass in fresh graduate mode."""
     matcher = JobMatcher(fresh_grad_mode=True)
     plain = with_years(fresh_ml.job, None, ExperienceLevel.MID)
     asks = with_years(fresh_ml.job, years, ExperienceLevel.MID)

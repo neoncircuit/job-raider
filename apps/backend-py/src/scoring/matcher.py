@@ -18,7 +18,11 @@ from ..models.job_listing import ExperienceLevel, JobListing
 from ..models.user_profile import Project, UserProfile
 from ..utils.logger import Components, get_logger
 from ..utils.source_geography import listing_matches_requested_locations
-from .experience_signals import job_is_fresh_grad_friendly, structured_required_years
+from .experience_signals import (
+    job_is_fresh_grad_friendly,
+    job_required_years,
+    structured_required_years,
+)
 from .filter import JobFilter
 
 # Matches of profile skills in a description that count as a full match
@@ -102,9 +106,9 @@ def asks_too_many_years(job: JobListing) -> bool:
     """
     Return True when a job asks for ``FRESH_GRAD_MAX_YEARS`` years or more.
 
-    Only the structured years count (job-card-labels task, choice C1a: a
-    wrong text reading must not hide a job). A posting that welcomes fresh
-    graduates does not count, whatever years it asks for.
+    The minimum years that the posting text states count (change F, user
+    decision 2026-11-16); the form field alone never caps. A posting that
+    welcomes fresh graduates does not count, whatever years it asks for.
 
     Args:
         job: The job listing.
@@ -112,7 +116,7 @@ def asks_too_many_years(job: JobListing) -> bool:
     Returns:
         Whether the job's required years reach the fresh graduate limit.
     """
-    years = required_years(job)
+    years = job_required_years(job)
     if years is None or years < FRESH_GRAD_MAX_YEARS:
         return False
     return not job_is_fresh_grad_friendly(job)

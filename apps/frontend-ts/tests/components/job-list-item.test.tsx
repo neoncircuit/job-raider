@@ -64,7 +64,23 @@ describe("JobListItem", () => {
       />,
     );
 
-    expect(screen.queryByText(/\+ yrs$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/yrs$/)).not.toBeInTheDocument();
     expect(screen.queryByText("Fresh grad friendly")).not.toBeInTheDocument();
+  });
+
+  it("shows the stated range when the posting gives one", () => {
+    render(
+      <JobListItem
+        job={{ ...job, required_years: 1, required_years_max: 5 }}
+        isSelected={false}
+        isSaved={false}
+        isAppliedExternally={false}
+        onClick={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("1-5 yrs")).toBeInTheDocument();
+    expect(screen.queryByText("1+ yrs")).not.toBeInTheDocument();
   });
 });

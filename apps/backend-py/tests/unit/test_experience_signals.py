@@ -5,8 +5,9 @@ Tests for the job-card-labels task: required years and fresh-grad-friendly posti
   (``tests/fixtures/eval/experience_signals/cases.jsonl``): exact years on at
   least 90 % of the cases that state years, no invented years, fresh-grad
   precision 1.0 and recall at least 0.85.
-- ``job_required_years`` prefers the structured years (change D) and falls
-  back to the text, including text after the 5000-character cut of the API.
+- ``job_required_years`` and ``job_required_years_range`` read the text only
+  (change F: no form-field fallback), including text after the 5000-character
+  cut of the API; a stated range keeps its maximum.
 - The job API sends ``required_years`` and ``fresh_grad_friendly``.
 - In fresh graduate mode a fresh-grad-friendly posting is not capped for its
   years; a senior role stays capped.
@@ -96,12 +97,13 @@ def variant(
 
 
 def test_labelled_set_is_complete() -> None:
-    """The set has 40 cases with unique IDs, years and fresh-grad cases, and traps."""
+    """The set has 46 cases with unique IDs, years, ranges, fresh-grad cases, and traps."""
     cases = load_cases()
 
-    assert len(cases) == 40
-    assert len({c["case_id"] for c in cases}) == 40
-    assert sum(c["years"] is not None for c in cases) >= 20
+    assert len(cases) == 46
+    assert len({c["case_id"] for c in cases}) == 46
+    assert sum(c["years"] is not None for c in cases) >= 25
+    assert sum(c["years_max"] is not None for c in cases) >= 5
     assert sum(c["fresh_grad"] for c in cases) >= 10
 
 
@@ -122,6 +124,23 @@ def test_years_meet_the_decision_rule() -> None:
     assert invented == []
 
 
+def test_ranges_meet_the_decision_rule() -> None:
+    """The range maximum is exact on at least 90 % of the range cases (change F)."""
+    from src.scoring.experience_signals import years_range_from_text
+
+    cases = load_cases()
+    ranges = [c for c in cases if c["years_max"] is not None]
+    exact = [
+        c["case_id"]
+        for c in ranges
+        if years_range_from_text(c["text"]) == (c["years"], c["years_max"])
+    ]
+
+    assert len(exact) / len(ranges) >= 0.9, sorted(
+        {c["case_id"] for c in ranges} - set(exact)
+    )
+
+
 def test_fresh_grad_meets_the_decision_rule() -> None:
     """Fresh-grad precision 1.0 and recall at least 0.85."""
     from src.scoring.experience_signals import is_fresh_grad_friendly
@@ -137,16 +156,21 @@ def test_fresh_grad_meets_the_decision_rule() -> None:
 # --- Required years of a job --------------------------------------------------
 
 
-def test_structured_years_win_over_text(fresh_ml: SimpleNamespace) -> None:
-    """The structured value decides when there is one; the text otherwise."""
-    from src.scoring.experience_signals import job_required_years
+def test_form_field_years_are_not_used(fresh_ml: SimpleNamespace) -> None:
+    """Only the text counts: the form-field years give no value of their own (change F)."""
+    from src.scoring.experience_signals import (
+        job_required_years,
+        job_required_years_range,
+    )
 
-    text_only = variant(fresh_ml.job, extra_text="At least 6 years of experience.")
-    both = variant(fresh_ml.job, years=2, extra_text="At least 6 years of experience.")
+    field_only = variant(fresh_ml.job, years=3)
+    msi_like = variant(
+        fresh_ml.job, years=3, extra_text="1 to 5 years of experience in software."
+    )
 
     assert job_required_years(fresh_ml.job) is None
-    assert job_required_years(text_only) == 6
-    assert job_required_years(both) == 2
+    assert job_required_years(field_only) is None
+    assert job_required_years_range(msi_like) == (1, 5)
 
 
 # --- The job API sends both values -------------------------------------------
@@ -157,15 +181,19 @@ def test_serializer_sends_required_years_and_fresh_grad(
 ) -> None:
     """``serialize_listing`` sends ``required_years`` and ``fresh_grad_friendly``."""
     friendly = variant(
-        fresh_ml.job, years=4, extra_text="Fresh graduates are welcome to apply."
+        fresh_ml.job,
+        years=3,
+        extra_text="1 to 5 years of experience. Fresh graduates are welcome to apply.",
     )
 
     plain_data = serialize_listing(fresh_ml.job)
     friendly_data = serialize_listing(friendly)
 
     assert plain_data["required_years"] is None
+    assert plain_data["required_years_max"] is None
     assert plain_data["fresh_grad_friendly"] is False
-    assert friendly_data["required_years"] == 4
+    assert friendly_data["required_years"] == 1
+    assert friendly_data["required_years_max"] == 5
     assert friendly_data["fresh_grad_friendly"] is True
 
 
@@ -183,6 +211,7 @@ def test_serializer_reads_text_after_the_description_cut(
 
     assert len(data["description"]) <= 5000
     assert data["required_years"] == 4
+    assert data["required_years_max"] is None
     assert data["fresh_grad_friendly"] is True
 
 
@@ -192,9 +221,10 @@ def test_serializer_reads_text_after_the_description_cut(
 def test_fresh_grad_friendly_lifts_the_years_cap(fresh_ml: SimpleNamespace) -> None:
     """A 6-year job that welcomes fresh graduates is not capped for its years."""
     matcher = JobMatcher(fresh_grad_mode=True)
-    capped = variant(fresh_ml.job, years=6)
+    capped = variant(fresh_ml.job, extra_text="At least 6 years of experience.")
     friendly = variant(
-        fresh_ml.job, years=6, extra_text="Fresh graduates are welcome to apply."
+        fresh_ml.job,
+        extra_text="At least 6 years of experience. Fresh graduates are welcome to apply.",
     )
 
     assert not matcher.score_job(capped, fresh_ml.profile).passed_threshold
@@ -213,12 +243,14 @@ def test_fresh_grad_friendly_keeps_the_senior_cap(fresh_ml: SimpleNamespace) -> 
     assert not matcher.score_job(senior, fresh_ml.profile).passed_threshold
 
 
-def test_text_years_do_not_cap(fresh_ml: SimpleNamespace) -> None:
-    """Years found only in the text label the job but do not cap it (choice C1a)."""
+def test_text_minimum_decides_the_cap(fresh_ml: SimpleNamespace) -> None:
+    """The cap reads the text minimum: "1 to 5 years" passes over form field 6 (change F)."""
     matcher = JobMatcher(fresh_grad_mode=True)
-    text_years = variant(fresh_ml.job, extra_text="At least 6 years of experience.")
+    msi_like = variant(
+        fresh_ml.job, years=6, extra_text="1 to 5 years of experience in software."
+    )
 
-    assert matcher.score_job(text_years, fresh_ml.profile).passed_threshold
+    assert matcher.score_job(msi_like, fresh_ml.profile).passed_threshold
 
 
 # --- Distribution ---------------------------------------------------------------
