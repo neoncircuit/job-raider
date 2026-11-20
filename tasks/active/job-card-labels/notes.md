@@ -119,3 +119,7 @@ flowchart LR
 - Three seniority tests (`test_fresh_grad_seniority.py`: Entry Level, plain Mid Level, "Lead Generation Analyst" at Entry Level) failed in the full run: the shared sample job has the requirement "5+ years of Python experience", which the text cap now reads. These tests check the senior-title cap, so they now clear the sample requirements (`requirements=[]`, with a comment); the 5+ years case is covered by the change F tests.
 - Checks on the clone: ranking pins unchanged; black, ruff, mypy gate (0 new); full backend pytest 2488 passed; vitest 395 passed (71 files), eslint, tsc, prettier, `build`, `build:demo` pass.
 - Applied to `main` after "Yes, apply it" (2026-11-16): the 11 files are the same as on the clone; on `main` black, ruff, mypy gate (0 new), full backend pytest 2488 passed, vitest 395 passed, eslint, tsc, prettier. Commit "feat(scoring): read required years from the description only, and show the stated range". Not pushed.
+
+## Live run for change F, first try (2026-11-20, user, `run_ae8e0017062d`)
+
+- Scraped 0 jobs: all 3 MyCareersFuture searches failed with HTTP 504 "Endpoint request timed out" from the MyCareersFuture API. The run stopped after the scrape, as designed for an empty input. Not caused by this change (the scraper fetch did not change). To be run again.

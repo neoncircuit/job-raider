@@ -10,7 +10,7 @@ the submit stage with each stage receiving the output of the stage before.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pytest
 
@@ -310,6 +310,7 @@ class TestNoJobsStop:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         scraped: List[Any],
+        scrape_metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Run a full dry run with fake stages; Scrape returns ``scraped``.
@@ -319,6 +320,7 @@ class TestNoJobsStop:
             tmp_path: Temporary directory.
             monkeypatch: Pytest monkeypatch fixture.
             scraped: The listings that Scrape returns.
+            scrape_metadata: The metadata of the Scrape result (empty when None).
 
         Returns:
             The pipeline result and the stages that ran.
@@ -350,7 +352,10 @@ class TestNoJobsStop:
                 """
                 ran.append(stage)
                 data = scraped if stage == PipelineStage.SCRAPE else [stage.value]
-                return ok(stage, data)
+                result = ok(stage, data)
+                if stage == PipelineStage.SCRAPE and scrape_metadata:
+                    result.metadata = dict(scrape_metadata)
+                return result
 
             return fake
 
@@ -370,6 +375,28 @@ class TestNoJobsStop:
         assert result.stages_completed == ["scrape"]
         assert result.success is True
         assert result.metadata["warning"] == NO_JOBS_WARNING
+
+    def test_failed_source_gives_the_source_notice(
+        self, sample_user_profile: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Every search timed out: the run stops after Scrape with the source notice."""
+        error = "ScrapingException: MyCareersFuture API returned HTTP 504: timed out"
+        metadata = {
+            "searches": [{"source": "mycareersfuture", "count": 0, "error": error}]
+        }
+
+        out = self._run(
+            sample_user_profile,
+            tmp_path,
+            monkeypatch,
+            scraped=[],
+            scrape_metadata=metadata,
+        )
+        warning = out["result"].metadata["warning"]
+
+        assert out["ran"] == [PipelineStage.SCRAPE]
+        assert "MyCareersFuture" in warning
+        assert "keywords" not in warning.lower()
 
     def test_listings_run_every_stage_without_a_warning(
         self, sample_user_profile: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

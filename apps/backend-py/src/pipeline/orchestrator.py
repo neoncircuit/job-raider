@@ -29,6 +29,10 @@ from ..models.user_profile import UserProfile
 from ..scoring.scam_detector import DEFAULT_SCAM_ACTION, DEFAULT_SCAM_THRESHOLD
 from ..scrapers.storage import JobListingStorage
 from ..utils.logger import Components, get_logger, setup_logging
+
+# NO_JOBS_WARNING and no_jobs_warning stay importable from this module.
+from .no_jobs import NO_JOBS_WARNING as NO_JOBS_WARNING
+from .no_jobs import no_jobs_warning as no_jobs_warning
 from .stages import PipelineContext, PipelineStages, StageResult
 
 if TYPE_CHECKING:
@@ -110,13 +114,6 @@ class PipelineConfig:
     enable_career_coach: bool = True
     enable_parallel_execution: bool = True
     agent_timeout: float = 300.0  # 5 minutes
-
-
-# Shown when Scrape finds no listings; the run then stops after Scrape.
-NO_JOBS_WARNING = (
-    "No jobs found for these keywords and sources. The run stopped after "
-    "Scrape. Try other keywords, fewer keywords, or another source."
-)
 
 
 @dataclass
@@ -596,7 +593,7 @@ class PipelineOrchestrator:
 
                     # No jobs: the later stages would run on nothing.
                     if stage == PipelineStage.SCRAPE and not result.data:
-                        warning = NO_JOBS_WARNING
+                        warning = no_jobs_warning(result.metadata or {})
                         self.logger.warning(warning)
                         break
         finally:
