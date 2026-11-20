@@ -735,6 +735,32 @@ export interface ModelParams {
   top_p: number;
 }
 
+/** Result of the company site search for one job (company-site-apply, S1). */
+export interface CompanySiteResult {
+  /** exact (posting), careers (careers page), none, or disabled (setting off). */
+  level: "exact" | "careers" | "none" | "disabled";
+  url: string | null;
+  page_title?: string | null;
+  evidence: string[];
+  checked_at: string;
+  query: string;
+  cached: boolean;
+}
+
+/** One generated application file of a job (apply pack, S2). */
+export interface ApplicationFile {
+  kind: "cv_pdf" | "cv_docx" | "cover_letter";
+  label: string;
+  filename: string;
+  available: boolean;
+  /** API path below the proxy prefix, for example /jobs/<id>/application-files/cv_pdf. */
+  download_path: string;
+}
+
+export interface ApplicationFilesResponse {
+  files: ApplicationFile[];
+}
+
 export interface CostLimits {
   max_api_cost_per_run: number;
   enable_cache: boolean;

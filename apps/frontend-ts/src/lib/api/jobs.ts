@@ -1,5 +1,8 @@
 import { request } from "./client";
+import { downloadFile } from "./coverLetter";
 import type {
+  ApplicationFilesResponse,
+  CompanySiteResult,
   CoverLetterResponse,
   JobListing,
   JobSearchResponse,
@@ -42,6 +45,29 @@ export const jobsApi = {
 
   getSimilarity: (jobId: string) =>
     request<JobSimilarityResponse>("GET", `/jobs/${jobId}/similarity`),
+
+  getCompanySite: (jobId: string, refresh = false) =>
+    request<CompanySiteResult>(
+      "GET",
+      `/jobs/${jobId}/company-site?refresh=${refresh ? "true" : "false"}`,
+    ),
+
+  getApplicationFiles: (jobId: string) =>
+    request<ApplicationFilesResponse>(
+      "GET",
+      `/jobs/${jobId}/application-files`,
+    ),
+
+  downloadApplicationFile: async (
+    jobId: string,
+    kind: string,
+    fallbackName: string,
+  ) => {
+    const res = await fetch(
+      `/api/proxy/jobs/${jobId}/application-files/${kind}`,
+    );
+    await downloadFile(res, fallbackName);
+  },
 
   score: (jobId: string) =>
     request<{ total_score: number; details?: Record<string, unknown> }>(

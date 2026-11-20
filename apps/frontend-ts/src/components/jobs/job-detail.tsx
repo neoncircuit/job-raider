@@ -25,6 +25,8 @@ import { AiWaitProgress } from "@/components/ai-wait-progress";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatSalaryRange } from "@/lib/utils/format";
 import { JobDescriptionBody } from "@/components/jobs/job-description-body";
+import { CompanySiteAction } from "@/components/jobs/company-site-action";
+import { ApplicationFiles } from "@/components/jobs/application-files";
 import { SOURCE_COLORS, STATUS_COLORS } from "@/lib/utils/constants";
 import { toast } from "sonner";
 import type { JobListing } from "@/lib/types/api";
@@ -485,6 +487,7 @@ export function JobDetail({
             </div>
           )}
         </div>
+        <ApplicationFiles job={job} />
       </div>
 
       {/* Fixed row: the primary actions only */}
@@ -527,6 +530,7 @@ export function JobDetail({
               Simulate Apply
             </Button>
           )}
+          {!alreadyTracked && <CompanySiteAction job={job} />}
           <Button size="sm" variant="outline" onClick={onSave}>
             {isSaved ? "Unsave" : "Save"}
           </Button>

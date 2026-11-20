@@ -8,15 +8,22 @@ Date: 2026-04-21
 """
 
 import asyncio
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi.responses import FileResponse
 
 from ...models.user_profile import UserProfile
 from ...pipeline.shortlist import serialize_listing, serialize_scored_job
 from ...scoring.matcher import JobMatcher
 from ...scrapers.manager import ScraperManager
 from ...scrapers.storage import JobListingStorage
+from ...submission.application_files import (
+    DEFAULT_RESULTS_DIR,
+    application_file_path,
+    list_application_files,
+)
 from ...submission.applied_guard import AppliedGuard
 from ...submission.company_site_cache import get_company_site
 from ...utils.logger import Components, get_logger
@@ -316,6 +323,57 @@ async def get_job_company_site(job_id: str, refresh: bool = False):
         listing.company,
         listing.title,
         refresh=refresh,
+    )
+
+
+def _results_root() -> Path:
+    """
+    Return the pipeline results folder that holds the application files.
+
+    Isolated as a function so tests can point it at a temp directory.
+
+    Returns:
+        The default results folder.
+    """
+    return DEFAULT_RESULTS_DIR
+
+
+@router.get("/{job_id}/application-files")
+async def get_application_files(job_id: str):
+    """
+    List the generated application files for a job (CV and cover letter).
+
+    Args:
+        job_id: Job ID.
+
+    Returns:
+        Dict with ``files``: one entry per kind, with availability.
+    """
+    return {"files": list_application_files(_results_root(), job_id)}
+
+
+@router.get("/{job_id}/application-files/{kind}")
+async def download_application_file(job_id: str, kind: str):
+    """
+    Download a generated application file as an attachment.
+
+    Args:
+        job_id: Job ID.
+        kind: ``cv_pdf``, ``cv_docx``, or ``cover_letter``.
+
+    Returns:
+        The file, or 404 when it was not generated.
+    """
+    path = application_file_path(_results_root(), job_id, kind)
+    if path is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Application file not found. Run the pipeline to generate it.",
+        )
+    return FileResponse(
+        path,
+        filename=path.name,
+        content_disposition_type="attachment",
     )
 
 

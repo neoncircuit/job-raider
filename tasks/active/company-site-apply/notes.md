@@ -49,3 +49,8 @@ User decision: the sprint goes to the Cursor agent. Done here: the plan check (K
 - Fix 1 (URL rule): a whole-token rule replaces the prefix rule. Some URL word must equal the first k company words joined (k = 1, 2, ...). A single first word needs at least four letters.
 - Fix 2 (cache): a "none" where every fetched candidate page failed to load (pages attempted > 0, pages loaded = 0) is not cached. A "none" with at least one loaded and rejected page is cached. A "none" with no page fetched (for example portal-only results or no results) is cached as before. `CompanySiteResult` gains `pages_attempted` and `pages_loaded`.
 - R1 on 23 cases: 0 wrong links; exact 8 of 8; careers 2 of 2.
+
+## S2 apply pack (2026-11-20, scratch clone)
+- Red first: `apps/backend-py/tests/unit/test_application_files.py` (module missing); `apps/frontend-ts/tests/components/company-site-action.test.tsx` and `application-files.test.tsx` (components missing).
+- Green: `src/submission/application_files.py` (fixed file names under `data/results/`; job IDs must be plain; kinds `cv_pdf`, `cv_docx`, `cover_letter`); routes `GET /api/jobs/{id}/application-files` and `GET /api/jobs/{id}/application-files/{kind}` (attachment, 404 when missing).
+- Frontend: `CompanySiteAction` (Find company site, working state, labelled link "Apply on company site" or "Company careers page", "Search again"); `ApplicationFiles` (downloads or "not generated yet"); both in `job-detail.tsx`.
