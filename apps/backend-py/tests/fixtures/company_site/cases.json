@@ -258,6 +258,45 @@
         "https://www.jobboardhub.example/jobs/claims-officer-kestrel-insurance": ["Claims Officer - Kestrel Insurance - JobBoardHub", "Kestrel Insurance is hiring a Claims Officer. Apply now on JobBoardHub."]
       },
       "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-21",
+      "note": "trap: another company's ATS posting with the same title; our company is named only in the text, as a client",
+      "company": "Vantage Freight Pte Ltd",
+      "title": "Operations Analyst",
+      "results": [
+        {"url": "https://boards.greenhouse.io/otherco/jobs/5550001", "title": "Operations Analyst - OtherCo"}
+      ],
+      "pages": {
+        "https://boards.greenhouse.io/otherco/jobs/5550001": ["Operations Analyst - OtherCo", "OtherCo is hiring an Operations Analyst in Singapore. Our clients include Vantage Freight for route planning and warehouse work."]
+      },
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-22",
+      "note": "trap: the job is Software Engineer; the same company's posting is Senior Software Engineer",
+      "company": "Quillon Software Pte Ltd",
+      "title": "Software Engineer",
+      "results": [
+        {"url": "https://apply.workable.com/quillon-software/j/S3N10R01", "title": "Senior Software Engineer - Quillon Software"}
+      ],
+      "pages": {
+        "https://apply.workable.com/quillon-software/j/S3N10R01": ["Senior Software Engineer - Quillon Software", "Quillon Software is looking for a Senior Software Engineer to lead our platform team in Go."]
+      },
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-23",
+      "note": "trap: the URL word starts with the first company word (acme) but is another company's board; the text mentions logistics",
+      "company": "Acme Logistics Pte Ltd",
+      "title": "Operations Analyst",
+      "results": [
+        {"url": "https://boards.greenhouse.io/acmerobotics/jobs/6660001", "title": "Operations Analyst - Acme Robotics"}
+      ],
+      "pages": {
+        "https://boards.greenhouse.io/acmerobotics/jobs/6660001": ["Operations Analyst - Acme Robotics", "Acme Robotics is hiring an Operations Analyst in Singapore to support our logistics partners in the lab."]
+      },
+      "expected": {"level": "none", "url": null}
     }
   ]
 }

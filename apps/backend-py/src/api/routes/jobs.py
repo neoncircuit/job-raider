@@ -7,6 +7,7 @@ Author: Job Raider
 Date: 2026-04-21
 """
 
+import asyncio
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
@@ -17,6 +18,7 @@ from ...scoring.matcher import JobMatcher
 from ...scrapers.manager import ScraperManager
 from ...scrapers.storage import JobListingStorage
 from ...submission.applied_guard import AppliedGuard
+from ...submission.company_site_cache import get_company_site
 from ...utils.logger import Components, get_logger
 from ...utils.source_geography import listing_matches_requested_locations
 from ..models.requests import JobSearchRequest, SemanticSearchRequest
@@ -257,6 +259,64 @@ async def get_job(job_id: str):
         )
     listing = AppliedGuard().annotate_listings([listing])[0]
     return serialize_listing(listing)
+
+
+def _company_site_enabled() -> bool:
+    """
+    Read the company site search setting.
+
+    Returns:
+        True when the setting is on; False when it is off or cannot be read.
+    """
+    try:
+        from ..settings import get_storage
+
+        return bool(
+            get_storage().load_settings().cost_limits.enable_company_site_search
+        )
+    except Exception as exc:
+        logger.warning("Could not load settings for company site search: %s", exc)
+        return False
+
+
+@router.get("/{job_id}/company-site")
+async def get_job_company_site(job_id: str, refresh: bool = False):
+    """
+    Find the job on the company's own site or ATS, with a per-job cache.
+
+    The search runs off the event loop. A cached result is returned unless
+    ``refresh`` is true. When the setting is off, no search runs.
+
+    Args:
+        job_id: Job ID.
+        refresh: Search again even when a result is cached.
+
+    Returns:
+        Company site result with level, URL, evidence, and ``cached`` flag.
+    """
+    listing = _listing_storage().get_by_id(job_id)
+    if listing is None:
+        raise HTTPException(
+            status_code=404,
+            detail=("Job not found. Search or run Discover so the listing is stored."),
+        )
+    if not _company_site_enabled():
+        return {
+            "level": "disabled",
+            "url": None,
+            "page_title": None,
+            "evidence": [],
+            "checked_at": "",
+            "query": "",
+            "cached": False,
+        }
+    return await asyncio.to_thread(
+        get_company_site,
+        job_id,
+        listing.company,
+        listing.title,
+        refresh=refresh,
+    )
 
 
 @router.post("/{job_id}/score")

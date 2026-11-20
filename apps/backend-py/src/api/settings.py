@@ -216,6 +216,13 @@ class CostLimits(BaseModel):
             "short company-mission brief against JD facts (skip on ambiguity)"
         ),
     )
+    enable_company_site_search: bool = Field(
+        default=True,
+        description=(
+            "Allow the Find company site button to search for a job on the "
+            "company's own site or ATS; results are verified before showing"
+        ),
+    )
     enable_prompt_cache: bool = Field(
         default=False,
         description=(

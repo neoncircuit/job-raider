@@ -75,6 +75,7 @@ const schema = z.object({
     cache_ttl: z.number().int().min(0),
     enable_jd_llm_extract: z.boolean(),
     enable_company_mission: z.boolean(),
+    enable_company_site_search: z.boolean(),
     enable_prompt_cache: z.boolean(),
     ollama_keep_alive: z.string().optional(),
     ollama_one_model_at_a_time: z.boolean(),
@@ -139,6 +140,8 @@ function SettingsForm({
           initial.cost_limits.enable_jd_llm_extract ?? false,
         enable_company_mission:
           initial.cost_limits.enable_company_mission ?? false,
+        enable_company_site_search:
+          initial.cost_limits.enable_company_site_search ?? true,
         enable_prompt_cache: initial.cost_limits.enable_prompt_cache ?? false,
         ollama_keep_alive: initial.cost_limits.ollama_keep_alive ?? "",
         ollama_one_model_at_a_time:
@@ -682,6 +685,28 @@ function SettingsForm({
                 When on, Generate may search the public web for a short verified
                 company-mission brief. Ambiguous matches skip silently into the
                 letter (no invented mission). Default off.
+              </p>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="enable_company_site_search"
+                  checked={useWatch({
+                    control,
+                    name: "cost_limits.enable_company_site_search",
+                  })}
+                  onCheckedChange={(v) =>
+                    setValue("cost_limits.enable_company_site_search", v, {
+                      shouldDirty: true,
+                    })
+                  }
+                />
+                <Label htmlFor="enable_company_site_search">
+                  Company site search
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                When on, the Find company site button in job details searches
+                the company&apos;s own site or applicant tracking system for the
+                job. Only a verified page is shown. Default on.
               </p>
               <div className="space-y-1">
                 <Label htmlFor="ollama_keep_alive">Ollama keep_alive</Label>

@@ -741,6 +741,7 @@ export interface CostLimits {
   cache_ttl: number;
   enable_jd_llm_extract?: boolean;
   enable_company_mission?: boolean;
+  enable_company_site_search?: boolean;
   enable_prompt_cache?: boolean;
   ollama_keep_alive?: string | null;
   /** Unload other Ollama models before each call (default on). */
