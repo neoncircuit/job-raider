@@ -67,7 +67,7 @@ flowchart LR
 - Never read `apps/backend-py/.env`, `apps/frontend-ts/.env.local`, `user_settings.json`, or the contents of any `data/` folder.
 - Never sign in or enter passwords for the user; no CAPTCHA solving.
 - Search sends company names and job titles to DuckDuckGo, as the company mission research does; no profile data leaves the machine.
-- The MCF applications import is with the user's Cursor agent; this task does not duplicate it.
+- The MCF applications import is a separate task for a coding agent; this task does not duplicate it.
 - Six scoring commits on `main` are waiting for the user's live check before the push; this task does not change `src/scoring/`.
 
 ## Acceptance Criteria
@@ -78,4 +78,4 @@ flowchart LR
 - [ ] S4: live check by the user (R2) and docs; pushed after approval; CI passes; `tasks/todo.md` updated; folder archived.
 
 ## Status
-`handed over` (2026-11-20, to the Cursor agent; see `handoff.md`)
+`handed over` (2026-11-20, to the opencode agent; see `handoff.md`)

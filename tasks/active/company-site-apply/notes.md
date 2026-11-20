@@ -21,3 +21,4 @@ flowchart LR
 ## Hand-over (2026-11-20)
 
 User decision: the sprint goes to the Cursor agent. Done here: the plan check (K1a, K2a, K3a) and 20 labelled fixture cases (`fixture-cases.json`, written before any code). The next agent starts from `handoff.md`. No code written; nothing committed for this task.
+- Update (2026-11-20): the user chose the opencode agent for this sprint for now, to see how it goes; bigger tasks may move to Cursor later.

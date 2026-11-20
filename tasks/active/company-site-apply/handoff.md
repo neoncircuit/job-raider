@@ -1,6 +1,6 @@
 # Hand-over: Apply Through Company Career Sites
 
-For the coding agent that continues this task (user decision 2026-11-20: hand the sprint to the Cursor agent). Read `CLAUDE.md`, `AGENTS.md`, `tasks/todo.md`, the recent sections of `docs/lessons.md`, then `task.md` and `notes.md` in this folder.
+For the coding agent that continues this task (user decision 2026-11-20: the opencode agent builds this sprint for now; bigger tasks may move to Cursor later). Read `CLAUDE.md`, `AGENTS.md`, `tasks/todo.md`, the recent sections of `docs/lessons.md`, then `task.md` and `notes.md` in this folder.
 
 ## State on hand-over (2026-11-20)
 
@@ -45,5 +45,5 @@ flowchart LR
 - Never read `apps/backend-py/.env`, `apps/frontend-ts/.env.local`, `user_settings.json`, or the contents of any `data/` folder. Never sign in, enter passwords, or solve CAPTCHAs for the user.
 - Documentation in ASD-STE100 Simplified Technical English, with a mermaid diagram, no emojis, and no full host paths (a CI test enforces this).
 - Do not change `src/scoring/` or the job card years labels: six scoring commits on `main` wait for the user's live check before the push (`tasks/active/job-card-labels/`).
-- The MyCareersFuture applications import is a separate task for the Cursor agent; do not mix it into this one.
+- The MyCareersFuture applications import is a separate task for a coding agent; do not mix it into this one.
 - Seen during planning, not part of this task: `_has_easy_apply` in `src/submission/detector.py` loops over the characters of each indicator string, so any HTML would count as Easy Apply. It is safe today only because the detector never gets HTML.
