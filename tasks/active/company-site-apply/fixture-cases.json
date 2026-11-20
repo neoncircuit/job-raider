@@ -1,0 +1,263 @@
+{
+  "_about": "Constructed companies and pages for the company site finder (company-site-apply task, rule R1). No real posting is copied. Each case gives the job, the search results per query (in order), the fetched pages (url to [page title, main text]; a missing url means the fetch failed), and the expected result. Labels were written before the finder code.",
+  "cases": [
+    {
+      "case_id": "cs-01",
+      "note": "exact posting on a Greenhouse board",
+      "company": "Lumen Analytics Pte. Ltd.",
+      "title": "Graduate Machine Learning Engineer",
+      "results": [
+        {"url": "https://www.mycareersfuture.gov.sg/job/it/graduate-ml-engineer-lumen-abc", "title": "Graduate Machine Learning Engineer - Lumen Analytics"},
+        {"url": "https://boards.greenhouse.io/lumenanalytics/jobs/4012345", "title": "Job Application for Graduate Machine Learning Engineer at Lumen Analytics"}
+      ],
+      "pages": {
+        "https://boards.greenhouse.io/lumenanalytics/jobs/4012345": ["Job Application for Graduate Machine Learning Engineer at Lumen Analytics", "Lumen Analytics is hiring a Graduate Machine Learning Engineer in Singapore. You will train models in PyTorch."]
+      },
+      "expected": {"level": "exact", "url": "https://boards.greenhouse.io/lumenanalytics/jobs/4012345"}
+    },
+    {
+      "case_id": "cs-02",
+      "note": "exact posting on Lever",
+      "company": "Kestrel Insurance",
+      "title": "Junior Data Scientist",
+      "results": [
+        {"url": "https://jobs.lever.co/kestrel-insurance/7a1b2c3d", "title": "Kestrel Insurance - Junior Data Scientist"}
+      ],
+      "pages": {
+        "https://jobs.lever.co/kestrel-insurance/7a1b2c3d": ["Kestrel Insurance - Junior Data Scientist", "Junior Data Scientist. Singapore. Kestrel Insurance pricing team. Build claim frequency models."]
+      },
+      "expected": {"level": "exact", "url": "https://jobs.lever.co/kestrel-insurance/7a1b2c3d"}
+    },
+    {
+      "case_id": "cs-03",
+      "note": "exact posting on Workday",
+      "company": "Harbourline Logistics Pte Ltd",
+      "title": "Data Analyst",
+      "results": [
+        {"url": "https://harbourline.wd3.myworkdayjobs.com/en-US/careers/job/Singapore/Data-Analyst_R-1042", "title": "Data Analyst - Harbourline Logistics Careers"}
+      ],
+      "pages": {
+        "https://harbourline.wd3.myworkdayjobs.com/en-US/careers/job/Singapore/Data-Analyst_R-1042": ["Data Analyst", "Harbourline Logistics. Data Analyst. Location: Singapore. Build dashboards for the warehouse planning team."]
+      },
+      "expected": {"level": "exact", "url": "https://harbourline.wd3.myworkdayjobs.com/en-US/careers/job/Singapore/Data-Analyst_R-1042"}
+    },
+    {
+      "case_id": "cs-04",
+      "note": "exact posting on the company's own domain",
+      "company": "Corvid Robotics Pte. Ltd.",
+      "title": "Software Engineer (Robotics)",
+      "results": [
+        {"url": "https://www.corvidrobotics.com/careers/software-engineer-robotics", "title": "Software Engineer (Robotics) | Corvid Robotics"}
+      ],
+      "pages": {
+        "https://www.corvidrobotics.com/careers/software-engineer-robotics": ["Software Engineer (Robotics) | Corvid Robotics", "Join Corvid Robotics as a Software Engineer working on robot navigation in C++ and Python."]
+      },
+      "expected": {"level": "exact", "url": "https://www.corvidrobotics.com/careers/software-engineer-robotics"}
+    },
+    {
+      "case_id": "cs-05",
+      "note": "careers page only on the company domain; the posting is not found",
+      "company": "Marigold Health Pte Ltd",
+      "title": "Junior Data Engineer",
+      "results": [
+        {"url": "https://www.marigoldhealth.sg/careers", "title": "Careers at Marigold Health"}
+      ],
+      "pages": {
+        "https://www.marigoldhealth.sg/careers": ["Careers at Marigold Health", "Work with us. Marigold Health is growing. See our open roles in nursing, operations, and technology."]
+      },
+      "expected": {"level": "careers", "url": "https://www.marigoldhealth.sg/careers"}
+    },
+    {
+      "case_id": "cs-06",
+      "note": "trap: portals only; no company page",
+      "company": "Tessellate Media",
+      "title": "Video Editor",
+      "results": [
+        {"url": "https://www.linkedin.com/jobs/view/123456", "title": "Video Editor - Tessellate Media"},
+        {"url": "https://sg.indeed.com/viewjob?jk=abc", "title": "Video Editor - Tessellate Media - Singapore"},
+        {"url": "https://www.jobstreet.com.sg/job/987", "title": "Video Editor | Tessellate Media"}
+      ],
+      "pages": {},
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-07",
+      "note": "trap: same first word, different company domain",
+      "company": "Acme Logistics Pte Ltd",
+      "title": "Operations Executive",
+      "results": [
+        {"url": "https://www.acmerobotics.com/careers/operations-executive", "title": "Operations Executive | Acme Robotics"}
+      ],
+      "pages": {
+        "https://www.acmerobotics.com/careers/operations-executive": ["Operations Executive | Acme Robotics", "Acme Robotics is hiring an Operations Executive for its lab in Singapore."]
+      },
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-08",
+      "note": "trap: company ATS board, but a different job",
+      "company": "Lumen Analytics",
+      "title": "Graduate Machine Learning Engineer",
+      "results": [
+        {"url": "https://boards.greenhouse.io/lumenanalytics/jobs/4099999", "title": "Job Application for Senior Sales Manager at Lumen Analytics"}
+      ],
+      "pages": {
+        "https://boards.greenhouse.io/lumenanalytics/jobs/4099999": ["Job Application for Senior Sales Manager at Lumen Analytics", "Lumen Analytics is hiring a Senior Sales Manager to grow our enterprise accounts."]
+      },
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-09",
+      "note": "trap: the right job title on another company's ATS board",
+      "company": "Kestrel Insurance",
+      "title": "Junior Data Scientist",
+      "results": [
+        {"url": "https://jobs.lever.co/falcon-bank/11112222", "title": "Falcon Bank - Junior Data Scientist"}
+      ],
+      "pages": {
+        "https://jobs.lever.co/falcon-bank/11112222": ["Falcon Bank - Junior Data Scientist", "Junior Data Scientist at Falcon Bank. Build credit risk models."]
+      },
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-10",
+      "note": "first candidate fetch fails; the second is the exact posting",
+      "company": "Northwind Energy Pte Ltd",
+      "title": "Graduate Electrical Engineer",
+      "results": [
+        {"url": "https://www.northwindenergy.com.sg/careers/graduate-electrical-engineer-old", "title": "Graduate Electrical Engineer | Northwind Energy"},
+        {"url": "https://jobs.smartrecruiters.com/NorthwindEnergy/743999123-graduate-electrical-engineer", "title": "Graduate Electrical Engineer - Northwind Energy"}
+      ],
+      "pages": {
+        "https://jobs.smartrecruiters.com/NorthwindEnergy/743999123-graduate-electrical-engineer": ["Graduate Electrical Engineer", "Northwind Energy. Graduate Electrical Engineer, Singapore. Support solar grid projects."]
+      },
+      "expected": {"level": "exact", "url": "https://jobs.smartrecruiters.com/NorthwindEnergy/743999123-graduate-electrical-engineer"}
+    },
+    {
+      "case_id": "cs-11",
+      "note": "exact posting is preferred over the careers page that comes first",
+      "company": "Corvid Robotics",
+      "title": "Robotics Software Intern",
+      "results": [
+        {"url": "https://www.corvidrobotics.com/careers", "title": "Careers | Corvid Robotics"},
+        {"url": "https://jobs.ashbyhq.com/corvid-robotics/5f6e7d8c", "title": "Robotics Software Intern - Corvid Robotics"}
+      ],
+      "pages": {
+        "https://www.corvidrobotics.com/careers": ["Careers | Corvid Robotics", "Join Corvid Robotics. Open roles in software and hardware."],
+        "https://jobs.ashbyhq.com/corvid-robotics/5f6e7d8c": ["Robotics Software Intern - Corvid Robotics", "Corvid Robotics. Robotics Software Intern. Six months, Singapore."]
+      },
+      "expected": {"level": "exact", "url": "https://jobs.ashbyhq.com/corvid-robotics/5f6e7d8c"}
+    },
+    {
+      "case_id": "cs-12",
+      "note": "trap: a news article about the company, not a careers page",
+      "company": "Marigold Health",
+      "title": "Nurse Clinician",
+      "results": [
+        {"url": "https://www.straitsnews.example/business/marigold-health-expands", "title": "Marigold Health expands to three new clinics"}
+      ],
+      "pages": {
+        "https://www.straitsnews.example/business/marigold-health-expands": ["Marigold Health expands to three new clinics", "Marigold Health will hire 50 nurses this year, the company said."]
+      },
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-13",
+      "note": "title with a different word order and a level word still matches",
+      "company": "Quillon Software Pte. Ltd.",
+      "title": "Backend Engineer, Payments",
+      "results": [
+        {"url": "https://apply.workable.com/quillon-software/j/A1B2C3D4E5/", "title": "Payments Backend Engineer - Quillon Software"}
+      ],
+      "pages": {
+        "https://apply.workable.com/quillon-software/j/A1B2C3D4E5/": ["Payments Backend Engineer - Quillon Software", "Quillon Software is looking for a Payments Backend Engineer to build our payment APIs in Go."]
+      },
+      "expected": {"level": "exact", "url": "https://apply.workable.com/quillon-software/j/A1B2C3D4E5/"}
+    },
+    {
+      "case_id": "cs-14",
+      "note": "trap: the job title shares only one word with the page",
+      "company": "Quillon Software",
+      "title": "Backend Engineer, Payments",
+      "results": [
+        {"url": "https://apply.workable.com/quillon-software/j/Z9Y8X7W6V5/", "title": "Payments Operations Analyst - Quillon Software"}
+      ],
+      "pages": {
+        "https://apply.workable.com/quillon-software/j/Z9Y8X7W6V5/": ["Payments Operations Analyst - Quillon Software", "Quillon Software needs a Payments Operations Analyst to reconcile settlements."]
+      },
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-15",
+      "note": "company domain with a hyphen; careers jobs list page",
+      "company": "MSI Global Pte Ltd",
+      "title": "Software Engineer",
+      "results": [
+        {"url": "https://www.msi-global.example/careers/jobs", "title": "Jobs at MSI Global"}
+      ],
+      "pages": {
+        "https://www.msi-global.example/careers/jobs": ["Jobs at MSI Global", "MSI Global current openings: Project Manager, Network Engineer."]
+      },
+      "expected": {"level": "careers", "url": "https://www.msi-global.example/careers/jobs"}
+    },
+    {
+      "case_id": "cs-16",
+      "note": "trap: careers page of a company whose name only contains the job's company name",
+      "company": "Orion Pte Ltd",
+      "title": "Accounts Executive",
+      "results": [
+        {"url": "https://www.orionhealthcare.example/careers", "title": "Careers - Orion Healthcare"}
+      ],
+      "pages": {
+        "https://www.orionhealthcare.example/careers": ["Careers - Orion Healthcare", "Orion Healthcare careers. Join our team of carers."]
+      },
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-17",
+      "note": "no search results",
+      "company": "Tiny Startup Pte Ltd",
+      "title": "Founding Engineer",
+      "results": [],
+      "pages": {},
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-18",
+      "note": "every fetch fails",
+      "company": "Northwind Energy",
+      "title": "Site Engineer",
+      "results": [
+        {"url": "https://jobs.smartrecruiters.com/NorthwindEnergy/700000001-site-engineer", "title": "Site Engineer - Northwind Energy"}
+      ],
+      "pages": {},
+      "expected": {"level": "none", "url": null}
+    },
+    {
+      "case_id": "cs-19",
+      "note": "exact posting on SuccessFactors under a company subdomain",
+      "company": "Falcon Bank Singapore",
+      "title": "Graduate Analyst",
+      "results": [
+        {"url": "https://career5.successfactors.com/career?company=falconbank&career_job_req_id=8812", "title": "Graduate Analyst - Falcon Bank"}
+      ],
+      "pages": {
+        "https://career5.successfactors.com/career?company=falconbank&career_job_req_id=8812": ["Graduate Analyst - Falcon Bank Careers", "Falcon Bank. Graduate Analyst programme. Singapore."]
+      },
+      "expected": {"level": "exact", "url": "https://career5.successfactors.com/career?company=falconbank&career_job_req_id=8812"}
+    },
+    {
+      "case_id": "cs-20",
+      "note": "trap: a job aggregator that is not in the portal list still has no company domain match",
+      "company": "Kestrel Insurance",
+      "title": "Claims Officer",
+      "results": [
+        {"url": "https://www.jobboardhub.example/jobs/claims-officer-kestrel-insurance", "title": "Claims Officer - Kestrel Insurance - JobBoardHub"}
+      ],
+      "pages": {
+        "https://www.jobboardhub.example/jobs/claims-officer-kestrel-insurance": ["Claims Officer - Kestrel Insurance - JobBoardHub", "Kestrel Insurance is hiring a Claims Officer. Apply now on JobBoardHub."]
+      },
+      "expected": {"level": "none", "url": null}
+    }
+  ]
+}
