@@ -60,3 +60,16 @@ User decision: the sprint goes to the Cursor agent. Done here: the plan check (K
 - Backend: `tests/unit/test_company_site_tracking.py`. The three tests passed on the first run, because the existing `POST /api/applications/external` already stores `application_method` and metadata, and `AppliedGuard` matches the portal copy by job ID. R3 is therefore pinned by tests, with no backend code change: the portal copy is marked applied (`annotate_listings`), and the pipeline filter removes it (`filter_unapplied`).
 - Green: hook `useTrackCompanySiteApplication` in `src/lib/hooks/use-jobs.ts` (records method "Company site", metadata `company_site_url` and `company_site_level`, then invalidates the applications query); button "Applied on company site" next to the verified link; apply pack cover letter text now says that letters that need review are on the Cover Letter page.
 - Addition (2026-11-23): the tracking metadata also carries `source_url` (the portal listing URL, when set) and `description` (when not empty), as `useMarkAppliedElsewhere` does. Red first: the hook test's expected metadata gained both fields and failed before the change.
+
+## S4 user guide (2026-11-23, scratch clone)
+
+The user guide section "Apply on the company site" is in `docs/usage.md`, after the Jobs search features. A step in "Discover then review on Jobs" points to it. The Jobs line and the Settings line in the page list also point to it.
+
+The section covers the two link levels, the message when nothing is verified, that a wrong link is not guessed, Search again, the Company site search switch and what the search sends, the Application files downloads, and Applied on company site.
+
+Proof on a scratch clone with its own `.venv` and `node_modules`:
+
+- `apps/backend-py/tests/unit/test_no_host_paths.py`: 21 passed.
+- Full backend suite: 2563 passed, 1 warning.
+
+The live check (rule R2) is still open. This text is not on main. Wait for "Yes, apply it". Do not push. No code change.

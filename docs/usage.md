@@ -64,7 +64,8 @@ flowchart LR
 1. On **Pipeline**, leave mode as Discover (recommended). Start the run.
 2. When complete, open **Review on Jobs** (or go to Jobs). The feed shows the latest shortlist with a run banner (counts and run id).
 3. Review listings, Save, or Apply one-by-one (dry-run by default). No automatic submit after discover.
-4. Optional: switch Pipeline to **Full pipeline (advanced)** for detect/generate/submit stages (still defaults to dry-run).
+4. To apply on the company site, open the job and follow [Apply on the company site](#apply-on-the-company-site).
+5. Optional: switch Pipeline to **Full pipeline (advanced)** for detect/generate/submit stages (still defaults to dry-run).
 
 OCR / vision models are not used in this flow — job listings are text scraped from boards.
 
@@ -813,7 +814,7 @@ http://localhost:3000
 **Navigation Pages:**
 - **Dashboard** - System health, API costs, recent pipeline runs
 - **Pipeline** - Discover (default: scrape and score) or advanced full pipeline; optional Use profile targets
-- **Jobs** - Review latest discover shortlist, or live search; optional Use profile targets; apply is explicit
+- **Jobs** - Review latest discover shortlist, or live search; optional Use profile targets; apply is explicit. In job detail, **Find company site** looks for the company's own page. See [Apply on the company site](#apply-on-the-company-site).
 - **Applications** - Track saved and applied jobs (Simulate Apply for dry-run paths)
 - **Profile** - Manage profile, skills, experience, and Job Targets (keywords, locations, experience, exclude internships). After upload, shows parse time, duration, and model. The skills radar scores categories from CV evidence (proficiency, years, core skills, experience/project mentions), emphasizes top skills within each category, and scales scores to your profile shape so axes are not artificially balanced. Use **Download PDF** to export a structured profile summary (identity, summary, experience, education, skills, certifications). Empty sections are omitted. This is a readable report, not a resume rewrite.
 - **Assessment** - DISC work-style assessment and skill-based technical interview practice
@@ -823,7 +824,7 @@ http://localhost:3000
 - **Career Coach** - Agent-backed career guidance (requires an active profile)
 - **Metrics** - Cost tracking, outcome statistics, cover-letter model comparison, and agent system status
 - **Logs** - Recent API log records with level, component, and text filters (secrets removed)
-- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits (including optional company-mission grounding for cover letters, default off); optional **color scheme** swatch grid (Raid through Stained glass), **Cinematic atmosphere** (local, off by default), and **Date & time** format/timezone prefs (system, profile location, or manual IANA; applies app-wide via ``formatDate`` / ``formatDatetime``)
+- **Settings** - Ollama host, small/large model selection from installed tags, API keys, generation params, cost limits (company-mission grounding for cover letters, default off; **Company site search**, default on); optional **color scheme** swatch grid (Raid through Stained glass), **Cinematic atmosphere** (local, off by default), and **Date & time** format/timezone prefs (system, profile location, or manual IANA; applies app-wide via ``formatDate`` / ``formatDatetime``)
 
 **DISC Work Style Assessment:**
 - Employer-style Most/Least forced-choice practice (not a full personality inventory)
@@ -840,6 +841,77 @@ http://localhost:3000
 - Opt-in **Use profile targets** (default off) to prefill from Profile Job Targets
 - Real-time job classification and trust analysis
 - Apply and Save are per-job actions (no auto-apply after discover)
+
+### Apply on the company site
+
+Use job detail to find the same job on the company's own website. The portal link stays on the page. The app does not submit the company form.
+
+```mermaid
+flowchart TD
+    Open["Open a job on the Jobs page"] --> Find["Click Find company site"]
+    Find --> Switch{"Company site search on?"}
+    Switch -->|No| Off["Turn the search on in Settings"]
+    Switch -->|Yes| Search["Send the company name, the job title, and the word careers to DuckDuckGo"]
+    Search -.-> Privacy["No profile data is sent"]
+    Search --> Check{"Verified page?"}
+    Check -->|Exact posting| Exact["Link: Apply on company site"]
+    Check -->|Careers page only| Careers["Link: Company careers page"]
+    Check -->|Nothing verified| None["No company page was verified. Use the portal link."]
+    Exact --> Files["Download the application files"]
+    Careers --> Files
+    Files --> Submit["You submit the form on the company site"]
+    Submit --> Mark["Click Applied on company site"]
+    Mark --> Portal["The portal copy shows Applied"]
+    Portal --> Skip["A later pipeline run skips that job"]
+```
+
+#### The two link levels
+
+Click **Find company site** in job detail. The button shows "Searching company site..." while the search runs. The app then shows one of these results:
+
+| Result | What you see | Meaning |
+|---|---|---|
+| Verified posting | **Apply on company site** | The page is the job posting. The page names the company. The page title matches the job title. |
+| Careers page only | **Company careers page** | The page is the company's careers page. The exact posting was not verified. |
+| Nothing verified | No company page was verified. Use the portal link. | The app shows no company link. Use the portal link. |
+
+The app shows a link only after it verifies the page. The app does not guess a link. A page that fails the check is not shown.
+
+The app keeps the last result for that job. **Find company site** shows the kept result when one exists. Click **Search again** to run the search again. The new result replaces the kept result.
+
+When the search fails, a message says "Company site search failed. Try again." The button stays **Find company site**.
+
+#### Company site search
+
+Open **Settings**. In the **Cost Limits** card, use the switch **Company site search**. The switch is on by default. Click **Save Settings** after you change the switch.
+
+When the switch is off, **Find company site** does not search. Job detail shows "Company site search is off. Turn it on in Settings."
+
+The search uses the company name from the job. It drops a trailing legal suffix, such as "Pte Ltd". It sends that name, the job title, and the word "careers" to DuckDuckGo. It does not send your profile, your CV, or other personal data.
+
+#### Application files
+
+Job detail shows **Application files** above the action row.
+
+Download a generated file with one of these controls:
+
+- **Download CV (PDF)**
+- **Download CV (DOCX)**
+- **Download Cover letter**
+
+When no file exists, the section says "No application files yet". When some files exist, each missing file has its own line. The line names the file and says "not generated yet". A missing cover letter also says "Letters that need review are on the Cover Letter page."
+
+Copy the files onto the company form. The app does not send the form.
+
+#### Applied on company site
+
+**Applied on company site** is next to a verified link. The button is not shown when no page was verified.
+
+Click **Applied on company site** after you submit on the company site. The app records the method "Company site" and the address of the verified page.
+
+The portal copy of the same job then shows **Applied**. A later pipeline run skips that job. The Applications page shows the method "Company site".
+
+When the job already shows **Applied**, job detail does not show **Find company site**.
 
 **Ollama model choice (Settings):**
 - Lists models from the configured Ollama host (Compose `ollama:11434` or desktop `host.docker.internal:11434`)
