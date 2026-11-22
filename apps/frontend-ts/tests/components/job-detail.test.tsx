@@ -23,6 +23,10 @@ let cachedExplainFitData: ScoreExplanation | null = null;
 let cachedCoverLetterData: { content: string; validation: null } | null = null;
 
 vi.mock("@/lib/hooks/use-jobs", () => ({
+  useTrackCompanySiteApplication: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
   useClassifyJob: () => ({
     mutate: mockClassifyMutate,
     isPending: false,

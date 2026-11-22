@@ -82,7 +82,9 @@ describe("ApplicationFiles", () => {
     mockGetFiles.mockResolvedValue(someFiles);
     render(<ApplicationFiles job={job} />);
     expect(
-      await screen.findByText("Cover letter: not generated yet"),
+      await screen.findByText(
+        "Cover letter: not generated yet. Letters that need review are on the Cover Letter page.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Download Cover letter" }),

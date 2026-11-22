@@ -14,6 +14,10 @@ import type { JobListing } from "@/lib/types/api";
 let cachedCoverLetterData: { content: string; validation: null } | null = null;
 
 vi.mock("@/lib/hooks/use-jobs", () => ({
+  useTrackCompanySiteApplication: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
   useClassifyJob: () => ({ mutate: vi.fn(), isPending: false }),
   useAnalyzeTrust: () => ({ mutate: vi.fn(), isPending: false }),
   useGenerateCoverLetter: () => ({ mutate: vi.fn(), isPending: false }),

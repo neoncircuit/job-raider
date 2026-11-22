@@ -211,6 +211,58 @@ export function useMarkAppliedElsewhere() {
 }
 
 /**
+ * Track that a job was applied to on the company's own site (S3).
+ *
+ * Records the application with method "Company site" and the verified
+ * company URL. The portal copy of the same job then shows as applied.
+ *
+ * @returns Mutation that takes the job, the verified URL, and its match level.
+ */
+export function useTrackCompanySiteApplication() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      job,
+      companyUrl,
+      level,
+    }: {
+      job: JobListing;
+      companyUrl: string;
+      level: "exact" | "careers";
+    }) =>
+      applicationsApi.trackExternal({
+        job_id: job.job_id,
+        job_title: job.title,
+        company: job.company,
+        application_method: "Company site",
+        metadata: {
+          company_site_url: companyUrl,
+          company_site_level: level,
+          ...(job.source_url ? { source_url: job.source_url } : {}),
+          ...(job.description?.trim()
+            ? { description: job.description.trim() }
+            : {}),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Recorded as applied on the company site");
+      void queryClient.invalidateQueries({
+        queryKey: APPLICATIONS_DASHBOARD_QUERY_KEY,
+        refetchType: "all",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(
+        error.message
+          ? `Could not record the application: ${error.message}`
+          : "Could not record the application",
+      );
+    },
+  });
+}
+
+/**
  * Trigger a simulated (dry-run) apply for a job.
  *
  * Real non-dry-run submission is not exposed yet; the API always runs

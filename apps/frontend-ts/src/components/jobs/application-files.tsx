@@ -88,7 +88,9 @@ export function ApplicationFiles({ job }: ApplicationFilesProps) {
                 key={file.kind}
                 className="w-full text-xs text-muted-foreground"
               >
-                {`${file.label}: not generated yet`}
+                {file.kind === "cover_letter"
+                  ? `${file.label}: not generated yet. Letters that need review are on the Cover Letter page.`
+                  : `${file.label}: not generated yet`}
               </p>
             ),
           )}

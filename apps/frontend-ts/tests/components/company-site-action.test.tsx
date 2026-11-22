@@ -10,6 +10,14 @@ import type { CompanySiteResult, JobListing } from "@/lib/types/api";
 
 const mockGetCompanySite = vi.hoisted(() => vi.fn());
 const mockToastError = vi.hoisted(() => vi.fn());
+const mockTrackMutate = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/hooks/use-jobs", () => ({
+  useTrackCompanySiteApplication: () => ({
+    mutate: mockTrackMutate,
+    isPending: false,
+  }),
+}));
 
 vi.mock("@/lib/api/jobs", () => ({
   jobsApi: {
@@ -146,5 +154,34 @@ describe("CompanySiteAction", () => {
     await screen.findByRole("link", { name: "Apply on company site" });
     await user.click(screen.getByRole("button", { name: "Search again" }));
     expect(mockGetCompanySite).toHaveBeenLastCalledWith("job-1", true);
+  });
+
+  it("offers Applied on company site next to a verified link", async () => {
+    mockGetCompanySite.mockResolvedValue(result({}));
+    const user = userEvent.setup();
+    render(<CompanySiteAction job={job} />);
+    await user.click(screen.getByRole("button", { name: "Find company site" }));
+    await screen.findByRole("link", { name: "Apply on company site" });
+    await user.click(
+      screen.getByRole("button", { name: "Applied on company site" }),
+    );
+    expect(mockTrackMutate).toHaveBeenCalledWith({
+      job,
+      companyUrl: "https://boards.greenhouse.io/lumenanalytics/jobs/4012345",
+      level: "exact",
+    });
+  });
+
+  it("does not offer Applied on company site when nothing was verified", async () => {
+    mockGetCompanySite.mockResolvedValue(
+      result({ level: "none", url: null, evidence: [] }),
+    );
+    const user = userEvent.setup();
+    render(<CompanySiteAction job={job} />);
+    await user.click(screen.getByRole("button", { name: "Find company site" }));
+    await screen.findByText(/No company page was verified/);
+    expect(
+      screen.queryByRole("button", { name: "Applied on company site" }),
+    ).toBeNull();
   });
 });

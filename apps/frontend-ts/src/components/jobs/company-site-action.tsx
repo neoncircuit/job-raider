@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { jobsApi } from "@/lib/api/jobs";
+import { useTrackCompanySiteApplication } from "@/lib/hooks/use-jobs";
 import type { CompanySiteResult, JobListing } from "@/lib/types/api";
 
 interface CompanySiteActionProps {
@@ -23,6 +24,7 @@ interface CompanySiteActionProps {
 export function CompanySiteAction({ job }: CompanySiteActionProps) {
   const [searching, setSearching] = useState(false);
   const [result, setResult] = useState<CompanySiteResult | null>(null);
+  const track = useTrackCompanySiteApplication();
 
   const search = async (refresh: boolean) => {
     setSearching(true);
@@ -70,10 +72,12 @@ export function CompanySiteAction({ job }: CompanySiteActionProps) {
       result.level === "exact"
         ? "Apply on company site"
         : "Company careers page";
+    const verifiedUrl = result.url;
+    const level = result.level;
     return (
-      <div className="flex flex-1 gap-2">
+      <div className="flex flex-1 flex-wrap gap-2">
         <a
-          href={result.url}
+          href={verifiedUrl}
           target="_blank"
           rel="noreferrer"
           className="flex-1"
@@ -82,6 +86,14 @@ export function CompanySiteAction({ job }: CompanySiteActionProps) {
             {label}
           </Button>
         </a>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={track.isPending}
+          onClick={() => track.mutate({ job, companyUrl: verifiedUrl, level })}
+        >
+          Applied on company site
+        </Button>
         {searchAgain}
       </div>
     );
