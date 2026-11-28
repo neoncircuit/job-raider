@@ -123,3 +123,4 @@ flowchart LR
 ## Live run for change F, first try (2026-11-20, user, `run_ae8e0017062d`)
 
 - Scraped 0 jobs: all 3 MyCareersFuture searches failed with HTTP 504 "Endpoint request timed out" from the MyCareersFuture API. The run stopped after the scrape, as designed for an empty input. Not caused by this change (the scraper fetch did not change). To be run again.
+- Second try (2026-11-20, `run_fcbe1c3a5079`): the same HTTP 504 on all 3 searches. The new no-jobs notice showed: "No jobs came in because the job source did not answer: MyCareersFuture timed out (HTTP 504). The run stopped after Scrape. Try again later." A single plain request (`/v2/jobs?search=engineer&limit=5`) also returned 504 after 28 s, while the MyCareersFuture website answered at once: the MyCareersFuture jobs API is down, not the app. To be run again later.
