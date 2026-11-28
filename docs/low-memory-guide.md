@@ -137,11 +137,36 @@ flowchart LR
 - `qwen2.5:3b` wrote CVs as accurate as `qwen2.5:7b`, with half the GPU memory and about half the time. Its CV text is shorter (median 68 words of prose, against 82). The default CV writer is still `qwen2.5:7b`; a change is a separate decision.
 - Do not use `llama3.2:3b` as a writer. In the samples, it wrote a letter in the third person, invented a project, and put job-ad duties into a CV as experience.
 
+## Ports in Use
+
+`make app` and `make dev` use port 8000 for the backend and port 3000 for the frontend. When another program (for example another project) uses one of these ports, the service starts on the next free port, up to 10 ports above. The start output shows the line "Port 3000 is in use; the frontend uses 3001." and the two addresses. Open the frontend address that the output shows.
+
+```mermaid
+flowchart LR
+    S[make app] --> C{Port 8000 and 3000 free?}
+    C -- yes --> D[Backend 8000, frontend 3000]
+    C -- no --> N[Next free port for each one that is in use]
+    N --> W[The frontend proxy and the progress WebSocket use the backend port]
+    N --> O[The backend accepts the frontend port]
+    W --> U[Open the frontend address from the start output]
+    O --> U
+```
+
+- When the backend port changes, `make app` builds the frontend again before it starts, because the progress WebSocket address is part of the build. This takes a few minutes one time.
+- To use a fixed port, set `BACKEND_PORT` or `FRONTEND_PORT`. The start does not search then.
+
+Start with a fixed frontend port:
+
+```bash
+FRONTEND_PORT=3005 make app
+```
+
 ## Problems and Solutions
 
 | Problem | Cause | Solution |
 |---|---|---|
 | The Settings page stops after "Local models" | The backend has no `API_KEY` and rejects every request | Make sure `apps/backend-py/.env` and `apps/frontend-ts/.env.local` have the same `API_KEY` value and Unix line endings, then start the app again |
-| "address already in use" for port 8000 or 3000 | The app already runs in another terminal | Stop the other instance (`q` in mprocs, or `Ctrl+C`) |
+| The app starts on port 3001 or 8001, not 3000 or 8000 | Another program, or another instance of the app, uses the default port | Open the address that the start output shows. To free the default port, stop the other instance (`q` in mprocs, or `Ctrl+C`). See [Ports in Use](#ports-in-use) |
+| "No free port for the frontend" (or backend) | Every port in the range is in use | Stop the programs that use these ports, or set `FRONTEND_PORT` or `BACKEND_PORT` to a free port |
 | A letter takes several minutes and Ollama logs "context canceled" | A cold model load took longer than the chat timeout (fixed: the client now loads the model first with a 600 s timeout) | Update to the current version |
 | Ollama is not active after `wsl --shutdown` | systemd has not finished its start | Wait about 90 s, then check again |

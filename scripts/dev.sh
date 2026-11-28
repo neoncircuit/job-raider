@@ -8,10 +8,15 @@
 #
 # Usage:
 #   ./scripts/dev.sh              # Start both backend + frontend
-#   ./scripts/dev.sh api          # Backend only (port 8000)
-#   ./scripts/dev.sh frontend     # Frontend only (port 3000)
+#   ./scripts/dev.sh api          # Backend only (port 8000, or the next free one)
+#   ./scripts/dev.sh frontend     # Frontend only (port 3000, or the next free one)
 #   ./scripts/dev.sh deps         # Only check and repair the dependencies
 #   ./scripts/dev.sh app          # Lean run: production frontend, backend without reload
+#
+# Ports: when 8000 or 3000 is in use (for example by another project), the
+# service starts on the next free port, up to DEV_PORT_SPAN (10) above. Set
+# BACKEND_PORT or FRONTEND_PORT to use a fixed port without a search, and
+# BACKEND_PORT_START or FRONTEND_PORT_START to search from another port.
 
 set -e
 
@@ -34,6 +39,49 @@ files_sha256() {
     for f in "$@"; do [ -f "$f" ] && existing+=("$f"); done
     if [ ${#existing[@]} -eq 0 ]; then echo none; return; fi
     cat "${existing[@]}" | sha256sum | cut -d' ' -f1
+}
+
+# --- Ports -------------------------------------------------------------------
+
+# How many ports above the start port the search tries.
+DEV_PORT_SPAN="${DEV_PORT_SPAN:-10}"
+
+# Return 0 when a program listens on 127.0.0.1:$1 (bash /dev/tcp, no tools).
+port_in_use() {
+    (exec 3<> "/dev/tcp/127.0.0.1/$1") 2> /dev/null
+}
+
+# Print the first free port from $1 to $1 + DEV_PORT_SPAN. Return 1 when none.
+pick_free_port() {
+    local start="$1" port
+    for ((port = start; port <= start + DEV_PORT_SPAN; port++)); do
+        if ! port_in_use "$port"; then
+            echo "$port"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Export a port variable unless the user set it: the start port, or the next
+# free one. Stop with a message when the whole range is in use.
+# Args: $1 = variable name (BACKEND_PORT or FRONTEND_PORT), $2 = start port,
+#       $3 = service name for the messages.
+choose_port() {
+    local var="$1" start="$2" label="$3" port
+    if [ -n "${!var:-}" ]; then
+        export "${var?}"
+        return 0
+    fi
+    if ! port="$(pick_free_port "$start")"; then
+        echo "Error: No free port for the $label from $start to $((start + DEV_PORT_SPAN))."
+        echo "Stop the program that uses these ports, or set $var to a free port."
+        exit 1
+    fi
+    if [ "$port" != "$start" ]; then
+        warn "Port $start is in use; the $label uses $port."
+    fi
+    export "$var=$port"
 }
 
 # --- Backend dependency check -----------------------------------------------
@@ -143,7 +191,8 @@ ensure_dirs() {
 # --- Service launchers -------------------------------------------------------
 
 start_api() {
-    echo "Starting backend API on 127.0.0.1:8000..."
+    choose_port BACKEND_PORT "${BACKEND_PORT_START:-8000}" backend
+    echo "Starting backend API on 127.0.0.1:$BACKEND_PORT..."
     cd "$BACKEND_DIR"
     # Load apps/backend-py/.env (API_KEY, AUTH_DISABLED, provider keys), as
     # Compose does with env_file. The app itself does not read .env, and
@@ -159,34 +208,49 @@ start_api() {
         reload_args=()
     fi
     PYTHONPATH=. "$VENV_PYTHON" -m uvicorn src.api.main:app \
-        --host 127.0.0.1 --port 8000 "${reload_args[@]}" \
+        --host 127.0.0.1 --port "$BACKEND_PORT" "${reload_args[@]}" \
         --env-file "$BACKEND_DIR/.env"
 }
 
-# True when the production build is missing or older than the frontend source.
+# The backend port that the last production build was made for. The
+# WebSocket address (NEXT_PUBLIC_WS_URL) is fixed into the build. A build
+# without this stamp was made for the old fixed port, 8000.
+BUILD_PORT_STAMP="$FRONTEND_DIR/.next/job-raider-backend-port"
+
+# True when the production build is missing, older than the frontend source,
+# or made for another backend port.
 frontend_build_needed() {
     [ ! -f "$FRONTEND_DIR/.next/BUILD_ID" ] && return 0
+    [ "$(cat "$BUILD_PORT_STAMP" 2> /dev/null || echo 8000)" != "${BACKEND_PORT:-8000}" ] && return 0
     [ -n "$(find "$FRONTEND_DIR/src" "$FRONTEND_DIR/public" "$FRONTEND_DIR/package.json" \
         "$FRONTEND_DIR"/next.config.* -newer "$FRONTEND_DIR/.next/BUILD_ID" -print -quit 2> /dev/null)" ]
 }
 
 start_frontend() {
+    choose_port FRONTEND_PORT "${FRONTEND_PORT_START:-3000}" frontend
+    # The proxy (BACKEND_API_URL) and the pipeline progress WebSocket
+    # (NEXT_PUBLIC_WS_URL) follow the backend port, unless the user set them.
+    local backend_port="${BACKEND_PORT:-8000}"
+    export BACKEND_API_URL="${BACKEND_API_URL:-http://127.0.0.1:$backend_port}"
+    export NEXT_PUBLIC_WS_URL="${NEXT_PUBLIC_WS_URL:-ws://127.0.0.1:$backend_port}"
     cd "$FRONTEND_DIR"
     if [ -n "${APP_MODE:-}" ]; then
         # Production server: much less memory than the dev server. Build only
-        # when the source changed since the last build.
+        # when the source or the backend port changed since the last build.
         if frontend_build_needed; then
             echo "Building the Next.js frontend (production)..."
             npm run build
+            mkdir -p "$(dirname "$BUILD_PORT_STAMP")"
+            echo "$backend_port" > "$BUILD_PORT_STAMP"
         fi
-        echo "Starting Next.js production server on 127.0.0.1:3000..."
-        npm run start -- --hostname 127.0.0.1 --port 3000
+        echo "Starting Next.js production server on 127.0.0.1:$FRONTEND_PORT..."
+        npm run start -- --hostname 127.0.0.1 --port "$FRONTEND_PORT"
         return
     fi
-    echo "Starting Next.js dev server on 127.0.0.1:3000..."
+    echo "Starting Next.js dev server on 127.0.0.1:$FRONTEND_PORT..."
     # Bind to loopback only so other LAN devices cannot use the proxy
     # (the proxy adds X-API-Key to every forwarded request).
-    npm run dev -- --hostname 127.0.0.1 --port 3000
+    npm run dev -- --hostname 127.0.0.1 --port "$FRONTEND_PORT"
 }
 
 # Start both services. In an interactive terminal with mprocs installed (a
@@ -195,6 +259,10 @@ start_frontend() {
 # a terminal, for the plain mixed output.
 start_both() {
     local config="${1:-mprocs.yaml}"
+    # Choose both ports once, here, so the two processes agree on them.
+    choose_port BACKEND_PORT "${BACKEND_PORT_START:-8000}" backend
+    choose_port FRONTEND_PORT "${FRONTEND_PORT_START:-3000}" frontend
+    info "Frontend: http://localhost:$FRONTEND_PORT   Backend: http://127.0.0.1:$BACKEND_PORT"
     MPROCS_BIN="$FRONTEND_DIR/node_modules/.bin/mprocs"
     if [ -t 1 ] && [ -x "$MPROCS_BIN" ] && [ -z "${DEV_PLAIN:-}" ]; then
         echo "Starting backend API + Next.js frontend in mprocs (q quits)..."

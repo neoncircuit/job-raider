@@ -169,20 +169,30 @@ def _parse_cors_origins() -> List[str]:
     In production an unset variable yields an empty list so no cross-origin
     requests are permitted.
 
+    ``FRONTEND_PORT`` (set by ``scripts/dev.sh`` when port 3000 is in use and
+    the frontend moves to another port) adds the two loopback origins of that
+    port. Only a plain port number from 1 to 65535 counts.
+
     Returns:
         List of allowed origin URLs.
     """
     raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
     if raw:
-        return [origin.strip() for origin in raw.split(",") if origin.strip()]
-
-    if os.getenv("ENVIRONMENT", "development").lower() == "development":
-        return [
+        origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    elif os.getenv("ENVIRONMENT", "development").lower() == "development":
+        origins = [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
         ]
+    else:
+        origins = []
 
-    return []
+    port = os.getenv("FRONTEND_PORT", "").strip()
+    if port.isdigit() and 1 <= int(port) <= 65535:
+        for origin in (f"http://localhost:{port}", f"http://127.0.0.1:{port}"):
+            if origin not in origins:
+                origins.append(origin)
+    return origins
 
 
 # Create FastAPI application

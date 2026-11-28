@@ -50,13 +50,15 @@ def _run_dev_sh_api(tmp_path: Path, mode: str = "api") -> tuple[Path, List[str]]
     stub.chmod(0o755)
 
     # This test is about how the API starts, not about the dependency checks
-    # (tests/unit/test_dev_deps.py), so it skips them as mprocs does.
+    # (tests/unit/test_dev_deps.py), so it skips them as mprocs does. The port
+    # is set, so a program on port 8000 of this machine does not move it
+    # (the port search has its own tests in tests/unit/test_dev_ports.py).
     result = subprocess.run(
         [bash, str(root / "scripts" / "dev.sh"), mode],
         capture_output=True,
         text=True,
         timeout=60,
-        env={**os.environ, "DEV_DEPS_CHECKED": "1"},
+        env={**os.environ, "DEV_DEPS_CHECKED": "1", "BACKEND_PORT": "8000"},
     )
     assert result.returncode == 0, result.stdout + result.stderr
     return backend_dir.resolve(), args_file.read_text().splitlines()
@@ -163,6 +165,10 @@ def _run_dev_sh_app_frontend(tmp_path: Path, built: bool) -> List[str]:
         env={
             **os.environ,
             "DEV_DEPS_CHECKED": "1",
+            # Fixed ports, so programs on this machine do not change the
+            # result (the port search: tests/unit/test_dev_ports.py).
+            "FRONTEND_PORT": "3000",
+            "BACKEND_PORT": "8000",
             "PATH": f"{stub_bin}{os.pathsep}{os.environ['PATH']}",
         },
     )
