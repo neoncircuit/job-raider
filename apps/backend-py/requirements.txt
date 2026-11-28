@@ -69,7 +69,7 @@ sentence-transformers>=2.6.0      # Cross-encoder reranking (optional, lazy-load
 mlflow>=2.0.0                   # Experiment tracking and model performance logging
 
 # === Error Tracking ===
-sentry-sdk[fastapi]>=1.40.0     # Error tracking and performance monitoring
+sentry-sdk[fastapi]>=1.40.0,<3  # Error tracking; 3.0 drops profiles_sample_rate (src/utils/sentry.py)
 
 # === Development (optional) ===
 # Exact versions, the same in CI and in every local .venv, so that a local

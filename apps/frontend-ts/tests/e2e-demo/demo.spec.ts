@@ -168,13 +168,12 @@ test.describe("demo actions", () => {
     const problems = watchProblems(page);
     await page.goto("jobs");
 
-    await openJob(page, "Research Engineer");
+    // The demo seed's top job, which has the sample letter (seed/letter.json).
+    await openJob(page, "Graduate Machine Learning Engineer");
     await page.getByRole("button", { name: "Generate Cover Letter" }).click();
 
     await expect(page.getByRole("main")).toContainText("they miss real errors");
-    await expect(page.getByRole("main")).toContainText(
-      "At Example AI Institute",
-    );
+    await expect(page.getByRole("main")).toContainText("At Example Analytics");
     expect(problems).toEqual([]);
   });
 

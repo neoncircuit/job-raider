@@ -2,6 +2,7 @@
  * Job detail: the application files (apply pack) list (company-site-apply, S2).
  */
 
+import { Component, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -111,4 +112,52 @@ describe("ApplicationFiles", () => {
       await screen.findByText("No application files yet"),
     ).toBeInTheDocument();
   });
+
+  it("shows nothing, without an error, when the reply has no file list", async () => {
+    // An older backend, or the E2E mock's default reply, answers with {}.
+    mockGetFiles.mockResolvedValue({});
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <CrashCatcher>
+        <ApplicationFiles job={job} />
+      </CrashCatcher>,
+    );
+    await vi.waitFor(() => expect(mockGetFiles).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    quiet.mockRestore();
+
+    expect(screen.queryByText("crashed")).toBeNull();
+    expect(screen.queryByTestId("application-files")).toBeNull();
+  });
 });
+
+/** Props of {@link CrashCatcher}. */
+interface CrashCatcherProps {
+  /** The component under test. */
+  children: ReactNode;
+}
+
+/**
+ * Render "crashed" when a child throws, so a crash fails the test.
+ */
+class CrashCatcher extends Component<CrashCatcherProps, { crashed: boolean }> {
+  state = { crashed: false };
+
+  /**
+   * Record that a child threw.
+   *
+   * @returns The new state.
+   */
+  static getDerivedStateFromError(): { crashed: boolean } {
+    return { crashed: true };
+  }
+
+  /**
+   * Render the children, or "crashed" after an error.
+   *
+   * @returns The element.
+   */
+  render(): ReactNode {
+    return this.state.crashed ? <p>crashed</p> : this.props.children;
+  }
+}

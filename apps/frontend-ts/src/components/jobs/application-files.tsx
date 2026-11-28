@@ -28,7 +28,8 @@ export function ApplicationFiles({ job }: ApplicationFilesProps) {
     jobsApi
       .getApplicationFiles(job.job_id)
       .then((res) => {
-        if (active) setFiles(res.files);
+        // A reply without a file list (an older backend) shows nothing.
+        if (active) setFiles(Array.isArray(res?.files) ? res.files : null);
       })
       .catch(() => {
         if (active) setFiles(null);
